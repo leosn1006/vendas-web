@@ -1,14 +1,14 @@
 # vendas web
-Um projeto de front para vendas via WhatsApp
+Hello World em Python (Flask) com deploy via Gunicorn + Nginx (80/443).
 
 ### Install
 ```
 $ pip install -r requisitos.txt
 ```
 
-###
+### docker
 ```
-$ flask --app main run
-
+docker compose up -d --build
+docker compose ps
 ```
 
