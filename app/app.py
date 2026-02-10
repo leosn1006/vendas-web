@@ -1,6 +1,11 @@
-from flask import Flask
+from flask import Flask, send_file
+import os
 
 app = Flask(__name__)
+
+@app.get("/politica-privacidade.html")
+def politica_privacidade():
+    return send_file('politica-privacidade.html')
 
 @app.get("/")
 def home():
@@ -76,10 +81,10 @@ def home():
 </head>
 <body>
     <div class="container">
-        <img 
-            id="imgClicavel" 
-            src="https://s3.projetosdobruno.com/imagens/P%C3%A3es%20Caseiros.webp" 
-            alt="50 Receitas de Pães sem Glúten - Clique para receber no WhatsApp" 
+        <img
+            id="imgClicavel"
+            src="https://s3.projetosdobruno.com/imagens/P%C3%A3es%20Caseiros.webp"
+            alt="50 Receitas de Pães sem Glúten - Clique para receber no WhatsApp"
             class="img-clicavel"
         >
     </div>
@@ -114,40 +119,40 @@ def home():
                 identificador: 'WHATSAPP 06'
             }
         ];
-        
+
         // Escolhe aleatoriamente entre os 3 WhatsApps
         const indiceWhatsapp = Math.floor(Math.random() * whatsappConfig.length);
         const whatsappEscolhido = whatsappConfig[indiceWhatsapp];
-        
+
         // Emojis e mensagem
-        const emojiPool = ['☺️', '😃', '😊', '🌹', '🥰', '🙂']; 
-        const indiceAleatorio = Math.floor(Math.random() * emojiPool.length); 
+        const emojiPool = ['☺️', '😃', '😊', '🌹', '🥰', '🙂'];
+        const indiceAleatorio = Math.floor(Math.random() * emojiPool.length);
         const emojiEscolhido = emojiPool[indiceAleatorio];
         const mensagemBaseWA = 'Olá, tenho interesse nas receitas';
-        const mensagemFinalWA = emojiEscolhido + ' ' + mensagemBaseWA; 
-        
+        const mensagemFinalWA = emojiEscolhido + ' ' + mensagemBaseWA;
+
         // Webhook fixo para coletar GCLID
         const urlDoWebhook = 'https://webhook.projetosdobruno.com/webhook/GERALGCLID';
-        
+
         // URL do WhatsApp escolhido
         const urlWhatsapp = 'https://wa.me/' + whatsappEscolhido.numero + '?text=' + encodeURIComponent(mensagemFinalWA);
-        
+
         // Captura dados da página
-        const urlDaPaginaAtual = window.location.href; 
+        const urlDaPaginaAtual = window.location.href;
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
         const gclidCode = urlParams.get('gclid');
         const timestampUnixSegundos = Math.floor(new Date().getTime() / 1000);
-        
+
         // Dados para enviar ao webhook
         const dadosParaEnviar = {
-            chave_emoji: emojiEscolhido, 
-            timestamp_unix: timestampUnixSegundos, 
+            chave_emoji: emojiEscolhido,
+            timestamp_unix: timestampUnixSegundos,
             gclid_isolado: gclidCode,
             url_completa: urlDaPaginaAtual,
             whatsapp: whatsappEscolhido.identificador
         };
-        
+
         // Dispara webhook em background (fire-and-forget)
         fetch(urlDoWebhook, {
             method: 'POST',
@@ -155,7 +160,7 @@ def home():
             body: JSON.stringify(dadosParaEnviar),
             keepalive: true
         });
-        
+
         // Redireciona IMEDIATAMENTE para o WhatsApp
         window.location.href = urlWhatsapp;
     });
