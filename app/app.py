@@ -3,13 +3,13 @@ import os
 
 app = Flask(__name__)
 
-@app.get("/lancheira.jpeg")
-def lancheira_jpeg():
-    return send_file('lancheira.jpeg', mimetype='image/jpeg')
+@app.get("/lancheira.webp")
+def lancheira_webp():
+    return send_file('lancheira.webp', mimetype='image/webp')
 
 @app.get("/politica-privacidade.html")
 def politica_privacidade():
-    return send_file('politica-privacidade.html')
+    return send_file('politica-privacidade.html', mimetype='text/html')
 
 @app.get("/termos-de-uso.html")
 def termos_de_uso():
@@ -17,7 +17,7 @@ def termos_de_uso():
 
 @app.get("/contato.html")
 def contato():
-    return send_file('contato.html')
+    return send_file('contato.html', mimetype='text/html')
 
 @app.get("/")
 def home():
@@ -97,7 +97,7 @@ def home():
     <div class="container">
         <img
             id="imgClicavel"
-            src="/lancheira.jpeg"
+            src="/lancheira.webp"
             alt="25 Receitas para lanches- Clique para receber no WhatsApp"
             class="img-clicavel"
             style="width:100%;
