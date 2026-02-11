@@ -11,6 +11,7 @@ $ pip install -r requisitos.txt
 docker compose up -d --build
 docker compose ps
 docker compose down
+docker compose logs --tail=80 nginx
 ```
 ### ssl md5 da cadeia (crt + CAs) deve ser igual da key
 ```
