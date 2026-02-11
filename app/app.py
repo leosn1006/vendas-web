@@ -84,7 +84,7 @@ def home():
     <div class="container">
         <img
             id="imgClicavel"
-            src="/lancheira.svg"
+            src="/lancheira.jpeg"
             alt="25 Receitas para lanches- Clique para receber no WhatsApp"
             class="img-clicavel"
             style="width:100%; height:auto;"
