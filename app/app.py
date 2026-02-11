@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 @app.get("/lancheira.webp")
 def politica_privacidade():
-    return send_file('lancheira.webp')
+    return send_file('lancheira.webp', mimetype='image/webp')
 
 @app.get("/politica-privacidade.html")
 def politica_privacidade():
