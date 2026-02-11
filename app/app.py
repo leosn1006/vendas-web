@@ -83,8 +83,8 @@ def home():
     <div class="container">
         <img
             id="imgClicavel"
-            src="/lancheira.jpg"
-            alt="50 Receitas de Pães sem Glúten - Clique para receber no WhatsApp"
+            src="/lancheira.jpeg"
+            alt="25 Receitas para lanches- Clique para receber no WhatsApp"
             class="img-clicavel"
         >
     </div>
