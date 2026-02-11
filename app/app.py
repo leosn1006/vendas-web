@@ -45,7 +45,7 @@ def home():
         }
         .footer {
             width: 100%;
-            max-width: 450px;
+            max-width: 980px;
             padding: 20px 10px;
             text-align: center;
             border-top: 1px solid #e0e0e0;
@@ -87,6 +87,7 @@ def home():
             src="/lancheira.svg"
             alt="25 Receitas para lanches- Clique para receber no WhatsApp"
             class="img-clicavel"
+            style="width:100%; height:auto;"
         >
     </div>
 
