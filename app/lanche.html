@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lancheira sem Estresse - Clique para receber no WhatsApp</title>
+
+  <style>
+    :root{
+      --max: 980px;
+      --pad: clamp(12px, 2.5vw, 24px);
+      --text: clamp(12px, 1.6vw, 14px);
+      --text-small: clamp(11px, 1.4vw, 12px);
+      --border: #e6e6e6;
+      --muted: #777;
+      --muted2: #666;
+      --hover-bg: #f5f5f5;
+      --hover-fg: #2d5016;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #fff;
+      min-height: 100vh;
+
+      /* Layout: conteúdo em cima e footer no final */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: var(--pad);
+    }
+
+    .container{
+      width: min(var(--max), 100%);
+    }
+
+    /* A imagem vira o “botão” */
+    .img-clicavel{
+      width: 100%;
+      height: auto;
+      display: block;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      border-radius: clamp(10px, 1.2vw, 16px);
+    }
+
+    /* Feedback visual ao tocar/clicar */
+    .img-clicavel:active{
+      transform: scale(0.998);
+      filter: brightness(0.98);
+    }
+
+    /* Empurra o footer para o final quando houver pouco conteúdo */
+    .spacer{ flex: 1; }
+
+    .footer{
+      width: min(var(--max), 100%);
+      margin-top: clamp(16px, 3vw, 28px);
+      padding-top: clamp(14px, 2vw, 20px);
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .footer p{
+      color: var(--muted);
+      font-size: var(--text);
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+
+    .footer-links{
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px 10px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .footer-links li{
+      display: inline-flex;
+      align-items: center;
+    }
+
+    /* Separador automático, não quebra layout como o “|” no HTML */
+    .footer-links li:not(:last-child)::after{
+      content: "•";
+      margin-left: 10px;
+      color: #c7c7c7;
+      font-size: var(--text-small);
+    }
+
+    .footer-links a{
+      color: var(--muted2);
+      text-decoration: none;
+      font-size: var(--text-small);
+      padding: 8px 10px; /* melhora “touch target” no mobile */
+      border-radius: 6px;
+      transition: background .2s ease, color .2s ease;
+    }
+
+    .footer-links a:hover,
+    .footer-links a:focus-visible{
+      color: var(--hover-fg);
+      background: var(--hover-bg);
+      outline: none;
+    }
+
+    /* Ajustes extras para telas grandes */
+    @media (min-width: 1024px){
+      body{ padding: clamp(18px, 2vw, 28px); }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <img
+      id="imgClicavel"
+      src="/imagens/lancheira.webp"
+      alt="25 Receitas para lanches - Clique para receber no WhatsApp"
+      class="img-clicavel"
+      loading="eager"
+      decoding="async"
+    />
+  </main>
+
+  <div class="spacer" aria-hidden="true"></div>
+
+  <footer class="footer">
+    <p>© 2026 LN Editor - Receitas Digitais e Saúde. Todos os direitos reservados.</p>
+
+    <ul class="footer-links" aria-label="Links do rodapé">
+      <li><a href="/politica-privacidade.html">Política de Privacidade</a></li>
+      <li><a href="/termos-de-uso.html">Termos de Uso</a></li>
+      <li><a href="/contato.html">Contato</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    (function () {
+      const img = document.getElementById('imgClicavel');
+      let locked = false;
+
+      img.addEventListener('click', function () {
+        if (locked) return;
+        locked = true;
+
+        const whatsappConfig = [
+          { numero: '5561981173547', identificador: 'WHATSAPP 01' },
+          { numero: '5561981102903', identificador: 'WHATSAPP 02' },
+          { numero: '5561982325340', identificador: 'WHATSAPP 06' }
+        ];
+
+        const whatsappEscolhido =
+          whatsappConfig[Math.floor(Math.random() * whatsappConfig.length)];
+
+        const emojiPool = ['☺️', '😃', '😊', '🌹', '🥰', '🙂'];
+        const emojiEscolhido = emojiPool[Math.floor(Math.random() * emojiPool.length)];
+
+        const mensagemFinalWA = `${emojiEscolhido} Olá, tenho interesse nas receitas`;
+
+        const urlDoWebhook = 'https://webhook.projetosdobruno.com/webhook/GERALGCLID';
+        const urlWhatsapp =
+          `https://wa.me/${whatsappEscolhido.numero}?text=${encodeURIComponent(mensagemFinalWA)}`;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const gclidCode = urlParams.get('gclid');
+
+        const dadosParaEnviar = {
+          chave_emoji: emojiEscolhido,
+          timestamp_unix: Math.floor(Date.now() / 1000),
+          gclid_isolado: gclidCode,
+          url_completa: window.location.href,
+          whatsapp: whatsappEscolhido.identificador
+        };
+
+        // Envio mais confiável antes do redirect (especialmente no mobile)
+        try {
+          const blob = new Blob([JSON.stringify(dadosParaEnviar)], { type: 'application/json' });
+          const ok = navigator.sendBeacon && navigator.sendBeacon(urlDoWebhook, blob);
+
+          // Fallback se sendBeacon não existir/falhar
+          if (!ok) {
+            fetch(urlDoWebhook, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(dadosParaEnviar),
+              keepalive: true
+            }).catch(() => {});
+          }
+        } catch (e) {
+          // Não bloqueia o redirecionamento
+        }
+
+        window.location.href = urlWhatsapp;
+
+        // libera após um tempo (caso usuário volte rapidamente)
+        setTimeout(() => { locked = false; }, 1500);
+      });
+    })();
+  </script>
+</body>
+</html>
