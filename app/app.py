@@ -3,6 +3,10 @@ import os
 
 app = Flask(__name__)
 
+@app.get("/portifolio.html")
+def portifolio():
+    return send_file('portifolio.html', mimetype='text/html')
+
 @app.get("/lancheira.webp")
 def lancheira_webp():
     return send_file('imagens/lancheira.webp', mimetype='image/webp')
@@ -19,6 +23,6 @@ def termos_de_uso():
 def contato():
     return send_file('contato.html', mimetype='text/html')
 
-@app.get("/")
+@app.get("/lanche.html")
 def home():
     return send_file('lanche.html', mimetype='text/html')
