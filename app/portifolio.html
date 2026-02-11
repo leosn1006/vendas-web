@@ -1,107 +1,595 @@
-<!doctype html>
-<html lang="pt-br">
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Portfólio | LN Editor</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>LN Editor — Receitas Digitais e Saúde</title>
+  <meta name="description" content="Portfólio e página oficial da LN Editor. Produtos digitais, receitas e conteúdos para saúde e bem-estar. Atendimento via WhatsApp." />
+  <meta name="robots" content="index,follow" />
+
+  <!-- Open Graph (preview ao compartilhar) -->
+  <meta property="og:title" content="LN Editor — Receitas Digitais e Saúde" />
+  <meta property="og:description" content="Produtos digitais, receitas e conteúdos para saúde e bem-estar. Atendimento via WhatsApp." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="/lancheira.webp" />
+  <meta property="og:locale" content="pt_BR" />
+
   <style>
-    body{font-family:Arial,Helvetica,sans-serif;margin:0;line-height:1.5;color:#111}
-    header{padding:48px 20px;background:#f5f7fb}
-    .wrap{max-width:980px;margin:0 auto}
-    h1{margin:0 0 12px 0;font-size:34px}
-    .btns a{display:inline-block;margin-right:10px;margin-top:10px;padding:10px 14px;border-radius:8px;text-decoration:none}
-    .primary{background:#111;color:#fff}
-    .ghost{border:1px solid #111;color:#111}
-    section{padding:34px 20px;border-top:1px solid #eee}
-    h2{margin:0 0 12px 0}
-    ul{margin:10px 0 0 18px}
-    footer{padding:24px 20px;background:#111;color:#fff}
-    small{opacity:.9}
+    :root{
+      --bg: #0b1220;
+      --surface: rgba(255,255,255,.06);
+      --surface2: rgba(255,255,255,.10);
+      --border: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --muted2: rgba(255,255,255,.55);
+
+      --brand: #22c55e;        /* verde */
+      --brand2: #16a34a;
+      --accent: #60a5fa;       /* azul leve */
+      --danger: #ef4444;
+
+      --max: 1100px;
+      --radius: 16px;
+      --shadow: 0 18px 50px rgba(0,0,0,.35);
+
+      --pad: clamp(16px, 2.5vw, 28px);
+      --h1: clamp(28px, 3.2vw, 46px);
+      --h2: clamp(18px, 2.2vw, 28px);
+      --p:  clamp(14px, 1.4vw, 16px);
+      --small: clamp(12px, 1.2vw, 13px);
+    }
+
+    *{ box-sizing: border-box; }
+    html, body{ height: 100%; }
+    body{
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 15% 10%, rgba(34,197,94,.18), transparent 55%),
+        radial-gradient(900px 600px at 90% 20%, rgba(96,165,250,.16), transparent 55%),
+        radial-gradient(700px 500px at 70% 95%, rgba(34,197,94,.10), transparent 60%),
+        var(--bg);
+      line-height: 1.55;
+    }
+
+    a{ color: inherit; }
+    .wrap{
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: var(--pad);
+    }
+
+    /* Header */
+    header{
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(10px);
+      background: rgba(11,18,32,.55);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .header-inner{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px var(--pad);
+      max-width: var(--max);
+      margin: 0 auto;
+    }
+
+    .brand{
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .logo{
+      width: 38px; height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(34,197,94,.95), rgba(96,165,250,.85));
+      box-shadow: 0 12px 25px rgba(0,0,0,.35);
+      display: grid; place-items: center;
+      border: 1px solid rgba(255,255,255,.16);
+      font-weight: 800;
+      letter-spacing: -.02em;
+    }
+    .brand strong{ font-size: 14px; letter-spacing: .2px; }
+    .brand span{ display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+    nav{
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .nav-link{
+      text-decoration: none;
+      color: var(--muted);
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      font-size: 13px;
+      transition: .2s ease;
+    }
+    .nav-link:hover, .nav-link:focus-visible{
+      outline: none;
+      color: var(--text);
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,255,255,.08);
+    }
+
+    .btn{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 650;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform .15s ease, background .2s ease, border-color .2s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active{ transform: translateY(1px); }
+
+    .btn-primary{
+      background: linear-gradient(135deg, rgba(34,197,94,.95), rgba(22,163,74,.85));
+      border-color: rgba(34,197,94,.40);
+      box-shadow: 0 18px 40px rgba(34,197,94,.18);
+    }
+    .btn-primary:hover, .btn-primary:focus-visible{
+      outline: none;
+      border-color: rgba(34,197,94,.65);
+      filter: brightness(1.02);
+    }
+
+    /* Hero */
+    .hero{
+      padding: clamp(18px, 3vw, 34px) 0 clamp(14px, 2.5vw, 28px);
+    }
+    .hero-grid{
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: clamp(16px, 2.8vw, 28px);
+      align-items: center;
+    }
+
+    .kicker{
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+      width: fit-content;
+    }
+    .dot{
+      width: 8px; height: 8px; border-radius: 99px;
+      background: var(--brand);
+      box-shadow: 0 0 0 5px rgba(34,197,94,.18);
+    }
+
+    h1{
+      margin: 14px 0 10px;
+      font-size: var(--h1);
+      line-height: 1.08;
+      letter-spacing: -.03em;
+    }
+    .lead{
+      margin: 0 0 18px;
+      font-size: var(--p);
+      color: var(--muted);
+      max-width: 62ch;
+    }
+
+    .hero-actions{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .note{
+      margin-top: 10px;
+      color: var(--muted2);
+      font-size: var(--small);
+    }
+
+    .card{
+      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .preview{
+      padding: 14px;
+    }
+    .preview img{
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      cursor: pointer;
+      transition: transform .2s ease, filter .2s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .preview img:hover{ transform: scale(1.01); }
+    .preview img:active{ transform: scale(0.995); filter: brightness(.98); }
+
+    .preview-meta{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      padding: 12px 4px 2px;
+    }
+    .preview-meta strong{ font-size: 14px; }
+    .preview-meta span{ font-size: 13px; color: var(--muted); }
+
+    /* Sections */
+    section{ padding: 18px 0; }
+    .section-title{
+      margin: 0 0 10px;
+      font-size: var(--h2);
+      letter-spacing: -.02em;
+    }
+    .section-sub{
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: var(--p);
+      max-width: 80ch;
+    }
+
+    .grid-3{
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .mini-card{
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.05);
+    }
+    .mini-card strong{
+      display: block;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+    .mini-card p{
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .divider{
+      height: 1px;
+      background: rgba(255,255,255,.10);
+      margin: 18px 0;
+    }
+
+    /* Footer */
+    footer{
+      margin-top: 20px;
+      padding: 18px 0 30px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      color: var(--muted);
+    }
+    .footer-grid{
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 14px;
+      align-items: start;
+    }
+    .footer-links{
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .footer-links a{
+      text-decoration: none;
+      color: var(--muted);
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      font-size: 13px;
+      transition: .2s ease;
+    }
+    .footer-links a:hover, .footer-links a:focus-visible{
+      outline: none;
+      color: var(--text);
+      border-color: rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+    }
+    .legal{
+      font-size: 12px;
+      color: var(--muted2);
+      margin-top: 8px;
+    }
+
+    /* Responsive */
+    @media (max-width: 940px){
+      .hero-grid{ grid-template-columns: 1fr; }
+      .grid-3{ grid-template-columns: 1fr; }
+      .footer-grid{ grid-template-columns: 1fr; }
+      .footer-links{ justify-content: flex-start; }
+      nav{ display: none; } /* deixa clean no mobile; se quiser, posso adicionar menu hamburger */
+    }
+
+    /* Focus */
+    :focus-visible{
+      outline: 2px solid rgba(96,165,250,.9);
+      outline-offset: 2px;
+    }
   </style>
 </head>
+
 <body>
   <header>
-    <div class="wrap">
-      <h1>Conteúdos digitais para rotina saudável, treinos e receitas</h1>
-      <p>E-books e materiais digitais com foco em organização, aprendizado e prática no dia a dia.</p>
-      <p><strong>Contato:</strong> <a href="mailto:admin@lneditor.com.br">admin@lneditor.com.br</a></p>
-      <div class="btns">
-        <a class="primary" href="#portfolio">Ver portfólio</a>
-        <a class="ghost" href="#politicas">Políticas e suporte</a>
-      </div>
+    <div class="header-inner">
+      <a class="brand" href="/" aria-label="Ir para início">
+        <div class="logo">LN</div>
+        <div>
+          <strong>LN Editor</strong>
+          <span>Receitas Digitais • Saúde • Bem-estar</span>
+        </div>
+      </a>
+
+      <nav aria-label="Navegação">
+        <a class="nav-link" href="#sobre">Sobre</a>
+        <a class="nav-link" href="#produtos">Produtos</a>
+        <a class="nav-link" href="#portfolio">Portfólio</a>
+        <a class="nav-link" href="#contato">Contato</a>
+      </nav>
+
+      <button id="ctaWhatsappTop" class="btn btn-primary" type="button" aria-label="Falar no WhatsApp">
+        WhatsApp
+      </button>
     </div>
   </header>
 
-  <section id="sobre">
-    <div class="wrap">
-      <h2>Quem somos</h2>
-      <p>A <strong>[NOME DA MARCA]</strong> é uma empresa de conteúdos digitais que desenvolve e comercializa e-books, guias e materiais de apoio sobre receitas, treinos e bem-estar.</p>
-      <p><strong>Aviso:</strong> conteúdo educativo e informativo. Não substitui orientação de profissionais de saúde, nutrição ou educação física.</p>
-    </div>
-  </section>
+  <main class="wrap">
+    <section class="hero" aria-label="Apresentação">
+      <div class="hero-grid">
+        <div>
+          <div class="kicker"><span class="dot"></span> Página oficial / Portfólio</div>
+          <h1>Conteúdos digitais de receitas com foco em praticidade e saúde.</h1>
+          <p class="lead">
+            Aqui você encontra nossos materiais digitais, páginas institucionais e formas de contato.
+            Para receber o conteúdo e tirar dúvidas, fale com a gente no WhatsApp.
+          </p>
 
-  <section id="portfolio">
-    <div class="wrap">
-      <h2>Portfólio</h2>
+          <div class="hero-actions">
+            <button id="ctaWhatsappHero" class="btn btn-primary" type="button">
+              Receber no WhatsApp
+            </button>
 
-      <h3>Receitas & Culinária</h3>
-      <ul>
-        <li>E-books de receitas práticas</li>
-        <li>Cardápios e listas de compras (quando aplicável)</li>
-      </ul>
+            <a class="btn" href="#portfolio">
+              Ver portfólio
+            </a>
+          </div>
 
-      <h3>Treinos & Rotina de exercícios</h3>
-      <ul>
-        <li>Guias de treino (iniciante/intermediário)</li>
-        <li>Organização de treinos e checklists</li>
-      </ul>
+          <div class="note">
+            Atendimento: Seg–Sex (09h–18h). <span style="color: rgba(255,255,255,.35)">•</span>
+            Resposta geralmente em poucos minutos.
+          </div>
+        </div>
 
-      <h3>Bem-estar & Hábitos</h3>
-      <ul>
-        <li>Guias de hábitos e rotina</li>
-        <li>Conteúdos educativos de estilo de vida</li>
-      </ul>
-    </div>
-  </section>
+        <aside class="card preview" aria-label="Prévia do produto">
+          <img
+            id="imgClicavel"
+            src="/lancheira.webp"
+            alt="Prévia do material: Lancheira sem Estresse — clique para receber no WhatsApp"
+            loading="eager"
+            decoding="async"
+          />
+          <div class="preview-meta">
+            <strong>Lancheira sem Estresse</strong>
+            <span>Receitas práticas + organização para o dia a dia.</span>
+          </div>
+        </aside>
+      </div>
+    </section>
 
-  <section id="como-funciona">
-    <div class="wrap">
-      <h2>Como funciona</h2>
-      <ul>
-        <li><strong>Formato:</strong> produto digital (e-book/arquivo digital)</li>
-        <li><strong>Entrega:</strong> envio de link/instruções após confirmação do pagamento</li>
-        <li><strong>Suporte:</strong> admin@lneditor.com.br</li>
-      </ul>
-    </div>
-  </section>
+    <div class="divider" role="separator" aria-hidden="true"></div>
 
-  <section id="politicas">
-    <div class="wrap">
-      <h2>Políticas</h2>
+    <section id="sobre" aria-label="Sobre">
+      <h2 class="section-title">Sobre a LN Editor</h2>
+      <p class="section-sub">
+        Produzimos materiais digitais (ebooks, guias e conteúdos) voltados para alimentação prática e hábitos saudáveis.
+        Nosso objetivo é transformar rotina em consistência — com instruções simples e aplicáveis.
+      </p>
 
-      <h3>Entrega (produto digital)</h3>
-      <p>Após a confirmação do pagamento, o cliente recebe instruções de acesso e/ou download pelo e-mail informado na compra. Em caso de dificuldade, contate <a href="mailto:admin@lneditor.com.br">admin@lneditor.com.br</a>.</p>
+      <div class="grid-3">
+        <div class="mini-card">
+          <strong>Identidade clara</strong>
+          <p>Marca, domínio e páginas institucionais (privacidade/termos/contato) organizadas.</p>
+        </div>
+        <div class="mini-card">
+          <strong>Conteúdo original</strong>
+          <p>Materiais com estrutura profissional, linguagem objetiva e foco no usuário.</p>
+        </div>
+        <div class="mini-card">
+          <strong>Atendimento</strong>
+          <p>Suporte e entrega via WhatsApp para facilitar a experiência no mobile.</p>
+        </div>
+      </div>
+    </section>
 
-      <h3>Arrependimento e cancelamento</h3>
-      <p>Compras online podem ser canceladas por arrependimento em até 7 dias (Art. 49 do CDC), mediante solicitação por e-mail: <a href="mailto:admin@lneditor.com.br">admin@lneditor.com.br</a>.</p>
+    <section id="produtos" aria-label="Produtos e serviços">
+      <h2 class="section-title">O que você encontra aqui</h2>
+      <p class="section-sub">
+        Uma vitrine simples e profissional dos materiais. (Você pode trocar/duplicar os cards conforme seus produtos.)
+      </p>
 
-      <h3>Termos de uso</h3>
-      <p>Conteúdo para uso pessoal. É proibida a revenda, redistribuição ou compartilhamento não autorizado.</p>
+      <div class="grid-3">
+        <div class="mini-card">
+          <strong>Ebooks de receitas</strong>
+          <p>Receitas organizadas por objetivo (lancheira, low carb, marmitas, etc.).</p>
+        </div>
+        <div class="mini-card">
+          <strong>Guias e checklists</strong>
+          <p>Planejamento semanal, lista de compras e organização alimentar.</p>
+        </div>
+        <div class="mini-card">
+          <strong>Conteúdo digital</strong>
+          <p>Páginas, criativos e materiais para campanhas e distribuição.</p>
+        </div>
+      </div>
+    </section>
 
-      <h3>Privacidade</h3>
-      <p>Usamos dados apenas para processar pedidos, entregar conteúdos e prestar suporte. Solicitações sobre dados: <a href="mailto:admin@lneditor.com.br">admin@lneditor.com.br</a>.</p>
-    </div>
-  </section>
+    <section id="portfolio" aria-label="Portfólio">
+      <h2 class="section-title">Portfólio</h2>
+      <p class="section-sub">
+        Exemplos de produtos/páginas. Substitua pelos seus itens reais (capa, nome e descrição).
+      </p>
 
-  <footer>
-    <div class="wrap">
-      <small>
-        <strong>Leonardo Santos Negreiros</strong><br>
-        CNPJ: 64.980.953/0001-46<br>
-        E-mail: admin@lneditor.com.br<br>
-        Endereço: Sha Conjunto 4 Chacara 19 Arniqueira DF<br>
-      </small>
-    </div>
-  </footer>
+      <div class="grid-3">
+        <div class="mini-card">
+          <strong>Lancheira sem Estresse</strong>
+          <p>Receitas para lanches + praticidade para a rotina.</p>
+        </div>
+        <div class="mini-card">
+          <strong>Guia de Marmitas</strong>
+          <p>Planejamento semanal e porcionamento inteligente.</p>
+        </div>
+        <div class="mini-card">
+          <strong>Receitas Fitness</strong>
+          <p>Opções rápidas com foco em bem-estar.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="contato" aria-label="Contato">
+      <h2 class="section-title">Contato</h2>
+      <p class="section-sub">
+        Para dúvidas, parcerias e suporte, fale conosco:
+        <br />
+        <strong>E-mail:</strong> seuemail@seudominio.com
+        <span style="color: rgba(255,255,255,.35)">•</span>
+        <strong>WhatsApp:</strong> atendimento via botão acima
+        <br />
+        <span style="color: rgba(255,255,255,.35)">(Opcional)</span> <strong>Endereço comercial:</strong> Rua X, nº Y — Cidade/UF
+      </p>
+
+      <button id="ctaWhatsappBottom" class="btn btn-primary" type="button">
+        Falar agora no WhatsApp
+      </button>
+
+      <div class="legal">
+        Ao clicar, você será redirecionado ao WhatsApp. Podemos registrar dados de campanha (ex.: gclid) para fins de métricas.
+      </div>
+    </section>
+
+    <footer>
+      <div class="footer-grid">
+        <div>
+          <strong style="color: rgba(255,255,255,.88);">© 2026 LN Editor</strong>
+          <div class="legal">Receitas Digitais e Saúde. Todos os direitos reservados.</div>
+          <div class="legal">CNPJ/MEI (se houver): 00.000.000/0000-00 (substituir)</div>
+        </div>
+
+        <ul class="footer-links" aria-label="Links institucionais">
+          <li><a href="/politica-privacidade.html">Política de Privacidade</a></li>
+          <li><a href="/termos-de-uso.html">Termos de Uso</a></li>
+          <li><a href="/contato.html">Contato</a></li>
+        </ul>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      const ctas = [
+        document.getElementById('ctaWhatsappTop'),
+        document.getElementById('ctaWhatsappHero'),
+        document.getElementById('ctaWhatsappBottom'),
+        document.getElementById('imgClicavel'),
+      ].filter(Boolean);
+
+      let locked = false;
+
+      function goWhatsApp() {
+        if (locked) return;
+        locked = true;
+
+        const whatsappConfig = [
+          { numero: '5561981173547', identificador: 'WHATSAPP 01' },
+          { numero: '5561981102903', identificador: 'WHATSAPP 02' },
+          { numero: '5561982325340', identificador: 'WHATSAPP 06' }
+        ];
+
+        const whatsappEscolhido =
+          whatsappConfig[Math.floor(Math.random() * whatsappConfig.length)];
+
+        // Dica: para “business”, mensagens mais neutras costumam passar melhor credibilidade
+        const mensagens = [
+          'Olá! Tenho interesse no material e gostaria de receber mais informações.',
+          'Olá! Quero receber o conteúdo e entender como funciona.',
+          'Olá! Pode me ajudar com os detalhes do material?'
+        ];
+        const mensagemFinalWA = mensagens[Math.floor(Math.random() * mensagens.length)];
+
+        const urlDoWebhook = 'https://webhook.projetosdobruno.com/webhook/GERALGCLID';
+        const urlWhatsapp =
+          `https://wa.me/${whatsappEscolhido.numero}?text=${encodeURIComponent(mensagemFinalWA)}`;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const gclidCode = urlParams.get('gclid');
+
+        const dadosParaEnviar = {
+          timestamp_unix: Math.floor(Date.now() / 1000),
+          gclid_isolado: gclidCode,
+          url_completa: window.location.href,
+          whatsapp: whatsappEscolhido.identificador,
+          mensagem: mensagemFinalWA,
+          user_agent: navigator.userAgent
+        };
+
+        // Envio robusto antes do redirect
+        try {
+          const blob = new Blob([JSON.stringify(dadosParaEnviar)], { type: 'application/json' });
+          const ok = navigator.sendBeacon && navigator.sendBeacon(urlDoWebhook, blob);
+
+          if (!ok) {
+            fetch(urlDoWebhook, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(dadosParaEnviar),
+              keepalive: true
+            }).catch(() => {});
+          }
+        } catch (e) {}
+
+        window.location.href = urlWhatsapp;
+        setTimeout(() => { locked = false; }, 1500);
+      }
+
+      ctas.forEach(el => el.addEventListener('click', goWhatsApp));
+    })();
+  </script>
 </body>
 </html>
