@@ -3,9 +3,9 @@ import os
 
 app = Flask(__name__)
 
-@app.get("/lancheira.webp")
-def politica_privacidade():
-    return send_file('lancheira.webp', mimetype='image/webp')
+@app.get("/lancheira.svg")
+def lancheira_svg():
+    return send_file('lancheira.svg', mimetype='image/svg+xml')
 
 @app.get("/politica-privacidade.html")
 def politica_privacidade():
@@ -97,7 +97,7 @@ def home():
     <div class="container">
         <img
             id="imgClicavel"
-            src="/lancheira.webp"
+            src="/lancheira.svg"
             alt="25 Receitas para lanches- Clique para receber no WhatsApp"
             class="img-clicavel"
             style="width:100%;
