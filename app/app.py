@@ -15,7 +15,7 @@ def home():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>50 Receitas de Pães Caseiros sem Glúten - Clique para receber no WhatsApp</title>
+    <title>Lancheira sem Estresse - Clique para receber no WhatsApp</title>
     <style>
         * {
             margin: 0;
@@ -32,8 +32,9 @@ def home():
             padding: 15px;
         }
         .container {
-            max-width: 450px;
-            width: 100%;
+           /* max-width: 950px; */
+           /* width: 100%; */
+            width: min(980px, 100%);
             flex: 1;
         }
         .img-clicavel {
@@ -90,7 +91,7 @@ def home():
     </div>
 
     <footer class="footer">
-        <p>© 2025 Receitas Digitais e Saúde. Todos os direitos reservados.</p>
+        <p>© 2026 LN Editor - Receitas Digitais e Saúde. Todos os direitos reservados.</p>
         <div class="footer-links">
             <a href="/politica-privacidade.html">Política de Privacidade</a>
             <span>|</span>
