@@ -83,7 +83,7 @@ def home():
     <div class="container">
         <img
             id="imgClicavel"
-            src="https://s3.projetosdobruno.com/imagens/P%C3%A3es%20Caseiros.webp"
+            src="/lancheira.jpg"
             alt="50 Receitas de Pães sem Glúten - Clique para receber no WhatsApp"
             class="img-clicavel"
         >
@@ -98,7 +98,6 @@ def home():
             <span>|</span>
             <a href="/contato.html">Contato</a>
             <span>|</span>
-            <a href="/disclaimer.html">Disclaimer</a>
         </div>
     </footer>
 

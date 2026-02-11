@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contato — LN Editor</title>
+  <style>
+    :root{
+      --bg:#0b1220; --card:#0f172a; --text:#e5e7eb; --muted:#9ca3af;
+      --paper:#ffffff; --ink:#111827; --border:#e5e7eb; --accent:#2563eb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#f6f7fb; color:var(--ink);}
+    header{background:linear-gradient(135deg,var(--bg),var(--card)); color:var(--text);}
+    .wrap{max-width:960px; margin:0 auto; padding:20px 16px;}
+    header .wrap{padding:28px 16px;}
+    h1{margin:0 0 6px; font-size:clamp(1.35rem, 2.5vw, 1.9rem); line-height:1.15;}
+    .meta{margin:0; color:var(--muted); font-size:.95rem}
+
+    main{padding:18px 0 28px;}
+    .card{background:var(--paper); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:0 6px 18px rgba(17,24,39,.06);}
+    h2{font-size:1.05rem; margin:0 0 10px;}
+    p{line-height:1.55; font-size:1rem; margin:8px 0;}
+    a{color:var(--accent); text-decoration:none}
+    a:hover{text-decoration:underline}
+
+    footer{border-top:1px solid var(--border); color:#6b7280; font-size:.95rem}
+
+    @media (min-width: 900px){
+      .card{padding:18px;}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Contato</h1>
+      <p class="meta">LN Editor</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <h2>Fale conosco</h2>
+      <p>
+        Para suporte e dúvidas, envie um e-mail para:
+        <strong><a href="mailto:admin@lneditor.com.br">admin@lneditor.com.br</a></strong>
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      © <strong>2026</strong> LN Editor. Todos os direitos reservados.
+    </div>
+  </footer>
+</body>
+</html>
