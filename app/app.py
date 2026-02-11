@@ -3,9 +3,21 @@ import os
 
 app = Flask(__name__)
 
+@app.get("/lancheira.webp")
+def politica_privacidade():
+    return send_file('lancheira.webp')
+
 @app.get("/politica-privacidade.html")
 def politica_privacidade():
     return send_file('politica-privacidade.html')
+
+@app.get("/termos-de-uso.html")
+def termos_de_uso():
+    return send_file('termos-de-uso.html')
+
+@app.get("/contato.html")
+def contato():
+    return send_file('contato.html')
 
 @app.get("/")
 def home():
@@ -34,8 +46,9 @@ def home():
         .container {
            /* max-width: 950px; */
            /* width: 100%; */
-            width: min(980px, 100%);
-            flex: 1;
+           /* width: min(980px, 100%);  */
+           /* flex: 1; */
+           width: 100%;
         }
         .img-clicavel {
             width: 100%;
@@ -87,7 +100,8 @@ def home():
             src="/lancheira.webp"
             alt="25 Receitas para lanches- Clique para receber no WhatsApp"
             class="img-clicavel"
-            style="width:100%; height:auto;"
+            style="width:100%;
+            height:auto;"
         >
     </div>
 
