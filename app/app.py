@@ -4,7 +4,7 @@ import os
 app = Flask(__name__)
 
 @app.get("/")
-def portifolio():
+def index():
     return send_file('portifolio.html', mimetype='text/html')
 
 @app.get("/portifolio.html")
@@ -28,5 +28,5 @@ def contato():
     return send_file('contato.html', mimetype='text/html')
 
 @app.get("/lanche.html")
-def home():
+def lanche():
     return send_file('lanche.html', mimetype='text/html')
