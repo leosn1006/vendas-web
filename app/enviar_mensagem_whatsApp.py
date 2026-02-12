@@ -3,7 +3,7 @@ import json
 import os
 from app.constante import WHATSAPP_API_URL
 
-def enviar_mensagem_whatsapp(msg_original_json, mensagem_resposta):
+def enviar_mensagem_texto(msg_original_json, mensagem_resposta):
     """
     Envia uma mensagem de texto para o WhatsApp usando a API.
     msg_original_json: O JSON original recebido do webhook do WhatsApp.
