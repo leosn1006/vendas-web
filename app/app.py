@@ -3,6 +3,10 @@ import os
 
 app = Flask(__name__)
 
+@app.get("/")
+def portifolio():
+    return send_file('portifolio.html', mimetype='text/html')
+
 @app.get("/portifolio.html")
 def portifolio():
     return send_file('portifolio.html', mimetype='text/html')
