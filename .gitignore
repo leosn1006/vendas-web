@@ -2,6 +2,9 @@
 __pycache__/
 *.pyc
 
+# Ambiente (credenciais sensíveis)
+.env
+
 # Mac
 .DS_Store
 
