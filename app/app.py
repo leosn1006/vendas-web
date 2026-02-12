@@ -7,6 +7,7 @@ app = Flask(__name__)
 # Rota GET para verificação inicial do webhook (WhatsApp envia challenge)
 @app.get("/api/v1/webhook-whatsapp")
 def webhook_verify():
+    print("Verificando webhook do WhatsApp...")
     """
     Endpoint de verificação do webhook do WhatsApp Business API.
     O WhatsApp envia: hub.mode, hub.verify_token, hub.challenge
@@ -26,31 +27,41 @@ def webhook_verify():
 # Rota POST para receber mensagens do WhatsApp Business API
 @app.post("/api/v1/webhook-whatsapp")
 def webhook_receive():
-    print("Recebendo webhook do WhatsApp...")
+    print("=" * 80)
+    print(f"[WEBHOOK] Requisição recebida de: {request.remote_addr}")
+    print(f"[WEBHOOK] Content-Type: {request.content_type}")
+    print(f"[WEBHOOK] X-Hub-Signature-256: {request.headers.get('X-Hub-Signature-256', 'AUSENTE')}")
     """
     Endpoint para receber notificações de mensagens do WhatsApp Business API.
     Valida a assinatura HMAC-SHA256 antes de processar.
     """
     # Valida a assinatura do WhatsApp usando a classe de segurança
     if not whatsapp_security.validate_signature():
-        print('Assinatura inválida no webhook')
+        print('[WEBHOOK] ❌ Assinatura INVÁLIDA!')
+        print(f"[WEBHOOK] App Secret usado: {whatsapp_security.app_secret[:10]}***")
         return jsonify({'error': 'Unauthorized', 'message': 'Assinatura inválida'}), 401
 
-    print("Assinatura válida no webhook")
+    print("[WEBHOOK] ✅ Assinatura VÁLIDA!")
 
     try:
         # Obtém o JSON do corpo da requisição
         body = request.get_json(force=True, silent=True)
 
         if body is None:
-            print("Erro: Corpo da requisição vazio ou inválido")
+            print("[WEBHOOK] ❌ JSON inválido ou ausente")
+            print(f"[WEBHOOK] Raw data: {request.get_data()[:200]}")
             return jsonify({'error': 'Bad Request', 'message': 'JSON inválido ou ausente'}), 400
 
-        print(f"Webhook recebido: {body}")
+        print(f"[WEBHOOK] 📦 Dados recebidos: {body}")
         resposta = recebe_webhook(body=body)
+        print(f"[WEBHOOK] ✅ Processado com sucesso!")
+        print("=" * 80)
         return resposta, 200
     except Exception as e:
-        print(f"Erro ao processar webhook: {e}")
+        print(f"[WEBHOOK] ❌ ERRO: {e}")
+        import traceback
+        traceback.print_exc()
+        print("=" * 80)
         return jsonify({'error': 'Erro ao processar webhook', 'details': str(e)}), 400
 
 @app.get("/")
