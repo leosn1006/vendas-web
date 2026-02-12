@@ -26,6 +26,7 @@ def webhook_verify():
 # Rota POST para receber mensagens do WhatsApp Business API
 @app.post("/api/v1/webhook-whatsapp")
 def webhook_receive():
+    print("Recebendo webhook do WhatsApp...")
     """
     Endpoint para receber notificações de mensagens do WhatsApp Business API.
     Valida a assinatura HMAC-SHA256 antes de processar.
@@ -35,8 +36,18 @@ def webhook_receive():
         print('Assinatura inválida no webhook')
         return jsonify({'error': 'Unauthorized', 'message': 'Assinatura inválida'}), 401
 
+    print("Assinatura válida no webhook")
+
     try:
-        resposta = recebe_webhook(body=request.get_json())
+        # Obtém o JSON do corpo da requisição
+        body = request.get_json(force=True, silent=True)
+
+        if body is None:
+            print("Erro: Corpo da requisição vazio ou inválido")
+            return jsonify({'error': 'Bad Request', 'message': 'JSON inválido ou ausente'}), 400
+
+        print(f"Webhook recebido: {body}")
+        resposta = recebe_webhook(body=body)
         return resposta, 200
     except Exception as e:
         print(f"Erro ao processar webhook: {e}")
