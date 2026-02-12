@@ -1,7 +1,7 @@
 import requests
 import json
 import os
-from app.constante import WHATSAPP_API_URL
+from constante import WHATSAPP_API_URL
 
 def enviar_mensagem_texto(msg_original_json, mensagem_resposta):
     """
@@ -9,8 +9,8 @@ def enviar_mensagem_texto(msg_original_json, mensagem_resposta):
     msg_original_json: O JSON original recebido do webhook do WhatsApp.
     mensagem_resposta: O texto da mensagem que queremos enviar como resposta.
     """
-
-    url = f"{WHATSAPP_API_URL}927793497092010/messages"
+    phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '927793497092010')
+    url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
     token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
     headers = {
         "Authorization": f"Bearer {token}",
