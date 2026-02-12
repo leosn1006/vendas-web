@@ -53,7 +53,7 @@ def webhook_receive():
             return jsonify({'error': 'Bad Request', 'message': 'JSON inválido ou ausente'}), 400
 
         print(f"[WEBHOOK] 📦 Dados recebidos: {body}")
-        resposta = recebe_webhook(body=body)
+        resposta = recebe_webhook(body)
         print(f"[WEBHOOK] ✅ Processado com sucesso!")
         print("=" * 80)
         return resposta, 200
