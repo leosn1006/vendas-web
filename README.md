@@ -13,6 +13,20 @@ docker compose ps
 docker compose down
 docker compose logs --tail=80 nginx
 docker compose logs --tail=50 app
+# Ver logs do container app em tempo real
+docker compose logs -f app
+
+# Ver logs de todos os containers em tempo real
+docker compose logs -f
+
+# Ver logs do nginx em tempo real
+docker compose logs -f nginx
+
+# Ver logs com timestamp
+docker compose logs -f -t app
+
+# Ver últimas 50 linhas + tempo real
+docker compose logs -f --tail=50 app
 ```
 ### ssl md5 da cadeia (crt + CAs) deve ser igual da key
 ```

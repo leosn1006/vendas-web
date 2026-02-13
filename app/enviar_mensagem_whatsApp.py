@@ -71,10 +71,10 @@ def enviar_mensagem_texto(msg_original_json, mensagem_resposta):
         print(f"[MENSAGEM] Response: {response.text}")
         print("=" * 80)
         raise e
+    except KeyError as e:
+        print("[MENSAGEM] ✅ Mensagem recebida com sucesso e não tratada!")
+        return "Mensagem recebida do webhook e não processada"
     except Exception as e:
         print(f"[MENSAGEM] ❌ Erro ao enviar mensagem: {e}")
         print("=" * 80)
         raise e
-    except KeyError as e:
-        print("[MENSAGEM] ✅ Mensagem recebida com sucesso e não tratada!")
-        return "Mensagem recebina do webhook"
