@@ -66,28 +66,28 @@ def webhook_receive():
 
 @app.get("/")
 def index():
-    return send_file('portifolio.html', mimetype='text/html')
+    return send_file('/templates/portifolio.html', mimetype='text/html')
 
 @app.get("/portifolio")
 def portifolio():
-    return send_file('portifolio.html', mimetype='text/html')
+    return send_file('/templates/portifolio.html', mimetype='text/html')
 
 @app.get("/lancheira.webp")
 def lancheira_webp():
-    return send_file('imagens/lancheira.webp', mimetype='image/webp')
+    return send_file('/static/images/lancheira.webp', mimetype='image/webp')
 
 @app.get("/politica-privacidade")
 def politica_privacidade():
-    return send_file('politica-privacidade.html', mimetype='text/html')
+    return send_file('/templates/politica-privacidade.html', mimetype='text/html')
 
 @app.get("/termos-de-uso")
 def termos_de_uso():
-    return send_file('termos-de-uso.html', mimetype='text/html')
+    return send_file('/templates/termos-de-uso.html', mimetype='text/html')
 
 @app.get("/contato")
 def contato():
-    return send_file('contato.html', mimetype='text/html')
+    return send_file('/templates/contato.html', mimetype='text/html')
 
 @app.get("/lanche")
 def lanche():
-    return send_file('lanche.html', mimetype='text/html')
+    return send_file('/templates/lanche.html', mimetype='text/html')

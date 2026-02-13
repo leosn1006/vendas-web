@@ -1,7 +1,7 @@
 import requests
 import json
 import os
-from constante import WHATSAPP_API_URL
+from config import WHATSAPP_API_URL
 
 def enviar_mensagem_texto(msg_original_json, mensagem_resposta):
     """

@@ -12,3 +12,28 @@ __pycache__/
 infra/nginx/certs/
 
 Untitled
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Ambientes
+.env
+venv/
+env/
+ENV/
+
+# Mac
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backups
+backup_*/
