@@ -1,8 +1,12 @@
-from flask import Flask, send_file, request, jsonify
+from flask import Flask, send_file, request, jsonify, render_template
 from webhook_whatsApp import recebe_webhook
 from seguranca import whatsapp_security
+import os
 
-app = Flask(__name__)
+# Configurar Flask para procurar static na raiz do projeto
+app = Flask(__name__,
+            static_folder='../static',
+            static_url_path='/static')
 
 # Rota GET para verificação inicial do webhook (WhatsApp envia challenge)
 @app.get("/api/v1/webhook-whatsapp")
@@ -66,28 +70,24 @@ def webhook_receive():
 
 @app.get("/")
 def index():
-    return send_file('/templates/portifolio.html', mimetype='text/html')
+    return render_template('portifolio.html')
 
 @app.get("/portifolio")
 def portifolio():
-    return send_file('/templates/portifolio.html', mimetype='text/html')
-
-@app.get("/lancheira.webp")
-def lancheira_webp():
-    return send_file('/static/images/lancheira.webp', mimetype='image/webp')
+    return render_template('portifolio.html')
 
 @app.get("/politica-privacidade")
 def politica_privacidade():
-    return send_file('/templates/politica-privacidade.html', mimetype='text/html')
+    return render_template('politica-privacidade.html')
 
 @app.get("/termos-de-uso")
 def termos_de_uso():
-    return send_file('/templates/termos-de-uso.html', mimetype='text/html')
+    return render_template('termos-de-uso.html')
 
 @app.get("/contato")
 def contato():
-    return send_file('/templates/contato.html', mimetype='text/html')
+    return render_template('contato.html')
 
 @app.get("/lanche")
 def lanche():
-    return send_file('/templates/lanche.html', mimetype='text/html')
+    return render_template('lanche.html')
