@@ -1,8 +1,38 @@
 services:
+
+  db:
+    image: mysql:8.4
+    container_name: vendas-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=vendasdb
+      - MYSQL_USER=appuser
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - TZ=America/Sao_Paulo
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    volumes:
+      # Persistência dos dados no Ubuntu (ajuste o caminho conforme necessário)
+      - /var/lib/mysql-vendas:/var/lib/mysql
+      # Script de inicialização do banco
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - webnet
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  
   app:
     build: .
     container_name: vendas-web-app
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       - TZ=America/Sao_Paulo
       - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN}
@@ -10,6 +40,12 @@ services:
       - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN}
       - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID:-}
       - WHATSAPP_BUSINESS_ACCOUNT_ID=${WHATSAPP_BUSINESS_ACCOUNT_ID:-}
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=vendasdb
+      - DB_USER=appuser
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     networks:
       - webnet
 

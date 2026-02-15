@@ -1,17 +1,8 @@
-# Python
-__pycache__/
-*.pyc
-
-# Ambiente (credenciais sensíveis)
+# Variáveis de ambiente sensíveis
 .env
-
-# Mac
-.DS_Store
-
-# Certificados (não versionar)
-infra/nginx/certs/
-
-Untitled
+.env.local
+.env.production
+*.env
 
 # Python
 __pycache__/
@@ -19,21 +10,75 @@ __pycache__/
 *$py.class
 *.so
 .Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Ambientes
-.env
+# Virtual Environment
 venv/
-env/
 ENV/
-
-# Mac
-.DS_Store
+env/
+.venv
 
 # IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Database
+*.db
+*.sqlite3
+*.sql.backup
+
+# Certificados SSL/TLS
+*.pem
+*.key
+*.crt
+infra/nginx/certs/*
+!infra/nginx/certs/.gitkeep
 
 # Backups
 backup_*/
+*.backup
+
+# Arquivos temporários
+tmp/
+temp/
+*.tmp
+Untitled
+
+# Coverage e testes
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
