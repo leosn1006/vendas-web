@@ -1,6 +1,6 @@
 Flask==3.1.2
 gunicorn==22.0.0
-requests==2.32.3
-mysql-connector-python==9.1.0
-python-dotenv==1.0.1
+requests==2.32.5
+mysql-connector-python==9.6.0
+python-dotenv==1.2.1
 openai==1.59.7
