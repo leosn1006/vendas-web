@@ -149,6 +149,9 @@ docker compose up -d --build
 # Parar tudo
 docker compose down
 
+# Remover volumes antigos (⚠️ isso apaga dados!)
+docker compose down -v
+
 # Reiniciar apenas app
 docker compose restart app
 

@@ -169,18 +169,6 @@ def get_produto_by_id(produto_id):
     query = "SELECT * FROM produtos WHERE id = %s AND ativo = TRUE"
     return db.execute_query(query, (produto_id,), fetch_one=True)
 
-
-def get_produtos_ativos():
-    """
-    Retorna todos os produtos ativos.
-
-    Returns:
-        list: Lista de produtos
-    """
-    query = "SELECT * FROM produtos WHERE ativo = TRUE ORDER BY nome"
-    return db.execute_query(query, fetch_all=True)
-
-
 def criar_pedido(mensagem_venda, produto_id, contact_name, contact_phone):
     """
     Cria um novo pedido.
@@ -238,7 +226,7 @@ def salvar_mensagem_pedido(mensagem_id, pedido_id, mensagem_json, tipo_mensagem=
     return mensagem_id
 
 
-def get_pedido_by_phone(contact_phone):
+def get_ultimo_pedido_by_phone(contact_phone):
     """
     Busca o último pedido de um contato pelo telefone.
 
