@@ -91,7 +91,3 @@ def contato():
 @app.get("/lanche")
 def lanche():
     return render_template('lanche.html')
-
-@app.get("/lancheira.webp")
-def lancheira():
-    return send_file('static/images/lancheira.webp', mimetype='image/webp')
