@@ -24,7 +24,7 @@ def persistir_lide(body):
             gclid=gclide,
             data_ultima_atualizacao=None,
             mensagem_sugerida="Eu quero saber mais sobre este produto!",
-            emoji_sugerida="🤓"
+            emoji_sugerida="🤓",
             phone_number_id=None,
             contact_phone=None,
             contact_name=None,
