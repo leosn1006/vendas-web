@@ -181,7 +181,10 @@ def gravar_lide():
         # Obtém o JSON do corpo da requisição
         body = request.get_json(force=True, silent=True)
         print(f"[LIDE] 📦 Dados recebidos: {body}")
-        return persistir_lide(body)
+        resposta = persistir_lide(body)
+        print(f"[LIDE] ✅ Processado com sucesso!")
+        print(f"[LIDE] Dados: {resposta.getJson()}")
+        return resposta, 200
     except Exception as e:
         logger.critical(f"[LIDE] ❌ ERRO: {e}")
         import traceback
