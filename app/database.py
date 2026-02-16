@@ -200,23 +200,23 @@ def criar_pedido(pedido: Pedido):
     Returns:
         int: ID do pedido criado
     """
-    produto_id = pedido['produto_id'], 0
-    valor_pago = pedido['valor_pago'], 0.0
+    produto_id = pedido.get('produto_id') or 0
+    valor_pago = pedido.get('valor_pago') or 0.0
     estado_id = 1  # Estado Iniciado
-    gclid = pedido['gclid']
-    mensagem_sugerida = pedido['mensagem_sugerida']
-    emoji_sugerida = pedido['emoji_sugerida']
-    phone_number_id = pedido['phone_number_id']
-    contact_phone = pedido['contact_phone']
-    contact_name = pedido['contact_name']
-    data_pedido = pedido['data_pedido']
-    campaignid = pedido['campaignid']
-    adgroupid = pedido['adgroupid']
-    creative = pedido['creative']
-    matchtype = pedido['matchtype']
-    device = pedido['device']
-    placement = pedido['placement']
-    video_id = pedido['video_id']
+    gclid = pedido.get('gclid')
+    mensagem_sugerida = pedido.get('mensagem_sugerida')
+    emoji_sugerida = pedido.get('emoji_sugerida')
+    phone_number_id = pedido.get('phone_number_id')
+    contact_phone = pedido.get('contact_phone')
+    contact_name = pedido.get('contact_name')
+    data_pedido = pedido.get('data_pedido')
+    campaignid = pedido.get('campaignid')
+    adgroupid = pedido.get('adgroupid')
+    creative = pedido.get('creative')
+    matchtype = pedido.get('matchtype')
+    device = pedido.get('device')
+    placement = pedido.get('placement')
+    video_id = pedido.get('video_id')
 
 
     query = """
