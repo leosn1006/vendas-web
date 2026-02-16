@@ -2,7 +2,7 @@ from enviar_mensagem_whatsApp import enviar_mensagem_texto
 import json
 import logging
 from database import get_ultimo_pedido_by_phone, salvar_mensagem_pedido
-from agente_vendas import responder_cliente
+from agente_vendas_sem_gluten import responder_cliente
 
 
 logger = logging.getLogger(__name__)

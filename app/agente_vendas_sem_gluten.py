@@ -1,5 +1,4 @@
 from openai import OpenAI
-import os
 import logging
 
 logger = logging.getLogger(__name__)

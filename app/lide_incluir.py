@@ -1,4 +1,5 @@
 import logging
+from app.agente_gera_mensagem_inicial import gera_mensagem_inicial
 from flask import jsonify
 from database import Pedido, criar_pedido
 
@@ -16,14 +17,17 @@ def persistir_lide(body):
         device = body.get('device', "")
         placement = body.get('placement', "")
         video_id = body.get('video_id', "")
+        produto = 1 # TODO mapear produto com base na url ou outros parâmetros
+
+
         # preeche o dict Pedido com os dados necessários
         pedido = Pedido(
-            produto_id= 1,
+            produto_id= produto,
             valor_pago=0.00,
             estado_id=1,  # Estado Iniciado
             gclid=gclide,
             data_ultima_atualizacao=None,
-            mensagem_sugerida="Eu quero saber mais sobre este produto!",
+            mensagem_sugerida=gera_mensagem_inicial(produto),
             emoji_sugerida="🤓",
             phone_number_id=None,
             contact_phone=None,
