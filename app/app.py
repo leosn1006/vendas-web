@@ -1,7 +1,7 @@
 from flask import Flask, send_file, request, jsonify, render_template
 from webhook_whatsApp import recebe_webhook
 from seguranca import whatsapp_security
-from gravar_lide import gravar_lide
+from gravar_lide import persistir_lide
 from notificacoes import notificador, notificar_erro
 import os
 import logging
@@ -181,7 +181,7 @@ def gravar_lide():
         # Obtém o JSON do corpo da requisição
         body = request.get_json(force=True, silent=True)
         print(f"[LIDE] 📦 Dados recebidos: {body}")
-        return gravar_lide(body)
+        return persistir_lide(body)
     except Exception as e:
         logger.critical(f"[LIDE] ❌ ERRO: {e}")
         import traceback

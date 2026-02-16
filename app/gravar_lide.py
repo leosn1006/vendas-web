@@ -4,7 +4,7 @@ from database import Pedido, criar_pedido
 
 logger = logging.getLogger(__name__)
 
-def gravar_lide(body):
+def persistir_lide(body):
     try:
         # Por exemplo, extrair os dados do body e usar uma função do database.py para salvar
         gclide = body.get('gclid', "")
@@ -38,7 +38,7 @@ def gravar_lide(body):
             video_id=video_id
         )
         criar_pedido(pedido)
-        logger.info(f"[LIDE] ✅ Lide gravado com gclid: {gclide}")
+        print(f"[LIDE] ✅ Lide gravado com gclid: {gclide}")
         return jsonify({'message': 'Lide gravado com sucesso!'}), 200
     except Exception as e:
         logger.critical(f"[LIDE] ❌ ERRO ao gravar lide: {e}")
