@@ -44,4 +44,4 @@ def gravar_lide(body):
         logger.critical(f"[LIDE] ❌ ERRO ao gravar lide: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': 'Erro ao gravar lide', 'details': str(e)}), 500
+        return jsonify({'error': 'Erro ao gravar lide'}), 500

@@ -180,9 +180,10 @@ def gravar_lide():
     try:
         # Obtém o JSON do corpo da requisição
         body = request.get_json(force=True, silent=True)
+        print(f"[LIDE] 📦 Dados recebidos: {body}")
         return gravar_lide(body)
     except Exception as e:
         logger.critical(f"[LIDE] ❌ ERRO: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': 'Erro ao processar webhook', 'details': str(e)}), 400
+        return jsonify({'error': 'Erro ao processar webhook'}), 400
