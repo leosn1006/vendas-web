@@ -48,20 +48,28 @@ def handle_404(e):
     """
     caminho = request.path
     user_agent = request.headers.get('User-Agent', '')
-
+    
     # Log apenas para análise (não notifica)
     print(f"[404] {caminho} | UA: {user_agent[:50]}")
-
-    # Lista de padrões suspeitos de bots/scanners
+    
+    # Lista expandida de padrões suspeitos de bots/scanners
     padroes_suspeitos = [
-        'jasperserver', 'helpdesk', 'aspera', 'cf_scripts',
-        'WebObjects', 'phpmyadmin', 'wp-admin', 'admin.php'
+        # WordPress
+        'wp-', 'wordpress', 'xmlrpc', 'wlwmanifest',
+        # Ferramentas admin/debug
+        'phpmyadmin', 'adminer', 'debug', 'phpinfo', 'console', 'panel',
+        # Arquivos sensíveis
+        'config.', 'aws-config', 'aws.', 'credentials', '.env', '.git', '.sql',
+        # PHP files
+        '.php', '.phtml',
+        # Outros scanners
+        'jasperserver', 'helpdesk', 'aspera', 'cf_scripts', 'WebObjects'
     ]
-
+    
     # Se for rota suspeita, retorna resposta mínima (sem gastar recursos)
     if any(padrao in caminho.lower() for padrao in padroes_suspeitos):
         return '', 404
-
+    
     # Para 404 legítimos (usuário digitou URL errada), retorna JSON amigável
     return jsonify({
         'error': 'Página não encontrada',
