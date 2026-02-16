@@ -55,7 +55,9 @@ def recebe_webhook(mensagem_whatsapp):
         logger.info(f"[WEBHOOK] 📱 Mensagem de {nome} ({numero_remetente}): {texto}")
 
         # Verificar se já existe pedido para este telefone
-        ultimo_pedido = get_ultimo_pedido_by_phone(numero_remetente)
+        ultimo_pedido = get_ultimo_pedido_by_phone(numero_remetente, texto)
+        print(f"[WEBHOOK] 🔍 Último pedido encontrado: {ultimo_pedido}")
+
 
 #        if ultimo_pedido is None:
 # TODO criar pedido e achar cliente

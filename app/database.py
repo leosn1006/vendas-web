@@ -321,7 +321,7 @@ def salvar_mensagem_pedido(mensagem_id, pedido_id, mensagem_json, tipo_mensagem=
     return mensagem_id
 
 
-def get_ultimo_pedido_by_phone(contact_phone):
+def get_ultimo_pedido_by_phone(contact_phone, mensagem_recebida):
     """
     Busca o último pedido de um contato pelo telefone.
 
@@ -332,12 +332,11 @@ def get_ultimo_pedido_by_phone(contact_phone):
         dict: Dados do pedido ou None
     """
     query = """
-        SELECT p.*, ep.descricao as estado_descricao, prod.nome as produto_nome
+        SELECT *
         FROM pedidos p
-        JOIN estado_pedidos ep ON p.estado_pedido_id = ep.id
-        JOIN produtos prod ON p.produto_id = prod.id
         WHERE p.contact_phone = %s
+        and p.mensagem_sugerida = %s
         ORDER BY p.data_pedido DESC
         LIMIT 1
     """
-    return db.execute_query(query, (contact_phone,), fetch_one=True)
+    return db.execute_query(query, (contact_phone, mensagem_recebida), fetch_one=True)
