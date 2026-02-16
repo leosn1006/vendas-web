@@ -150,7 +150,14 @@ docker compose up -d --build
 docker compose down
 
 # Remover volumes antigos (⚠️ isso apaga dados!)
+# 1. Parar containers e remover volumes
 docker compose down -v
+# 2. Remover volume persistente manualmente (pode precisar de sudo no Ubuntu)
+sudo rm -rf /var/lib/mysql-vendas/*
+# 3. Recriar permissões corretas (usuário mysql = UID 999)
+    sudo chown -R 999:999 /var/lib/mysql-vendas
+# 4. Subir containers com BD limpo
+docker compose up -d
 
 # Reiniciar apenas app
 docker compose restart app

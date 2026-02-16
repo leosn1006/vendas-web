@@ -23,8 +23,8 @@ def persistir_lide(body):
             estado_id=1,  # Estado Iniciado
             gclid=gclide,
             data_ultima_atualizacao=None,
-            mensagem_sugerida=None,
-            emoji_sugerida=None,
+            mensagem_sugerida="Eu quero saber mais sobre este produto!",
+            emoji_sugerida="🤓"
             phone_number_id=None,
             contact_phone=None,
             contact_name=None,
