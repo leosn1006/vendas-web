@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>50 Receitas de Pães Caseiros sem Glúten - Clique para receber no WhatsApp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 450px;
+            width: 100%;
+            flex: 1;
+        }
+
+        .img-clicavel {
+            width: 100%;
+            height: auto;
+            display: block;
+            cursor: pointer;
+        }
+
+        .footer {
+            width: 100%;
+            max-width: 450px;
+            padding: 20px 10px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+            margin-top: 20px;
+        }
+
+        .footer p {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .footer-links a {
+            color: #666;
+            text-decoration: none;
+            font-size: 11px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: #2d5016;
+            background: #f5f5f5;
+        }
+
+        .footer-links span {
+            color: #ccc;
+            font-size: 11px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <img id="imgClicavel" src="/static/images/paes_caseiros.webp"
+            alt="50 Receitas de Pães sem Glúten - Clique para receber no WhatsApp" class="img-clicavel">
+    </div>
+
+    <footer class="footer">
+        <p>© 2025 Receitas Digitais e Saúde. Todos os direitos reservados.</p>
+        <div class="footer-links">
+            <a href="/politica-privacidade">Política de Privacidade</a>
+            <span>|</span>
+            <a href="/termos-de-uso">Termos de Uso</a>
+            <span>|</span>
+            <a href="/contato">Contato</a>
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('imgClicavel').addEventListener('click', async function () {
+            // Defaults (sem aleatoriedade)
+            const numeroWhatsappDefault = '5561981173547';
+            const emojiDefault = '😊';
+            const mensagemBaseDefault = 'Olá, tenho interesse nas receitas';
+
+            // Captura dados da página
+            const urlDaPaginaAtual = window.location.href;
+            const urlParams = new URLSearchParams(window.location.search);
+
+            // ValueTrack / YouTube Ads params solicitados
+            const gclidCode = urlParams.get('gclid') || '';
+            const campaignid = urlParams.get('campaignid') || '';
+            const adgroupid = urlParams.get('adgroupid') || '';
+            const creative = urlParams.get('creative') || '';
+            const matchtype = urlParams.get('matchtype') || '';
+            const device = urlParams.get('device') || '';
+            const placement = urlParams.get('placement') || '';
+            const video_id = urlParams.get('video_id') || '';
+
+            // Endpoint da API de LIDE
+            const API_URL = 'https://lneditor.com.br/api/v1/webhook/gravar-lide';
+
+            // Payload (sem whatsapp identificador, sem chave_emoji, sem whatsapp_numero)
+            const dadosParaEnviar = {
+                gclid: gclidCode,
+                url: urlDaPaginaAtual,
+                campaignid: campaignid,
+                adgroupid: adgroupid,
+                creative: creative,
+                matchtype: matchtype,
+                device: device,
+                placement: placement,
+                video_id: video_id
+            };
+
+            // Função para timeout curto da requisição
+            function fetchComTimeout(resource, options = {}) {
+                const { timeout = 1200 } = options; // 1.2s
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), timeout);
+                const opts = { ...options, signal: controller.signal };
+                return fetch(resource, opts).finally(() => clearTimeout(id));
+            }
+
+            let numeroWhatsapp = numeroWhatsappDefault;
+            let emojiEscolhido = emojiDefault;
+            let mensagemBaseWA = mensagemBaseDefault;
+
+            try {
+                const resp = await fetchComTimeout(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dadosParaEnviar),
+                    keepalive: true
+                });
+
+                if (resp.ok) {
+                    const data = await resp.json().catch(() => ({}));
+                    if (typeof data.whatsapp_numero === 'string' && data.whatsapp_numero.trim()) {
+                        numeroWhatsapp = data.whatsapp_numero.trim();
+                    }
+                    if (typeof data.emojiEscolhido === 'string' && data.emojiEscolhido.trim()) {
+                        emojiEscolhido = data.emojiEscolhido.trim();
+                    } else if (typeof data.chave_emoji === 'string' && data.chave_emoji.trim()) {
+                        // compatibilidade
+                        emojiEscolhido = data.chave_emoji.trim();
+                    }
+                    if (typeof data.mensagemBaseWA === 'string' && data.mensagemBaseWA.trim()) {
+                        mensagemBaseWA = data.mensagemBaseWA.trim();
+                    }
+                }
+            } catch (e) {
+                // Timeout/erro de rede -> usa defaults
+            }
+
+            const mensagemFinalWA = `${emojiEscolhido} ${mensagemBaseWA}`.trim();
+            const urlWhatsapp = 'https://wa.me/' + numeroWhatsapp + '?text=' + encodeURIComponent(mensagemFinalWA);
+
+            // Redireciona para o WhatsApp
+            window.location.href = urlWhatsapp;
+        });
+    </script>
+</body>
+
+</html>

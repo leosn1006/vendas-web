@@ -43,15 +43,27 @@ INSERT IGNORE INTO estado_pedidos (id, descricao) VALUES
 -- Tabela de pedidos
 CREATE TABLE IF NOT EXISTS pedidos (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    messaging_product VARCHAR(100),
     produto_id INT NOT NULL,
-    contact_name VARCHAR(255) NOT NULL,
-    contact_phone VARCHAR(20) NOT NULL,
-    estado_pedido_id INT NOT NULL DEFAULT 1,
-    data_pedido TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    valor_pago DECIMAL(6, 2) NOT NULL,
+    estado_id INT NOT NULL DEFAULT 1,
+    gclid VARCHAR(255),
     data_ultima_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    mensagem_sugerida varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    emoji_sugerida VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    data_contato_site NOT NULL TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    phone_number_id VARCHAR(20),
+    contact_phone VARCHAR(20),
+    contact_name VARCHAR(255),
+    data_pedido TIMESTAMP,
+    campaignid VARCHAR(255),
+    adgroupid VARCHAR(255),
+    creative VARCHAR(255),
+    matchtype VARCHAR(255),
+    device VARCHAR(255),
+    placement VARCHAR(255),
+    video_id VARCHAR(255)
     FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE RESTRICT,
-    FOREIGN KEY (estado_pedido_id) REFERENCES estado_pedidos(id) ON DELETE RESTRICT
+    FOREIGN KEY (estado_id) REFERENCES estado_pedidos(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Índices na tabela pedidos

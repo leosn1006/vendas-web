@@ -1,13 +1,20 @@
 from flask import Flask, send_file, request, jsonify, render_template
 from webhook_whatsApp import recebe_webhook
 from seguranca import whatsapp_security
+from gravar_lide import gravar_lide
 from notificacoes import notificador, notificar_erro
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Configurar Flask para procurar static na raiz do projeto
 app = Flask(__name__,
             static_folder='../static',
             static_url_path='/static')
+
+# Configurar JSON para não escapar caracteres Unicode (permite acentuação)
+app.config['JSON_AS_ASCII'] = False
 
 
 # ============ HANDLER GLOBAL DE ERROS ============
@@ -48,10 +55,10 @@ def handle_404(e):
     """
     caminho = request.path
     user_agent = request.headers.get('User-Agent', '')
-    
+
     # Log apenas para análise (não notifica)
     print(f"[404] {caminho} | UA: {user_agent[:50]}")
-    
+
     # Lista expandida de padrões suspeitos de bots/scanners
     padroes_suspeitos = [
         # WordPress
@@ -65,11 +72,11 @@ def handle_404(e):
         # Outros scanners
         'jasperserver', 'helpdesk', 'aspera', 'cf_scripts', 'WebObjects'
     ]
-    
+
     # Se for rota suspeita, retorna resposta mínima (sem gastar recursos)
     if any(padrao in caminho.lower() for padrao in padroes_suspeitos):
         return '', 404
-    
+
     # Para 404 legítimos (usuário digitou URL errada), retorna JSON amigável
     return jsonify({
         'error': 'Página não encontrada',
@@ -77,6 +84,8 @@ def handle_404(e):
     }), 404
 # ==================================================
 
+
+# Rotas comuns da aplicação
 
 # Rota GET para verificação inicial do webhook (WhatsApp envia challenge)
 @app.get("/api/v1/webhook-whatsapp")
@@ -102,41 +111,40 @@ def webhook_verify():
 @app.post("/api/v1/webhook-whatsapp")
 @notificar_erro()  # Notifica qualquer erro nesta rota crítica
 def webhook_receive():
-    print("=" * 80)
-    print(f"[WEBHOOK] Requisição recebida de: {request.remote_addr}")
-    print(f"[WEBHOOK] Content-Type: {request.content_type}")
-    print(f"[WEBHOOK] X-Hub-Signature-256: {request.headers.get('X-Hub-Signature-256', 'AUSENTE')}")
+    logger.info("=" * 80)
+    logger.info(f"[WEBHOOK] Requisição recebida de: {request.remote_addr}")
+    logger.info(f"[WEBHOOK] Content-Type: {request.content_type}")
+    logger.info(f"[WEBHOOK] X-Hub-Signature-256: {request.headers.get('X-Hub-Signature-256', 'AUSENTE')}")
     """
     Endpoint para receber notificações de mensagens do WhatsApp Business API.
     Valida a assinatura HMAC-SHA256 antes de processar.
     """
     # Valida a assinatura do WhatsApp usando a classe de segurança
     if not whatsapp_security.validate_signature():
-        print('[WEBHOOK] ❌ Assinatura INVÁLIDA!')
-        print(f"[WEBHOOK] App Secret usado: {whatsapp_security.app_secret[:10]}***")
+        logger.critical('[WEBHOOK] ❌ Assinatura INVÁLIDA!')
         return jsonify({'error': 'Unauthorized', 'message': 'Assinatura inválida'}), 401
 
-    print("[WEBHOOK] ✅ Assinatura VÁLIDA!")
+    logger.info("[WEBHOOK] ✅ Assinatura VÁLIDA!")
 
     try:
         # Obtém o JSON do corpo da requisição
         body = request.get_json(force=True, silent=True)
 
         if body is None:
-            print("[WEBHOOK] ❌ JSON inválido ou ausente")
-            print(f"[WEBHOOK] Raw data: {request.get_data()[:200]}")
+            logger.error("[WEBHOOK] ❌ JSON inválido ou ausente")
+            logger.error(f"[WEBHOOK] Raw data: {request.get_data()[:200]}")
             return jsonify({'error': 'Bad Request', 'message': 'JSON inválido ou ausente'}), 400
 
         print(f"[WEBHOOK] 📦 Dados recebidos: {body}")
         resposta = recebe_webhook(body)
-        print(f"[WEBHOOK] ✅ Processado com sucesso!")
-        print("=" * 80)
+        logger.info(f"[WEBHOOK] ✅ Processado com sucesso!")
+
         return resposta, 200
+
     except Exception as e:
-        print(f"[WEBHOOK] ❌ ERRO: {e}")
+        logger.critical(f"[WEBHOOK] ❌ ERRO: {e}")
         import traceback
         traceback.print_exc()
-        print("=" * 80)
         return jsonify({'error': 'Erro ao processar webhook', 'details': str(e)}), 400
 
 @app.get("/")
@@ -162,3 +170,19 @@ def contato():
 @app.get("/lanche")
 def lanche():
     return render_template('lanche.html')
+
+@app.get("/paes-sem-gluten")
+def paes_sem_gluten():
+    return render_template('paes-sem-gluten.html')
+
+@app.post("/api/v1/webhook/gravar-lide")
+def gravar_lide():
+    try:
+        # Obtém o JSON do corpo da requisição
+        body = request.get_json(force=True, silent=True)
+        return gravar_lide(body)
+    except Exception as e:
+        logger.critical(f"[LIDE] ❌ ERRO: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Erro ao processar webhook', 'details': str(e)}), 400

@@ -6,6 +6,7 @@ import mysql.connector
 from mysql.connector import Error
 from contextlib import contextmanager
 import logging
+from typing import TypedDict, Optional
 
 # Configuração de logging
 logging.basicConfig(level=logging.INFO)
@@ -169,24 +170,118 @@ def get_produto_by_id(produto_id):
     query = "SELECT * FROM produtos WHERE id = %s AND ativo = TRUE"
     return db.execute_query(query, (produto_id,), fetch_one=True)
 
-def criar_pedido(mensagem_venda, produto_id, contact_name, contact_phone):
+class Pedido(TypedDict):
+    id: Optional[int]
+    produto_id: Optional[int]
+    valor_pago: Optional[float]
+    estado_id: int
+    gclid: Optional[str]
+    data_ultima_atualizacao: Optional[str]
+    mensagem_sugerida: Optional[str]
+    emoji_sugerida: Optional[str]
+    data_contato_site: Optional[str]
+    phone_number_id: Optional[str]
+    contact_phone: Optional[str]
+    contact_name: Optional[str]
+    data_pedido: Optional[str]
+    campaignid: Optional[str]
+    adgroupid: Optional[str]
+    creative: Optional[str]
+    matchtype: Optional[str]
+    device: Optional[str]
+    placement: Optional[str]
+    video_id: Optional[str]
+
+def criar_pedido(pedido: Pedido):
     """
     Cria um novo pedido.
-
     Args:
-        mensagem_venda: Mensagem de venda
-        produto_id: ID do produto
-        contact_name: Nome do contato
-        contact_phone: Telefone do contato
-
+        Pedido: Dicionário com os dados do pedido, incluindo:
     Returns:
         int: ID do pedido criado
     """
+    produto_id = pedido['produto_id'], 0
+    valor_pago = pedido['valor_pago'], 0.0
+    estado_id = 1  # Estado Iniciado
+    gclid = pedido['gclid']
+    mensagem_sugerida = pedido['mensagem_sugerida']
+    emoji_sugerida = pedido['emoji_sugerida']
+    phone_number_id = pedido['phone_number_id']
+    contact_phone = pedido['contact_phone']
+    contact_name = pedido['contact_name']
+    data_pedido = pedido['data_pedido']
+    campaignid = pedido['campaignid']
+    adgroupid = pedido['adgroupid']
+    creative = pedido['creative']
+    matchtype = pedido['matchtype']
+    device = pedido['device']
+    placement = pedido['placement']
+    video_id = pedido['video_id']
+
+
     query = """
-        INSERT INTO pedidos (mensagem_venda, produto_id, contact_name, contact_phone, estado_pedido_id)
-        VALUES (%s, %s, %s, %s, 1)
+        INSERT INTO pedidos (
+             produto_id
+           , valor_pago
+           , estado_id
+           , gclid
+           , data_ultima_atualizacao
+           , mensagem_sugerida
+           , emoji_sugerida
+           , data_contato_site
+           , phone_number_id
+           , contact_phone
+           , contact_name
+           , data_pedido
+           , campaignid
+           , adgroupid
+           , creative
+           , matchtype
+           , device
+           , placement
+           , video_id
+            )
+        VALUES (
+             %s
+           , %s
+           , %s
+           , %s
+           , CURRENT_TIMESTAMP
+           , %s
+           , %s
+           , CURRENT_TIMESTAMP
+           , %s
+           , %s
+           , %s
+           , %s
+           , %s
+           , %s
+           , %s
+           , %s
+           , %s
+           , %s
+           , %s
+           )
     """
-    return db.execute_query(query, (mensagem_venda, produto_id, contact_name, contact_phone))
+    return db.execute_query(query, (
+             produto_id
+           , valor_pago
+           , estado_id
+           , gclid
+           , mensagem_sugerida
+           , emoji_sugerida
+           , phone_number_id
+           , contact_phone
+           , contact_name
+           , data_pedido
+           , campaignid
+           , adgroupid
+           , creative
+           , matchtype
+           , device
+           , placement
+           , video_id
+        ))
 
 
 def atualizar_estado_pedido(pedido_id, novo_estado_id):
