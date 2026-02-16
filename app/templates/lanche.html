@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --max: 980px;
+      --max: 1400px;
       --pad: clamp(12px, 2.5vw, 24px);
       --text: clamp(12px, 1.6vw, 14px);
       --text-small: clamp(11px, 1.4vw, 12px);
@@ -39,17 +39,26 @@
     /* A imagem vira o “botão” */
     .img-clicavel{
       width: 100%;
+      max-width: 100%;
       height: auto;
       display: block;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
       border-radius: clamp(10px, 1.2vw, 16px);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     /* Feedback visual ao tocar/clicar */
+    .img-clicavel:hover{
+      transform: scale(1.002);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+
     .img-clicavel:active{
       transform: scale(0.998);
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
       filter: brightness(0.98);
     }
 
@@ -113,6 +122,17 @@
     /* Ajustes extras para telas grandes */
     @media (min-width: 1024px){
       body{ padding: clamp(18px, 2vw, 28px); }
+      .img-clicavel{
+        border-radius: 16px;
+      }
+    }
+    
+    /* Mobile: imagem ocupa mais espaço */
+    @media (max-width: 768px){
+      body{ padding: 12px; }
+      .img-clicavel{
+        border-radius: 12px;
+      }
     }
   </style>
 </head>
