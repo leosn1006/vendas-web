@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
     data_ultima_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     mensagem_sugerida varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     emoji_sugerida VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    data_contato_site NOT NULL TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_contato_site TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     phone_number_id VARCHAR(20),
     contact_phone VARCHAR(20),
     contact_name VARCHAR(255),
@@ -61,25 +61,25 @@ CREATE TABLE IF NOT EXISTS pedidos (
     matchtype VARCHAR(255),
     device VARCHAR(255),
     placement VARCHAR(255),
-    video_id VARCHAR(255)
+    video_id VARCHAR(255),
     FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE RESTRICT,
     FOREIGN KEY (estado_id) REFERENCES estado_pedidos(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Índices na tabela pedidos
-CREATE INDEX idx_pedidos_data_estado ON pedidos(data_pedido, estado_pedido_id);
+CREATE INDEX idx_pedidos_data_estado ON pedidos(data_pedido, estado_id);
 CREATE INDEX idx_pedidos_contact ON pedidos(contact_name, data_pedido);
 CREATE INDEX idx_pedidos_phone ON pedidos(contact_phone);
 
 -- Tabela de mensagens dos pedidos
 CREATE TABLE IF NOT EXISTS mensagens_pedidos (
-    pedido_id INT NOT NULL PRIMARY KEY,
-    sequencial_mensagem INT AUTO_INCREMENT PRIMARY KEY,
+    pedido_id INT NOT NULL,
+    sequencial_mensagem INT AUTO_INCREMENT,
     id VARCHAR(100) NOT NULL,
     data_mensagem TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     mensagem_json TEXT NOT NULL,
     tipo_mensagem ENUM('recebida', 'enviada') DEFAULT 'recebida',
-    UNIQUE KEY unique_seq (pedido_id, sequencial_mensagem),
+    PRIMARY KEY (pedido_id, sequencial_mensagem),
     FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
