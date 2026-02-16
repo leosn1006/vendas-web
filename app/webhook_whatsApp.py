@@ -4,7 +4,6 @@ from app.whatspp_enviar_mensagem import enviar_mensagem_texto
 from database import get_ultimo_pedido_by_phone, salvar_mensagem_pedido
 from agente_vendas_sem_gluten import responder_cliente
 
-
 logger = logging.getLogger(__name__)
 
 def extrair_dados_mensagem(mensagem_whatsapp):

@@ -1,5 +1,6 @@
 import logging
 from app.agente_gera_mensagem_inicial import gera_mensagem_inicial
+from app.config import WHATSAPP_NUMBER
 from flask import jsonify
 from database import Pedido, criar_pedido
 
@@ -43,7 +44,12 @@ def persistir_lide(body):
         )
         criar_pedido(pedido)
         print(f"[LIDE] ✅ Lide gravado com gclid: {gclide}")
-        return jsonify({'message': 'Lide gravado com sucesso!'}), 200
+        resposta = {
+            "whatsapp_numero": WHATSAPP_NUMBER[0],
+            "emojiEscolhido" : "🤓",
+            "mensagemBaseWA" : gera_mensagem_inicial(produto)
+        }
+        return jsonify(resposta,), 200
     except Exception as e:
         logger.critical(f"[LIDE] ❌ ERRO ao gravar lide: {e}")
         import traceback

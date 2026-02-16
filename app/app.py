@@ -1,7 +1,7 @@
 from flask import Flask, send_file, request, jsonify, render_template
 from app.whatsapp_webhook import recebe_webhook
 from app.seguranca import whatsapp_security
-from gravar_lide import persistir_lide
+from app.lide_incluir import persistir_lide
 from notificacoes import notificador, notificar_erro
 import os
 import logging
