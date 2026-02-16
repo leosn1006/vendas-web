@@ -1,6 +1,6 @@
 import logging
-from app.agente_gera_mensagem_inicial import gera_mensagem_inicial
-from app.config import WHATSAPP_NUMBER
+from agente_gera_mensagem_inicial import gera_mensagem_inicial
+from config import WHATSAPP_NUMBER
 from flask import jsonify
 from database import Pedido, criar_pedido
 
