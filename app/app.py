@@ -1,12 +1,74 @@
 from flask import Flask, send_file, request, jsonify, render_template
 from webhook_whatsApp import recebe_webhook
 from seguranca import whatsapp_security
+from notificacoes import notificador, notificar_erro
 import os
 
 # Configurar Flask para procurar static na raiz do projeto
 app = Flask(__name__,
             static_folder='../static',
             static_url_path='/static')
+
+
+# ============ HANDLER GLOBAL DE ERROS ============
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """
+    Captura TODOS os erros não tratados da aplicação.
+    Envia notificação simples para o WhatsApp do admin (exceto 404 de bots).
+    """
+    # Coleta contexto mínimo
+    contexto = {}
+    try:
+        if request and request.endpoint:
+            contexto['Endpoint'] = request.endpoint
+    except:
+        pass
+
+    # Notifica o erro (mensagem será simples)
+    notificador.notificar_erro(e, contexto_adicional=contexto)
+
+    # Loga detalhes completos no servidor
+    print(f"[ERRO GLOBAL] {type(e).__name__}: {str(e)}")
+    import traceback
+    traceback.print_exc()
+
+    # Retorna resposta apropriada
+    return jsonify({
+        'error': 'Erro interno do servidor',
+        'message': 'Um erro ocorreu e nossa equipe foi notificada'
+    }), 500
+
+
+@app.errorhandler(404)
+def handle_404(e):
+    """
+    Tratamento especial para 404 - NÃO notifica via WhatsApp.
+    Evita spam de bots fazendo scan de vulnerabilidades.
+    """
+    caminho = request.path
+    user_agent = request.headers.get('User-Agent', '')
+
+    # Log apenas para análise (não notifica)
+    print(f"[404] {caminho} | UA: {user_agent[:50]}")
+
+    # Lista de padrões suspeitos de bots/scanners
+    padroes_suspeitos = [
+        'jasperserver', 'helpdesk', 'aspera', 'cf_scripts',
+        'WebObjects', 'phpmyadmin', 'wp-admin', 'admin.php'
+    ]
+
+    # Se for rota suspeita, retorna resposta mínima (sem gastar recursos)
+    if any(padrao in caminho.lower() for padrao in padroes_suspeitos):
+        return '', 404
+
+    # Para 404 legítimos (usuário digitou URL errada), retorna JSON amigável
+    return jsonify({
+        'error': 'Página não encontrada',
+        'message': f'A rota {caminho} não existe'
+    }), 404
+# ==================================================
+
 
 # Rota GET para verificação inicial do webhook (WhatsApp envia challenge)
 @app.get("/api/v1/webhook-whatsapp")
@@ -30,6 +92,7 @@ def webhook_verify():
 
 # Rota POST para receber mensagens do WhatsApp Business API
 @app.post("/api/v1/webhook-whatsapp")
+@notificar_erro()  # Notifica qualquer erro nesta rota crítica
 def webhook_receive():
     print("=" * 80)
     print(f"[WEBHOOK] Requisição recebida de: {request.remote_addr}")
