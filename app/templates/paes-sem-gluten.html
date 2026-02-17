@@ -138,6 +138,7 @@
             <div class="loader-text">Processando seu pedido…</div>
         </div>
     </div>
+
     <script>
         const imgClicavel = document.getElementById('imgClicavel');
         const loader = document.getElementById('loader');
@@ -146,70 +147,85 @@
             loader.classList.add('active');
             document.body.style.pointerEvents = 'none';
         }
+
         function esconderLoader() {
             loader.classList.remove('active');
             document.body.style.pointerEvents = '';
         }
-        imgClicavel.addEventListener('click', async function () {
-            if (emProcessamento) return; // evita múltiplos cliques
-            emProcessamento = true;
-            mostrarLoader();
-            // Defaults (sem aleatoriedade)
-            let numeroWhatsapp = '5561981173547';
-            let emojiEscolhido = '😊';
-            let mensagemBaseWA = '😊 Olá, tenho interesse nas receitas';
-            // Captura dados da página
-            const urlDaPaginaAtual = window.location.href;
-            const urlParams = new URLSearchParams(window.location.search);
-            // ValueTrack / YouTube Ads params
-            const gclidCode = urlParams.get('gclid') || '';
-            const campaignid = urlParams.get('campaignid') || '';
-            const adgroupid = urlParams.get('adgroupid') || '';
-            const creative = urlParams.get('creative') || '';
-            const matchtype = urlParams.get('matchtype') || '';
-            const device = urlParams.get('device') || '';
-            const placement = urlParams.get('placement') || '';
-            const video_id = urlParams.get('video_id') || '';
-            // Endpoint da API de LIDE
-            const API_URL = 'https://lneditor.com.br/api/v1/webhook/gravar-lide';
-            // Payload
-            const dadosParaEnviar = { gclid: gclidCode, url: urlDaPaginaAtual, campaignid, adgroupid, creative, matchtype, device, placement, video_id };
-            try {
-                // Sem timeout artificial: aguarda a API concluir
-                const resp = await fetch(API_URL, {
+
+        imgClicavel.addEventListener
+            ('click', async function () {
+                if (emProcessamento) return;
+                // evita múltiplos cliques
+                emProcessamento = true;
+                mostrarLoader();
+                // Defaults (sem aleatoriedade)
+                let numeroWhatsapp = '5561981173547';
+                let emojiEscolhido = '😊';
+                let mensagemBaseWA = 'Olá, tenho interesse nas receitas';
+                // Captura dados da página
+                const urlDaPaginaAtual = window.location.href;
+                const urlParams = new URLSearchParams(window.location.search);
+                // ValueTrack / YouTube Ads params
+                const gclidCode = urlParams.get('gclid') || '';
+                const campaignid = urlParams.get('campaignid') || '';
+                const adgroupid = urlParams.get('adgroupid') || '';
+                const creative = urlParams.get('creative') || '';
+                const matchtype = urlParams.get('matchtype') || '';
+                const device = urlParams.get('device') || '';
+                const placement = urlParams.get('placement') || '';
+                const video_id = urlParams.get('video_id') || '';
+                // Endpoint da API de LIDE
+                const API_URL = 'https://lneditor.com.br/api/v1/webhook/gravar-lide';
+                // Payload
+                const dadosParaEnviar = { gclid: gclidCode, url: urlDaPaginaAtual, campaignid, adgroupid, creative, matchtype, device, placement, video_id };
+                try {
+                    // Sem timeout artificial: aguarda a API concluir
+                    const resp = await fetch(API_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(dadosParaEnviar)
                     });
-                if (resp.ok) {
-                    let data = {};
-                    const contentType = resp.headers.get('content-type') || '';
-                    if (contentType.includes('application/json')) {
-                        data = await resp.json();
+                    if (resp.ok) {
+                        let data = {};
+                        const contentType = resp.headers.get('content-type') || '';
+                        if (contentType.includes('application/json')) {
+                            data = await resp.json();
+                        }
+                        if (typeof data.whatsapp_numero === 'string' && data.whatsapp_numero.trim()) {
+                            numeroWhatsapp = data.whatsapp_numero.trim();
+                        }
+                        if (typeof data.emojiEscolhido === 'string' && data.emojiEscolhido.trim()) {
+                            emojiEscolhido = data.emojiEscolhido.trim();
+                        } else if (typeof data.chave_emoji === 'string' && data.chave_emoji.trim()) {
+                            emojiEscolhido = data.chave_emoji.trim();
+                        }
+                        if (typeof data.mensagemBaseWA === 'string' && data.mensagemBaseWA.trim()) {
+                            mensagemBaseWA = data.mensagemBaseWA.trim();
+                        }
+                    } else {
+                        console.warn('API respondeu com status não-OK:', resp.status);
                     }
-                    if (typeof data.whatsapp_numero === 'string' && data.whatsapp_numero.trim()) {
-                        numeroWhatsapp = data.whatsapp_numero.trim();
-                    }
-                    if (typeof data.emojiEscolhido === 'string' && data.emojiEscolhido.trim()) {
-                        emojiEscolhido = data.emojiEscolhido.trim();
-                    }
-                    if (typeof data.mensagemBaseWA === 'string' && data.mensagemBaseWA.trim()) {
-                        mensagemBaseWA = data.mensagemBaseWA.trim();
-                    }
-                } else {
-                    console.warn('API respondeu com status não-OK:', resp.status);
+                } catch (e) {
+                    console.error('Erro ao chamar API de LIDE:', e);
                 }
-            } catch (e) {
-                console.error('Erro ao chamar API de LIDE:', e);
+                const mensagemFinalWA = `${mensagemBaseWA}`.trim();
+                const urlWhatsapp = 'https://wa.me/' + numeroWhatsapp + '?text=' + encodeURIComponent(mensagemFinalWA);
+                try {
+                    // Abre em nova aba (mantém a página atual); se bloquear, faz fallback para mesma aba
+                    const popup = window.open(urlWhatsapp, '_blank', 'noopener,noreferrer');
+                    if (!popup) {
+                        window.location.href = urlWhatsapp;
+                    }
+                } finally {
+                    // Libera a UI mesmo após abrir o WhatsApp
+                    esconderLoader();
+                    emProcessamento = false;
+                }
             }
-            const mensagemFinalWA = `${mensagemBaseWA}`.trim();
-            const urlWhatsapp = 'https://wa.me/' + numeroWhatsapp + '?text=' + encodeURIComponent(mensagemFinalWA);
-            // Redireciona após a API finalizar (com sucesso ou falha)
-            window.location.href = urlWhatsapp;
-            // Não há necessidade de esconder o loader; a página será descarregada no redirecionamento.
-            // Caso você queira manter na mesma página em algum cenário, chame esconderLoader() ali.
-        });
+        );
     </script>
+
 </body>
 
 </html>
