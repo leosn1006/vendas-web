@@ -39,11 +39,9 @@ def gera_mensagem_inicial(produto):
                  '🥗 Que legal, quero entender sobre o e-book?'
                  'Maravilha! Quero saber mais sobre o produto 😊'
 
-                 {prompt_produto}
-
                 """}
             ],
-            temperature=0.5,  # Um pouco mais criativo
+            temperature=0.0,  # Um pouco mais criativo
             max_tokens=100    # Limitar resposta (respostas curtas)
         )
         resposta = response.choices[0].message.content
