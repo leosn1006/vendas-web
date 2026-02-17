@@ -6,7 +6,7 @@ from database import Pedido
 
 logger = logging.getLogger(__name__)
 
-def enviar_introducao(pedido: Pedido):
+def enviar_introducao(pedido):
     if pedido is None:
         raise ValueError("[INTRODUÇÃO] Não é possível enviar mensagem sem um pedido associado.")
     try:
