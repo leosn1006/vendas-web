@@ -183,7 +183,6 @@ def gravar_lide():
         print(f"[LIDE] 📦 Dados recebidos: {body}")
         resposta = persistir_lide(body)
         print(f"[LIDE] ✅ Processado com sucesso!")
-        print(f"[LIDE] Dados: {resposta}")
         return resposta
     except Exception as e:
         logger.critical(f"[LIDE] ❌ ERRO: {e}")

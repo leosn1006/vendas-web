@@ -49,6 +49,7 @@ def persistir_lide(body):
             "emojiEscolhido" : "🤓",
             "mensagemBaseWA" : gera_mensagem_inicial(produto)
         }
+        print(f"[LIDE] ✅ Resposta gerada: {resposta}")
         return jsonify(resposta), 200
     except Exception as e:
         logger.critical(f"[LIDE] ❌ ERRO ao gravar lide: {e}")
