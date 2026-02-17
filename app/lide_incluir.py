@@ -1,5 +1,5 @@
 import logging
-from agente_gera_mensagem_inicial import gera_mensagem_inicial_randomicamente
+from agente_gera_mensagem_inicial import gera_mensagem_inicial, gera_mensagem_inicial_randomicamente
 from config import WHATSAPP_NUMBER
 from flask import jsonify
 from database import Pedido, criar_pedido
