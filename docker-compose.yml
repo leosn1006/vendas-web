@@ -4,6 +4,8 @@ services:
     image: mysql:8.4
     container_name: vendas-mysql
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:3306:3306"  # Acesso via SSH tunnel (não expõe para internet)
     environment:
       - MYSQL_DATABASE=vendasdb
       - MYSQL_USER=appuser
@@ -25,7 +27,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-  
+
   app:
     build: .
     container_name: vendas-web-app
