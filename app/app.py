@@ -184,7 +184,7 @@ def gravar_lide():
         resposta = persistir_lide(body)
         print(f"[LIDE] ✅ Processado com sucesso!")
         print(f"[LIDE] Dados: {resposta}")
-        return resposta, 200
+        return resposta
     except Exception as e:
         logger.critical(f"[LIDE] ❌ ERRO: {e}")
         import traceback
