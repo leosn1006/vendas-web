@@ -12,7 +12,7 @@ Todos os detalhes técnicos ficam nos logs do servidor.
 """
 
 from flask import Flask, send_file, request, jsonify, render_template
-from whatsapp_webhook import recebe_webhook
+from whatsapp_orquestrador import recebe_webhook
 from whatsapp_seguranca import whatsapp_security
 
 # ============ ADICIONAR ESTAS IMPORTAÇÕES ============

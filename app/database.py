@@ -262,7 +262,7 @@ def criar_pedido(pedido: Pedido):
            , %s
            )
     """
-    resultado = db.execute_query(query, (
+    pedido_id = db.execute_query(query, (
              produto_id
            , valor_pago
            , estado_id
@@ -281,8 +281,7 @@ def criar_pedido(pedido: Pedido):
            , placement
            , video_id
         ))
-    db.commit()
-    return resultado
+    return pedido_id
 
 
 def atualizar_estado_pedido(pedido_id, novo_estado_id):
@@ -321,8 +320,24 @@ def salvar_mensagem_pedido(mensagem_id, pedido_id, mensagem_json, tipo_mensagem=
     db.execute_query(query, (mensagem_id, pedido_id, mensagem_json, tipo_mensagem))
     return mensagem_id
 
+def get_pedido(id_pedido):
+    """
+    Busca um pedido pelo ID.
 
-def get_ultimo_pedido_by_phone(contact_phone, mensagem_recebida):
+    Args:
+        dict: Pedidos
+
+    Returns:
+        dict: Dados do pedido ou None
+    """
+    query = """
+        SELECT *
+        FROM pedidos p
+        WHERE p.id = %s
+    """
+    return db.execute_query(query, (id_pedido), fetch_one=True)
+
+def get_ultimo_pedido_by_phone(contact_phone):
     """
     Busca o último pedido de um contato pelo telefone.
 
@@ -336,8 +351,58 @@ def get_ultimo_pedido_by_phone(contact_phone, mensagem_recebida):
         SELECT *
         FROM pedidos p
         WHERE p.contact_phone = %s
-        and p.mensagem_sugerida = %s
         ORDER BY p.data_pedido DESC
         LIMIT 1
     """
-    return db.execute_query(query, (contact_phone, mensagem_recebida), fetch_one=True)
+    return db.execute_query(query, (contact_phone), fetch_one=True)
+
+def get_ultimo_pedido_por_mensagem_sugerida(mensagem_sugerida):
+    """
+    Busca o último pedido de um contato pelo telefone.
+    -- filtra pedidos que estão nos estados Iniciado
+    -- filtra pedidos com mensagem sugerida igual nas últimas 1 hora
+    Args:
+        mensagem_sugerida: Mensagem sugerida do pedido
+
+    Returns:
+        dict: Dados do pedido ou None
+    """
+    query = """
+        SELECT *
+        FROM pedidos p
+        WHERE p.mensagem_sugerida = %s
+          AND p.data_contato_site >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+          AND p.estado_id         =  1
+        ORDER BY p.data_pedido DESC
+        LIMIT 1
+    """
+    return db.execute_query(query, (mensagem_sugerida,), fetch_one=True)
+
+def vincula_pedido_com_contato(id_pedido, contact_phone, contact_name, phone_number_id):
+    """
+    Vincula um pedido existente a um contato.
+    Args:
+        id_pedido: ID do pedido
+        contact_phone: Telefone do contato
+        contact_name: Nome do contato
+        phone_number_id: ID do número de telefone
+    Returns:
+        Pedido atualizado ou None se não conseguiu vincular
+    """
+    query = """
+        UPDATE pedidos
+        SET contact_phone   = %s,
+            contact_name    = %s,
+            phone_number_id = %s,
+            estado_id       = 2, -- Estado Contatado
+            data_pedido     = CURRENT_TIMESTAMP
+        WHERE id = %s and estado_id = 1 -- só vincula se estiver no estado Iniciado
+    """
+    resultado = db.execute_query(query, (contact_phone, contact_name, phone_number_id, id_pedido))
+    if resultado is None:
+        return None
+    else:
+        db.commit()
+        # devolve pedido atualizado
+        pedido = get_pedido(id_pedido)
+        return pedido

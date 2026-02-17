@@ -159,6 +159,23 @@ sudo rm -rf /var/lib/mysql-vendas/*
 # 4. Subir containers com BD limpo
 docker compose up -d
 
+# Acessar Mysql com Dbeaver
+# Aba main da conexão
+Connection name: Vendas Web (SSH)
+Host: localhost
+Port: 3306
+Database: vendasdb
+Username: appuser
+Password: [valor de MYSQL_PASSWORD do .env]
+
+#aba ssh
+Use SSH Tunnel
+Host/IP: [IP_DO_SEU_SERVIDOR]
+Port: 22
+Username: root (ou seu usuário SSH)
+Authentication Method: Public Key ou Password
+Private Key: [caminho para ~/.ssh/id_rsa]
+
 # Reiniciar apenas app
 docker compose restart app
 

@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, render_template
-from whatsapp_webhook import recebe_webhook
+from whatsapp_orquestrador import recebe_webhook
 from whatsapp_seguranca import whatsapp_security, validar_assinatura_whatsapp
 from lide_incluir import persistir_lide
 from notificacoes import notificador, notificar_erro
@@ -20,6 +20,12 @@ app.config['JSON_AS_ASCII'] = False
 registrar_error_handlers(app)
 
 # ============ ROTAS DA APLICAÇÃO ============
+
+# Rota para evitar erro 404 do favicon
+@app.get("/favicon.ico")
+def favicon():
+    """Retorna 204 No Content para evitar erro 404 nos logs."""
+    return '', 204
 
 # Rota GET para verificação inicial do webhook (WhatsApp envia challenge)
 @app.get("/api/v1/webhook-whatsapp")
