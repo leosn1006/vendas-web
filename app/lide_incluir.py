@@ -1,5 +1,5 @@
 import logging
-from agente_gera_mensagem_inicial import gera_mensagem_inicial
+from agente_gera_mensagem_inicial import gera_mensagem_inicial_randomicamente
 from config import WHATSAPP_NUMBER
 from flask import jsonify
 from database import Pedido, criar_pedido
@@ -28,7 +28,7 @@ def persistir_lide(body):
             estado_id=1,  # Estado Iniciado
             gclid=gclide,
             data_ultima_atualizacao=None,
-            mensagem_sugerida=gera_mensagem_inicial(produto),
+            mensagem_sugerida=gera_mensagem_inicial_randomicamente(),
             emoji_sugerida="🤓",
             phone_number_id=None,
             contact_phone=None,

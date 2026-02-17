@@ -1,5 +1,7 @@
 from openai import OpenAI
 import logging
+import random
+from random import choice
 
 logger = logging.getLogger(__name__)
 
@@ -52,3 +54,43 @@ def gera_mensagem_inicial(produto):
         import traceback
         traceback.print_exc()
         return "Maravilha! Quero saber mais sobre o produto 😊"
+
+    def gera_mensagem_inicial_randomicamente():
+        dict_mensagens = {
+            "Oi! Quero saber mais sobre o produto",
+            "Me conta como funciona?",
+            "Amei! Tem mais detalhes?",
+            "Curti demais, pode explicar rapidinho?",
+            "Fiquei interessada, me fala mais?",
+            "Tem fotos e medidas? Queria ver mais?",
+            "Esse produto é pra mim! Me conta?",
+            "Me ajuda a entender melhor?",
+            "Como é o material?",
+            "Adorei a proposta! me fala mais?",
+            "Quero entender os benefícios, pode me dizer?",
+            "Tem promo rolando? Me avisa, por favor",
+            "Esse produto é pra mim! Me conta mais?",
+            "Eu quero saber mais sobre esse produto, me explica rapidinho?",
+            "Mal posso esperar para saber mais, me conta tudo?",
+            "Pode me mandar mais detalhes sobre esse produto? Estou super interessada!",
+            "Estou interessada, mas queria entender melhor. Me explica rapidinho?",
+            "Eu quero saber mais sobre esse produto, me explica rapidinho?",
+            "Gostei! Como faço pra entender melhor?",
+            "que bacana, me ecxplica melhor?"
+        }
+        dict_emojis = [
+           "😊", "😄", "😃", "😀", "😁", "🥰", "🤩", "😍", "🤗", "😂",
+           "🤭", "😸", "😺", "😻", "😉", "😇", "🙌", "✨", "🎉", "🥳"
+        ]
+
+        dict_lugares = ["inicio", "final"]
+
+        # Gerar mensagem aleatória com um emoji.
+        mensagem = random.choice(list(dict_mensagens))
+        emoji = random.choice(list(dict_emojis))
+        lugar_emoji = random.choice(list(dict_lugares))
+        if lugar_emoji == "inicio":
+            mensagem_completa = f"{emoji} {mensagem}"
+        else:
+            mensagem_completa = f"{mensagem} {emoji}"
+        return mensagem_completa
