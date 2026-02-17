@@ -1,6 +1,6 @@
 from flask import Flask, send_file, request, jsonify, render_template
 from whatsapp_webhook import recebe_webhook
-from seguranca import whatsapp_security
+from seguranca import whatsapp_security, validar_assinatura_whatsapp
 from lide_incluir import persistir_lide
 from notificacoes import notificador, notificar_erro
 import os
@@ -109,6 +109,7 @@ def webhook_verify():
 
 # Rota POST para receber mensagens do WhatsApp Business API
 @app.post("/api/v1/webhook-whatsapp")
+@validar_assinatura_whatsapp()  # Valida assinatura HMAC-SHA256
 @notificar_erro()  # Notifica qualquer erro nesta rota crítica
 def webhook_receive():
     logger.info("=" * 80)
@@ -117,15 +118,8 @@ def webhook_receive():
     logger.info(f"[WEBHOOK] X-Hub-Signature-256: {request.headers.get('X-Hub-Signature-256', 'AUSENTE')}")
     """
     Endpoint para receber notificações de mensagens do WhatsApp Business API.
-    Valida a assinatura HMAC-SHA256 antes de processar.
+    A assinatura é validada pelo decorador @validar_assinatura_whatsapp().
     """
-    # Valida a assinatura do WhatsApp usando a classe de segurança
-    if not whatsapp_security.validate_signature():
-        logger.critical('[WEBHOOK] ❌ Assinatura INVÁLIDA!')
-        return jsonify({'error': 'Unauthorized', 'message': 'Assinatura inválida'}), 401
-
-    logger.info("[WEBHOOK] ✅ Assinatura VÁLIDA!")
-
     try:
         # Obtém o JSON do corpo da requisição
         body = request.get_json(force=True, silent=True)

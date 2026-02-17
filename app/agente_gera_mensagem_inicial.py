@@ -64,18 +64,18 @@ def gera_mensagem_inicial_randomicamente():
         "Tem fotos e medidas? Queria ver mais?",
         "Esse produto é pra mim! Me conta?",
         "Me ajuda a entender melhor?",
-        "Como é o material?",
+        "Gostei, me explica?",
         "Adorei a proposta! me fala mais?",
         "Quero entender os benefícios, pode me dizer?",
-        "Tem promo rolando? Me avisa, por favor",
+        "Maravilha! Me avidá maisinformação, por favor",
         "Esse produto é pra mim! Me conta mais?",
         "Eu quero saber mais sobre esse produto, me explica rapidinho?",
-        "Mal posso esperar para saber mais, me conta tudo?",
+        "Bacana! Me conta tudo?",
         "Pode me mandar mais detalhes sobre esse produto? Estou super interessada!",
         "Estou interessada, mas queria entender melhor. Me explica rapidinho?",
         "Eu quero saber mais sobre esse produto, me explica rapidinho?",
         "Gostei! Como faço pra entender melhor?",
-        "que bacana, me ecxplica melhor?"
+        "Que bacana, me ecxplica melhor?"
     ]
     dict_emojis = [
         "😊", "😄", "😃", "😀", "😁", "🥰", "🤩", "😍", "🤗", "😂",
