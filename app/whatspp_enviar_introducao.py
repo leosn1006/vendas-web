@@ -46,7 +46,7 @@ def enviar_audio(pedido: Pedido, url_audio: str):
             "to": numero_remetente,
             "type": "audio",
             "audio": {
-                "link": "https://lneditor.com.br/arq/audio-introducao.mp3"
+                "https://lneditor.com.br/static/audios/paes-introducao.mp4"
             }
         }
 
