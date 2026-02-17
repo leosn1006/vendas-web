@@ -60,7 +60,7 @@ def recebe_webhook(mensagem_whatsapp):
                 logger.info(f"[ORQUESTRADOR] 🔗 Associando contato ao pedido existente: {pedido['id']}")
                 pedido =vincula_pedido_com_contato(pedido['id'], numero_remetente, nome, phone_number_id)
                 if pedido is not None:
-                    logger.info(f"[ORQUESTRADOR] ✅ Pedido #{pedido.get('id')} atualizado com contato {nome} ({numero_remetente})")
+                    logger.info(f"[ORQUESTRADOR] ✅ Pedido #{pedido.get('id')} atualizado com o contato {nome} ({numero_remetente})")
                     #TODO abrir uma thread para enviar mensagem de resposta automática, para não atrasar a resposta do webhook
                     enviar_introducao(pedido)
                     return "Webhook processado com sucesso!"

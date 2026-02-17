@@ -402,7 +402,6 @@ def vincula_pedido_com_contato(id_pedido, contact_phone, contact_name, phone_num
     if resultado is None:
         return None
     else:
-        db.commit()
         # devolve pedido atualizado
         pedido = get_pedido(id_pedido)
         return pedido
