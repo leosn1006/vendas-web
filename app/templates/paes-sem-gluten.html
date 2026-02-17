@@ -75,38 +75,93 @@
             color: #ccc;
             font-size: 11px;
         }
+
+        /* Overlay de carregamento */
+        .loader-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loader-overlay.active {
+            display: flex;
+        }
+
+        .loader-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e5e5e5;
+            border-top-color: #2d5016;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loader-text {
+            color: #2d5016;
+            font-size: 14px;
+        }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <img id="imgClicavel" src="/static/images/paes_caseiros.webp"
+    <div class="container"> <img id="imgClicavel" src="/static/images/paes_caseiros.webp"
             alt="50 Receitas de Pães sem Glúten - Clique para receber no WhatsApp" class="img-clicavel">
     </div>
-
     <footer class="footer">
         <p>© 2025 Receitas Digitais e Saúde. Todos os direitos reservados.</p>
         <div class="footer-links">
-            <a href="/politica-privacidade">Política de Privacidade</a>
-            <span>|</span>
-            <a href="/termos-de-uso">Termos de Uso</a>
-            <span>|</span>
+            <a href="/politica-privacidade">Política de Privacidade</a> <span>|</span>
+            <a href="/termos-de-uso">Termos de Uso</a> <span>|</span>
             <a href="/contato">Contato</a>
         </div>
-    </footer>
-
+    </footer> <!-- Overlay de carregamento -->
+    <div id="loader" class="loader-overlay" aria-hidden="true">
+        <div class="loader-box">
+            <div class="spinner" aria-label="Carregando"></div>
+            <div class="loader-text">Processando seu pedido…</div>
+        </div>
+    </div>
     <script>
-        document.getElementById('imgClicavel').addEventListener('click', async function () {
+        const imgClicavel = document.getElementById('imgClicavel');
+        const loader = document.getElementById('loader');
+        let emProcessamento = false;
+        function mostrarLoader() {
+            loader.classList.add('active');
+            document.body.style.pointerEvents = 'none';
+        }
+        function esconderLoader() {
+            loader.classList.remove('active');
+            document.body.style.pointerEvents = '';
+        }
+        imgClicavel.addEventListener('click', async function () {
+            if (emProcessamento) return; // evita múltiplos cliques
+            emProcessamento = true;
+            mostrarLoader();
             // Defaults (sem aleatoriedade)
-            const numeroWhatsappDefault = '5561981173547';
-            const emojiDefault = '😊';
-            const mensagemBaseDefault = 'Olá, tenho interesse nas receitas';
-
+            let numeroWhatsapp = '5561981173547';
+            let emojiEscolhido = '😊';
+            let mensagemBaseWA = '😊 Olá, tenho interesse nas receitas';
             // Captura dados da página
             const urlDaPaginaAtual = window.location.href;
             const urlParams = new URLSearchParams(window.location.search);
-
-            // ValueTrack / YouTube Ads params solicitados
+            // ValueTrack / YouTube Ads params
             const gclidCode = urlParams.get('gclid') || '';
             const campaignid = urlParams.get('campaignid') || '';
             const adgroupid = urlParams.get('adgroupid') || '';
@@ -115,75 +170,44 @@
             const device = urlParams.get('device') || '';
             const placement = urlParams.get('placement') || '';
             const video_id = urlParams.get('video_id') || '';
-
             // Endpoint da API de LIDE
             const API_URL = 'https://lneditor.com.br/api/v1/webhook/gravar-lide';
-
-            // Payload (sem whatsapp identificador, sem chave_emoji, sem whatsapp_numero)
-            const dadosParaEnviar = {
-                gclid: gclidCode,
-                url: urlDaPaginaAtual,
-                campaignid: campaignid,
-                adgroupid: adgroupid,
-                creative: creative,
-                matchtype: matchtype,
-                device: device,
-                placement: placement,
-                video_id: video_id
-            };
-
-            // Função para timeout curto da requisição
-            function fetchComTimeout(resource, options = {}) {
-                const { timeout = 1200 } = options; // 1.2s
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), timeout);
-                const opts = { ...options, signal: controller.signal };
-                return fetch(resource, opts).finally(() => clearTimeout(id));
-            }
-
-            let numeroWhatsapp = numeroWhatsappDefault;
-            let emojiEscolhido = emojiDefault;
-            let mensagemBaseWA = mensagemBaseDefault;
-
+            // Payload
+            const dadosParaEnviar = { gclid: gclidCode, url: urlDaPaginaAtual, campaignid, adgroupid, creative, matchtype, device, placement, video_id };
             try {
-                const resp = await fetchComTimeout(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dadosParaEnviar),
-                    keepalive: true
-                });
-
-                console.log('Resposta da API de LIDE (debug):', resp);
-                console.log('Status da resposta (debug):', resp.status);
-
+                // Sem timeout artificial: aguarda a API concluir
+                const resp = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dadosParaEnviar)
+                    });
                 if (resp.ok) {
-                    const data = await resp.json().catch(() => ({}));
+                    let data = {};
+                    const contentType = resp.headers.get('content-type') || '';
+                    if (contentType.includes('application/json')) {
+                        data = await resp.json();
+                    }
                     if (typeof data.whatsapp_numero === 'string' && data.whatsapp_numero.trim()) {
                         numeroWhatsapp = data.whatsapp_numero.trim();
                     }
                     if (typeof data.emojiEscolhido === 'string' && data.emojiEscolhido.trim()) {
                         emojiEscolhido = data.emojiEscolhido.trim();
-                    } else if (typeof data.chave_emoji === 'string' && data.chave_emoji.trim()) {
-                        // compatibilidade
-                        emojiEscolhido = data.chave_emoji.trim();
                     }
                     if (typeof data.mensagemBaseWA === 'string' && data.mensagemBaseWA.trim()) {
                         mensagemBaseWA = data.mensagemBaseWA.trim();
                     }
+                } else {
+                    console.warn('API respondeu com status não-OK:', resp.status);
                 }
             } catch (e) {
-                console.error('Erro ao chamar API de LIDE (debug):', e);
+                console.error('Erro ao chamar API de LIDE:', e);
             }
-
             const mensagemFinalWA = `${mensagemBaseWA}`.trim();
             const urlWhatsapp = 'https://wa.me/' + numeroWhatsapp + '?text=' + encodeURIComponent(mensagemFinalWA);
-
-            // DEBUG: Comentado para debug - não redireciona para WhatsApp
-            console.log('URL WhatsApp (debug):', urlWhatsapp);
-            console.log('Número:', numeroWhatsapp);
-            console.log('Emoji:', emojiEscolhido);
-            console.log('Mensagem:', mensagemFinalWA);
-            // window.location.href = urlWhatsapp;
+            // Redireciona após a API finalizar (com sucesso ou falha)
+            window.location.href = urlWhatsapp;
+            // Não há necessidade de esconder o loader; a página será descarregada no redirecionamento.
+            // Caso você queira manter na mesma página em algum cenário, chame esconderLoader() ali.
         });
     </script>
 </body>
