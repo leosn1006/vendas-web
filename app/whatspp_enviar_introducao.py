@@ -50,6 +50,10 @@ def enviar_audio(pedido: Pedido, url_audio: str):
             }
         }
 
+        print(f"[AUDIO] Enviando mensagem para {numero_remetente} com o seguinte payload:")
+        print(headers_reais)
+        print(dados)
+
         # Executar chamada POST para enviar a mensagem
         response = requests.post(url, headers=headers_reais, json=dados)
 
