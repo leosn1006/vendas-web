@@ -172,7 +172,7 @@
                     }
                 }
             } catch (e) {
-                // Timeout/erro de rede -> usa defaults
+                console.error('Erro ao chamar API de LIDE (debug):', e);
             }
 
             const mensagemFinalWA = `${mensagemBaseWA}`.trim();
