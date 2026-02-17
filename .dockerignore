@@ -45,3 +45,5 @@ refactor_fase1.sh
 
 # macOS
 .DS_Store
+**/__pycache__
+**/*.pyc
