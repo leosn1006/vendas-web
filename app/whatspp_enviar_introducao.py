@@ -46,7 +46,8 @@ def enviar_audio(pedido: Pedido, url_audio: str):
             "to": numero_remetente,
             "type": "audio",
             "audio": {
-             "link": url_audio
+             "link": url_audio,
+             "voice": "true"
             }
         }
 
