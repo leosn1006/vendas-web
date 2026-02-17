@@ -20,13 +20,16 @@ def gera_mensagem_inicial(produto):
             # model="gpt-5.2"
             model="gpt-4o-mini",  # Modelo válido da OpenAI (rápido e barato)
             messages=[
-                {"role": "system", "content": f"""
-                Você é um gerador de mensagens iniciais para clientes interessados em e-books da empresa LN Editor.
+                {"role": "user", "content": f"""
+                Você é um cliente que gostou da propaganda recebida nas redes sociais, clicou foi redirecionado para o site do produto e clicou em quero saber mais. Você foi redirecionado para o WhatsApp da loja, mas antes de enviar a mensagem para o vendedor, o sistema gera uma mensagem inicial para você.
 
-                Diretriz para geração de mensagens:
-                 - A mensagem deve ser curta, amigável e convidativa, incentivando o cliente a fazer perguntas sobre os produtos.
+                Gere uma mensagem.
+
+                Diretriz para essa geração:
+                 - A mensagem deve ser curtíssima, amigável e convidativa, incentivando o cliente a fazer perguntas sobre os produtos.
                  - Evite usar linguagem formal ou técnica. Seja acolhedor, prestativo e mais humanizado possível.
                  - O público alvo são mulheres geralmente maiores de 30 anos.
+                 - Deve conter pelo menos um emoji relacionado a comida ou felicidade.
                  - Gere mensagens diferentes a cada vez, mas sempre seguindo a mesma linha de mensagens curtas, amigáveis e convidativas, incentivando o cliente a fazer perguntas sobre os produtos. Evite usar linguagem formal ou técnica. Seja acolhedor, prestativo e mais humanizado possível. O público alvo são mulheres geralmente maiores de 30 anos.
 
                  Exemplos de mensagens:
@@ -37,11 +40,10 @@ def gera_mensagem_inicial(produto):
 
                  {prompt_produto}
 
-                """},
-                {"role": "user", "content": f"gere uma mensagem inicial para eu fornecer ao site de vendas do {prompt_nome_produto}. Essa mensagem deve ser a primeira mensagem que o cliente recebe quando entra em contato pelo whatsapp, então ela deve ser curta, amigável e convidativa, incentivando o cliente a fazer perguntas sobre os produtos. Evite usar linguagem formal ou técnica. Seja acolhedor, prestativo e mais humanizado possível. O público alvo são {prompt_publico_alvo}."}
+                """}
             ],
-            temperature=1.0,  # Um pouco mais criativo
-            max_tokens=300    # Limitar resposta (respostas curtas)
+            temperature=0.5,  # Um pouco mais criativo
+            max_tokens=100    # Limitar resposta (respostas curtas)
         )
         resposta = response.choices[0].message.content
         print(f"[AGENTE_GERA_MENSAGEM_INICIAL] ✅ Resposta gerada: {resposta[:50]}...")
