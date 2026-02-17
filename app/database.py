@@ -335,7 +335,7 @@ def get_pedido(id_pedido):
         FROM pedidos p
         WHERE p.id = %s
     """
-    return db.execute_query(query, (id_pedido), fetch_one=True)
+    return db.execute_query(query, (id_pedido,), fetch_one=True)
 
 def get_ultimo_pedido_by_phone(contact_phone):
     """
@@ -354,7 +354,7 @@ def get_ultimo_pedido_by_phone(contact_phone):
         ORDER BY p.data_pedido DESC
         LIMIT 1
     """
-    return db.execute_query(query, (contact_phone), fetch_one=True)
+    return db.execute_query(query, (contact_phone,), fetch_one=True)
 
 def get_ultimo_pedido_por_mensagem_sugerida(mensagem_sugerida):
     """
