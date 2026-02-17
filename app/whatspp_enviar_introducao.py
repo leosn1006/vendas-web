@@ -10,9 +10,9 @@ def enviar_introducao(pedido):
     if pedido is None:
         raise ValueError("[INTRODUÇÃO] Não é possível enviar mensagem sem um pedido associado.")
     try:
-        url_audio="https://lneditor.com.br/arq/audio-introducao.mp3" #default
+        url_audio="https://lneditor.com.br/static/audios/introducao-paes.ogg" #default
         if pedido.get("produto_id") == 1:
-            url_audio="https://lneditor.com.br/arq/audio-introducao.mp3"
+            url_audio="https://lneditor.com.br/static/audios/audio-introducao.mp3"
 
         enviar_audio(pedido, url_audio=url_audio)
 
@@ -46,7 +46,7 @@ def enviar_audio(pedido: Pedido, url_audio: str):
             "to": numero_remetente,
             "type": "audio",
             "audio": {
-             "link": "https://lneditor.com.br/static/audios/paes-introducao.mp4"
+             "link": url_audio
             }
         }
 
