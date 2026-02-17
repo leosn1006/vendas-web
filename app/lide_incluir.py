@@ -47,8 +47,8 @@ def persistir_lide(body):
         print(f"[LIDE] ✅ Lide gravado com gclid: {gclide}")
         resposta = {
             "whatsapp_numero": WHATSAPP_NUMBER[0],
-            "emojiEscolhido" : "🤓",
-            "mensagemBaseWA" : pedido.mensagem_sugerida
+            "emojiEscolhido" : emoji,
+            "mensagemBaseWA" : texto
         }
         print(f"[LIDE] ✅ Resposta gerada: {resposta}")
         return jsonify(resposta), 200
