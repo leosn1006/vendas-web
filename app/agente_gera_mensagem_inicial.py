@@ -29,8 +29,9 @@ def gera_mensagem_inicial(produto):
                  - A mensagem deve ser curtíssima, amigável e convidativa, incentivando o cliente a fazer perguntas sobre os produtos.
                  - Evite usar linguagem formal ou técnica. Seja acolhedor, prestativo e mais humanizado possível.
                  - O público alvo são mulheres geralmente maiores de 30 anos.
-                 - Deve conter pelo menos um emoji relacionado a comida ou felicidade.
-                 - Gere mensagens diferentes a cada vez, mas sempre seguindo a mesma linha de mensagens curtas, amigáveis e convidativas, incentivando o cliente a fazer perguntas sobre os produtos. Evite usar linguagem formal ou técnica. Seja acolhedor, prestativo e mais humanizado possível. O público alvo são mulheres geralmente maiores de 30 anos.
+                 - Deve conter apenas menos um emoji relacionado a comida ou felicidade.
+                 - Evite usar linguagem formal ou técnica. Seja acolhedor, prestativo e mais humanizado possível.
+                 - O público alvo são mulheres geralmente maiores de 30 anos.
 
                  Exemplos de mensagens:
                  'Olá! Gostaria de saber mais sobre o produto? 😊';
