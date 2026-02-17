@@ -12,8 +12,8 @@ Todos os detalhes técnicos ficam nos logs do servidor.
 """
 
 from flask import Flask, send_file, request, jsonify, render_template
-from app.whatsapp_webhook import recebe_webhook
-from seguranca import whatsapp_security
+from whatsapp_webhook import recebe_webhook
+from whatsapp_seguranca import whatsapp_security
 
 # ============ ADICIONAR ESTAS IMPORTAÇÕES ============
 from notificacoes import notificador, notificar_erro

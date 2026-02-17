@@ -218,7 +218,6 @@ def criar_pedido(pedido: Pedido):
     placement = pedido.get('placement')
     video_id = pedido.get('video_id')
 
-
     query = """
         INSERT INTO pedidos (
              produto_id
@@ -263,7 +262,7 @@ def criar_pedido(pedido: Pedido):
            , %s
            )
     """
-    return db.execute_query(query, (
+    resultado = db.execute_query(query, (
              produto_id
            , valor_pago
            , estado_id
@@ -282,6 +281,8 @@ def criar_pedido(pedido: Pedido):
            , placement
            , video_id
         ))
+    db.commit()
+    return resultado
 
 
 def atualizar_estado_pedido(pedido_id, novo_estado_id):

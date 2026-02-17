@@ -1,10 +1,9 @@
-from flask import Flask, send_file, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template
 from whatsapp_webhook import recebe_webhook
 from whatsapp_seguranca import whatsapp_security, validar_assinatura_whatsapp
 from lide_incluir import persistir_lide
 from notificacoes import notificador, notificar_erro
 from error_handlers import registrar_error_handlers
-import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -47,14 +46,14 @@ def webhook_verify():
 @validar_assinatura_whatsapp()  # Valida assinatura HMAC-SHA256
 @notificar_erro()  # Notifica qualquer erro nesta rota crítica
 def webhook_receive():
+    # Endpoint para receber notificações de mensagens do WhatsApp Business API.
+    # A assinatura é validada pelo decorador @validar_assinatura_whatsapp().
+
     logger.info("=" * 80)
     logger.info(f"[WEBHOOK] Requisição recebida de: {request.remote_addr}")
     logger.info(f"[WEBHOOK] Content-Type: {request.content_type}")
     logger.info(f"[WEBHOOK] X-Hub-Signature-256: {request.headers.get('X-Hub-Signature-256', 'AUSENTE')}")
-    """
-    Endpoint para receber notificações de mensagens do WhatsApp Business API.
-    A assinatura é validada pelo decorador @validar_assinatura_whatsapp().
-    """
+
     try:
         # Obtém o JSON do corpo da requisição
         body = request.get_json(force=True, silent=True)
@@ -64,7 +63,7 @@ def webhook_receive():
             logger.error(f"[WEBHOOK] Raw data: {request.get_data()[:200]}")
             return jsonify({'error': 'Bad Request', 'message': 'JSON inválido ou ausente'}), 400
 
-        print(f"[WEBHOOK] 📦 Dados recebidos: {body}")
+        logger.info(f"[WEBHOOK] 📦 Dados recebidos: {body}")
         resposta = recebe_webhook(body)
         logger.info(f"[WEBHOOK] ✅ Processado com sucesso!")
 
@@ -109,6 +108,7 @@ def gravar_lide():
     try:
         # Obtém o JSON do corpo da requisição
         body = request.get_json(force=True, silent=True)
+
         resposta = persistir_lide(body)
         logger.info(f"[LIDE] ✅ Processado com sucesso!")
         return resposta
