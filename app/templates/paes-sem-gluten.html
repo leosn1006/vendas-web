@@ -153,6 +153,9 @@
                     keepalive: true
                 });
 
+                console.log('Resposta da API de LIDE (debug):', resp);
+                console.log('Status da resposta (debug):', resp.status);
+
                 if (resp.ok) {
                     const data = await resp.json().catch(() => ({}));
                     if (typeof data.whatsapp_numero === 'string' && data.whatsapp_numero.trim()) {
@@ -175,8 +178,12 @@
             const mensagemFinalWA = `${mensagemBaseWA}`.trim();
             const urlWhatsapp = 'https://wa.me/' + numeroWhatsapp + '?text=' + encodeURIComponent(mensagemFinalWA);
 
-            // Redireciona para o WhatsApp
-           // window.location.href = urlWhatsapp;
+            // DEBUG: Comentado para debug - não redireciona para WhatsApp
+            console.log('URL WhatsApp (debug):', urlWhatsapp);
+            console.log('Número:', numeroWhatsapp);
+            console.log('Emoji:', emojiEscolhido);
+            console.log('Mensagem:', mensagemFinalWA);
+            // window.location.href = urlWhatsapp;
         });
     </script>
 </body>
