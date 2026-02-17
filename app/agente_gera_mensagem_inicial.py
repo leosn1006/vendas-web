@@ -1,6 +1,5 @@
 from openai import OpenAI
 import logging
-import random
 from random import choice
 
 logger = logging.getLogger(__name__)
