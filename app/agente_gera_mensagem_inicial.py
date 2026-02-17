@@ -56,7 +56,7 @@ def gera_mensagem_inicial(produto):
         return "Maravilha! Quero saber mais sobre o produto 😊"
 
     def gera_mensagem_inicial_randomicamente():
-        dict_mensagens = {
+        dict_mensagens = [
             "Oi! Quero saber mais sobre o produto",
             "Me conta como funciona?",
             "Amei! Tem mais detalhes?",
@@ -77,7 +77,7 @@ def gera_mensagem_inicial(produto):
             "Eu quero saber mais sobre esse produto, me explica rapidinho?",
             "Gostei! Como faço pra entender melhor?",
             "que bacana, me ecxplica melhor?"
-        }
+        ]
         dict_emojis = [
            "😊", "😄", "😃", "😀", "😁", "🥰", "🤩", "😍", "🤗", "😂",
            "🤭", "😸", "😺", "😻", "😉", "😇", "🙌", "✨", "🎉", "🥳"
