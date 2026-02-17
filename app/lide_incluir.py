@@ -1,5 +1,5 @@
 import logging
-from agente_gera_mensagem_inicial import gera_mensagem_inicial, gera_mensagem_inicial_randomicamente
+from agente_gera_mensagem_inicial import gera_mensagem_inicial_randomicamente
 from config import WHATSAPP_NUMBER
 from flask import jsonify
 from database import Pedido, criar_pedido
@@ -20,6 +20,7 @@ def persistir_lide(body):
         video_id = body.get('video_id', "")
         produto = 1 # TODO mapear produto com base na url ou outros parâmetros
 
+        texto, emoji = gera_mensagem_inicial_randomicamente()
 
         # preeche o dict Pedido com os dados necessários
         pedido = Pedido(
@@ -28,8 +29,8 @@ def persistir_lide(body):
             estado_id=1,  # Estado Iniciado
             gclid=gclide,
             data_ultima_atualizacao=None,
-            mensagem_sugerida=gera_mensagem_inicial_randomicamente(),
-            emoji_sugerida="🤓",
+            mensagem_sugerida=texto,
+            emoji_sugerida=emoji,
             phone_number_id=None,
             contact_phone=None,
             contact_name=None,
@@ -47,7 +48,7 @@ def persistir_lide(body):
         resposta = {
             "whatsapp_numero": WHATSAPP_NUMBER[0],
             "emojiEscolhido" : "🤓",
-            "mensagemBaseWA" : gera_mensagem_inicial(produto)
+            "mensagemBaseWA" : pedido.mensagem_sugerida
         }
         print(f"[LIDE] ✅ Resposta gerada: {resposta}")
         return jsonify(resposta), 200
