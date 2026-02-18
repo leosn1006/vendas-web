@@ -49,31 +49,29 @@ def webhook_verify():
 
 # Rota POST para receber mensagens do WhatsApp Business API
 @app.post("/api/v1/webhook-whatsapp")
-@validar_assinatura_whatsapp()  # Valida assinatura HMAC-SHA256
-@notificar_erro()  # Notifica qualquer erro nesta rota crítica
+@validar_assinatura_whatsapp()
+@notificar_erro()
 def webhook_receive():
-    # Endpoint para receber notificações de mensagens do WhatsApp Business API.
-    # A assinatura é validada pelo decorador @validar_assinatura_whatsapp().
-
     logger.info("=" * 80)
     logger.info(f"[WEBHOOK] Requisição recebida de: {request.remote_addr}")
     logger.info(f"[WEBHOOK] Content-Type: {request.content_type}")
     logger.info(f"[WEBHOOK] X-Hub-Signature-256: {request.headers.get('X-Hub-Signature-256', 'AUSENTE')}")
 
     try:
-        # Obtém o JSON do corpo da requisição
         body = request.get_json(force=True, silent=True)
 
         if body is None:
             logger.error("[WEBHOOK] ❌ JSON inválido ou ausente")
-            logger.error(f"[WEBHOOK] Raw data: {request.get_data()[:200]}")
             return jsonify({'error': 'Bad Request', 'message': 'JSON inválido ou ausente'}), 400
 
         logger.info(f"[WEBHOOK] 📦 Dados recebidos: {body}")
-        resposta = recebe_webhook(body)
-        logger.info(f"[WEBHOOK] ✅ Processado com sucesso!")
 
-        return resposta, 200
+        # Joga na fila e responde 200 imediatamente
+        from tasks import processar_webhook
+        processar_webhook.delay(body)
+
+        logger.info("[WEBHOOK] ✅ Mensagem enfileirada!")
+        return jsonify({'status': 'ok'}), 200
 
     except Exception as e:
         logger.critical(f"[WEBHOOK] ❌ ERRO: {e}")
