@@ -28,6 +28,23 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+      image: redis:7.2-alpine
+      container_name: vendas-redis
+      restart: unless-stopped
+      environment:
+        - TZ=America/Sao_Paulo
+      volumes:
+        - redis_data:/data
+      command: redis-server --appendonly yes  # persistência AOF ativada
+      networks:
+        - webnet
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
   app:
     build: .
     container_name: vendas-web-app
@@ -48,6 +65,49 @@ services:
       - DB_USER=appuser
       - DB_PASSWORD=${MYSQL_PASSWORD}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - REDIS_URL=redis://redis:6379/0
+    networks:
+      - webnet
+
+  worker:
+    build: .
+    container_name: vendas-worker
+    restart: unless-stopped
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - TZ=America/Sao_Paulo
+      - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN}
+      - WHATSAPP_APP_SECRET=${WHATSAPP_APP_SECRET}
+      - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID:-}
+      - WHATSAPP_BUSINESS_ACCOUNT_ID=${WHATSAPP_BUSINESS_ACCOUNT_ID:-}
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=vendasdb
+      - DB_USER=appuser
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - REDIS_URL=redis://redis:6379/0
+    networks:
+      - webnet
+
+  flower:
+    image: mher/flower:2.0
+    container_name: vendas-flower
+    restart: unless-stopped
+    command: celery flower --broker=redis://redis:6379/0 --port=5555
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - TZ=America/Sao_Paulo
+    # Sem "ports:" — acessível apenas via túnel SSH
+    # ssh -L 5555:localhost:5555 usuario@servidor
     networks:
       - webnet
 
@@ -72,3 +132,6 @@ services:
 networks:
   webnet:
     driver: bridge
+
+volumes:
+  redis_data:
