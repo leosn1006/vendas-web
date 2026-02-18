@@ -1,4 +1,3 @@
-from tasks import processar_webhook
 from flask import Flask, request, jsonify, render_template
 from whatsapp_orquestrador import recebe_webhook
 from whatsapp_seguranca import whatsapp_security, validar_assinatura_whatsapp
@@ -71,6 +70,7 @@ def webhook_receive():
             # tempo_espera = random.randint(10, 25) segundos
             # Enfileirar com agendamento (Substituindo o .delay)
             # processar_webhook.apply_async(args=[body], countdown=tempo_espera)
+        from tasks import processar_webhook
         processar_webhook.delay(body)
 
         logger.info("[WAP-WEBHOOK] ✅ Mensagem enfileirada!")
