@@ -73,7 +73,7 @@ services:
     build: .
     container_name: vendas-worker
     restart: unless-stopped
-    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
+    command: celery -A celery_app worker --loglevel=info --concurrency=2
     depends_on:
       db:
         condition: service_healthy
@@ -100,12 +100,13 @@ services:
     image: mher/flower:2.0
     container_name: vendas-flower
     restart: unless-stopped
-    command: celery flower --broker=redis://redis:6379/0 --port=5555
-    depends_on:
-      redis:
-        condition: service_healthy  # aguarda o Redis estar pronto
+    command: celery flower --port=5555
     environment:
       - TZ=America/Sao_Paulo
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
     networks:
       - webnet
 
