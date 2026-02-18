@@ -13,6 +13,8 @@ def enviar_introducao(pedido):
         url_audio="https://lneditor.com.br/static/audios/introducao-paes.ogg" #default
         if pedido.get("produto_id") == 1:
             url_audio="https://lneditor.com.br/static/audios/introducao-paes.ogg"
+            # url_audio= "https://s3.projetosdobruno.com/audios/Audios%20Luiza/Luiza2.ogg"
+
 
         enviar_audio(pedido, url_audio=url_audio)
 
