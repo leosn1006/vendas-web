@@ -107,6 +107,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    ports:
+      - "127.0.0.1:5555:5555"  # só localhost, nunca expõe para internet
     networks:
       - webnet
 
