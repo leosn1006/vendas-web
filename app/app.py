@@ -1,3 +1,4 @@
+from tasks import processar_webhook
 from flask import Flask, request, jsonify, render_template
 from whatsapp_orquestrador import recebe_webhook
 from whatsapp_seguranca import whatsapp_security, validar_assinatura_whatsapp
@@ -61,20 +62,22 @@ def webhook_receive():
         body = request.get_json(force=True, silent=True)
 
         if body is None:
-            logger.error("[WEBHOOK] ❌ JSON inválido ou ausente")
+            logger.error("[WAP-WEBHOOK] ❌ JSON inválido ou ausente")
             return jsonify({'error': 'Bad Request', 'message': 'JSON inválido ou ausente'}), 400
 
-        logger.info(f"[WEBHOOK] 📦 Dados recebidos: {body}")
+        logger.info(f"[WAP-WEBHOOK] 📦 Dados recebidos: {body}")
 
         # Joga na fila e responde 200 imediatamente
-        from tasks import processar_webhook
+            # tempo_espera = random.randint(10, 25) segundos
+            # Enfileirar com agendamento (Substituindo o .delay)
+            # processar_webhook.apply_async(args=[body], countdown=tempo_espera)
         processar_webhook.delay(body)
 
-        logger.info("[WEBHOOK] ✅ Mensagem enfileirada!")
+        logger.info("[WAP-WEBHOOK] ✅ Mensagem enfileirada!")
         return jsonify({'status': 'ok'}), 200
 
     except Exception as e:
-        logger.critical(f"[WEBHOOK] ❌ ERRO: {e}")
+        logger.critical(f"[WAP-WEBHOOK] ❌ ERRO: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': 'Erro ao processar webhook', 'details': str(e)}), 400
@@ -112,7 +115,6 @@ def gravar_lide():
     try:
         # Obtém o JSON do corpo da requisição
         body = request.get_json(force=True, silent=True)
-
         resposta = persistir_lide(body)
         logger.info(f"[LIDE] ✅ Processado com sucesso!")
         return resposta

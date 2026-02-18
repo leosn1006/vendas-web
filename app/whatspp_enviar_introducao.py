@@ -6,7 +6,7 @@ from database import Pedido
 
 logger = logging.getLogger(__name__)
 
-def enviar_introducao(pedido):
+def enviar_introducao(pedido, url_audio=None):
     if pedido is None:
         raise ValueError("[INTRODUÇÃO] Não é possível enviar mensagem sem um pedido associado.")
     try:
@@ -20,6 +20,53 @@ def enviar_introducao(pedido):
 
     except Exception as e:
         raise e
+
+def marcar_como_lida(message_id: str):
+
+    phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '927793497092010')
+    url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+    token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json; charset=utf-8",
+        "Accept": "application/json"
+    }
+
+    dados = {
+        "messaging_product": "whatsapp",
+        "status": "read",
+        "message_id": message_id  # wamid.xxx que vem no webhook
+    }
+
+    response = requests.post(url, headers=headers, json=dados)
+    response.raise_for_status()
+    return response.json()
+
+def enviar_status_gravando_audio(numero_destinatario: str):
+    """
+    Exibe o ícone 'gravando áudio' no WhatsApp do cliente.
+    Chamar antes de enviar o áudio e manter por alguns segundos (10s).
+    """
+    phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '927793497092010')
+    url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+    token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json; charset=utf-8",
+        "Accept": "application/json"
+    }
+    dados = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": numero_destinatario,
+        "sender_action": "recording"
+    }
+
+    response = requests.post(url, headers=headers, json=dados)
+    response.raise_for_status()
+    return response.json()
 
 def enviar_audio(pedido: Pedido, url_audio: str):
 

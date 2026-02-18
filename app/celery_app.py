@@ -19,4 +19,12 @@ celery_app.conf.update(
     result_expires=86400,
     worker_prefetch_multiplier=1,
     task_acks_late=True,
+    broker_connection_retry_on_startup=True, # Tenta conectar ao Redis ao iniciar
+    task_publish_retry=True,                 # Se o Redis oscilar no momento do .delay(), o Celery tenta reenviar
+    task_publish_retry_policy={
+        'max_retries': 3,
+        'interval_start': 0.2,
+        'interval_step': 0.2,
+        'interval_max': 1,
+    },
 )
