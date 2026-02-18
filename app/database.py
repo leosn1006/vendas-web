@@ -351,7 +351,7 @@ def get_ultimo_pedido_by_phone(contact_phone, produto_id):
         SELECT *
         FROM pedidos p
         WHERE p.contact_phone = %s
-        AND   p.produto       = %s
+        AND   p.produto_id    = %s
         ORDER BY p.data_pedido DESC
         LIMIT 1
     """
