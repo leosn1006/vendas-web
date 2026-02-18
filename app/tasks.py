@@ -23,13 +23,14 @@ def processar_webhook(self, body):
 @celery_app.task(name="tasks.enviar_introducao", bind=True, max_retries=3)
 def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
     try:
-        logger.info(f"[TASK-INTRODUCAO] ⏳ Aguardando {delay:.1f}s antes de responder...")
+        logger.info("[TASK-INTRODUCAO] 🎬 Iniciando fluxo de introdução...")
 
         #marcar mensagem como lida, para não ficar com aquela notificação de mensagem nova no WhatsApp do cliente
         message_id = mensagem_whatsapp['messages'][0]['id']
         marcar_como_lida(message_id)
         #enviar estatus de gravando audio, para simular que o atendente está gravando um áudio, e manter por alguns segundos (10s)
         delay = random.uniform(2.0, 5.0)
+        logger.info(f"[TASK-INTRODUCAO] ⏳ Aguardando {delay:.1f}s antes de enviar status...")
         time.sleep(delay)
         numero_destinatario = pedido.get("contact_phone")
         enviar_status_gravando_audio(numero_destinatario)
