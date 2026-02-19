@@ -114,13 +114,13 @@ def buscar_pedido_e_fluxo(dados):
                 #muito raro isso acontecer, mas pode ocorrer se o pedido for excluído ou atualizado por outro processo entre a consulta e a atualização. Nesse caso, o ideal seria criar um novo pedido sem associação, para não perder o cliente mesmo que o pedido não seja encontrado
                 # gera um peido para não perder o cliente, mesmo que o pedido não seja encontrado
                 logger.info(f"[ORQUESTRADOR] ℹ️ Incluindo pedido sem associação restrito: {nome} ({numero_remetente}) - mensagem sugerida: '{msg_enviado_cliente}'")
-                id_pedido = criar_pedido_sem_campanha(dados).get('id')
+                id_pedido = criar_pedido_sem_campanha(dados)
                 pedido = get_pedido(id_pedido)
                 return pedido, "enviar_introducao"
         else:
             # gera um peido para não perder o cliente, mesmo que o pedido não seja encontrado
             logger.info(f"[ORQUESTRADOR] ℹ️ Incluindo pedido sem associação: {nome} ({numero_remetente}) - mensagem sugerida: '{msg_enviado_cliente}'")
-            id_pedido = criar_pedido_sem_campanha(dados).get('id')
+            id_pedido = criar_pedido_sem_campanha(dados)
             pedido = get_pedido(id_pedido)
             return pedido, "enviar_introducao"
 
@@ -155,5 +155,5 @@ def criar_pedido_sem_campanha(dados):
             placement=None,
             video_id=None
         )
-    criar_pedido(pedido)
-    return pedido
+
+    return criar_pedido(pedido)
