@@ -23,6 +23,8 @@ def processar_webhook(self, body):
 @celery_app.task(name="tasks.enviar_introducao", bind=True, max_retries=3)
 def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
     try:
+        logger.info("=" * 50)
+        logger.info(f"[TASK-INTRODUCAO] 📦 Dados recebidos para introdução: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
         logger.info("[TASK-INTRODUCAO] 🎬 Iniciando fluxo de introdução...")
 
         #marcar mensagem como lida, para não ficar com aquela notificação de mensagem nova no WhatsApp do cliente
@@ -48,7 +50,9 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         enviar_audio(pedido, url_audio=url_audio_explicativo)
 
         logger.info("[TASK-INTRODUCAO] ✅ Mensagem processada com sucesso!")
+        logger.info("=" * 50)
 
     except Exception as exc:
-        logger.error(f"[TASK] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        logger.error(f"[TASK-INTRODUCAO] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        logger.info("=" * 50)
         raise self.retry(exc=exc, countdown=30)
