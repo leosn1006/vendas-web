@@ -295,7 +295,7 @@ def atualizar_estado_pedido(pedido_id, novo_estado_id):
     Returns:
         int: ID do pedido
     """
-    query = "UPDATE pedidos SET estado_pedido = %s WHERE id = %s"
+    query = "UPDATE pedidos SET estado_id = %s WHERE id = %s"
     db.execute_query(query, (novo_estado_id, pedido_id))
     return pedido_id
 
