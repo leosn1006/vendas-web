@@ -12,18 +12,22 @@ logger = logging.getLogger(__name__)
 @celery_app.task(name="tasks.processar_webhook", bind=True, max_retries=0)
 def processar_webhook(self, body):
     try:
+        logger.info("=" * 120)
         logger.info(f"[TASK-WEBHOOK] 📦 Dados recebidos para processamento da mensagem webhook:  {body}")
         recebe_webhook(body)
         logger.info("[TASK-WEBHOOK] ✅ Mensagem processada com sucesso!")
+        logger.info("=" * 120)
 
     except Exception as exc:
         logger.error(f"[TASK] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        logger.info("=" * 120)
         raise self.retry(exc=exc, countdown=30)
+
 
 @celery_app.task(name="tasks.enviar_introducao", bind=True, max_retries=0)
 def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
     try:
-        logger.info("=" * 100)
+        logger.info("=" * 120)
         logger.info(f"[TASK-INTRODUCAO] 📦 Dados recebidos para introdução: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
         logger.info("[TASK-INTRODUCAO] 🎬 Iniciando fluxo de introdução...")
         #grava mensagem recebida
@@ -63,9 +67,9 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         logger.info("[TASK-INTRODUCAO] ✅ atualizando estado do pedido como 'introducao_enviada' (2) no banco de dados...")
         atualizar_estado_pedido(pedido['id'], 2)
         logger.info("[TASK-INTRODUCAO] ✅ Mensagem processada com sucesso!")
-        logger.info("=" * 100)
+        logger.info("=" * 120)
 
     except Exception as exc:
         logger.error(f"[TASK-INTRODUCAO] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
-        logger.info("=" * 100)
+        logger.info("=" * 120)
         raise self.retry(exc=exc, countdown=30)
