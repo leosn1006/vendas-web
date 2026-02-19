@@ -126,7 +126,7 @@ def buscar_pedido_e_fluxo(dados):
 
 def criar_pedido_sem_campanha(dados):
 
-    timestamp_mysql
+    timestamp_mysql = None
     try: # Pega o momento atual
         agora = datetime.now()
         # Formata para o padrão MySQL

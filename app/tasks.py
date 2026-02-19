@@ -62,7 +62,7 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         url_audio_explicativo = "https://lneditor.com.br/static/audios/introducao-explicativa-paes.ogg"
         message_id = enviar_audio(pedido, url_audio=url_audio_explicativo)
         #grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
-        mensagem = url_audio_inicial
+        mensagem = url_audio_explicativo
         salvar_mensagem_pedido(message_id, pedido_id, mensagem, tipo_mensagem='enviada')
         logger.info("[TASK-INTRODUCAO] ✅ atualizando estado do pedido como 'introducao_enviada' (2) no banco de dados...")
         atualizar_estado_pedido(pedido['id'], 2)
