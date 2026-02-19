@@ -40,13 +40,15 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         #TODO depois pegar pro produto
         url_audio_inicial = "https://lneditor.com.br/static/audios/introducao-paes.ogg"
         delay = random.uniform(2.0, 5.0)
+        logger.info(f"[TASK-INTRODUCAO] ⏳ Aguardando {delay:.1f}s antes de enviar áudio inicial...")
+        time.sleep(delay)
         enviar_audio(pedido, url_audio=url_audio_inicial)
         #enviar estatus de gravando audio, para simular que o atendente está gravando um áudio, e manter por alguns segundos (10s
         enviar_status_gravando_audio(numero_destinatario)
         # Enviar áudio de introdução final
         delay = random.uniform(5.0, 8.0)
         time.sleep(delay)
-        url_audio_explicativo = "https://lneditor.com.br/static/audios/introducao-paes-explicativo.ogg"
+        url_audio_explicativo = "https://lneditor.com.br/static/audios/introducao-explicativa-paes.ogg"
         enviar_audio(pedido, url_audio=url_audio_explicativo)
 
         logger.info("[TASK-INTRODUCAO] ✅ Mensagem processada com sucesso!")

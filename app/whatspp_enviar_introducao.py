@@ -63,15 +63,17 @@ def enviar_status_gravando_audio(numero_destinatario: str):
         "to": numero_destinatario,
         "sender_action": "recording"
     }
-
+    logger.info(f"[AUDIO-STATUS] headers \n {headers}")
+    logger.info(f"[AUDIO-STATUS] dados \n {dados}")
     response = requests.post(url, headers=headers, json=dados)
+    logger.info(f"[AUDIO-STATUS] resposta \n {response.text}")
     response.raise_for_status()
     return response.json()
 
 def enviar_audio(pedido: Pedido, url_audio: str):
 
     if pedido is None:
-        raise ValueError("[AUDIO] Não é possível enviar mensagem sem um pedido associado.")
+        raise ValueError("[AUDIO-ENVIAR] Não é possível enviar mensagem sem um pedido associado.")
 
     try:
         # Envia uma mensagem de audio para o WhatsApp usando a API.
@@ -108,7 +110,7 @@ def enviar_audio(pedido: Pedido, url_audio: str):
         response = requests.post(url, headers=headers_reais, json=dados)
 
         response.raise_for_status()
-        logger.info("[AUDIO] ✅ Mensagem enviada com sucesso!")
+        logger.info("[AUDIO-ENVIAR] ✅ Mensagem enviada com sucesso!")
 
     except Exception as e:
-        raise ValueError(f"[AUDIO] ❌ Erro ao enviar audio: {response.text}")
+        raise ValueError(f"[AUDIO-ENVIAR] ❌ Erro ao enviar audio: {response.text}")
