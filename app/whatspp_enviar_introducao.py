@@ -71,13 +71,14 @@ def enviar_status_gravando_audio(numero_destinatario: str):
     return response.json()
 
 def enviar_audio(pedido: Pedido, url_audio: str):
+    id_message = None
 
     if pedido is None:
         raise ValueError("[AUDIO-ENVIAR] Não é possível enviar mensagem sem um pedido associado.")
 
     try:
         # Envia uma mensagem de audio para o WhatsApp usando a API.
-        phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '927793497092010')
+        phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '123456789012345678')  # Substitua pelo seu phone_number_id real
         url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
         token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
 
@@ -102,15 +103,19 @@ def enviar_audio(pedido: Pedido, url_audio: str):
             }
         }
 
-        print(f"[AUDIO] Enviando mensagem para {numero_remetente} com o seguinte payload:")
-        print(headers_reais)
-        print(dados)
+        logger.info(f"[AUDIO-ENVIAR] Enviando mensagem para {numero_remetente} com o seguinte payload:")
+        # logger.info(f"[AUDIO-ENVIAR] headers: {headers_reais}")
+        logger.info(f"[AUDIO-ENVIAR] dados: {dados}")
 
         # Executar chamada POST para enviar a mensagem
         response = requests.post(url, headers=headers_reais, json=dados)
 
+        if response.status_code == 200:
+            id_message = response.json().get('messages', [{}])[0].get('id')
+            logger.info(f"[AUDIO-ENVIAR] Mensagem enviada com sucesso! ID da mensagem: {id_message}")
+            return id_message
+
         response.raise_for_status()
-        logger.info("[AUDIO-ENVIAR] ✅ Mensagem enviada com sucesso!")
 
     except Exception as e:
-        raise ValueError(f"[AUDIO-ENVIAR] ❌ Erro ao enviar audio: {response.text}")
+        raise ValueError(f"[AUDIO-ENVIAR] ❌ Erro ao enviar audio: {response.json()}")
