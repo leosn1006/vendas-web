@@ -40,22 +40,23 @@ def extrair_dados_mensagem(mensagem_whatsapp):
 
 def recebe_webhook(mensagem_whatsapp):
     try:
-        logger.info(f"[ORQUESTRADOR] 📥 Recebendo webhook do WhatsApp: {mensagem_whatsapp}" )
+        logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 Recebendo webhook do WhatsApp: {mensagem_whatsapp}" )
         # Extrair dados da mensagem
         dados = extrair_dados_mensagem(mensagem_whatsapp)
-        logger.info(f"[ORQUESTRADOR] 📥 Dados extraídos da mensagem: {dados}" )
+        logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 Dados extraídos da mensagem: {dados}" )
+        if dados is None:
+            logger.info("[ORQUESTRADOR-WEBHOOK] ⚠️ Mensagem recebida, mas não é do tipo texto ou formato inválido.")
+            return "Mensagem recebida, mas não processada"
+
         pedido, fluxo = buscar_pedido_e_fluxo(dados)
-        logger.info(f"[ORQUESTRADOR] 📥 Pedido e fluxo determinados: {pedido}, {fluxo}" )
+        logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 Pedido e fluxo determinados: {pedido}, {fluxo}" )
 
         tempo_espera = random.uniform(20, 40)
-        logger.info(f"[ORQUESTRADOR] ⏳ Aguardando {tempo_espera:.1f}s antes de enviar para o fluxo...")
+        logger.info(f"[ORQUESTRADOR-WEBHOOK] ⏳ Aguardando {tempo_espera:.1f}s antes de enviar para o fluxo...")
         if fluxo == 'enviar_introducao':
-            logger.info(f"[ORQUESTRADOR] 📥 mandando para o fluxo de introdução: {mensagem_whatsapp}" )
-
+            logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de introdução: {mensagem_whatsapp}" )
             from tasks import fluxo_enviar_introducao
             fluxo_enviar_introducao.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
-
-
 
         # Enviar resposta automática
         # resposta = responder_cliente(msg_enviado_cliente)
@@ -63,7 +64,7 @@ def recebe_webhook(mensagem_whatsapp):
 
         return "Mensagem processada com sucesso!"
     except Exception as e:
-        logger.error(f"[ORQUESTRADOR] ❌ Erro ao processar webhook: {e}")
+        logger.error(f"[ORQUESTRADOR-WEBHOOK] ❌ Erro ao processar webhook: {e}")
         import traceback
         traceback.print_exc()
         raise e

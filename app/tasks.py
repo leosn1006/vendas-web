@@ -8,19 +8,19 @@ from database import atualizar_estado_pedido, salvar_mensagem_pedido
 
 logger = logging.getLogger(__name__)
 
-@celery_app.task(name="tasks.processar_webhook", bind=True, max_retries=3)
+#TODO rever max_retries e countdown, para não ficar tentando para sempre em caso de erro persistente, e para não demorar muito para tentar novamente em caso de erro temporário
+@celery_app.task(name="tasks.processar_webhook", bind=True, max_retries=0)
 def processar_webhook(self, body):
     try:
-        delay = random.uniform(3.0, 8.0)
-        logger.info(f"[TASK] ⏳ Aguardando {delay:.1f}s antes de responder...")
+        logger.info(f"[TASK-WEBHOOK] 📦 Dados recebidos para processamento da mensagem webhook:  {body}")
         recebe_webhook(body)
-        logger.info("[TASK] ✅ Mensagem processada com sucesso!")
+        logger.info("[TASK-WEBHOOK] ✅ Mensagem processada com sucesso!")
 
     except Exception as exc:
         logger.error(f"[TASK] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
         raise self.retry(exc=exc, countdown=30)
 
-@celery_app.task(name="tasks.enviar_introducao", bind=True, max_retries=3)
+@celery_app.task(name="tasks.enviar_introducao", bind=True, max_retries=0)
 def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
     try:
         logger.info("=" * 100)
