@@ -74,15 +74,17 @@ CREATE INDEX idx_pedidos_phone ON pedidos(contact_phone);
 
 -- Tabela de mensagens dos pedidos
 CREATE TABLE IF NOT EXISTS mensagens_pedidos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
     pedido_id INT NOT NULL,
-    sequencial_mensagem INT AUTO_INCREMENT,
-    id VARCHAR(100) NOT NULL,
+    sequencial_mensagem INT NOT NULL,
+    message_id VARCHAR(100) NOT NULL,
     data_mensagem TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     mensagem_json TEXT NOT NULL,
     tipo_mensagem ENUM('recebida', 'enviada') DEFAULT 'recebida',
-    PRIMARY KEY (pedido_id, sequencial_mensagem),
+    UNIQUE KEY uk_pedido_sequencial (pedido_id, sequencial_mensagem),
     FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Índice na tabela mensagens_pedidos
+-- Índices na tabela mensagens_pedidos
 CREATE INDEX idx_mensagens_pedido ON mensagens_pedidos(pedido_id, data_mensagem);
+CREATE INDEX idx_mensagens_message_id ON mensagens_pedidos(message_id);

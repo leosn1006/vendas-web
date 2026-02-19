@@ -305,7 +305,7 @@ def salvar_mensagem_pedido(mensagem_id, pedido_id, mensagem_json, tipo_mensagem=
     Salva uma mensagem relacionada a um pedido.
 
     Args:
-        mensagem_id: ID da mensagem
+        mensagem_id: ID da mensagem do WhatsApp
         pedido_id: ID do pedido
         mensagem_json: JSON da mensagem
         tipo_mensagem: Tipo da mensagem (recebida ou enviada)
@@ -313,11 +313,20 @@ def salvar_mensagem_pedido(mensagem_id, pedido_id, mensagem_json, tipo_mensagem=
     Returns:
         str: ID da mensagem
     """
-    query = """
-        INSERT INTO mensagens_pedidos (id, pedido_id, mensagem_json, tipo_mensagem)
-        VALUES (%s, %s, %s, %s)
+    # Buscar o próximo sequencial para este pedido
+    query_seq = """
+        SELECT COALESCE(MAX(sequencial_mensagem), 0) + 1 as proximo_sequencial
+        FROM mensagens_pedidos
+        WHERE pedido_id = %s
     """
-    db.execute_query(query, (mensagem_id, pedido_id, mensagem_json, tipo_mensagem))
+    result = db.execute_query(query_seq, (pedido_id,), fetch_one=True)
+    sequencial = result['proximo_sequencial'] if result else 1
+
+    query = """
+        INSERT INTO mensagens_pedidos (message_id, pedido_id, sequencial_mensagem, mensagem_json, tipo_mensagem)
+        VALUES (%s, %s, %s, %s, %s)
+    """
+    db.execute_query(query, (mensagem_id, pedido_id, sequencial, mensagem_json, tipo_mensagem))
     return mensagem_id
 
 def get_pedido(id_pedido):
