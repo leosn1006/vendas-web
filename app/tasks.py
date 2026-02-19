@@ -31,11 +31,11 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         message_id = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['id']
         marcar_como_lida(message_id)
         #enviar estatus de gravando audio, para simular que o atendente está gravando um áudio, e manter por alguns segundos (10s)
-        delay = random.uniform(2.0, 5.0)
-        logger.info(f"[TASK-INTRODUCAO] ⏳ Aguardando {delay:.1f}s antes de enviar status...")
-        time.sleep(delay)
-        numero_destinatario = pedido.get("contact_phone")
-        enviar_status_gravando_audio(numero_destinatario)
+        #delay = random.uniform(2.0, 5.0)
+        #logger.info(f"[TASK-INTRODUCAO] ⏳ Aguardando {delay:.1f}s antes de enviar status...")
+        #time.sleep(delay)
+        #numero_destinatario = pedido.get("contact_phone")
+        #enviar_status_gravando_audio(numero_destinatario)
         # Enviar áudio de introdução inicial
         #TODO depois pegar pro produto
         url_audio_inicial = "https://lneditor.com.br/static/audios/introducao-paes.ogg"
@@ -44,7 +44,7 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         time.sleep(delay)
         enviar_audio(pedido, url_audio=url_audio_inicial)
         #enviar estatus de gravando audio, para simular que o atendente está gravando um áudio, e manter por alguns segundos (10s
-        enviar_status_gravando_audio(numero_destinatario)
+        #enviar_status_gravando_audio(numero_destinatario)
         # Enviar áudio de introdução final
         delay = random.uniform(5.0, 8.0)
         time.sleep(delay)
