@@ -141,7 +141,7 @@ def criar_pedido_sem_campanha(dados):
             estado_id=1,  # Estado Iniciado
             gclid=None,
             data_ultima_atualizacao=None,
-            mensagem_sugerida=None,
+            mensagem_sugerida="Não conseguiu vincular GCLID",
             emoji_sugerida=None,
             phone_number_id=dados.get('phone_number_id'),
             contact_phone=dados.get('numero_remetente'),
