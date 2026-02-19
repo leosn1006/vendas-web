@@ -28,7 +28,7 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         logger.info("[TASK-INTRODUCAO] 🎬 Iniciando fluxo de introdução...")
 
         #marcar mensagem como lida, para não ficar com aquela notificação de mensagem nova no WhatsApp do cliente
-        message_id = mensagem_whatsapp['messages'][0]['id']
+        message_id = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['id']
         marcar_como_lida(message_id)
         #enviar estatus de gravando audio, para simular que o atendente está gravando um áudio, e manter por alguns segundos (10s)
         delay = random.uniform(2.0, 5.0)
