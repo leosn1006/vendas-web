@@ -47,36 +47,46 @@ def recebe_webhook(mensagem_whatsapp):
             logger.info("[ORQUESTRADOR-WEBHOOK] ⚠️ Mensagem recebida, mas não é do tipo texto ou formato inválido.")
             return "Mensagem recebida, mas não processada"
 
-        pedido, fluxo = buscar_pedido_e_fluxo(dados)
-        logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 Pedido e fluxo determinados: {pedido}, {fluxo}" )
+        pedido = buscar_pedido(dados)
 
+        logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 Enfileira da fila correta: {pedido}" )
+        # enfileira na fila conrreta de acordo com o estado do pedido.
         tempo_espera = random.uniform(20, 40)
-        logger.info(f"[ORQUESTRADOR-WEBHOOK] ⏳ Aguardando {tempo_espera:.1f}s antes de enviar para o fluxo...")
-        if fluxo == 'enviar_introducao':
-            logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de introdução: {mensagem_whatsapp}" )
-            from tasks import fluxo_enviar_introducao
-            fluxo_enviar_introducao.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
-        elif fluxo == 'enviar_produto':
-            logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de enviar pedido: {mensagem_whatsapp}" )
-            from tasks import fluxo_enviar_pedido
-            fluxo_enviar_pedido.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
-
-        # Enviar resposta automática
-        # resposta = responder_cliente(msg_enviado_cliente)
-        # enviar_mensagem_texto(mensagem_whatsapp, resposta)
+        match pedido.get('estado_id'):
+            case 1: # Cliente acessou a página de vendas e clicou para enviar mensagem ou veio direto pelo whatsapp sem passar pela página de vendas, ou seja, estado inicial do pedido'
+                logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de introdução: {mensagem_whatsapp}" )
+                from tasks import fluxo_enviar_introducao
+                fluxo_enviar_introducao.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+            case 2: # cliente respondendo a introdução, se quer ou não receber o produto
+                logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de enviar pedido: {mensagem_whatsapp}" )
+                from tasks import fluxo_enviar_pedido
+                fluxo_enviar_pedido.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+            case 3 | 4:  # Respondido introdução com interesse e #Respondido introdução sem interesse
+                if mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'text':
+                    logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de responder cliente: {mensagem_whatsapp}" )
+                    #from tasks import fluxo_responder_cliente
+                    # fluxo_responder_cliente.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                elif mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'document':
+                    logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de responder cliente com documento: {mensagem_whatsapp}" )
+                    #from tasks import fluxo_responder_cliente_com_documento
+                    #fluxo_conferir_comprovante.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+            case _:
+                #TODO pensar nisso depois
+                logger.info(f"[ORQUESTRADOR-WEBHOOK] ⚠️ fluxo não previsto para a mensagem: Estado do pedido: {pedido.get('estado_id')}" )
 
         return "Mensagem processada com sucesso!"
+
     except Exception as e:
         logger.error(f"[ORQUESTRADOR-WEBHOOK] ❌ Erro ao processar webhook: {e}")
         import traceback
         traceback.print_exc()
         raise e
 
-def buscar_pedido_e_fluxo(dados):
+def buscar_pedido(dados):
     pedido = None
-    fluxo = None
+
     if dados is None:
-        logger.info("[ORQUESTRADOR] ❌ Mensagem recebida, mas não é do tipo texto ou formato inválido.")
+        logger.info("[ORQUESTRADOR]  Mensagem recebida, mas não é do tipo texto ou formato inválido.")
         return "Mensagem recebida, mas não processada"
 
     numero_remetente = dados['numero_remetente']
@@ -90,19 +100,8 @@ def buscar_pedido_e_fluxo(dados):
     # Verificar se já existe pedido para este telefone
     pedido = get_ultimo_pedido_by_phone(numero_remetente, dados.get('produto'))
     if pedido is not None:
-
         logger.info(f"[ORQUESTRADOR] 👤 Cliente existente: {nome} (Pedido #{pedido['id']})")
-        match dados.get('estado_id'):
-            case 1: # Cliente acessou a página de vendas e clicou para enviar mensagem'
-                fluxo = 'enviar_introducao'
-            case 2: # Enviado mensagem de introdução
-                fluxo = 'enviar_produto'
-            case 3 | 4:  # Respondido introdução com interesse e #Respondido introdução sem interesse
-                fluxo = 'agradecimento'
-            case _:
-                #TODO pensar nisso depois
-                fluxo = 'enviar_introducao' # Fluxo padrão para estados desconhecidos
-        return pedido, fluxo
+        return pedido
     else:
         logger.info(f"[ORQUESTRADOR] 🆕 Novo cliente: {nome}")
         # Verifica se tem um pedido cadastrado com essa mensagem sugerida (última 1 hora)
@@ -112,20 +111,20 @@ def buscar_pedido_e_fluxo(dados):
             pedido = vincula_pedido_com_contato(pedido['id'], numero_remetente, nome, phone_number_id)
             if pedido is not None:
                 logger.info(f"[ORQUESTRADOR] ✅ Pedido #{pedido.get('id')} atualizado com o contato {nome} ({numero_remetente})")
-                return pedido, "enviar_introducao"
+                return pedido
             else:
-                #muito raro isso acontecer, mas pode ocorrer se o pedido for excluído ou atualizado por outro processo entre a consulta e a atualização. Nesse caso, o ideal seria criar um novo pedido sem associação, para não perder o cliente mesmo que o pedido não seja encontrado
+                # muito raro isso acontecer, mas pode ocorrer se o pedido for excluído ou atualizado por outro processo entre a consulta e a atualização. Nesse caso, o ideal seria criar um novo pedido sem associação, para não perder o cliente mesmo que o pedido não seja encontrado
                 # gera um peido para não perder o cliente, mesmo que o pedido não seja encontrado
                 logger.info(f"[ORQUESTRADOR] ℹ️ Incluindo pedido sem associação restrito: {nome} ({numero_remetente}) - mensagem sugerida: '{msg_enviado_cliente}'")
                 id_pedido = criar_pedido_sem_campanha(dados)
                 pedido = get_pedido(id_pedido)
-                return pedido, "enviar_introducao"
+                return pedido
         else:
             # gera um peido para não perder o cliente, mesmo que o pedido não seja encontrado
             logger.info(f"[ORQUESTRADOR] ℹ️ Incluindo pedido sem associação: {nome} ({numero_remetente}) - mensagem sugerida: '{msg_enviado_cliente}'")
             id_pedido = criar_pedido_sem_campanha(dados)
             pedido = get_pedido(id_pedido)
-            return pedido, "enviar_introducao"
+            return pedido
 
 def criar_pedido_sem_campanha(dados):
 
