@@ -149,7 +149,7 @@ def fluxo_enviar_pedido(self, pedido, mensagem_whatsapp):
         if interesse_positivo_limpo == 'sim':
             # =======================================================================================
             logger.info(f"[TASK-PEDIDO] 🤖 Enviando mensagem de pedido entregue")
-            url_audio_pedido_entregue = "https://lneditor.com.br/static/audios/paes-pedido-entergue.ogg"
+            url_audio_pedido_entregue = "https://lneditor.com.br/static/audios/paes-pedido-entregue.ogg"
             delay = random.uniform(2.0, 5.0)
             logger.info(f"[TASK-PEDIDO] ⏳ Aguardando {delay:.1f}s antes de enviar áudio inicial...")
             time.sleep(delay)
@@ -166,15 +166,18 @@ def fluxo_enviar_pedido(self, pedido, mensagem_whatsapp):
             salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
         # ============================================================================================
         # enviar dados do Pix para contribuição
+        delay = random.uniform(5, 9)
+        logger.info(f"[TASK-PEDIDO] ⏳ Aguardando {delay:.1f}s antes de enviar mensagem de dados do Pix para contribuição...")
+        time.sleep(delay)
         logger.info(f"[TASK-PEDIDO] 🤖 Enviando mensagem de dados do Pix para o cliente...")
         msg_contribuicao = """
-                *Informações do PIX*:
+            *Informações do PIX*:
 
-            - 💸 *Valor*: R$10, 12, 15, 20
-            - 📱 *Chave Pix* (e-mail): admin@lneditor.com.br
-            - 👤 *Nome*: Leonardo Santos Negreiros
+        - 💸 *Valor*: R$10, 12, 15, 20
+        - 📱 *Chave Pix* (e-mail): admin@lneditor.com.br
+        - 👤 *Nome*: Leonardo Santos Negreiros
 
-            Para facilitar, vou te enviar a chave Pix separada, assim é só copiar e colar:
+        Para facilitar, vou te enviar a chave Pix separada, assim é só copiar e colar:
         """
         message_id_resposta = enviar_mensagem(pedido, msg_contribuicao  )
         # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
