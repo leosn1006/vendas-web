@@ -105,14 +105,19 @@ def fluxo_enviar_pedido(self, pedido, mensagem_whatsapp):
         Pela mensagem dele, o cliente está demonstrando interesse no produto? Responda apenas com 'sim' ou 'não'.
             """
         interesse_positivo = responder_cliente(pergunta)
-        logger.info(f"[TASK-PEDIDO] 🤖 Feedback do modelo sobre interesse do cliente: {interesse_positivo}")
+        # Limpar resposta do modelo (remover pontuação e espaços)
+        interesse_positivo_limpo = interesse_positivo.strip().rstrip('.!?').lower()
+        logger.info(f"[TASK-PEDIDO] 🤖 Feedback do modelo sobre interesse do cliente: {interesse_positivo} (limpo: {interesse_positivo_limpo})")
         # ============================================================================================
         # envia digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
         logger.info(f"[TASK-PEDIDO] 🤖 Enviando status de digitando para o cliente...")
         enviar_mensagem_digitando(message_id)
         # ============================================================================================
         # envia mensagem do produto
-        if interesse_positivo.lower() == 'sim':
+        delay   = random.uniform(5.0, 9.0)
+        logger.info(f"[TASK-PEDIDO] ⏳ Aguardando {delay:.1f}s antes de enviar mensagem do produto...")
+        time.sleep(delay)
+        if interesse_positivo_limpo == 'sim':
             # ========================================================================================
             logger.info(f"[TASK-PEDIDO] 🤖 Enviando mensagem do produto para o cliente...")
             msg_pedido_inicial = "Suas receitinhas estão aqui, é só clicar abaixo ⬇"

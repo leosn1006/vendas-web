@@ -404,7 +404,7 @@ def vincula_pedido_com_contato(id_pedido, contact_phone, contact_name, phone_num
         SET contact_phone   = %s,
             contact_name    = %s,
             phone_number_id = %s,
-            estado_id       = 2, -- Estado Contatado
+            estado_id       = 1,
             data_pedido     = CURRENT_TIMESTAMP
         WHERE id = %s and estado_id = 1 -- só vincula se estiver no estado Iniciado
     """
