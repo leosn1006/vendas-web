@@ -47,7 +47,7 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         # ============================================================================================
         # Enviar áudio de introdução inicial, depois de um tempo de espera aleatório para simular o tempo que o atendente levaria para ler a mensagem e preparar a resposta. O áudio pode ser personalizado com base no produto ou campanha, ou pode ser um áudio genérico de boas-vindas e introdução.
         #TODO depois pegar pro produto
-        delay = random.uniform(2.0, 5.0)
+        delay = random.uniform(10, 15)
         logger.info(f"[TASK-INTRODUCAO] ⏳ Aguardando {delay:.1f}s antes de enviar áudio inicial...")
         time.sleep(delay)
         url_audio_inicial = "https://lneditor.com.br/static/audios/introducao-paes.ogg"
@@ -60,6 +60,7 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         #enviar_status_gravando_audio(numero_destinatario)
         # Enviar áudio de introdução final
         delay = random.uniform(5.0, 8.0)
+        logger.info(f"[TASK-INTRODUCAO] ⏳ Aguardando {delay:.1f}s antes de enviar áudio explicativo...")
         time.sleep(delay)
         url_audio_explicativo = "https://lneditor.com.br/static/audios/introducao-explicativa-paes.ogg"
         message_id = enviar_audio(pedido, url_audio=url_audio_explicativo)
@@ -114,7 +115,7 @@ def fluxo_enviar_pedido(self, pedido, mensagem_whatsapp):
         enviar_mensagem_digitando(message_id)
         # ============================================================================================
         # envia mensagem do produto
-        delay   = random.uniform(5.0, 9.0)
+        delay   = random.uniform(9.0, 12.0)
         logger.info(f"[TASK-PEDIDO] ⏳ Aguardando {delay:.1f}s antes de enviar mensagem do produto...")
         time.sleep(delay)
         if interesse_positivo_limpo == 'sim':
@@ -141,8 +142,11 @@ def fluxo_enviar_pedido(self, pedido, mensagem_whatsapp):
         # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
         mensagem = url_documento
         salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
+        delay = random.uniform(10, 15)
+        logger.info(f"[TASK-INTRODUCAO] ⏳ Aguardando {delay:.1f}s antes de enviar áudio inicial...")
+        time.sleep(delay)
 
-        if interesse_positivo.lower() == 'sim':
+        if interesse_positivo_limpo == 'sim':
             # =======================================================================================
             logger.info(f"[TASK-PEDIDO] 🤖 Enviando mensagem de pedido entregue")
             url_audio_pedido_entregue = "https://lneditor.com.br/static/audios/paes-pedido-entergue.ogg"
