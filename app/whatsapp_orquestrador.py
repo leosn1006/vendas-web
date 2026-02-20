@@ -1,7 +1,6 @@
 import logging
 import random
 from datetime import datetime
-from whatspp_enviar_mensagem import enviar_mensagem_texto
 from database import get_ultimo_pedido_by_phone, get_ultimo_pedido_por_mensagem_sugerida, vincula_pedido_com_contato, Pedido, criar_pedido, get_pedido
 from agente_vendas_sem_gluten import responder_cliente
 from config import CAMPANHA_WHATSAPP
@@ -57,6 +56,10 @@ def recebe_webhook(mensagem_whatsapp):
             logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de introdução: {mensagem_whatsapp}" )
             from tasks import fluxo_enviar_introducao
             fluxo_enviar_introducao.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+        elif fluxo == 'enviar_produto':
+            logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de enviar pedido: {mensagem_whatsapp}" )
+            from tasks import fluxo_enviar_pedido
+            fluxo_enviar_pedido.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
 
         # Enviar resposta automática
         # resposta = responder_cliente(msg_enviado_cliente)

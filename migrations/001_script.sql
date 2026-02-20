@@ -32,13 +32,9 @@ CREATE TABLE IF NOT EXISTS estado_pedidos (
 INSERT IGNORE INTO estado_pedidos (id, descricao) VALUES
 (1, 'Cliente acessou a página de vendas e clicou para enviar mensagem'),
 (2, 'Enviado mensagem de introdução'),
-(3, 'Respondido introdução com interesse'),
-(4, 'Respondido introdução sem interesse'),
+(3, 'Produto enviado'),
+(4, 'Surpresa enviada'),
 (5, 'Produto enviado'),
-(6, 'Enviado produto'),
-(7, 'Enviado mensagem de contribuição'),
-(8, 'Respondido com comprovante de pagamento'),
-(9, 'Conferido comprovante de pagamento'),
 (0, 'Pago');
 
 -- Tabela de pedidos
