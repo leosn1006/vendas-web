@@ -354,6 +354,31 @@ curl -X GET "http://localhost/api/v1/webhook-whatsapp?hub.mode=subscribe&hub.ver
 docker compose logs app | grep "Hub-Signature"
 ```
 
+### Nginx não funciona após build (precisa de restart)
+
+**Problema resolvido!** ✅ A partir de agora o nginx aguarda o app estar saudável antes de iniciar.
+
+**Como funcionava antes:**
+- Nginx tentava resolver `app:8000` antes do app estar pronto
+- Cacheia a falha de DNS
+- Precisava de `docker compose restart nginx` para forçar nova resolução
+
+**Solução implementada:**
+- Health check no serviço `app` (rota `/health`)
+- Nginx usa `depends_on` com `condition: service_healthy`
+- Aguarda 30 segundos para app inicializar (`start_period`)
+
+```bash
+# Verificar status dos serviços
+docker compose ps
+
+# Ver se health checks estão OK
+docker compose ps | grep -E "(healthy|unhealthy)"
+
+# Testar health check manualmente
+curl http://localhost/health
+```
+
 ---
 
 ## 🔐 Segurança
@@ -404,4 +429,4 @@ Para contribuir com este projeto:
 
 ---
 
-**Última Atualização:** 15/02/2026
+**Última Atualização:** 19/02/2026

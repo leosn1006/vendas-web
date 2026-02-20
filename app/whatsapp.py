@@ -217,7 +217,9 @@ def enviar_documento(pedido: Pedido, url_documento: str):
             "to": numero_remetente,
             "type": "document",
             "document": {
-                "link": url_documento
+                "link": url_documento,
+                "filename": "RECEITAS LIBERADAS! ❤️ - Toque AQUI.pdf",  # nome que aparece para o cliente
+                "caption": "Seu e-book está aqui! 📘"
               }
             }
 

@@ -131,7 +131,7 @@ def fluxo_enviar_pedido(self, pedido, mensagem_whatsapp):
         # ============================================================================================
         #envia pdf do produto
         logger.info(f"[TASK-PEDIDO] 🤖 Enviando documento do produto para o cliente...")
-        url_documento = "https://lneditor.com.br/static/arquivos/RECEITAS LIBERADAS! ❤️ - Toque AQUI.pdf"
+        url_documento = "https://lneditor.com.br/static/arquivos/paes-sem-gluten.pdf"
         message_id_resposta = enviar_documento(pedido, url_documento=url_documento)
         # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
         mensagem = url_documento

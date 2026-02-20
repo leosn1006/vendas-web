@@ -68,6 +68,12 @@ services:
       - REDIS_URL=redis://redis:6379/0
     networks:
       - webnet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   worker:
     build: .
@@ -116,7 +122,8 @@ services:
     image: nginx:1.27-alpine
     container_name: vendas-web-nginx
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     ports:
       - "80:80"
       - "443:443"

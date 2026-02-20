@@ -27,6 +27,12 @@ def favicon():
     """Retorna 204 No Content para evitar erro 404 nos logs."""
     return '', 204
 
+# Rota de health check para Docker
+@app.get("/health")
+def health():
+    """Endpoint de health check para verificar se a aplicação está rodando."""
+    return jsonify({'status': 'healthy', 'service': 'vendas-web'}), 200
+
 # Rota GET para verificação inicial do webhook (WhatsApp envia challenge)
 @app.get("/api/v1/webhook-whatsapp")
 def webhook_verify():
