@@ -217,7 +217,7 @@ def criar_pedido(pedido: Pedido):
     device = pedido.get('device')
     placement = pedido.get('placement')
     video_id = pedido.get('video_id')
-    path_comprovante = pedido.get('path_comprovante'), None
+    path_comprovante = pedido.get('path_comprovante') or ""
 
     query = """
         INSERT INTO pedidos (
