@@ -12,9 +12,9 @@ EXTENSOES_PERMITIDAS = {'.pdf', '.jpg', '.jpeg', '.png'}
 MIMES_PERMITIDOS = {'application/pdf', 'image/jpeg', 'image/png'}
 TAMANHO_MAX_MB = 10
 
-def upload_comprovante_whatsapp(tipo_midia, url, mime_type, filename, pedido_id ):
+def salvar_mensagem_pedido(tipo_midia, url, mime_type, filename, pedido_id ):
     """
-    dados_whatsapp: dicionário contendo a chave 'document' ou 'image'
+    Dados_whatsapp: dicionário contendo a chave 'document' ou 'image'
     pedido_id: ID do pedido no seu sistema
     access_token: Seu Token do WhatsApp Business API
     """
