@@ -217,6 +217,7 @@ def criar_pedido(pedido: Pedido):
     device = pedido.get('device')
     placement = pedido.get('placement')
     video_id = pedido.get('video_id')
+    path_comprovante = pedido.get('path_comprovante'), None
 
     query = """
         INSERT INTO pedidos (
@@ -239,6 +240,7 @@ def criar_pedido(pedido: Pedido):
            , device
            , placement
            , video_id
+           , path_comprovante
             )
         VALUES (
              %s
@@ -280,6 +282,7 @@ def criar_pedido(pedido: Pedido):
            , device
            , placement
            , video_id
+           , path_comprovante
         ))
     return pedido_id
 
@@ -415,3 +418,35 @@ def vincula_pedido_com_contato(id_pedido, contact_phone, contact_name, phone_num
         # devolve pedido atualizado
         pedido = get_pedido(id_pedido)
         return pedido
+
+#atualizar pedido com caminho do comprovante
+def atualizar_pedido_com_comprovante(pedido_id, path_comprovante):
+    """
+    Atualiza um pedido com o caminho do comprovante.
+
+    Args:
+        pedido_id: ID do pedido
+        path_comprovante: Caminho do comprovante
+
+    Returns:
+        int: ID do pedido
+    """
+    query = "UPDATE pedidos SET path_comprovante = %s WHERE id = %s"
+    db.execute_query(query, (path_comprovante, pedido_id))
+    return pedido_id
+
+# atualizar pedido com o valor pago e estado de pago
+def atualizar_pedido_com_pagamento(pedido_id, valor_pago):
+    """
+    Atualiza um pedido com o valor pago e estado de pago.
+
+    Args:
+        pedido_id: ID do pedido
+        valor_pago: Valor pago
+
+    Returns:
+        int: ID do pedido
+    """
+    query = "UPDATE pedidos SET valor_pago = %s, estado_id = 0 WHERE id = %s"
+    db.execute_query(query, (valor_pago, pedido_id))
+    return pedido_id

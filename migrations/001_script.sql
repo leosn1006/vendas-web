@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
     device VARCHAR(255),
     placement VARCHAR(255),
     video_id VARCHAR(255),
+    path_comprovante VARCHAR(120),
     FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE RESTRICT,
     FOREIGN KEY (estado_id) REFERENCES estado_pedidos(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

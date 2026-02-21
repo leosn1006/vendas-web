@@ -4,8 +4,10 @@ import time
 from celery_app import celery_app
 from whatsapp_orquestrador import recebe_webhook
 from whatsapp import enviar_audio, marcar_como_lida, enviar_mensagem, enviar_mensagem_digitando, enviar_documento
-from database import atualizar_estado_pedido, salvar_mensagem_pedido
+from whatsapp_upload import receber_comprovante
+from database import atualizar_estado_pedido, salvar_mensagem_pedido, atualizar_pedido_com_comprovante, atualizar_pedido_com_pagamento
 from agente_vendas_sem_gluten import responder_cliente
+from agente_valida_comprovante import validar_comprovante_com_ia
 
 logger = logging.getLogger(__name__)
 
@@ -234,7 +236,7 @@ def fluxo_responder_mensagem(self, pedido, mensagem_whatsapp):
         logger.info(f"[TASK-RESPONDER-MENSAGEM] 📥 Mensagem marcada como lida: {mensagem}")
         mensagem_cliente = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
         pergunta = f"""
-            Role: Você é a Luiza, uma vendedora atenciosa e cordial. Sua missão é dar continuidade ao atendimento de um cliente no WhatsApp que já recebeu um áudio explicativo, o e-book (PDF) e os dados para pagamento.
+            Role: Você é a Luiza, uma vendedora atenciosa e cordial. Sua missão é dar continuidade ao atendimento de um cliente no WhatsApp que já recebeu um áudio explicativo, o e-book (PDF), dados para pagamento e que ele receberá um e-book surpresa caso envie o comprovante de pagamento.
             Diretrizes de Resposta:
                 Se o cliente mostrar interesse em pagar ou pedir o Pix: Forneça a chave Pix admin@lneditor.com.br e reforce que o valor mínimo sugerido é de R$ 10,00, mas ele pode contribuir com mais se desejar.
                 Se o cliente enviar o comprovante (ou disser que pagou): Agradeça com entusiasmo e informe que está enviando o E-book Surpresa em instantes.
@@ -262,6 +264,86 @@ def fluxo_responder_mensagem(self, pedido, mensagem_whatsapp):
         mensagem = resposta_cliente
         salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
         # atualizar_estado_pedido(pedido['id'], 2)
+        # ============================================================================================
+        logger.info("[TASK-RESPONDER-MENSAGEM] ✅ Mensagem processada com sucesso!")
+        logger.info("=" * 120)
+
+    except Exception as exc:
+        logger.error(f"[TASK-RESPONDER-MENSAGEM] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        logger.info("=" * 120)
+        raise self.retry(exc=exc, countdown=30)
+
+
+@celery_app.task(name="tasks.conferir_comprovante", bind=True, max_retries=0)
+def fluxo_conferir_comprovante(self, pedido, mensagem_whatsapp):
+    try:
+        logger.info("=" * 120)
+        logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📦 Dados recebidos para responder mensagem: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
+        logger.info("[TASK-CONFERIR-COMPROVANTE] 🎬 Iniciando fluxo de conferir comprovante...")
+        # ============================================================================================
+        #grava mensagem recebida
+        pedido_id = pedido['id']
+        mensagem = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
+        message_id = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['id']
+        salvar_mensagem_pedido(message_id, pedido_id, mensagem, tipo_mensagem='recebida')
+        # ============================================================================================
+        #marcar mensagem como lida, para não ficar com aquela notificação de mensagem nova no WhatsApp do cliente
+        message_id = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['id']
+        marcar_como_lida(message_id)
+        # ============================================================================================
+        # recuperar comprovante e persistir
+        logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Recebendo comprovante enviado pelo cliente...")
+        tipo_midia = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type']
+        url = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['url']
+        mime_type = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['mime_type']
+        filename = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['filename'], None
+        path_comprovante = receber_comprovante(tipo_midia, url, mime_type, filename, pedido_id)
+        # ============================================================================================
+        # Salvar caminho do comprovante no banco de dados, associado ao pedido, para histórico e controle
+        logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Atualizando pedido com caminho do comprovante no banco de dados...")
+        atualizar_pedido_com_comprovante(pedido_id, path_comprovante)
+        # ============================================================================================
+        #salvar mensagem do comprovante recebido no banco de dados, associada ao pedido, para histórico e controle
+        mensagem = f"Comprovante recebido: {filename}"
+        salvar_mensagem_pedido(message_id, pedido_id, mensagem, tipo_mensagem='recebida')
+        # ============================================================================================
+        # validar comprovante com IA
+        logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Validando comprovante com IA...")
+        resultado_validacao = validar_comprovante_com_ia(path_comprovante)
+        logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Resultado da validação: {resultado_validacao}")
+        if resultado_validacao['valido'] == True and resultado_validacao['valor'] >= 10.0 and resultado_validacao['destinatario_correto'] == True:
+            # =======================================================================================
+            #salvar no banco de dados que o pedido foi pago, para controle e histórico
+            logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Atualizando pedido com pagamento no banco de dados...")
+            atualizar_pedido_com_pagamento(pedido_id, resultado_validacao['valor'])
+            # =======================================================================================
+            # enviar digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
+            logger.info(f"[TASK-CONFERIR-COMPROVANTE] 🤖 Enviando digitando para o cliente...")
+            enviar_mensagem_digitando(message_id)
+            # =======================================================================================
+            # enviar mensagem de confirmação de pagamento e entrega do e-book surpresa
+            delay = random.uniform(5.0, 8.0)
+            logger.info(f"[TASK-CONFERIR-COMPROVANTE] ⏳ Aguardando {delay:.1f}s antes de enviar mensagem de confirmação de pagamento para o cliente...")
+            time.sleep(delay)
+            logger.info(f"[TASK-CONFERIR-COMPROVANTE] 🤖 Enviando mensagem de confirmação de pagamento para o cliente...")
+            url_surpresa = "https://lneditor.com.br/static/audios/surpresa-pago.ogg"
+            enviar_documento(pedido, url_documento="https://lneditor.com.br/static/arquivos/ebook-surpresa.pdf")
+        else:
+            # enviar digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
+            logger.info(f"[TASK-CONFERIR-COMPROVANTE] 🤖 Enviando digitando para o cliente...")
+            enviar_mensagem_digitando(message_id)
+            # =======================================================================================
+            # enviar mensagem de comprovante inválido, e solicitar que envie um comprovante válido para receber o e-book surpresa
+            delay = random.uniform(5.0, 8.0)
+            logger.info(f"[TASK-CONFERIR-COMPROVANTE] ⏳ Aguardando {delay:.1f}s antes de enviar mensagem de comprovante inválido para o cliente...")
+            time.sleep(delay)
+            logger.info(f"[TASK-CONFERIR-COMPROVANTE] 🤖 Enviando mensagem de comprovante inválido para o cliente...")
+            msg_comprovante_invalido = "O comprovante enviado não é válido. Por favor, verifique se o pagamento foi realizado corretamente, se o valor é igual ou superior a R$10,00 e se a chave Pix é correta "
+            message_id_resposta = enviar_mensagem(pedido, msg_comprovante_invalido)
+            # ============================================================================================
+            # salva mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
+            mensagem = msg_comprovante_invalido
+            salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
         # ============================================================================================
         logger.info("[TASK-RESPONDER-MENSAGEM] ✅ Mensagem processada com sucesso!")
         logger.info("=" * 120)

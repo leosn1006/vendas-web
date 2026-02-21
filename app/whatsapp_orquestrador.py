@@ -19,8 +19,8 @@ def extrair_dados_mensagem(mensagem_whatsapp):
         contato = value['contacts'][0]
         metadata = value.get('metadata', {})
 
-        # Verificar se é mensagem de texto
-        if mensagem['type'] != 'text':
+        # Verificar se é mensagem de texto ou documento
+        if mensagem['type'] != 'text' and mensagem['type'] != 'document' and mensagem['type'] != 'image':
             return None
 
         produto = CAMPANHA_WHATSAPP.get(metadata.get('display_phone_number'), 1)
@@ -28,7 +28,8 @@ def extrair_dados_mensagem(mensagem_whatsapp):
             'numero_remetente': mensagem['from'],
             'id_conversa': mensagem['id'],
             'nome': contato['profile']['name'],
-            'texto': mensagem['text']['body'],
+            'texto': mensagem['text']['body'] if mensagem['type'] == 'text' else None,
+            'documento': mensagem['document']['url'] if mensagem['type'] == 'document' else None,
             'phone_number_id': metadata.get('phone_number_id'),
             'whatsapp_campanha': metadata.get('display_phone_number'),
             'produto': produto
@@ -66,10 +67,10 @@ def recebe_webhook(mensagem_whatsapp):
                     logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de responder cliente: {mensagem_whatsapp}" )
                     from tasks import fluxo_responder_mensagem
                     fluxo_responder_mensagem.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
-                elif mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'document':
-                    logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de responder cliente com documento: {mensagem_whatsapp}" )
-                    #from tasks import fluxo_responder_cliente_com_documento
-                    #fluxo_conferir_comprovante.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                elif (mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'document') or (mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'image'):
+                    logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de conferir comprovante: {mensagem_whatsapp}" )
+                    from tasks import fluxo_conferir_comprovante
+                    fluxo_conferir_comprovante.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
             case _:
                 #TODO pensar nisso depois
                 logger.info(f"[ORQUESTRADOR-WEBHOOK] ⚠️ fluxo não previsto para a mensagem: Estado do pedido: {pedido.get('estado_id')}" )
