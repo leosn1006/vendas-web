@@ -102,7 +102,7 @@ def fluxo_enviar_pedido(self, pedido, mensagem_whatsapp):
         #verifica se a mensagem é interessada ou não no produto
         logger.info(f"[TASK-PEDIDO] 📥 Mensagem marcada como lida: {mensagem}")
         mensagem_cliente = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
-        pergunta = f"""Você acabou de enviar no WhatsApp do cliente e ela te respondeu a mensagem '{mensagem_cliente}'
+        pergunta = f"""Você acabou de enviar no WhatsApp do cliente um audio com a descrição do produto e ela te respondeu a mensagem '{mensagem_cliente}'
         Pela mensagem dele, o cliente está demonstrando interesse no produto? Responda apenas com 'sim' ou 'não'.
             """
         interesse_positivo = responder_cliente(pergunta)
@@ -208,5 +208,65 @@ def fluxo_enviar_pedido(self, pedido, mensagem_whatsapp):
 
     except Exception as exc:
         logger.error(f"[TASK-PEDIDO] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        logger.info("=" * 120)
+        raise self.retry(exc=exc, countdown=30)
+
+@celery_app.task(name="tasks.responder_mensagem", bind=True, max_retries=0)
+def fluxo_responder_mensagem(self, pedido, mensagem_whatsapp):
+    try:
+        logger.info("=" * 120)
+        logger.info(f"[TASK-RESPONDER-MENSAGEM] 📦 Dados recebidos para responder mensagem: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
+        logger.info("[TASK-RESPONDER-MENSAGEM] 🎬 Iniciando fluxo de responder mensagem...")
+        # ============================================================================================
+        #grava mensagem recebida
+        pedido_id = pedido['id']
+        mensagem = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
+        message_id = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['id']
+        salvar_mensagem_pedido(message_id, pedido_id, mensagem, tipo_mensagem='recebida')
+        # ============================================================================================
+        #marcar mensagem como lida, para não ficar com aquela notificação de mensagem nova no WhatsApp do cliente
+        message_id = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['id']
+        marcar_como_lida(message_id)
+        # ============================================================================================
+        # responder mensagem do cliente
+        #verifica se a mensagem é interessada ou não no produto
+        # TODO busca chave Pix pelo produto, para não ficar hardcodado
+        logger.info(f"[TASK-RESPONDER-MENSAGEM] 📥 Mensagem marcada como lida: {mensagem}")
+        mensagem_cliente = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
+        pergunta = f"""
+            Role: Você é a Luiza, uma vendedora atenciosa e cordial. Sua missão é dar continuidade ao atendimento de um cliente no WhatsApp que já recebeu um áudio explicativo, o e-book (PDF) e os dados para pagamento.
+            Diretrizes de Resposta:
+                Se o cliente mostrar interesse em pagar ou pedir o Pix: Forneça a chave Pix admin@lneditor.com.br e reforce que o valor mínimo sugerido é de R$ 10,00, mas ele pode contribuir com mais se desejar.
+                Se o cliente enviar o comprovante (ou disser que pagou): Agradeça com entusiasmo e informe que está enviando o E-book Surpresa em instantes.
+                Se o cliente pedir reembolso: Responda educadamente que a solicitação será analisada e que a equipe de suporte entrará em contato diretamente com ele em breve.
+                Sobre o E-book: Se ele tiver dúvidas de como acessar, lembre-o que o arquivo PDF já está na conversa e basta clicar para abrir.
+
+            Restrições:
+                Responda de forma sucinta (formato WhatsApp).
+                Use emojis moderadamente para ser amigável.
+                Não adicione explicações extras para mim, responda apenas com a fala da Luiza.
+
+            Pergunta do cliente: '{mensagem_cliente}'
+            """
+        resposta_cliente = responder_cliente(pergunta)
+        # Limpar resposta do modelo (remover pontuação e espaços)
+        logger.info(f"[TASK-RESPONDER-MENSAGEM] 🤖 Resposta do modelo sobre a pergunta: {resposta_cliente} ")
+        # envia digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
+        logger.info(f"[TASK-RESPONDER-MENSAGEM] 🤖 Enviando resposta para o cliente: {resposta_cliente}")
+        enviar_mensagem_digitando(message_id)
+        delay = random.uniform(5.0, 8.0)
+        logger.info(f"[TASK-RESPONDER-MENSAGEM] ⏳ Aguardando {delay:.1f}s antes de enviar resposta para o cliente...")
+        time.sleep(delay)
+        message_id_resposta = enviar_mensagem(pedido, resposta_cliente)
+        # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
+        mensagem = resposta_cliente
+        salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
+        # atualizar_estado_pedido(pedido['id'], 2)
+        # ============================================================================================
+        logger.info("[TASK-RESPONDER-MENSAGEM] ✅ Mensagem processada com sucesso!")
+        logger.info("=" * 120)
+
+    except Exception as exc:
+        logger.error(f"[TASK-RESPONDER-MENSAGEM] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
         logger.info("=" * 120)
         raise self.retry(exc=exc, countdown=30)

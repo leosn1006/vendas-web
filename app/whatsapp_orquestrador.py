@@ -64,8 +64,8 @@ def recebe_webhook(mensagem_whatsapp):
             case 3 | 4:  # Respondido introdução com interesse e #Respondido introdução sem interesse
                 if mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'text':
                     logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de responder cliente: {mensagem_whatsapp}" )
-                    #from tasks import fluxo_responder_cliente
-                    # fluxo_responder_cliente.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                    from tasks import fluxo_responder_mensagem
+                    fluxo_responder_mensagem.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
                 elif mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'document':
                     logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de responder cliente com documento: {mensagem_whatsapp}" )
                     #from tasks import fluxo_responder_cliente_com_documento
