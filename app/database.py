@@ -262,6 +262,7 @@ def criar_pedido(pedido: Pedido):
            , %s
            , %s
            , %s
+           , %s
            )
     """
     pedido_id = db.execute_query(query, (
