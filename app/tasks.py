@@ -338,7 +338,7 @@ def fluxo_conferir_comprovante(self, pedido, mensagem_whatsapp):
         # ============================================================================================
         # recuperar comprovante e persistir
         logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Recebendo comprovante enviado pelo cliente...")
-        dados = mensagem['entry'][0]['changes'][0]['value']['messages'][0]
+        dados = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]
         tipo = dados['type'] # image
         if tipo != 'image':
             url = dados['image']['url']
