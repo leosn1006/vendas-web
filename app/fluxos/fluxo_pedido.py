@@ -3,7 +3,7 @@ import time
 import random
 from database import salvar_mensagem_pedido, atualizar_estado_pedido, atualizar_pedido_com_interesse_produto
 from whatsapp import enviar_audio, enviar_mensagem, enviar_mensagem_digitando, marcar_como_lida, enviar_documento
-from agente_gera_mensagem_inicial import responder_cliente
+from agente_vendas_sem_gluten import responder_cliente
 
 logger = logging.getLogger(__name__)
 
