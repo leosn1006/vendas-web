@@ -254,7 +254,7 @@ def criar_pedido(pedido: Pedido):
            , %s
            , %s
            , CURRENT_TIMESTAMP
-           , %s
+           , NULL
            , %s
            , %s
            , %s
@@ -279,7 +279,6 @@ def criar_pedido(pedido: Pedido):
            , contact_phone
            , contact_name
            , data_pedido
-           , interesse_produto
            , campaignid
            , adgroupid
            , creative
