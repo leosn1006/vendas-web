@@ -99,6 +99,15 @@ docker compose ps
 
 # Ver logs
 docker compose logs -f
+
+# Ver só logs do ForkPoolWorker-1
+docker compose logs -f worker | grep "ForkPoolWorker-1"
+
+# Ver só logs de tasks bem sucedidas
+docker compose logs -f worker | grep "succeeded"
+
+# Ver só erros
+docker compose logs -f worker | grep -E "ERROR|CRITICAL|failed"
 ```
 
 ### 5. Verificar instalação
@@ -151,8 +160,7 @@ docker compose down
 
 # Remover volumes antigos (⚠️ isso apaga dados!)
 # 1. Parar containers e remover volumes
-docker compose down -v
-# 2. Remover volume persistente manualmente (pode precisar de sudo no Ubuntu)
+x# 2. Remover volume persistente manualmente (pode precisar de sudo no Ubuntu)
 sudo rm -rf /var/lib/mysql-vendas/*
 # 3. Recriar permissões corretas (usuário mysql = UID 999)
     sudo chown -R 999:999 /var/lib/mysql-vendas
