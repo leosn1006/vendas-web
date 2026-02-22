@@ -1,32 +1,50 @@
 import os
 import logging
 import base64
+import io
 from pathlib import Path
 from openai import OpenAI
+from pdf2image import convert_from_path
+from PIL import Image
 
 client = OpenAI()
 logger = logging.getLogger(__name__)
 
 def validar_comprovante_com_ia(caminho_arquivo):
-    logger.info
     try:
-        # 1. Lê o arquivo e converte para Base64
+        # Converte caminho relativo para absoluto (o path vem como "storage/comprovantes/...")
+        if not Path(caminho_arquivo).is_absolute():
+            base_path = Path(__file__).parent.absolute()  # /app
+            caminho_arquivo = str(base_path / caminho_arquivo)
+        
         logger.info(f"[AGENTE_COMPROVANTE] Iniciando leitura do arquivo para validação: {caminho_arquivo}")
-        with open(caminho_arquivo, "rb") as f:
-            base64_data = base64.b64encode(f.read()).decode('utf-8')
 
-        # 2. Identifica o MIME Type automaticamente
+        # 1. Identifica a extensão do arquivo
         ext = Path(caminho_arquivo).suffix.lower()
-        if ext == ".pdf":
-            mime_type = "application/pdf"
-        elif ext in [".jpg", ".jpeg"]:
-            mime_type = "image/jpeg"
-        elif ext == ".png":
-            mime_type = "image/png"
-        else:
-            mime_type = "application/octet-stream"
 
-            apikey = os.getenv('OPENAI_API_KEY', '')
+        # 2. Converte para imagem (se for PDF) ou lê diretamente
+        if ext == ".pdf":
+            logger.info(f"[AGENTE_COMPROVANTE] Convertendo PDF para imagem...")
+            # Converte a primeira página do PDF para imagem
+            images = convert_from_path(caminho_arquivo, first_page=1, last_page=1, dpi=200)
+            image = images[0]
+
+            # Converte a imagem PIL para base64
+            buffered = io.BytesIO()
+            image.save(buffered, format="PNG")
+            base64_data = base64.b64encode(buffered.getvalue()).decode('utf-8')
+            mime_type = "image/png"
+        elif ext in [".jpg", ".jpeg", ".png"]:
+            # Lê a imagem diretamente
+            with open(caminho_arquivo, "rb") as f:
+                base64_data = base64.b64encode(f.read()).decode('utf-8')
+
+            if ext in [".jpg", ".jpeg"]:
+                mime_type = "image/jpeg"
+            else:
+                mime_type = "image/png"
+        else:
+            raise ValueError(f"Formato de arquivo não suportado: {ext}")
 
         # 3. Prompt de validação rigorosa
         prompt_texto = (
@@ -37,10 +55,8 @@ def validar_comprovante_com_ia(caminho_arquivo):
             "{'valido': true/false, 'valor': float, 'destinatario_correto': true/false, 'motivo': 'motivo se falso'}"
         )
 
-        # 4. Envio para a API do OpenAI com o arquivo como input multimodal
-        # Nota: Para PDFs, a estrutura usa o campo 'input_file' ou similar dependendo da versão da lib
-        # Abaixo formato padrão para multimodais:
-        logger.info(f"[AGENTE_COMPROVANTE] Enviando arquivo para validação com IA: Tipo Mídia={mime_type}, Extensão={ext}, Pedido ID={caminho_arquivo}  ")
+        # 4. Envio para a API do OpenAI com a imagem em base64
+        logger.info(f"[AGENTE_COMPROVANTE] Enviando imagem para validação com IA: Tipo={mime_type}, Original={ext}")
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -49,9 +65,9 @@ def validar_comprovante_com_ia(caminho_arquivo):
                     "content": [
                         {"type": "text", "text": prompt_texto},
                         {
-                            "type": "image_url" if ext != ".pdf" else "file_input",
-                            "image_url" if ext != ".pdf" else "file": {
-                                "url" if ext != ".pdf" else "data": f"data:{mime_type};base64,{base64_data}"
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{mime_type};base64,{base64_data}"
                             }
                         }
                     ]

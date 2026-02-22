@@ -3,12 +3,13 @@ FROM python:3.12-slim
 # Desabilita buffer de output do Python (para ver prints imediatamente)
 ENV PYTHONUNBUFFERED=1
 
-# Instala dependências do sistema necessárias para o MySQL, compilação de pacotes Python e health check
+# Instala dependências do sistema necessárias para o MySQL, compilação de pacotes Python, conversão de PDF e health check
 RUN apt-get update && apt-get install -y \
     default-libmysqlclient-dev \
     build-essential \
     pkg-config \
     curl \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

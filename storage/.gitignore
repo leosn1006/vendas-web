@@ -1,0 +1,8 @@
+# Ignorar todos os arquivos de comprovantes
+comprovantes/**/*.pdf
+comprovantes/**/*.jpg
+comprovantes/**/*.jpeg
+comprovantes/**/*.png
+
+# Manter a estrutura de diretórios
+!comprovantes/.gitkeep

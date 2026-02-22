@@ -141,6 +141,10 @@ def executar(pedido, mensagem_whatsapp):
         logger.info("=" * 120)
 
     except Exception as exc:
-        logger.error(f"[FLUXO-PEDIDO] ❌ Erro: {exc}" )
+
+        #coloca no log mais detalhes do erro, para facilitar o debug, incluindo os dados do pedido e da mensagem que causaram o erro
+        logger.error(f"[FLUXO-PEDIDO] ❌ Erro ao processar pedido: {pedido}, mensagem: {mensagem}, erro: \n {exc}")
+        import traceback
+        traceback.print_exc()
         logger.info("=" * 120)
         raise exc

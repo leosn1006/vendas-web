@@ -66,6 +66,8 @@ services:
       - DB_PASSWORD=${MYSQL_PASSWORD}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./storage:/app/storage
     networks:
       - webnet
     healthcheck:
@@ -99,6 +101,8 @@ services:
       - DB_PASSWORD=${MYSQL_PASSWORD}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./storage:/app/storage
     networks:
       - webnet
 
