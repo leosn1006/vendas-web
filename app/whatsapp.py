@@ -241,6 +241,7 @@ def enviar_documento(pedido: Pedido, url_documento: str, caption: str = "Aqui es
         raise ValueError(f"[DOCUMENTO-ENVIAR] ❌ Erro ao enviar documento: {response.json()}")
 
 def enviar_imagem(pedido: Pedido, url_imagem: str):
+    logger.info(f"[IMAGEM-ENVIAR] Iniciando envio de imagem para o cliente. Pedido ID: {pedido.get('id')}, URL da imagem: {url_imagem}")
     id_message = None
 
     if pedido is None:
