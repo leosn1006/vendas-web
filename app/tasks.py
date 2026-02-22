@@ -338,11 +338,17 @@ def fluxo_conferir_comprovante(self, pedido, mensagem_whatsapp):
         # ============================================================================================
         # recuperar comprovante e persistir
         logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Recebendo comprovante enviado pelo cliente...")
-        tipo_midia = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type']
-        url = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['url']
-        mime_type = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['mime_type']
-        filename = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['filename'], None
-        path_comprovante = receber_comprovante(tipo_midia, url, mime_type, filename, pedido_id)
+        dados = mensagem['entry'][0]['changes'][0]['value']['messages'][0]
+        tipo = dados['type'] # image
+        if tipo != 'image':
+            url = dados['image']['url']
+            mime = dados['image']['mime_type']
+        else:
+            url = dados['document']['url']
+            mime = dados['document']['mime_type']
+            filename = dados['document']['filename']
+
+        path_comprovante = receber_comprovante(tipo, url, mime, filename, pedido_id)
         # ============================================================================================
         # Salvar caminho do comprovante no banco de dados, associado ao pedido, para histórico e controle
         logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Atualizando pedido com caminho do comprovante no banco de dados...")
