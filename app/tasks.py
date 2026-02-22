@@ -1,3 +1,4 @@
+import json
 import logging
 import random
 import time
@@ -361,9 +362,10 @@ def fluxo_conferir_comprovante(self, pedido, mensagem_whatsapp):
         # ============================================================================================
         # validar comprovante com IA
         logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Validando comprovante com IA...")
-        resultado_validacao = validar_comprovante_com_ia(path_comprovante)
+        resultado_validacao_json = validar_comprovante_com_ia(path_comprovante)
+        resultado_validacao = json.loads(resultado_validacao_json)
         logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Resultado da validação: {resultado_validacao}")
-        if resultado_validacao['valido'].lower == "true" and resultado_validacao['destinatario_correto'].lower == "true":
+        if resultado_validacao['valido'] and resultado_validacao['destinatario_correto']:
             # =======================================================================================
             #salvar no banco de dados que o pedido foi pago, para controle e histórico
             logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Atualizando pedido com pagamento no banco de dados...")
