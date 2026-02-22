@@ -89,6 +89,6 @@ def executar(pedido, mensagem_whatsapp):
         logger.debug("=" * 120)
 
     except Exception as exc:
-        logger.error(f"[FLUXO-INTRODUCAO] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        logger.error(f"[FLUXO-INTRODUCAO] ❌ Erro: {exc}")
         logger.debug("=" * 120)
-        raise self.retry(exc=exc, countdown=30)
+        raise exc
