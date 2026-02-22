@@ -189,7 +189,7 @@ def enviar_mensagem_digitando(message_id: str):
         raise ValueError(f"[MENSAGEM-ENVIAR] ❌ Erro ao enviar mensagem: {response.json()}")
 
 
-def enviar_documento(pedido: Pedido, url_documento: str):
+def enviar_documento(pedido: Pedido, url_documento: str, caption: str = "Aqui está o documento solicitado."):
     id_message = None
 
     if pedido is None:
@@ -239,3 +239,52 @@ def enviar_documento(pedido: Pedido, url_documento: str):
 
     except Exception as e:
         raise ValueError(f"[DOCUMENTO-ENVIAR] ❌ Erro ao enviar documento: {response.json()}")
+
+def enviar_imagem(pedido: Pedido, url_imagem: str):
+    id_message = None
+
+    if pedido is None:
+        raise ValueError("[IMAGEM-ENVIAR] Não é possível enviar mensagem sem um pedido associado.")
+
+    try:
+        # Envia uma mensagem de imagem para o WhatsApp usando a API.
+        phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '123456789012345678')  # Substitua pelo seu phone_number_id real
+        url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+        token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+
+        # Headers reais (com token completo, não logado)
+        headers_reais = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json; charset=utf-8",
+            "Accept": "application/json"
+        }
+
+        # Extrai o número do remetente e o ID da conversa do JSON original
+        numero_remetente = pedido.get("contact_phone")
+
+        dados = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": numero_remetente,
+            "type": "image",
+            "image": {
+                "link": url_imagem
+              }
+            }
+
+        logger.info(f"[IMAGEM-ENVIAR] Enviando mensagem para {numero_remetente} com o seguinte payload:")
+        # logger.info(f"[IMAGEM-ENVIAR] headers: {headers_reais}")
+        logger.info(f"[IMAGEM-ENVIAR] dados: {dados}")
+
+        # Executar chamada POST para enviar a mensagem
+        response = requests.post(url, headers=headers_reais, json=dados)
+
+        if response.status_code == 200:
+            id_message = response.json().get('messages', [{}])[0].get('id')
+            logger.info(f"[IMAGEM-ENVIAR] Mensagem enviada com sucesso! ID da mensagem: {id_message}")
+            return id_message
+
+        response.raise_for_status()
+
+    except Exception as e:
+        raise ValueError(f"[IMAGEM-ENVIAR] ❌ Erro ao enviar imagem: {response.json()}")

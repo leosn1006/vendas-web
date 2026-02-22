@@ -3,7 +3,7 @@ import random
 import time
 from celery_app import celery_app
 from whatsapp_orquestrador import recebe_webhook
-from whatsapp import enviar_audio, marcar_como_lida, enviar_mensagem, enviar_mensagem_digitando, enviar_documento
+from whatsapp import enviar_audio, marcar_como_lida, enviar_mensagem, enviar_mensagem_digitando, enviar_documento, enviar_imagem
 from whatsapp_upload import receber_comprovante
 from database import atualizar_estado_pedido, salvar_mensagem_pedido, atualizar_pedido_com_comprovante, atualizar_pedido_com_pagamento, atualizar_pedido_com_interesse_produto
 from agente_vendas_sem_gluten import responder_cliente
@@ -87,7 +87,7 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         logger.info(f"[TASK-INTRODUCAO] ⏳ Aguardando {delay:.1f}s antes de enviar imagem complementar...")
         time.sleep(delay)
         url_imagem_complementar = "https://lneditor.com.br/static/images/paes-foto-semanal.jpg"
-        message_id = enviar_documento(pedido, url_documento=url_imagem_complementar)
+        message_id = enviar_imagem(pedido, url_documento=url_imagem_complementar)
         #grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
         mensagem = url_imagem_complementar
         salvar_mensagem_pedido(message_id, pedido_id, mensagem, tipo_mensagem='enviada')
