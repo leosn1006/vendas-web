@@ -180,6 +180,7 @@ class Pedido(TypedDict):
     mensagem_sugerida: Optional[str]
     emoji_sugerida: Optional[str]
     data_contato_site: Optional[str]
+    interesse_produto: Optional[bool]
     phone_number_id: Optional[str]
     contact_phone: Optional[str]
     contact_name: Optional[str]
@@ -210,6 +211,7 @@ def criar_pedido(pedido: Pedido):
     contact_phone = pedido.get('contact_phone')
     contact_name = pedido.get('contact_name')
     data_pedido = pedido.get('data_pedido')
+    interesse_produto = pedido.get('interesse_produto')  # None se não informado
     campaignid = pedido.get('campaignid')
     adgroupid = pedido.get('adgroupid')
     creative = pedido.get('creative')
@@ -233,6 +235,7 @@ def criar_pedido(pedido: Pedido):
            , contact_phone
            , contact_name
            , data_pedido
+           , interesse_produto
            , campaignid
            , adgroupid
            , creative
@@ -276,6 +279,7 @@ def criar_pedido(pedido: Pedido):
            , contact_phone
            , contact_name
            , data_pedido
+           , interesse_produto
            , campaignid
            , adgroupid
            , creative
@@ -450,4 +454,19 @@ def atualizar_pedido_com_pagamento(pedido_id, valor_pago):
     """
     query = "UPDATE pedidos SET valor_pago = %s, estado_id = 0 WHERE id = %s"
     db.execute_query(query, (valor_pago, pedido_id))
+    return pedido_id
+
+def atualizar_pedido_com_interesse_produto(pedido_id, interesse_produto):
+    """
+    Atualiza um pedido com o interesse do produto.
+
+    Args:
+        pedido_id: ID do pedido
+        interesse_produto: Interesse do produto (True/False)
+
+    Returns:
+        int: ID do pedido
+    """
+    query = "UPDATE pedidos SET interesse_produto = %s WHERE id = %s"
+    db.execute_query(query, (interesse_produto, pedido_id))
     return pedido_id

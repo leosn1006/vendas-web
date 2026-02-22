@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
     mensagem_sugerida varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
     emoji_sugerida VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
     data_contato_site TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    interesse_produto BOOLEAN DEFAULT NULL,
     phone_number_id VARCHAR(20),
     contact_phone VARCHAR(20),
     contact_name VARCHAR(255),

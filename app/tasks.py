@@ -5,7 +5,7 @@ from celery_app import celery_app
 from whatsapp_orquestrador import recebe_webhook
 from whatsapp import enviar_audio, marcar_como_lida, enviar_mensagem, enviar_mensagem_digitando, enviar_documento
 from whatsapp_upload import receber_comprovante
-from database import atualizar_estado_pedido, salvar_mensagem_pedido, atualizar_pedido_com_comprovante, atualizar_pedido_com_pagamento
+from database import atualizar_estado_pedido, salvar_mensagem_pedido, atualizar_pedido_com_comprovante, atualizar_pedido_com_pagamento, atualizar_pedido_com_interesse_produto
 from agente_vendas_sem_gluten import responder_cliente
 from agente_valida_comprovante import validar_comprovante_com_ia
 
@@ -122,6 +122,10 @@ def fluxo_enviar_pedido(self, pedido, mensagem_whatsapp):
         time.sleep(delay)
         if interesse_positivo_limpo == 'sim':
             # ========================================================================================
+            # atualiar interesse_produto como True no banco de dados, para controle e histórico do pedido
+            logger.info(f"[TASK-PEDIDO] ✅ Atualizando interesse_produto como True no banco de dados...")
+            atualizar_pedido_com_interesse_produto(pedido_id, True)
+            # ========================================================================================
             logger.info(f"[TASK-PEDIDO] 🤖 Enviando mensagem do produto para o cliente...")
             msg_pedido_inicial = "Suas receitinhas estão aqui, é só clicar abaixo ⬇"
             message_id_resposta = enviar_mensagem(pedido, msg_pedido_inicial)
@@ -129,6 +133,10 @@ def fluxo_enviar_pedido(self, pedido, mensagem_whatsapp):
             mensagem = msg_pedido_inicial
             salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
         else:
+               # ========================================================================================
+            # atualiar interesse_produto como False no banco de dados, para controle e histórico do pedido
+            logger.info(f"[TASK-PEDIDO] ✅ Atualizando interesse_produto como False no banco de dados...")
+            atualizar_pedido_com_interesse_produto(pedido_id, False)
             # ========================================================================================
             logger.info(f"[TASK-PEDIDO] 🤖 Enviando mensagem do produto para o cliente...")
             msg_pedido_inicial = "Queremos o seu melhor, então receba esse presente totalmente sem custo, é só clicar abaixo que é seu ⬇"
