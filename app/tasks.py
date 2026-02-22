@@ -86,7 +86,7 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         delay = random.uniform(5.0, 8.0)
         logger.info(f"[TASK-INTRODUCAO] ⏳ Aguardando {delay:.1f}s antes de enviar imagem complementar...")
         time.sleep(delay)
-        url_imagem_complementar = "https://lneditor.com.br/static/imagens/paes-foto-semanal.jpg"
+        url_imagem_complementar = "https://lneditor.com.br/static/images/paes-foto-semanal.jpg"
         message_id = enviar_documento(pedido, url_documento=url_imagem_complementar)
         #grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
         mensagem = url_imagem_complementar
