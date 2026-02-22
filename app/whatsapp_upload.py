@@ -42,7 +42,7 @@ def receber_comprovante(tipo_midia, url, mime_type, filename, pedido_id ):
         print(f"Bloqueado: Tipo de arquivo não permitido ({mime_original})")
         return None
 
-    # 3. Preparação do Caminho (Estrutura: storage/comprovantes/ano/mes/)
+    # 3. Preparação do Caminho (Estrutura: storage/comprovantes/ano/mes/dia/pedido_id_timestamp.extensão)
     base_path = Path(__file__).parent.absolute()
     agora = datetime.now()
     diretorio_destino = base_path / "storage" / "comprovantes" / str(agora.year) / f"{agora.month:02d}" / f"{agora.day:02d}"
