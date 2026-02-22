@@ -1,5 +1,9 @@
+import sys
 import os
 from celery import Celery
+
+# Garante que /app está no path para subpacotes como fluxos.*
+sys.path.insert(0, '/app')
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
