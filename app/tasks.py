@@ -363,7 +363,7 @@ def fluxo_conferir_comprovante(self, pedido, mensagem_whatsapp):
         logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Validando comprovante com IA...")
         resultado_validacao = validar_comprovante_com_ia(path_comprovante)
         logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Resultado da validação: {resultado_validacao}")
-        if resultado_validacao['valido'] == True and resultado_validacao['valor'] >= 10.0 and resultado_validacao['destinatario_correto'] == True:
+        if resultado_validacao['valido'].lower == "true" and resultado_validacao['destinatario_correto'].lower == "true":
             # =======================================================================================
             #salvar no banco de dados que o pedido foi pago, para controle e histórico
             logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Atualizando pedido com pagamento no banco de dados...")
