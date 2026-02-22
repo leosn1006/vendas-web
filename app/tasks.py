@@ -343,6 +343,7 @@ def fluxo_conferir_comprovante(self, pedido, mensagem_whatsapp):
         if tipo == 'image':
             url = dados['image']['url']
             mime = dados['image']['mime_type']
+            filename = None
         else:
             url = dados['document']['url']
             mime = dados['document']['mime_type']
