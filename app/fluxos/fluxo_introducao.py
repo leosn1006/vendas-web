@@ -7,7 +7,7 @@ from whatsapp import enviar_audio, enviar_imagem, enviar_mensagem, enviar_mensag
 
 logger = logging.getLogger(__name__)
 
-def executar(self, pedido, mensagem_whatsapp):
+def executar(pedido, mensagem_whatsapp):
     try:
         logger.debug("[FLUXO-INTRODUCAO] 🎬 Iniciando fluxo de introdução...")
         # ============================================================================================
