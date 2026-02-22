@@ -340,7 +340,7 @@ def fluxo_conferir_comprovante(self, pedido, mensagem_whatsapp):
         logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📥 Recebendo comprovante enviado pelo cliente...")
         dados = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]
         tipo = dados['type'] # image
-        if tipo != 'image':
+        if tipo == 'image':
             url = dados['image']['url']
             mime = dados['image']['mime_type']
         else:
@@ -396,10 +396,10 @@ def fluxo_conferir_comprovante(self, pedido, mensagem_whatsapp):
             mensagem = msg_comprovante_invalido
             salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
         # ============================================================================================
-        logger.info("[TASK-RESPONDER-MENSAGEM] ✅ Mensagem processada com sucesso!")
+        logger.info("[TASK-CONFERIR-COMPROVANTE] ✅ Mensagem processada com sucesso!")
         logger.info("=" * 120)
 
     except Exception as exc:
-        logger.error(f"[TASK-RESPONDER-MENSAGEM] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        logger.error(f"[TASK-CONFERIR-COMPROVANTE] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
         logger.info("=" * 120)
         raise self.retry(exc=exc, countdown=30)
