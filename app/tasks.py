@@ -41,6 +41,7 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         pedido_id = pedido['id']
         mensagem = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
         message_id = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['id']
+        message_id_original = message_id
         salvar_mensagem_pedido(message_id, pedido_id, mensagem, tipo_mensagem='recebida')
         # ============================================================================================
         #marcar mensagem como lida, para não ficar com aquela notificação de mensagem nova no WhatsApp do cliente
@@ -65,10 +66,8 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         # ============================================================================================
         # envia digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
         logger.info(f"[TASK-INTRODUCAO] 🤖 Enviando status de digitando 2 para o cliente...")
-        enviar_mensagem_digitando(message_id)
+        enviar_mensagem_digitando(message_id_original)
         # ============================================================================================
-        #enviar estatus de gravando audio, para simular que o atendente está gravando um áudio, e manter por alguns segundos (10s
-        #enviar_status_gravando_audio(numero_destinatario)
         # Enviar áudio de introdução final
         delay = random.uniform(5.0, 8.0)
         logger.info(f"[TASK-INTRODUCAO] ⏳ Aguardando {delay:.1f}s antes de enviar áudio explicativo...")
@@ -81,7 +80,7 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         # ============================================================================================
         # envia digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
         logger.info(f"[TASK-INTRODUCAO] 🤖 Enviando status de digitando 3 para o cliente...")
-        enviar_mensagem_digitando(message_id)
+        enviar_mensagem_digitando(message_id_original)
         # ============================================================================================
         #envia imagem complementar
         delay = random.uniform(5.0, 8.0)
@@ -95,7 +94,7 @@ def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
         # ============================================================================================
         # enviar digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
         logger.info(f"[TASK-INTRODUCAO] 🤖 Enviando status de digitando 4 para o cliente...")
-        enviar_mensagem_digitando(message_id_resposta)
+        enviar_mensagem_digitando(message_id_original)
         # ============================================================================================
         # enviar mensagem de texto explicativa complementar, para reforçar a mensagem do áudio, e para ficar registrado no histórico do pedido o conteúdo da mensagem, para controle e para o caso de o cliente não ouvir o áudio
         delay = random.uniform(5.0, 8.0)
