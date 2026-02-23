@@ -108,6 +108,8 @@ def fluxo_followup_pagamento(self):
     from fluxos.fluxo_followup import executar
     try:
         executar()
+        logger.info(f"[TASK-FOLLOWUP] ✅ rotina executada com sucesso!")
     except Exception as exc:
         logger.error(f"[TASK-FOLLOWUP] ❌ Erro: {exc}")
-        raise
+        import traceback
+        traceback.print_exc()
