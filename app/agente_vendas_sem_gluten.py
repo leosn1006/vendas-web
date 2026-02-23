@@ -19,7 +19,7 @@ def responder_cliente(pergunta):
 DIRETRIZES DE RESPOSTA:
 1. PRODUTO: São 50 receitas exclusivas de pães sem glúten, focadas em sabor e saúde.
 2. PREÇO: O e-book é gratuito! Explicamos que, se o cliente quiser, pode fazer uma doação de qualquer valor simbólico (sugerimos R$ 10,00) para ajudar a LN Editora a criar novos conteúdos.
-3. PAGAMENTO/DOAÇÃO: Exclusivamente via Pix. Chave Pix é o e-mail: admin@lneditor.com.br.
+3. PAGAMENTO/DOAÇÃO: Exclusivamente via Pix. Chave Pix é o cpf: 50934392315.
 4. ENTREGA: É imediata e baseada na confiança! Enviamos o PDF no WhatsApp antes mesmo de qualquer pagamento.
 5. DEVOLUÇÃO/GARANTIA: Se o cliente pagar e não gostar, devolvemos o dinheiro sem perguntas, e ele ainda pode ficar com o e-book como presente.
 6. SUPORTE: Atendimento pelo e-mail admin@lneditor.com.br ou por este número de WhatsApp em horário comercial.

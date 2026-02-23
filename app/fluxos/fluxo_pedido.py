@@ -108,7 +108,7 @@ def executar(pedido, mensagem_whatsapp):
             *Informações do PIX*:
 
         - 💸 *Valor*: R$10, 12, 15, 20
-        - 📱 *Chave Pix* (e-mail): admin@lneditor.com.br
+        - 📱 *Chave Pix* (cpf): 50934392315
         - 👤 *Nome*: Leonardo Santos Negreiros
 
         Para facilitar, vou te enviar a chave Pix separada, assim é só copiar e colar:
@@ -120,7 +120,7 @@ def executar(pedido, mensagem_whatsapp):
         # ============================================================================================
         # enviar dados do Pix para contribuição
         logger.debug(f"[FLUXO-PEDIDO] 🤖 Enviando mensagem de dados do Pix para o cliente...")
-        msg_pix = "admin@lneditor.com.br"
+        msg_pix = "50934392315"
         message_id_resposta = enviar_mensagem(pedido, msg_pix)
         # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
         mensagem = msg_pix
