@@ -54,4 +54,4 @@ def executar(pedido, mensagem_whatsapp):
             logger.debug("[FLUXO-TRANSCREVER] ✅ Mensagem processada com sucesso e enviada ao fluxo de responder mensagem!")
 
     except Exception as exc:
-        raise(f"[FLUXO-TRANSCREVER] ❌ Erro: {exc}")
+        raise Exception(f"[FLUXO-TRANSCREVER] ❌ Erro: {exc}")

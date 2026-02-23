@@ -4,5 +4,12 @@ comprovantes/**/*.jpg
 comprovantes/**/*.jpeg
 comprovantes/**/*.png
 
+# Ignorar todos os arquivos de áudio
+audios/**/*.ogg
+audios/**/*.opus
+audios/**/*.mp3
+audios/**/*.wav
+
 # Manter a estrutura de diretórios
 !comprovantes/.gitkeep
+!audios/.gitkeep

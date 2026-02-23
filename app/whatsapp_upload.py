@@ -105,8 +105,8 @@ def receber_audio(tipo_midia, id_audio, mime_type, pedido_id):
     diretorio_destino.mkdir(parents=True, exist_ok=True)
 
     # 4. Nomeação Segura (Ignora o nome original do usuário para evitar ataques)
-    # Se for imagem e não tiver extensão no nome, força .jpg
-    extensao_final = ".ogg" if mime_original == "audio/ogg" else ".opus"
+    # WhatsApp envia áudios como .ogg (compativel com OpenAI Whisper)
+    extensao_final = ".ogg"
     nome_arquivo = f"pedido_{pedido_id}_{id_audio}{extensao_final}"
     caminho_final = diretorio_destino / nome_arquivo
 
