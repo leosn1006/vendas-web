@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
-from database import buscar_pedidos_followup
-from whatsapp import enviar_mensagem, atualizar_estado_pedido
+from database import buscar_pedidos_followup, atualizar_estado_pedido
+from whatsapp import enviar_mensagem
 
 logger = logging.getLogger(__name__)
 
