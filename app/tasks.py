@@ -91,7 +91,7 @@ def fluxo_conferir_comprovante(self, pedido, mensagem_whatsapp):
 def fluxo_transcrever_audio(self, pedido, mensagem_whatsapp):
     logger.info("=" * 120)
     logger.info(f"[TASK-TRANSCRIBIR-AUDIO] 📦 Dados recebidos para transcrever áudio: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
-    from fluxos.fluxo_comprovante import executar
+    from fluxos.fluxo_transcrever import executar
     try:
         executar(pedido, mensagem_whatsapp)
         logger.info(f"[TASK-TRANSCRIBIR-AUDIO] ✅ Mensagem processada com sucesso!")
