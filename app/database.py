@@ -475,7 +475,7 @@ def atualizar_pedido_com_interesse_produto(pedido_id, interesse_produto):
 def buscar_pedidos_followup( horas_sem_atualizacao: int) -> list:
     query = """
         SELECT * FROM pedidos
-        WHERE estado_id = 2
+        WHERE estado_id = 3 -- estado 'produto enviado, aguardando pagamento'
         AND data_ultima_atualizacao < NOW() - INTERVAL %s HOUR
         AND contact_phone IS NOT NULL
     """

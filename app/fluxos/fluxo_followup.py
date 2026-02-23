@@ -24,9 +24,10 @@ def executar():
             msg = "Oi! Vi que você ainda não realizou o pagamento. Posso te ajudar com alguma dúvida? 😊"
             enviar_mensagem(pedido, msg)
             logger.debug(f"[FLUXO-FOLLOWUP] ✅ Followup enviado para pedido #{pedido['id']}")
-            # Atualiza estado do pedido para 'followup_enviado' (3)
-            logger.debug("[FLUXO-FOLLOWUP] ✅ atualizando estado do pedido como 'followup_enviado' (3) no banco de dados...")
-            atualizar_estado_pedido(pedido['id'], 3)
+            # Atualiza estado do pedido para 'followup_enviado' (4)
+            logger.debug("[FLUXO-FOLLOWUP] ✅ atualizando estado do pedido como 'followup_enviado' (4) no banco de dados...")
+            atualizar_estado_pedido(pedido['id'], 4)  # estado 4 = followup_enviado
+            logger.debug(f"[FLUXO-FOLLOWUP] ✅ Estado do pedido #{pedido['id']} atualizado para 'followup_enviado' (4)!")
         except Exception as e:
             # Loga o erro mas continua para os outros pedidos
             raise Exception(f"[FLUXO-FOLLOWUP] ❌ Erro no pedido #{pedido['id']}: {e}")
