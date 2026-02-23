@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 # Configurações de Segurança
 EXTENSOES_PERMITIDAS = {'.pdf', '.jpg', '.jpeg', '.png', '.ogg', '.opus'}  # Extensões permitidas
-MIMES_PERMITIDOS = {'application/pdf', 'image/jpeg', 'image/png', 'audio/ogg', 'audio/opus'}
+MIMES_PERMITIDOS = {'application/pdf', 'image/jpeg', 'image/png', 'audio/ogg', 'audio/ogg; codecs=opus', 'audio/opus'}  # MIMEs permitidos
 TAMANHO_MAX_MB = 10
 
 def receber_comprovante(tipo_midia, url, mime_type, filename, pedido_id ):
