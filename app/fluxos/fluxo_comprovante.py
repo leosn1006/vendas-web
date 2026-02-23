@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 def executar(pedido, mensagem_whatsapp):
     try:
-        logger.info("=" * 120)
-        logger.info(f"[FLUXO-CONFERIR-COMPROVANTE] 📦 Dados recebidos para responder mensagem: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
+        logger.debug("=" * 120)
+        logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 📦 Dados recebidos para responder mensagem: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
         logger.debug("[FLUXO-CONFERIR-COMPROVANTE] 🎬 Iniciando fluxo de conferir comprovante...")
         # ============================================================================================
         #grava mensagem recebida

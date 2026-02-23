@@ -4,12 +4,13 @@ import time
 import logging
 from datetime import datetime
 from pathlib import Path
+from config import WHATSAPP_API_URL
 
 logger = logging.getLogger(__name__)
 
 # Configurações de Segurança
-EXTENSOES_PERMITIDAS = {'.pdf', '.jpg', '.jpeg', '.png'}
-MIMES_PERMITIDOS = {'application/pdf', 'image/jpeg', 'image/png'}
+EXTENSOES_PERMITIDAS = {'.pdf', '.jpg', '.jpeg', '.png', '.ogg', '.opus'}  # Extensões permitidas
+MIMES_PERMITIDOS = {'application/pdf', 'image/jpeg', 'image/png', 'audio/ogg', 'audio/opus'}
 TAMANHO_MAX_MB = 10
 
 def receber_comprovante(tipo_midia, url, mime_type, filename, pedido_id ):
@@ -82,3 +83,50 @@ def receber_comprovante(tipo_midia, url, mime_type, filename, pedido_id ):
     except Exception as e:
         logger.error(f"[WHATSAPP-UPLOAD] ❌ Erro ao processar o upload do comprovante: {e}")
         return None
+
+
+def receber_audio(tipo_midia, id_audio, mime_type, pedido_id):
+    logger.debug(f"[WHATSAPP-UPLOAD-AUDIO] Iniciando processo de upload do comprovante: Tipo Mídia={tipo_midia}, ID={id_audio}, MIME={mime_type}, Pedido ID={pedido_id}")
+    access_token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+    # 1. Extração segura dos dados do JSON do WhatsApp
+    mime_original = mime_type
+
+    if not id_audio or not mime_original:
+        raise Exception(f"[WHATSAPP-UPLOAD-AUDIO] ❌ Dados inválidos para baixar áudio: ID={id_audio}, MIME={mime_original}, Pedido ID={pedido_id}")
+
+    # 2. Sanitização: Validação de Tipo (MIME e Extensão) (só vem nome do arquivo para documento, para imagem não vem nome do arquivo, então força extensão .jpg para imagens sem extensão)
+    if mime_original not in MIMES_PERMITIDOS:
+        raise Exception(f"[WHATSAPP-UPLOAD-AUDIO] ❌  Tipo de arquivo não permitido: MIME={mime_original}, Pedido ID={pedido_id}")
+
+    # 3. Preparação do Caminho (Estrutura: storage/comprovantes/ano/mes/dia/pedido_id_timestamp.extensão)
+    base_path = Path(__file__).parent.absolute()
+    agora = datetime.now()
+    diretorio_destino = base_path / "storage" / "audios" / str(agora.year) / f"{agora.month:02d}" / f"{agora.day:02d}"
+    diretorio_destino.mkdir(parents=True, exist_ok=True)
+
+    # 4. Nomeação Segura (Ignora o nome original do usuário para evitar ataques)
+    # Se for imagem e não tiver extensão no nome, força .jpg
+    extensao_final = ".ogg" if mime_original == "audio/ogg" else ".opus"
+    nome_arquivo = f"pedido_{pedido_id}_{id_audio}{extensao_final}"
+    caminho_final = diretorio_destino / nome_arquivo
+
+    try:
+        logger.debug(f"[WHATSAPP-UPLOAD-AUDIO] Iniciando download do comprovante: ID={id_audio}, MIME={mime_original}, Pedido ID={pedido_id}")
+        # 5. Download Seguro (Com Header de Autorização do Facebook/WhatsApp)
+        url = f"{WHATSAPP_API_URL}/{id_audio}"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        resposta = requests.get(url, headers=headers, stream=True, timeout=20)
+        resposta.raise_for_status()
+
+        # 7. Escrita no Disco
+        logger.debug(f"[WHATSAPP-UPLOAD-AUDIO] Iniciando escrita do comprovante no disco: Caminho={caminho_final}, Pedido ID={pedido_id}")
+        with open(caminho_final, 'wb') as f:
+            for chunk in resposta.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+        # Retorna o path relativo para o MySQL
+        logger.debug(f"[WHATSAPP-UPLOAD-AUDIO] 🎤 Audio salvo com sucesso: {caminho_final}")
+        return str(caminho_final.relative_to(base_path))
+
+    except Exception as e:
+        raise Exception(f"[WHATSAPP-UPLOAD-AUDIO] ❌ Erro ao processar o upload do audio: {e}")

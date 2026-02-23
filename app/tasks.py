@@ -16,7 +16,6 @@ def processar_webhook(self, body):
         recebe_webhook(body)
         logger.info("[TASK-WEBHOOK] ✅ Mensagem processada com sucesso!")
         logger.info("=" * 120)
-
     except Exception as exc:
         logger.error(f"[TASK] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
         import traceback
@@ -49,9 +48,8 @@ def fluxo_enviar_pedido(self, pedido, mensagem_whatsapp):
     try:
         executar(pedido, mensagem_whatsapp)
         logger.info(f"[TASK-PEDIDO] ✅ Mensagem processada com sucesso!")
-        logger.info("=" * 120)
     except Exception as exc:
-        logger.error(f"[TASK-PEDIDO] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        logger.error(f"[TASK-PEDIDO] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1} ")
         import traceback
         traceback.print_exc()
         logger.info("=" * 120)
@@ -67,7 +65,7 @@ def fluxo_responder_mensagem(self, pedido, mensagem_whatsapp):
         logger.info(f"[TASK-RESPONDER-MENSAGEM] ✅ Mensagem processada com sucesso!")
         logger.info("=" * 120)
     except Exception as exc:
-        logger.error(f"[TASK-RESPONDER-MENSAGEM] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        logger.error(f"[TASK-RESPONDER-MENSAGEM] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1} ")
         import traceback
         traceback.print_exc()
         logger.info("=" * 120)
@@ -83,7 +81,23 @@ def fluxo_conferir_comprovante(self, pedido, mensagem_whatsapp):
         logger.info(f"[TASK-CONFERIR-COMPROVANTE] ✅ Mensagem processada com sucesso!")
         logger.info("=" * 120)
     except Exception as exc:
-        logger.error(f"[TASK-CONFERIR-COMPROVANTE] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        logger.error(f"[TASK-CONFERIR-COMPROVANTE] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1} ")
+        import traceback
+        traceback.print_exc()
+        logger.info("=" * 120)
+        raise self.retry(exc=exc, countdown=30)
+
+@celery_app.task(name="tasks.transcrever_audio", bind=True, max_retries=0)
+def fluxo_transcrever_audio(self, pedido, mensagem_whatsapp):
+    logger.info("=" * 120)
+    logger.info(f"[TASK-TRANSCRIBIR-AUDIO] 📦 Dados recebidos para transcrever áudio: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
+    from fluxos.fluxo_comprovante import executar
+    try:
+        executar(pedido, mensagem_whatsapp)
+        logger.info(f"[TASK-TRANSCRIBIR-AUDIO] ✅ Mensagem processada com sucesso!")
+        logger.info("=" * 120)
+    except Exception as exc:
+        logger.error(f"[TASK-TRANSCRIBIR-AUDIO] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1} ")
         import traceback
         traceback.print_exc()
         logger.info("=" * 120)

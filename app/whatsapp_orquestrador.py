@@ -20,7 +20,7 @@ def extrair_dados_mensagem(mensagem_whatsapp):
         metadata = value.get('metadata', {})
 
         # Verificar se é mensagem de texto ou documento
-        if mensagem['type'] != 'text' and mensagem['type'] != 'document' and mensagem['type'] != 'image':
+        if mensagem['type'] != 'text' and mensagem['type'] != 'document' and mensagem['type'] != 'image'and mensagem['type'] != 'audio':
             return None
 
         produto = CAMPANHA_WHATSAPP.get(metadata.get('display_phone_number'), 1)
@@ -53,6 +53,13 @@ def recebe_webhook(mensagem_whatsapp):
         logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 Enfileira da fila correta: {pedido}" )
         # enfileira na fila conrreta de acordo com o estado do pedido.
         tempo_espera = random.uniform(20, 40)
+        # se for um audio, manda direto para o fluxo de transcrever, independente do estado do pedido, para evitar erros de transcrição de outros tipos de mídia e lá será redirecionado para o fluxo correto
+        if mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'audio':
+            logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de transcrever áudio: {mensagem_whatsapp}" )
+            from tasks import fluxo_transcrever_audio
+            fluxo_transcrever_audio.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+            return "Mensagem de áudio recebida e enviada para transcrição"
+
         match pedido.get('estado_id'):
             case 1: # Cliente acessou a página de vendas e clicou para enviar mensagem ou veio direto pelo whatsapp sem passar pela página de vendas, ou seja, estado inicial do pedido'
                 logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de introdução: {mensagem_whatsapp}" )
@@ -62,7 +69,7 @@ def recebe_webhook(mensagem_whatsapp):
                 logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de enviar pedido: {mensagem_whatsapp}" )
                 from tasks import fluxo_enviar_pedido
                 fluxo_enviar_pedido.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
-            case 3 | 4:  # Respondido introdução com interesse e #Respondido introdução sem interesse
+            case _:  # Respondido introdução com interesse e #Respondido introdução sem interesse
                 if mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'text':
                     logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de responder cliente: {mensagem_whatsapp}" )
                     from tasks import fluxo_responder_mensagem
@@ -71,9 +78,6 @@ def recebe_webhook(mensagem_whatsapp):
                     logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de conferir comprovante: {mensagem_whatsapp}" )
                     from tasks import fluxo_conferir_comprovante
                     fluxo_conferir_comprovante.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
-            case _:
-                #TODO pensar nisso depois
-                logger.info(f"[ORQUESTRADOR-WEBHOOK] ⚠️ fluxo não previsto para a mensagem: Estado do pedido: {pedido.get('estado_id')}" )
 
         return "Mensagem processada com sucesso!"
 
