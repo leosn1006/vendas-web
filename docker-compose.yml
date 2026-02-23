@@ -122,6 +122,29 @@ services:
     networks:
       - webnet
 
+  beat:
+    build: .
+    container_name: vendas-beat
+    restart: unless-stopped
+    command: celery -A celery_app beat --loglevel=info
+    environment:
+      - TZ=America/Sao_Paulo
+      - REDIS_URL=redis://redis:6379/0
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=vendasdb
+      - DB_USER=appuser
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks:
+      - webnet
+
   nginx:
     image: nginx:1.27-alpine
     container_name: vendas-web-nginx

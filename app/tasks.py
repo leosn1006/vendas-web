@@ -102,3 +102,12 @@ def fluxo_transcrever_audio(self, pedido, mensagem_whatsapp):
         traceback.print_exc()
         logger.info("=" * 120)
         raise self.retry(exc=exc, countdown=30)
+
+@celery_app.task(name="tasks.followup_pagamento", bind=True, max_retries=0)
+def fluxo_followup_pagamento(self):
+    from fluxos.fluxo_followup import executar
+    try:
+        executar()
+    except Exception as exc:
+        logger.error(f"[TASK-FOLLOWUP] ❌ Erro: {exc}")
+        raise

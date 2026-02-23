@@ -436,5 +436,20 @@ Para contribuir com este projeto:
 5. Abra um Pull Request
 
 ---
+Arquiterura para followup
 
-**Última Atualização:** 19/02/2026
+Celery Beat (agendador)
+        │
+        │ todo hora verifica horário comercial
+        ▼
+Celery Worker
+        │
+        │ busca pedidos estado=3, data_ultima_atualizacao > 4h
+        ▼
+    MySQL
+        │
+        │ para cada pedido encontrado
+        ▼
+    WhatsApp API (envia followup)
+
+**Última Atualização:** 23/02/2026

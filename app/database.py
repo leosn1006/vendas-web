@@ -471,3 +471,12 @@ def atualizar_pedido_com_interesse_produto(pedido_id, interesse_produto):
     query = "UPDATE pedidos SET interesse_produto = %s WHERE id = %s"
     db.execute_query(query, (interesse_produto, pedido_id))
     return pedido_id
+
+def buscar_pedidos_followup( horas_sem_atualizacao: int) -> list:
+    query = """
+        SELECT * FROM pedidos
+        WHERE estado_id = 2
+        AND data_ultima_atualizacao < NOW() - INTERVAL %s HOUR
+        AND contact_phone IS NOT NULL
+    """
+    return db.execute_query(query, (horas_sem_atualizacao,), fetch_all=True)

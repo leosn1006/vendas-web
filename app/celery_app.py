@@ -1,6 +1,8 @@
 import sys
 import os
 from celery import Celery
+from celery.schedules import crontab
+
 
 # Garante que /app está no path para subpacotes como fluxos.*
 sys.path.insert(0, '/app')
@@ -13,6 +15,14 @@ celery_app = Celery(
     backend=REDIS_URL,
     include=["tasks"]  # era "app.tasks", agora só "tasks"
 )
+
+celery_app.conf.beat_schedule = {
+    'followup-pagamento': {
+        'task': 'tasks.followup_pagamento',
+        'schedule': crontab(minute=0, hour='8-20'),  # todo hora cheia das 8h às 20h
+    },
+}
+
 
 celery_app.conf.update(
     timezone="America/Sao_Paulo",
