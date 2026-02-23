@@ -111,11 +111,23 @@ def receber_audio(tipo_midia, id_audio, mime_type, pedido_id):
     caminho_final = diretorio_destino / nome_arquivo
 
     try:
-        logger.debug(f"[WHATSAPP-UPLOAD-AUDIO] Iniciando download do comprovante: ID={id_audio}, MIME={mime_original}, Pedido ID={pedido_id}")
-        # 5. Download Seguro (Com Header de Autorização do Facebook/WhatsApp)
-        url = f"{WHATSAPP_API_URL}/{id_audio}"
+        logger.debug(f"[WHATSAPP-UPLOAD-AUDIO] Obtendo URL de download do áudio: ID={id_audio}, Pedido ID={pedido_id}")
+        # 5. Primeiro obtém a URL de download do WhatsApp API
+        url_metadata = f"{WHATSAPP_API_URL}{id_audio}"
         headers = {"Authorization": f"Bearer {access_token}"}
-        resposta = requests.get(url, headers=headers, stream=True, timeout=20)
+        resposta_metadata = requests.get(url_metadata, headers=headers, timeout=20)
+        resposta_metadata.raise_for_status()
+
+        # Extrai a URL real do arquivo de áudio
+        metadata = resposta_metadata.json()
+        url_download = metadata.get('url')
+
+        if not url_download:
+            raise Exception(f"[WHATSAPP-UPLOAD-AUDIO] ❌ URL de download não encontrada na resposta da API: {metadata}")
+
+        logger.debug(f"[WHATSAPP-UPLOAD-AUDIO] Iniciando download do áudio: URL={url_download}, Pedido ID={pedido_id}")
+        # 6. Agora faz o download do arquivo
+        resposta = requests.get(url_download, headers=headers, stream=True, timeout=20)
         resposta.raise_for_status()
 
         # 7. Escrita no Disco
