@@ -192,6 +192,11 @@ class Pedido(TypedDict):
     device: Optional[str]
     placement: Optional[str]
     video_id: Optional[str]
+    path_comprovante: Optional[str]
+    data_followup: Optional[str]
+    nome_banco: Optional[str]
+    nome_pagador: Optional[str]
+    data_pagamento: Optional[str]
 
 def criar_pedido(pedido: Pedido):
     """
@@ -220,6 +225,11 @@ def criar_pedido(pedido: Pedido):
     placement = pedido.get('placement')
     video_id = pedido.get('video_id')
     path_comprovante = pedido.get('path_comprovante') or ""
+    data_followup = pedido.get('data_followup')
+    nome_banco = pedido.get('nome_banco')
+    nome_pagador = pedido.get('nome_pagador')
+    data_pagamento = pedido.get('data_pagamento')
+
 
     query = """
         INSERT INTO pedidos (
@@ -244,6 +254,10 @@ def criar_pedido(pedido: Pedido):
            , placement
            , video_id
            , path_comprovante
+           , data_followup
+           , nome_banco
+           , nome_pagador
+           , data_pagamento
             )
         VALUES (
              %s
@@ -254,6 +268,10 @@ def criar_pedido(pedido: Pedido):
            , %s
            , %s
            , CURRENT_TIMESTAMP
+           , %s
+           , %s
+           , %s
+           , %s
            , %s
            , %s
            , %s
@@ -289,6 +307,10 @@ def criar_pedido(pedido: Pedido):
            , placement
            , video_id
            , path_comprovante
+           , data_followup
+           , nome_banco
+           , nome_pagador
+           , data_pagamento
         ))
     return pedido_id
 
@@ -442,19 +464,22 @@ def atualizar_pedido_com_comprovante(pedido_id, path_comprovante):
     return pedido_id
 
 # atualizar pedido com o valor pago e estado de pago
-def atualizar_pedido_com_pagamento(pedido_id, valor_pago):
+def atualizar_pedido_com_pagamento(pedido_id, valor_pago, nome_banco, nome_pagador, data_pagamento):
     """
     Atualiza um pedido com o valor pago e estado de pago.
 
     Args:
         pedido_id: ID do pedido
         valor_pago: Valor pago
+        nome_banco: Nome do banco pagador
+        nome_pagador: Nome do pagador
+        data_pagamento: Data do pagamento
 
     Returns:
         int: ID do pedido
     """
-    query = "UPDATE pedidos SET valor_pago = %s, estado_id = 0 WHERE id = %s"
-    db.execute_query(query, (valor_pago, pedido_id))
+    query = "UPDATE pedidos SET valor_pago = %s, nome_banco = %s, nome_pagador = %s, data_pagamento = %s, estado_id = 0 WHERE id = %s"
+    db.execute_query(query, (valor_pago, nome_banco, nome_pagador, data_pagamento, pedido_id))
     return pedido_id
 
 def atualizar_pedido_com_interesse_produto(pedido_id, interesse_produto):
@@ -474,7 +499,8 @@ def atualizar_pedido_com_interesse_produto(pedido_id, interesse_produto):
 
 def buscar_pedidos_followup( horas_sem_atualizacao: int) -> list:
     query = """
-        SELECT * FROM pedidos
+        SELECT *
+        FROM pedidos
         WHERE estado_id = 3 -- estado 'produto enviado, aguardando pagamento'
         AND data_ultima_atualizacao < NOW() - INTERVAL %s HOUR
         AND contact_phone IS NOT NULL

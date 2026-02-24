@@ -56,10 +56,13 @@ def validar_comprovante_com_ia(caminho_arquivo):
 
         prompt_usuario = (
             "Analise este comprovante de pagamento PIX e extraia as seguintes informações:\n\n"
-            "1. O destinatário é 'Leonardo Santos Negreiros'\n"
-            "3. Valor transação (remova R$)\n\n"
-            "Responda em JSON com este formato exato:\n"
-            '{ "valor": 0.0, "destinatario": "nome do destinatario" }\n\n'
+            "1. Nome do destinatário\n\n"
+            "2. Valor transação (remova R$)\n\n"
+            "3. Nome do banco pagador (Se possível extrair)\n\n"
+            "4. Nome do pagador do pagador (Se possível extrair)\n\n"
+            "5. Data do pagamento (Se possível extrair)\n\n"
+            "6. Responda em JSON com este formato exato:\n\n"
+            '{  "destinatario": "nome do destinatario", "valor": 0.0, "nome_banco": "nome do banco", "nome_pagador": "nome do pagador", "data_pagamento": "YYYY-MM-DD HH:MM:SS" }\n\n'
         )
 
         # 4. Envio para a API do OpenAI com a imagem em base64

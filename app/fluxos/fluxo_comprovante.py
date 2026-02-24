@@ -69,7 +69,7 @@ def executar(pedido, mensagem_whatsapp):
             logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] ⏳ Aguardando {delay:.1f}s antes de enviar mensagem de confirmação de pagamento para o cliente...")
             time.sleep(delay)
             logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 🤖 Enviando mensagem de confirmação de pagamento para o cliente...")
-            url_surpresa = "https://lneditor.com.br/static/audios/surpresa-pago.ogg"
+            url_surpresa = "https://lneditor.com.br/static/audios/paes-surpresa-pago.ogg"
             enviar_documento(pedido, url_documento="https://lneditor.com.br/static/arquivos/ebook-surpresa.pdf")
         else:
             # enviar digitando para o celular do cliente, para simular que o atendente está digitando uma resposta

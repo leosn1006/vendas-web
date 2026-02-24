@@ -10,7 +10,7 @@ def executar():
     logger.debug(f"[FLUXO-FOLLOWUP] 🕐 Iniciando verificação de followup: {agora.strftime('%H:%M')}")
 
     # Busca pedidos estado=3 com data_ultima_atualizacao > 4h
-    pedidos = buscar_pedidos_followup(estado_id=3, horas_sem_atualizacao=4)
+    pedidos = buscar_pedidos_followup(horas_sem_atualizacao=4)
 
     if not pedidos:
         logger.debug("[FLUXO-FOLLOWUP] ℹ️ Nenhum pedido pendente de followup.")
@@ -21,7 +21,7 @@ def executar():
     for pedido in pedidos:
         try:
             logger.debug(f"[FLUXO-FOLLOWUP] 📱 Enviando followup para pedido #{pedido['id']}")
-            msg = "Oi! Vi que você ainda não realizou o pagamento. Posso te ajudar com alguma dúvida? 😊"
+            msg = "Oi! Sei que o dia a dia é bem corrido, mas o nosso sistema ainda não identificou o seu pagamento. \n \n Será que você consegue ajudar nosso projeto com apenas R$10,00? Posso te ajudar com alguma dúvida? 😊"
             enviar_mensagem(pedido, msg)
             logger.debug(f"[FLUXO-FOLLOWUP] ✅ Followup enviado para pedido #{pedido['id']}")
             # Atualiza estado do pedido para 'followup_enviado' (4)

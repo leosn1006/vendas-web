@@ -29,12 +29,15 @@ CREATE TABLE IF NOT EXISTS estado_pedidos (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Inserir estados de pedidos
+SET SESSION sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
 INSERT IGNORE INTO estado_pedidos (id, descricao) VALUES
+(0, 'Pago'),
 (1, 'Cliente acessou a página de vendas e clicou para enviar mensagem'),
 (2, 'Enviado mensagem de introdução'),
 (3, 'Produto enviado'),
 (4, 'Valor devolvido'),
-(0, 'Pago');
+(5, 'Follow-up enviado')
+
 
 -- Tabela de pedidos
 CREATE TABLE IF NOT EXISTS pedidos (
@@ -42,24 +45,28 @@ CREATE TABLE IF NOT EXISTS pedidos (
     produto_id INT NOT NULL,
     valor_pago DECIMAL(6, 2) NOT NULL,
     estado_id INT NOT NULL DEFAULT 1,
-    gclid VARCHAR(255),
+    gclid VARCHAR(255) NULL DEFAULT NULL,
     data_ultima_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     mensagem_sugerida varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
     emoji_sugerida VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
     data_contato_site TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     interesse_produto BOOLEAN DEFAULT NULL,
-    phone_number_id VARCHAR(20),
-    contact_phone VARCHAR(20),
-    contact_name VARCHAR(255),
-    data_pedido TIMESTAMP,
-    campaignid VARCHAR(255),
-    adgroupid VARCHAR(255),
-    creative VARCHAR(255),
-    matchtype VARCHAR(255),
-    device VARCHAR(255),
-    placement VARCHAR(255),
-    video_id VARCHAR(255),
-    path_comprovante VARCHAR(120),
+    phone_number_id VARCHAR(20) NULL DEFAULT NULL,
+    contact_phone VARCHAR(20) NULL DEFAULT NULL,
+    contact_name VARCHAR(255) NULL DEFAULT NULL CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    data_pedido TIMESTAMP NULL DEFAULT NULL,,
+    campaignid VARCHAR(255) NULL DEFAULT NULL,
+    adgroupid VARCHAR(255) NULL DEFAULT NULL,
+    creative VARCHAR(255) NULL DEFAULT NULL,
+    matchtype VARCHAR(255) NULL DEFAULT NULL,
+    device VARCHAR(255) NULL DEFAULT NULL,
+    placement VARCHAR(255) NULL DEFAULT NULL,
+    video_id VARCHAR(255) NULL DEFAULT NULL,
+    path_comprovante VARCHAR(120) NULL DEFAULT NULL,
+    data_followup TIMESTAMP NULL DEFAULT NULL,
+    nome_banco VARCHAR(100) NULL DEFAULT NULL,
+    nome_pagador VARCHAR(150), NULL DEFAULT NULL,
+    data_pagamento TIMESTAMP NULL DEFAULT NULL,
     FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE RESTRICT,
     FOREIGN KEY (estado_id) REFERENCES estado_pedidos(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
