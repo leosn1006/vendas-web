@@ -58,7 +58,7 @@ def executar(pedido, mensagem_whatsapp):
             # =======================================================================================
             #salvar no banco de dados que o pedido foi pago, para controle e histórico
             logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 📥 Atualizando pedido com pagamento no banco de dados...")
-            atualizar_pedido_com_pagamento(pedido_id, resultado_validacao['valor'])
+            atualizar_pedido_com_pagamento(pedido_id, valor_pago=resultado_validacao['valor'], nome_banco=resultado_validacao['nome_banco'], nome_pagador=resultado_validacao['nome_pagador'], data_pagamento=resultado_validacao['data_pagamento'])
             # =======================================================================================
             # enviar digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
             logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 🤖 Enviando digitando para o cliente...")
