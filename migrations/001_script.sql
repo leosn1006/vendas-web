@@ -36,8 +36,7 @@ INSERT IGNORE INTO estado_pedidos (id, descricao) VALUES
 (2, 'Enviado mensagem de introdução'),
 (3, 'Produto enviado'),
 (4, 'Valor devolvido'),
-(5, 'Follow-up enviado')
-
+(5, 'Follow-up enviado');
 
 -- Tabela de pedidos
 CREATE TABLE IF NOT EXISTS pedidos (
@@ -54,7 +53,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
     phone_number_id VARCHAR(20) NULL DEFAULT NULL,
     contact_phone VARCHAR(20) NULL DEFAULT NULL,
     contact_name VARCHAR(255) NULL DEFAULT NULL CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-    data_pedido TIMESTAMP NULL DEFAULT NULL,,
+    data_pedido TIMESTAMP NULL DEFAULT NULL,
     campaignid VARCHAR(255) NULL DEFAULT NULL,
     adgroupid VARCHAR(255) NULL DEFAULT NULL,
     creative VARCHAR(255) NULL DEFAULT NULL,
@@ -65,7 +64,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
     path_comprovante VARCHAR(120) NULL DEFAULT NULL,
     data_followup TIMESTAMP NULL DEFAULT NULL,
     nome_banco VARCHAR(100) NULL DEFAULT NULL,
-    nome_pagador VARCHAR(150), NULL DEFAULT NULL,
+    nome_pagador VARCHAR(150) NULL DEFAULT NULL,
     data_pagamento TIMESTAMP NULL DEFAULT NULL,
     FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE RESTRICT,
     FOREIGN KEY (estado_id) REFERENCES estado_pedidos(id) ON DELETE RESTRICT
