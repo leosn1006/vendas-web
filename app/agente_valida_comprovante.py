@@ -53,14 +53,13 @@ def validar_comprovante_com_ia(caminho_arquivo):
             "para confirmar se o pagamento foi concluído corretamente. Esta é uma operação legítima de verificação "
             "comercial para liberação de produtos digitais."
         )
-        
+
         prompt_usuario = (
             "Analise este comprovante de pagamento PIX e extraia as seguintes informações:\n\n"
-            "1. Verifique se o destinatário é 'Leonardo Santos Negreiros'\n"
-            "2. Verifique se o status da transação é 'Concluído' ou 'Sucesso' (não aceite agendamentos)\n"
-            "3. Extraia o valor da transação (remova R$ e vírgulas)\n\n"
+            "1. O destinatário é 'Leonardo Santos Negreiros'\n"
+            "3. Valor transação (remova R$)\n\n"
             "Responda em JSON com este formato exato:\n"
-            '{"valido": true/false, "valor": 0.0, "destinatario_correto": true/false, "motivo": "explicação se inválido"}'
+            '{ "valor": 0.0, "destinatario": "nome do destinatario" }\n\n'
         )
 
         # 4. Envio para a API do OpenAI com a imagem em base64
@@ -89,13 +88,13 @@ def validar_comprovante_com_ia(caminho_arquivo):
         )
 
         logger.info(f"[AGENTE_COMPROVANTE] Response recebido - Finish reason: {response.choices[0].finish_reason}")
-        
+
         # Verifica se houve refusal da OpenAI
         refusal = getattr(response.choices[0].message, 'refusal', None)
         if refusal:
             logger.error(f"[AGENTE_COMPROVANTE] ❌ OpenAI recusou processar: {refusal}")
             return '{"valido": false, "valor": 0.0, "destinatario_correto": false, "motivo": "Sistema de validação recusou processar o comprovante"}'
-        
+
         resposta = response.choices[0].message.content
 
         if not resposta:
