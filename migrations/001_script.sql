@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
     interesse_produto BOOLEAN DEFAULT NULL,
     phone_number_id VARCHAR(20) NULL DEFAULT NULL,
     contact_phone VARCHAR(20) NULL DEFAULT NULL,
-    contact_name VARCHAR(255) NULL DEFAULT NULL CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    contact_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
     data_pedido TIMESTAMP NULL DEFAULT NULL,
     campaignid VARCHAR(255) NULL DEFAULT NULL,
     adgroupid VARCHAR(255) NULL DEFAULT NULL,
