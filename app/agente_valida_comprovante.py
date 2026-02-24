@@ -49,7 +49,7 @@ def validar_comprovante_com_ia(caminho_arquivo):
         # 3. Prompt de validação rigorosa
         prompt_texto = (
             "Analise este comprovante de Pix. "
-            "1. destinatario_correto: Deve conter o nome 'Leonardo Santos Negreiros' no comprovante. Se tiver esse nome o destinatario está correto. Se não tiver, destinatário incorreto. "
+            "1. destinatario_correto: Deve conter o nome 'Leonardo Santos Negreiros' no comprovante. Se tiver esse nome o destinatario está correto. Se não tiver, destinatário falso. "
             "2. status: Deve ser 'Concluído' ou 'Sucesso'. Rejeite agendamentos. "
             "3. valor: Deve conter o valor da transação. Retirar R$ e converter para número. Se não conseguir identificar o valor, considerar valor 0. "
             "4. Responda estritamente em JSON com este formato: "
@@ -86,7 +86,7 @@ def validar_comprovante_com_ia(caminho_arquivo):
             logger.error(f"[AGENTE_COMPROVANTE] ❌ Resposta vazia da API. Finish reason: {response.choices[0].finish_reason}, Refusal: {refusal}")
             return '{"valido": false, "valor": 0.0, "destinatario_correto": false, "motivo": "Erro ao processar imagem - resposta vazia da IA"}'
 
-        logger.info(f"[AGENTE_COMPROVANTE] ✅ Resposta gerada: {resposta[:50]}...")
+        logger.info(f"[AGENTE_COMPROVANTE] ✅ Resposta gerada: {resposta}")
         return resposta
 
     except Exception as e:

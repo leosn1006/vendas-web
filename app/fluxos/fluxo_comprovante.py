@@ -53,7 +53,8 @@ def executar(pedido, mensagem_whatsapp):
         resultado_validacao_json = validar_comprovante_com_ia(path_comprovante)
         resultado_validacao = json.loads(resultado_validacao_json)
         logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 📥 Resultado da validação: {resultado_validacao}")
-        if resultado_validacao['valido'] and resultado_validacao['destinatario_correto']:
+        if resultado_validacao['valor'] > 0.0:
+        # and resultado_validacao['destinatario_correto']:
             # =======================================================================================
             #salvar no banco de dados que o pedido foi pago, para controle e histórico
             logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 📥 Atualizando pedido com pagamento no banco de dados...")
