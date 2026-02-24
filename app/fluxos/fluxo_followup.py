@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from database import buscar_pedidos_followup, atualizar_estado_pedido
+from database import buscar_pedidos_followup, atualizar_estado_pedido, atualizar_pedido_com_data_followup
 from whatsapp import enviar_mensagem
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,9 @@ def executar():
             # Atualiza estado do pedido para 'followup_enviado' (4)
             logger.debug("[FLUXO-FOLLOWUP] ✅ atualizando estado do pedido como 'followup_enviado' (4) no banco de dados...")
             atualizar_estado_pedido(pedido['id'], 4)  # estado 4 = followup_enviado
+            # Atualiza data do followup no banco de dados, para controle e histórico
+            logger.debug(f"[FLUXO-FOLLOWUP] ✅ Atualizando data do followup para o pedido #{pedido['id']}...")
+            atualizar_pedido_com_data_followup(pedido['id'])
             logger.debug(f"[FLUXO-FOLLOWUP] ✅ Estado do pedido #{pedido['id']} atualizado para 'followup_enviado' (4)!")
         except Exception as e:
             # Loga o erro mas continua para os outros pedidos

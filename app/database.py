@@ -197,6 +197,7 @@ class Pedido(TypedDict):
     nome_banco: Optional[str]
     nome_pagador: Optional[str]
     data_pagamento: Optional[str]
+    data_envio_pedido: Optional[str]
 
 def criar_pedido(pedido: Pedido):
     """
@@ -229,6 +230,7 @@ def criar_pedido(pedido: Pedido):
     nome_banco = pedido.get('nome_banco')
     nome_pagador = pedido.get('nome_pagador')
     data_pagamento = pedido.get('data_pagamento')
+    data_envio_pedido = pedido.get('data_envio_pedido')
 
 
     query = """
@@ -258,6 +260,7 @@ def criar_pedido(pedido: Pedido):
            , nome_banco
            , nome_pagador
            , data_pagamento
+           , data_envio_pedido
             )
         VALUES (
              %s
@@ -268,6 +271,7 @@ def criar_pedido(pedido: Pedido):
            , %s
            , %s
            , CURRENT_TIMESTAMP
+           , %s
            , %s
            , %s
            , %s
@@ -311,6 +315,7 @@ def criar_pedido(pedido: Pedido):
            , nome_banco
            , nome_pagador
            , data_pagamento
+           , data_envio_pedido
         ))
     return pedido_id
 
@@ -326,6 +331,7 @@ def atualizar_estado_pedido(pedido_id, novo_estado_id):
     Returns:
         int: ID do pedido
     """
+
     query = "UPDATE pedidos SET estado_id = %s WHERE id = %s"
     db.execute_query(query, (novo_estado_id, pedido_id))
     return pedido_id
@@ -497,12 +503,40 @@ def atualizar_pedido_com_interesse_produto(pedido_id, interesse_produto):
     db.execute_query(query, (interesse_produto, pedido_id))
     return pedido_id
 
+def atualizar_pedido_com_data_followup(pedido_id):
+    """
+    Atualiza um pedido com a data do followup.
+
+    Args:
+        pedido_id: ID do pedido
+
+    Returns:
+        int: ID do pedido
+    """
+    query = "UPDATE pedidos SET data_followup = CURRENT_TIMESTAMP WHERE id = %s"
+    db.execute_query(query, (pedido_id,))
+    return pedido_id
+
+def atualizar_pedido_com_data_envio_pedido(pedido_id):
+    """
+    Atualiza um pedido com a data do envio do pedido.
+
+    Args:
+        pedido_id: ID do pedido
+
+    Returns:
+        int: ID do pedido
+    """
+    query = "UPDATE pedidos SET data_envio_pedido = CURRENT_TIMESTAMP WHERE id = %s"
+    db.execute_query(query, (pedido_id,))
+    return pedido_id
+
 def buscar_pedidos_followup( horas_sem_atualizacao: int) -> list:
     query = """
         SELECT *
         FROM pedidos
         WHERE estado_id = 3 -- estado 'produto enviado, aguardando pagamento'
-        AND data_ultima_atualizacao < NOW() - INTERVAL %s HOUR
+        AND data_envio_pedido < NOW() - INTERVAL %s HOUR
         AND contact_phone IS NOT NULL
     """
     return db.execute_query(query, (horas_sem_atualizacao,), fetch_all=True)

@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
     nome_banco VARCHAR(100) NULL DEFAULT NULL,
     nome_pagador VARCHAR(150) NULL DEFAULT NULL,
     data_pagamento TIMESTAMP NULL DEFAULT NULL,
+    data_envio_pedido TIMESTAMP NULL DEFAULT NULL,
     FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE RESTRICT,
     FOREIGN KEY (estado_id) REFERENCES estado_pedidos(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

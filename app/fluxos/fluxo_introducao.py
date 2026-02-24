@@ -1,7 +1,7 @@
 import logging
 import time
 import random
-from database import salvar_mensagem_pedido, atualizar_estado_pedido
+from database import salvar_mensagem_pedido, atualizar_estado_pedido, atualizar_pedido_com_data_envio_pedido
 from whatsapp import enviar_audio, enviar_imagem, enviar_mensagem, enviar_mensagem_digitando, marcar_como_lida
 
 
@@ -85,6 +85,11 @@ def executar(pedido, mensagem_whatsapp):
         logger.debug("[FLUXO-INTRODUCAO] ✅ atualizando estado do pedido como 'introducao_enviada' (2) no banco de dados...")
         atualizar_estado_pedido(pedido['id'], 2)
         # ============================================================================================
+        #atualiza data do envio da introdução no banco de dados, para controle e histórico
+        logger.debug(f"[FLUXO-INTRODUCAO] ✅ Atualizando data do envio da introdução para o pedido #{pedido['id']} no banco de dados...")
+        atualizar_pedido_com_data_envio_pedido(pedido['id'])
+        # ============================================================================================
+
         logger.debug("[FLUXO-INTRODUCAO] ✅ Mensagem processada com sucesso!")
         logger.debug("=" * 120)
 
