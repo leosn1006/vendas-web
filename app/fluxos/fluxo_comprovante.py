@@ -53,40 +53,42 @@ def executar(pedido, mensagem_whatsapp):
         resultado_validacao_json = validar_comprovante_com_ia(path_comprovante)
         resultado_validacao = json.loads(resultado_validacao_json)
         logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 📥 Resultado da validação: {resultado_validacao}")
-        if resultado_validacao['valor'] > 0.0:
+        #if resultado_validacao['valor'] > 0.0:
         # and resultado_validacao['destinatario_correto']:
-            # =======================================================================================
-            #salvar no banco de dados que o pedido foi pago, para controle e histórico
-            logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 📥 Atualizando pedido com pagamento no banco de dados...")
-            atualizar_pedido_com_pagamento(pedido_id, valor_pago=resultado_validacao['valor'], nome_banco=resultado_validacao['nome_banco'], nome_pagador=resultado_validacao['nome_pagador'], data_pagamento=resultado_validacao['data_pagamento'])
-            # =======================================================================================
-            # enviar digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
-            logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 🤖 Enviando digitando para o cliente...")
-            enviar_mensagem_digitando(message_id)
-            # =======================================================================================
-            # enviar mensagem de confirmação de pagamento e entrega do e-book surpresa
-            delay = random.uniform(5.0, 8.0)
-            logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] ⏳ Aguardando {delay:.1f}s antes de enviar mensagem de confirmação de pagamento para o cliente...")
-            time.sleep(delay)
-            logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 🤖 Enviando mensagem de confirmação de pagamento para o cliente...")
-            url_surpresa = "https://lneditor.com.br/static/audios/paes-surpresa-pago.ogg"
-            enviar_documento(pedido, url_documento="https://lneditor.com.br/static/arquivos/ebook-surpresa.pdf")
-        else:
-            # enviar digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
-            logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 🤖 Enviando digitando para o cliente...")
-            enviar_mensagem_digitando(message_id)
-            # =======================================================================================
-            # enviar mensagem de comprovante inválido, e solicitar que envie um comprovante válido para receber o e-book surpresa
-            delay = random.uniform(5.0, 8.0)
-            logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] ⏳ Aguardando {delay:.1f}s antes de enviar mensagem de comprovante inválido para o cliente...")
-            time.sleep(delay)
-            logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 🤖 Enviando mensagem de comprovante inválido para o cliente...")
-            msg_comprovante_invalido = "O comprovante enviado não é válido. Por favor, verifique se o pagamento foi realizado corretamente, se o valor é igual ou superior a R$10,00 e se a chave Pix é correta "
-            message_id_resposta = enviar_mensagem(pedido, msg_comprovante_invalido)
-            # ============================================================================================
-            # salva mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
-            mensagem = msg_comprovante_invalido
-            salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
+        # =======================================================================================
+        #salvar no banco de dados que o pedido foi pago, para controle e histórico
+        logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 📥 Atualizando pedido com pagamento no banco de dados...")
+        atualizar_pedido_com_pagamento(pedido_id, valor_pago=resultado_validacao['valor'], nome_banco=resultado_validacao['nome_banco'], nome_pagador=resultado_validacao['nome_pagador'], data_pagamento=resultado_validacao['data_pagamento'])
+        # =======================================================================================
+        # enviar digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
+        logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 🤖 Enviando digitando para o cliente...")
+        enviar_mensagem_digitando(message_id)
+        # =======================================================================================
+        # enviar mensagem de confirmação de pagamento e entrega do e-book surpresa
+        delay = random.uniform(5.0, 8.0)
+        logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] ⏳ Aguardando {delay:.1f}s antes de enviar mensagem de confirmação de pagamento para o cliente...")
+        time.sleep(delay)
+        logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 🤖 Enviando mensagem de confirmação de pagamento para o cliente...")
+        url_surpresa = "https://lneditor.com.br/static/audios/bolos-sem-gluten.pdf"
+        caption = "Sua surpresa chegou! 🎉 "
+        filename = "BOLOS SEM GLUTEN-RECEITAS-SURPRESA.pdf"
+        enviar_documento(pedido, url_documento=url_surpresa, caption=caption, filename=filename)
+        #else:
+        #    # enviar digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
+        #    logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 🤖 Enviando digitando para o cliente...")
+        #    enviar_mensagem_digitando(message_id)
+        #    # =======================================================================================
+        #    # enviar mensagem de comprovante inválido, e solicitar que envie um comprovante válido para receber o e-book surpresa
+        #    delay = random.uniform(5.0, 8.0)
+        #    logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] ⏳ Aguardando {delay:.1f}s antes de enviar mensagem de comprovante inválido para o cliente...")
+        #    time.sleep(delay)
+        #    logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 🤖 Enviando mensagem de comprovante inválido para o cliente...")
+        #    msg_comprovante_invalido = "O comprovante enviado não é válido. Por favor, verifique se o pagamento foi realizado corretamente, se o valor é igual ou superior a R$10,00 e se a chave Pix é correta "
+        #    message_id_resposta = enviar_mensagem(pedido, msg_comprovante_invalido)
+        #    # ============================================================================================
+        #    # salva mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
+        #    mensagem = msg_comprovante_invalido
+        #    salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
         # ============================================================================================
         logger.info("[FLUXO-CONFERIR-COMPROVANTE] ✅ Mensagem processada com sucesso!")
         logger.info("=" * 120)

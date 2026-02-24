@@ -84,16 +84,17 @@ Exemplos de "sim":
             atualizar_pedido_com_interesse_produto(pedido_id, False)
             # ========================================================================================
             logger.debug(f"[FLUXO-PEDIDO] 🤖 Enviando mensagem do produto para o cliente...")
-            msg_pedido_inicial = "Queremos o seu melhor, então receba esse presente totalmente sem custo, é só clicar abaixo que é seu ⬇"
+            msg_pedido_inicial = "Queremos o seu melhor, então receba esse presente totalmente sem custo⬇"
             message_id_resposta = enviar_mensagem(pedido, msg_pedido_inicial)
             # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
             mensagem = msg_pedido_inicial
             salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
-        # ============================================================================================
         #envia pdf do produto
         logger.debug(f"[FLUXO-PEDIDO] 🤖 Enviando documento do produto para o cliente...")
         url_documento = "https://lneditor.com.br/static/arquivos/paes-sem-gluten.pdf"
-        message_id_resposta = enviar_documento(pedido, url_documento=url_documento)
+        caption = "Aqui está o seu e-book! 📚 "
+        filename = "RECEITAS LIBERADAS! ❤️ - Toque AQUI.pdf"
+        message_id_resposta = enviar_documento(pedido, url_documento=url_documento, caption=caption, filename=filename)
         # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
         mensagem = url_documento
         salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
@@ -114,7 +115,7 @@ Exemplos de "sim":
             salvar_mensagem_pedido(message_id, pedido_id, mensagem, tipo_mensagem='enviada')
         else:
             # ========================================================================================
-            msg_pedido_entregue = "Se você gostou do presente, você pode nos ajudar ajudar com R$10,00 ou mais. Essa ajuda iré permitir que outras pessoas conheçam essas receitas sem glutén e possam ter uma vida mais gostosa e saudável também ❤️ Para contribuir, vou mandar os dados do Pix ⬇"
+            msg_pedido_entregue = "Se você gostou do presente, você pode nos ajudar ajudar com R$10,00 ou mais. Essa ajuda irá permitir que outras pessoas conheçam essas receitas sem glutén e possam ter uma vida mais gostosa e saudável também ❤️ Para contribuir, vou mandar os dados do Pix ⬇"
             message_id_resposta = enviar_mensagem(pedido, msg_pedido_entregue)
             # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
             mensagem = msg_pedido_entregue
@@ -128,11 +129,11 @@ Exemplos de "sim":
         msg_contribuicao = """
             *Informações do PIX*:
 
-        - 💸 *Valor*: R$10, 12, 15, 20
-        - 📱 *Chave Pix* (cpf): 50934392315
-        - 👤 *Nome*: Leonardo Santos Negreiros
+- 💸 *Valor*: R$10, 12, 15, 20
+- 📱 *Chave Pix* (cpf): 50934392315
+- 👤 *Nome*: Leonardo Santos Negreiros
 
-        Para facilitar, vou te enviar a chave Pix separada, assim é só copiar e colar:
+Para facilitar, vou te enviar a chave Pix separada, assim é só copiar e colar:
         """
         message_id_resposta = enviar_mensagem(pedido, msg_contribuicao  )
         # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle

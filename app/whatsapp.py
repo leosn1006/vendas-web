@@ -189,7 +189,7 @@ def enviar_mensagem_digitando(message_id: str):
         raise ValueError(f"[MENSAGEM-ENVIAR] ❌ Erro ao enviar mensagem: {response.json()}")
 
 
-def enviar_documento(pedido: Pedido, url_documento: str, caption: str = "Aqui está o documento solicitado."):
+def enviar_documento(pedido: Pedido, url_documento: str, caption: str, filename: str):
     id_message = None
 
     if pedido is None:
