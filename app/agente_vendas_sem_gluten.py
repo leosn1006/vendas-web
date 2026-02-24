@@ -35,7 +35,7 @@ REGRAS DE OURO:
                 },
                 {"role": "user", "content": pergunta}
             ],
-            temperature=0.7,  # Um pouco mais criativo
+            temperature=0.1,  # Um pouco mais criativo
             max_tokens=300    # Limitar resposta (respostas curtas)
         )
         resposta = response.choices[0].message.content
