@@ -64,13 +64,16 @@ def executar(pedido, mensagem_whatsapp):
         logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 🤖 Enviando digitando para o cliente...")
         enviar_mensagem_digitando(message_id)
         # =======================================================================================
+        #envia mensagem de agradecimento e confirmação de pagamento, e entrega do e-book surpresa, para o cliente
+        logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 🤖 Enviando mensagem de agradecimento e confirmação de pagamento para o cliente...")
+        enviar_mensagem(pedido, "Obrigado pelo envio do comprovante e sua honestidade 🙏🏼! Estamos confirmando o pagamento e em breve você receberá seu e-book surpresa! 🎁")
         # enviar mensagem de confirmação de pagamento e entrega do e-book surpresa
         delay = random.uniform(5.0, 8.0)
         logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] ⏳ Aguardando {delay:.1f}s antes de enviar mensagem de confirmação de pagamento para o cliente...")
         time.sleep(delay)
         logger.debug(f"[FLUXO-CONFERIR-COMPROVANTE] 🤖 Enviando mensagem de confirmação de pagamento para o cliente...")
-        url_surpresa = "https://lneditor.com.br/static/audios/bolos-sem-gluten.pdf"
-        caption = "Sua surpresa chegou! 🎉 "
+        url_surpresa = "https://lneditor.com.br/static/arquivos/bolos-sem-gluten.pdf"
+        caption = "Sua surpresa chegou! 🎁"
         filename = "BOLOS SEM GLUTEN-RECEITAS-SURPRESA.pdf"
         enviar_documento(pedido, url_documento=url_surpresa, caption=caption, filename=filename)
         #else:

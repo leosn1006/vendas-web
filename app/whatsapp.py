@@ -218,8 +218,8 @@ def enviar_documento(pedido: Pedido, url_documento: str, caption: str, filename:
             "type": "document",
             "document": {
                 "link": url_documento,
-                "filename": "RECEITAS LIBERADAS! ❤️ - Toque AQUI.pdf",  # nome que aparece para o cliente
-                "caption": "Seu e-book está aqui! 📘"
+                "filename": filename,  # nome que aparece para o cliente
+                "caption": caption
               }
             }
 
