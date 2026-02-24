@@ -167,8 +167,8 @@
                 const urlDaPaginaAtual = window.location.href;
                 const urlParams = new URLSearchParams(window.location.search);
                 // ValueTrack / YouTube Ads params
-                // const gclidCode = urlParams.get('gclid') || '';
-                const gclidCode = "WAB-" + Date.now(); // mock para testar sem parâmetro gclid real
+                const gclidCode = urlParams.get('gclid') || '';
+                // const gclidCode = "WAB-" + Date.now(); // mock para testar sem parâmetro gclid real
                 console.log("gclid:", gclidCode);
                 const campaignid = urlParams.get('campaignid') || '';
                 const adgroupid = urlParams.get('adgroupid') || '';
