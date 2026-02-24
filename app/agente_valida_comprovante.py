@@ -47,13 +47,20 @@ def validar_comprovante_com_ia(caminho_arquivo):
             raise ValueError(f"Formato de arquivo não suportado: {ext}")
 
         # 3. Prompt de validação rigorosa
-        prompt_texto = (
-            "Analise este comprovante de Pix. "
-            "1. destinatario_correto: Deve conter o nome 'Leonardo Santos Negreiros' no comprovante. Se tiver esse nome o destinatario está correto. Se não tiver, destinatário falso. "
-            "2. status: Deve ser 'Concluído' ou 'Sucesso'. Rejeite agendamentos. "
-            "3. valor: Deve conter o valor da transação. Retirar R$ e converter para número. Se não conseguir identificar o valor, considerar valor 0. "
-            "4. Responda estritamente em JSON com este formato: "
-            "{'valido': true/false, 'valor': float, 'destinatario_correto': true/false, 'motivo': 'motivo se falso'}"
+        prompt_sistema = (
+            "Você é um assistente de automação comercial responsável por validar comprovantes de pagamento PIX "
+            "recebidos de clientes que compraram produtos digitais. Sua função é extrair informações do comprovante "
+            "para confirmar se o pagamento foi concluído corretamente. Esta é uma operação legítima de verificação "
+            "comercial para liberação de produtos digitais."
+        )
+        
+        prompt_usuario = (
+            "Analise este comprovante de pagamento PIX e extraia as seguintes informações:\n\n"
+            "1. Verifique se o destinatário é 'Leonardo Santos Negreiros'\n"
+            "2. Verifique se o status da transação é 'Concluído' ou 'Sucesso' (não aceite agendamentos)\n"
+            "3. Extraia o valor da transação (remova R$ e vírgulas)\n\n"
+            "Responda em JSON com este formato exato:\n"
+            '{"valido": true/false, "valor": 0.0, "destinatario_correto": true/false, "motivo": "explicação se inválido"}'
         )
 
         # 4. Envio para a API do OpenAI com a imagem em base64
@@ -62,9 +69,13 @@ def validar_comprovante_com_ia(caminho_arquivo):
             model="gpt-4o",
             messages=[
                 {
+                    "role": "system",
+                    "content": prompt_sistema
+                },
+                {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": prompt_texto},
+                        {"type": "text", "text": prompt_usuario},
                         {
                             "type": "image_url",
                             "image_url": {
@@ -78,12 +89,17 @@ def validar_comprovante_com_ia(caminho_arquivo):
         )
 
         logger.info(f"[AGENTE_COMPROVANTE] Response recebido - Finish reason: {response.choices[0].finish_reason}")
+        
+        # Verifica se houve refusal da OpenAI
+        refusal = getattr(response.choices[0].message, 'refusal', None)
+        if refusal:
+            logger.error(f"[AGENTE_COMPROVANTE] ❌ OpenAI recusou processar: {refusal}")
+            return '{"valido": false, "valor": 0.0, "destinatario_correto": false, "motivo": "Sistema de validação recusou processar o comprovante"}'
+        
         resposta = response.choices[0].message.content
 
         if not resposta:
-            # Verifica se houve refusal
-            refusal = getattr(response.choices[0].message, 'refusal', None)
-            logger.error(f"[AGENTE_COMPROVANTE] ❌ Resposta vazia da API. Finish reason: {response.choices[0].finish_reason}, Refusal: {refusal}")
+            logger.error(f"[AGENTE_COMPROVANTE] ❌ Resposta vazia da API. Finish reason: {response.choices[0].finish_reason}")
             return '{"valido": false, "valor": 0.0, "destinatario_correto": false, "motivo": "Erro ao processar imagem - resposta vazia da IA"}'
 
         logger.info(f"[AGENTE_COMPROVANTE] ✅ Resposta gerada: {resposta}")
