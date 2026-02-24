@@ -16,7 +16,7 @@ def validar_comprovante_com_ia(caminho_arquivo):
         if not Path(caminho_arquivo).is_absolute():
             base_path = Path(__file__).parent.absolute()  # /app
             caminho_arquivo = str(base_path / caminho_arquivo)
-        
+
         logger.info(f"[AGENTE_COMPROVANTE] Iniciando leitura do arquivo para validação: {caminho_arquivo}")
 
         # 1. Identifica a extensão do arquivo
@@ -75,7 +75,16 @@ def validar_comprovante_com_ia(caminho_arquivo):
             ],
             response_format={ "type": "json_object" }
         )
+
+        logger.info(f"[AGENTE_COMPROVANTE] Response recebido - Finish reason: {response.choices[0].finish_reason}")
         resposta = response.choices[0].message.content
+
+        if not resposta:
+            # Verifica se houve refusal
+            refusal = getattr(response.choices[0].message, 'refusal', None)
+            logger.error(f"[AGENTE_COMPROVANTE] ❌ Resposta vazia da API. Finish reason: {response.choices[0].finish_reason}, Refusal: {refusal}")
+            return '{"valido": false, "valor": 0.0, "destinatario_correto": false, "motivo": "Erro ao processar imagem - resposta vazia da IA"}'
+
         logger.info(f"[AGENTE_COMPROVANTE] ✅ Resposta gerada: {resposta[:50]}...")
         return resposta
 
@@ -83,4 +92,4 @@ def validar_comprovante_com_ia(caminho_arquivo):
         logger.error(f"[AGENTE_COMPROVANTE] ❌ Erro ao processar mensagem: {e}")
         import traceback
         traceback.print_exc()
-        return "Desculpe, estou com dificuldades técnicas no momento. Por favor, tente novamente em alguns instantes. 🙏"
+        return '{"valido": false, "valor": 0.0, "destinatario_correto": false, "motivo": "Erro técnico ao validar comprovante"}'
