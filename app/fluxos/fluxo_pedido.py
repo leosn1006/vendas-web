@@ -1,7 +1,7 @@
 import logging
 import time
 import random
-from database import salvar_mensagem_pedido, atualizar_estado_pedido, atualizar_pedido_com_interesse_produto
+from database import salvar_mensagem_pedido, atualizar_estado_pedido, atualizar_pedido_com_interesse_produto, atualizar_pedido_com_data_envio_pedido
 from whatsapp import enviar_audio, enviar_mensagem, enviar_mensagem_digitando, marcar_como_lida, enviar_documento
 from agente_vendas_sem_gluten import responder_cliente
 
@@ -136,6 +136,9 @@ def executar(pedido, mensagem_whatsapp):
         #atualiza estado do pedido para 'pedido_enviado' (3) no banco de dados, para controlar o fluxo e histórico do pedido
         logger.debug("[FLUXO-PEDIDO] ✅ atualizando estado do pedido como 'pedido_enviado' (3) no banco de dados...")
         atualizar_estado_pedido(pedido_id, 3)
+        #atualiza data do envio do pedido no banco de dados, para controle e histórico
+        logger.debug(f"[FLUXO-PEDIDO] ✅ Atualizando data do envio do pedido #{pedido['id']} no banco de dados...")
+        atualizar_pedido_com_data_envio_pedido(pedido['id'])
         # ============================================================================================
         logger.info("[FLUXO-PEDIDO] ✅ Mensagem processada com sucesso!")
         logger.info("=" * 120)
