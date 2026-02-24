@@ -28,8 +28,29 @@ def executar(pedido, mensagem_whatsapp):
         #verifica se a mensagem é interessada ou não no produto
         logger.debug(f"[FLUXO-PEDIDO] 📥 Mensagem marcada como lida: {mensagem}")
         mensagem_cliente = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
-        pergunta = f"""Você acabou de enviar no WhatsApp do cliente um audio com a descrição do produto e ela te respondeu a mensagem '{mensagem_cliente}'
-        Pela mensagem dele, o cliente está demonstrando interesse no produto? Responda apenas com 'sim' ou 'não'.
+        pergunta = f"""Você é um classificador de intenção de compra. Analise a mensagem do cliente e classifique se ele demonstra interesse em prosseguir com a compra.
+
+Contexto: O cliente acabou de ouvir um áudio apresentando um e-book de receitas sem glúten e respondeu com a seguinte mensagem:
+"{mensagem_cliente}"
+
+Regras de classificação:
+- Responda SOMENTE com a palavra "sim" ou "não", sem pontuação, sem explicação.
+- "sim" = cliente quer continuar, quer receber o produto, faz perguntas positivas, demonstra curiosidade ou entusiasmo.
+- "não" = cliente recusa, objeta preço, diz que não quer, ignora, responde negativamente, ou demonstra desinteresse de qualquer forma.
+
+Exemplos de "não":
+- "Não, achei caro!"
+- "Não tenho interesse"
+- "Tô sem dinheiro agora"
+- "Deixa pra depois"
+- "Não quero"
+
+Exemplos de "sim":
+- "Quero sim!"
+- "Me manda!"
+- "Quanto custa?"
+- "Adorei!"
+- "Como faço pra comprar?"
             """
         interesse_positivo = responder_cliente(pergunta)
         # Limpar resposta do modelo (remover pontuação e espaços)
