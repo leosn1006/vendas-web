@@ -49,9 +49,10 @@ def validar_comprovante_com_ia(caminho_arquivo):
         # 3. Prompt de validação rigorosa
         prompt_texto = (
             "Analise este comprovante de Pix. "
-            "Dados Obrigatórios: Destinatário deve ser 'Leonardo Santos Negreiros'. "
-            "Status: Deve ser 'Concluído' ou 'Sucesso'. Rejeite agendamentos. "
-            "Responda estritamente em JSON com este formato: "
+            "1. destinatario_correto: Deve conter o nome 'Leonardo Santos Negreiros' no comprovante. Se tiver esse nome o destinatario está correto. Se não tiver, destinatário incorreto. "
+            "2. status: Deve ser 'Concluído' ou 'Sucesso'. Rejeite agendamentos. "
+            "3. valor: Deve conter o valor da transação. Retirar R$ e converter para número. Se não conseguir identificar o valor, considerar valor 0. "
+            "4. Responda estritamente em JSON com este formato: "
             "{'valido': true/false, 'valor': float, 'destinatario_correto': true/false, 'motivo': 'motivo se falso'}"
         )
 
