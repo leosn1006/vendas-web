@@ -17,6 +17,7 @@ openai==1.59.7
 # Processamento de imagens e PDFs
 Pillow==11.0.0
 pdf2image==1.17.0
+pymupdf==1.27.1
 
 # Fila assíncrona
 celery[redis]==5.4.0
