@@ -35,7 +35,7 @@ def executar(pedido, mensagem_whatsapp):
         url_audio_inicial = "https://lneditor.com.br/static/audios/introducao-paes.ogg"
         message_id = enviar_audio(pedido, url_audio=url_audio_inicial)
         #gravar mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
-        mensagem = url_audio_inicial
+        mensagem = "segue o audio com uma explicação inicial do produto"
         salvar_mensagem_pedido(message_id, pedido_id, mensagem, tipo_mensagem='enviada')
         # ============================================================================================
         # envia digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
@@ -49,7 +49,7 @@ def executar(pedido, mensagem_whatsapp):
         url_audio_explicativo = "https://lneditor.com.br/static/audios/introducao-explicativa-paes.ogg"
         message_id = enviar_audio(pedido, url_audio=url_audio_explicativo)
         #grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
-        mensagem = url_audio_explicativo
+        mensagem = "Segue uma explicação detalhada do produto e seus diferenciais"
         salvar_mensagem_pedido(message_id, pedido_id, mensagem, tipo_mensagem='enviada')
         # ============================================================================================
         # envia digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
@@ -63,7 +63,7 @@ def executar(pedido, mensagem_whatsapp):
         url_imagem_complementar = "https://lneditor.com.br/static/images/paes-foto-semanal.jpg"
         message_id = enviar_imagem(pedido, url_imagem_complementar)
         #grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
-        mensagem = url_imagem_complementar
+        mensagem = "Segue uma imagem complementar do produto"
         salvar_mensagem_pedido(message_id, pedido_id, mensagem, tipo_mensagem='enviada')
         # ============================================================================================
         # enviar digitando para o celular do cliente, para simular que o atendente está digitando uma resposta
@@ -90,6 +90,4 @@ def executar(pedido, mensagem_whatsapp):
         logger.debug("=" * 120)
 
     except Exception as exc:
-        logger.error(f"[FLUXO-INTRODUCAO] ❌ Erro: {exc}")
-        logger.debug("=" * 120)
-        raise exc
+        raise Exception(f"[FLUXO-INTRODUCAO] ❌ \n Erro: {exc}")

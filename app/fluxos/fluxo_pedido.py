@@ -26,7 +26,6 @@ def executar(pedido, mensagem_whatsapp):
         marcar_como_lida(message_id)
         # ============================================================================================
         #verifica se a mensagem é interessada ou não no produto
-        logger.debug(f"[FLUXO-PEDIDO] 📥 Mensagem marcada como lida: {mensagem}")
         mensagem_cliente = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
         pergunta = f"""Você é um classificador de intenção de compra. Analise a mensagem do cliente e classifique se ele demonstra interesse em prosseguir com a compra.
 
@@ -96,7 +95,7 @@ Exemplos de "sim":
         filename = "RECEITAS LIBERADAS! ❤️ - Toque AQUI.pdf"
         message_id_resposta = enviar_documento(pedido, url_documento=url_documento, caption=caption, filename=filename)
         # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
-        mensagem = url_documento
+        mensagem = f"Enviado documento do produto: {filename}"
         salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
         delay = random.uniform(10, 15)
         logger.debug(f"[FLUXO-PEDIDO] ⏳ Aguardando {delay:.1f}s antes de enviar áudio inicial...")
@@ -111,11 +110,11 @@ Exemplos de "sim":
             time.sleep(delay)
             message_id = enviar_audio(pedido, url_audio=url_audio_pedido_entregue)
             #gravar mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
-            mensagem = url_audio_pedido_entregue
+            mensagem = "Enviado áudio de pedido entregue"
             salvar_mensagem_pedido(message_id, pedido_id, mensagem, tipo_mensagem='enviada')
         else:
             # ========================================================================================
-            msg_pedido_entregue = "Se você gostou do presente, você pode nos ajudar ajudar com R$10,00 ou mais. Essa ajuda irá permitir que outras pessoas conheçam essas receitas sem glutén e possam ter uma vida mais gostosa e saudável também ❤️ Para contribuir, vou mandar os dados do Pix ⬇"
+            msg_pedido_entregue = "Se você gostou do presente e se for da sua vontade, você pode nos ajudar ajudar com R$10,00 ou mais. Essa ajuda irá permitir que outras pessoas conheçam essas receitas sem glutén e possam ter uma vida mais tranquila e saudável também ❤️ Para contribuir, vou mandar os dados do Pix ⬇"
             message_id_resposta = enviar_mensagem(pedido, msg_pedido_entregue)
             # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
             mensagem = msg_pedido_entregue
@@ -166,10 +165,4 @@ Para facilitar, vou te enviar a chave Pix separada, assim é só copiar e colar:
         logger.info("=" * 120)
 
     except Exception as exc:
-
-        #coloca no log mais detalhes do erro, para facilitar o debug, incluindo os dados do pedido e da mensagem que causaram o erro
-        logger.error(f"[FLUXO-PEDIDO] ❌ Erro ao processar pedido: {pedido}, mensagem: {mensagem}, erro: \n {exc}")
-        import traceback
-        traceback.print_exc()
-        logger.info("=" * 120)
-        raise exc
+        raise Exception(f"[FLUXO-PEDIDO] ❌ Erro ao processar \n pedido: {pedido}, mensagem: {mensagem}, erro: \n {exc}")

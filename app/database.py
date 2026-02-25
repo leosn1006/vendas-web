@@ -540,3 +540,26 @@ def buscar_pedidos_followup( horas_sem_atualizacao: int) -> list:
         AND contact_phone IS NOT NULL
     """
     return db.execute_query(query, (horas_sem_atualizacao,), fetch_all=True)
+
+def buscar_historico_conversa(pedido_id: int, limite: int = 10) -> list:
+    """Busca as últimas mensagens do pedido formatadas para a OpenAI."""
+    query = """
+        SELECT tipo_mensagem, mensagem_json
+        FROM mensagens_pedidos
+        WHERE pedido_id = %s
+        ORDER BY sequencial_mensagem  DESC
+        LIMIT %s
+    """
+    mensagens = db.execute_query(query, (pedido_id, limite))
+
+    # Reverte para ordem cronológica
+    mensagens = list(reversed(mensagens))
+
+    # Retorna mensagens formatadas para a OpenAI
+    return [
+        {
+            "role": "assistant" if msg['tipo_mensagem'] == 'enviada' else "user",
+            "content": msg['mensagem_json']
+        }
+        for msg in mensagens
+    ]

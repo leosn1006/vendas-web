@@ -1,48 +1,51 @@
-from openai import OpenAI
 import logging
+from pathlib import Path
+from openai import OpenAI
 
 logger = logging.getLogger(__name__)
-
 client = OpenAI()
 
-#conectar ao llm
-def responder_cliente(pergunta):
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",  # Modelo válido da OpenAI (rápido e barato)
-            # TODO buscar descrição do produto, chave Pix... para passar no contexto, para não ficar hardcodado
-            messages=[
-                {
-                    "role": "system",
-                    "content": """Você é a Luiza, atendente da LN Editora. Você vende um e-book com 50 receitas de pães sem glúten via WhatsApp. Seu tom é acolhedor, prestativo e muito prático (estilo conversa de WhatsApp).
+# Cache do FAQ — carregado uma vez na inicialização. Se quiser alterar o FAQ, basta editar o arquivo prompts/faq_paes_sem_gluten.txt e reiniciar a aplicação (docker compose restart worker)
+_FAQ_PAES_SEM_GLUTEN = None
 
-DIRETRIZES DE RESPOSTA:
-1. PRODUTO: São 50 receitas exclusivas de pães sem glúten, focadas em sabor e saúde.
-2. PREÇO: O e-book é gratuito! Explicamos que, se o cliente quiser, pode fazer uma doação de qualquer valor simbólico (sugerimos R$ 10,00) para ajudar a LN Editora a criar novos conteúdos.
-3. PAGAMENTO/DOAÇÃO: Exclusivamente via Pix. Chave Pix é o cpf: 50934392315.
-4. ENTREGA: É imediata e baseada na confiança! Enviamos o PDF no WhatsApp antes mesmo de qualquer pagamento.
-5. DEVOLUÇÃO/GARANTIA: Se o cliente pagar e não gostar, devolvemos o dinheiro sem perguntas, e ele ainda pode ficar com o e-book como presente.
-6. SUPORTE: Atendimento pelo e-mail admin@lneditor.com.br ou por este número de WhatsApp em horário comercial.
-7. ABORDAGEM DE VENDAS: Seja sempre gentil, compreensiva e focada em ajudar o cliente a ter a melhor experiência possível. O objetivo é que o cliente se sinta acolhido e satisfeito, independentemente de realizar ou não uma doação. Se o cliente demonstrar interesse, explique os benefícios do e-book e como ele pode transformar a experiência de fazer pães sem glúten. Se o cliente tiver dúvidas ou objeções, responda de forma clara e empática, sempre reforçando que o e-book é gratuito e que a doação é apenas uma forma de apoiar nosso trabalho.
-8. Se o cliente tiver com dificuldade para pagar, seja compreensiva e ofereça opções, como pagar o que puder ou até mesmo receber o e-book de graça, sem pressão. O importante é que o cliente se sinta acolhido e satisfeito, mesmo que não possa contribuir financeiramente.
-9. Pix, se a difficuldade for em fazer o Pix, ofereça a possibilidade de fazer uma transferência para os dados bancários (Banco 001 - Banco do Brasil - Agência 5114-4 - conta corrente 42235-5) do Leonardo Santos Negreiros, que é o responsável pela LN Editora, e depois enviar o comprovante de pagamento para este número de WhatsApp. Assim, mesmo clientes que não estão familiarizados com o Pix podem contribuir de forma simples e rápida.
+def carregar_faq() -> str:
+    global _FAQ_PAES_SEM_GLUTEN
+    if _FAQ_PAES_SEM_GLUTEN is None:
+        caminho = Path(__file__).parent / "prompts" / "faq_paes_sem_gluten.txt"
+        try:
+            _FAQ_PAES_SEM_GLUTEN = caminho.read_text(encoding='utf-8')
+            logger.info("[AGENTE] ✅ FAQ carregado com sucesso")
+        except FileNotFoundError:
+            logger.warning("[AGENTE] ⚠️ FAQ não encontrado, usando prompt sem contexto")
+            _FAQ_PAES_SEM_GLUTEN = ""
+    return _FAQ_PAES_SEM_GLUTEN
 
-REGRAS DE OURO:
-- Use emojis de forma leve (🍞, ✨, 🙏).
-- Respostas curtas (máximo 3 frases).
-- Nunca invente informações fora deste contexto.
-- Se o cliente enviar o comprovante, agradeça e parabenize pela iniciativa."""
-                },
-                {"role": "user", "content": pergunta}
-            ],
-            temperature=0.1,  # Um pouco mais criativo
-            max_tokens=300    # Limitar resposta (respostas curtas)
-        )
-        resposta = response.choices[0].message.content
-        logger.info(f"[AGENTE_VENDAS] ✅ Resposta gerada: {resposta[:50]}...")
-        return resposta
-    except Exception as e:
-        logger.error(f"[AGENTE_VENDAS] ❌ Erro ao processar mensagem: {e}")
-        import traceback
-        traceback.print_exc()
-        return "Desculpe, estou com dificuldades técnicas no momento. Por favor, tente novamente em alguns instantes. 🙏"
+def responder_cliente(pergunta: str) -> str:
+    """Mantida para compatibilidade com outros fluxos que ainda a usam."""
+    return responder_cliente_com_historico(pergunta, historico=[])
+
+def responder_cliente_com_historico(pergunta: str, historico: list) -> str:
+    faq = carregar_faq()
+
+    system_prompt = f"""Você é a Luiza, uma vendedora atenciosa e cordial de e-books de receitas sem glúten.
+Responda de forma sucinta no estilo WhatsApp. Use emojis moderadamente.
+Nunca invente informações que não estejam no contexto abaixo.
+Se não souber a resposta, diga que vai verificar e retornar em breve.
+Não adicione explicações extras, responda apenas com a fala da Luiza.
+
+=== INFORMAÇÕES DO PRODUTO E FAQ ===
+{faq}
+=== FIM DO CONTEXTO ==="""
+
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(historico)
+    messages.append({"role": "user", "content": pergunta})
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=0.3,
+        max_tokens=300
+    )
+
+    return response.choices[0].message.content
