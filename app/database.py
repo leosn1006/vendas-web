@@ -547,15 +547,18 @@ def buscar_historico_conversa(pedido_id: int, limite: int = 10) -> list:
         SELECT tipo_mensagem, mensagem_json
         FROM mensagens_pedidos
         WHERE pedido_id = %s
-        ORDER BY sequencial_mensagem  DESC
+        ORDER BY sequencial_mensagem DESC
         LIMIT %s
     """
-    mensagens = db.execute_query(query, (pedido_id, limite))
+    mensagens = db.execute_query(query, (pedido_id, limite), fetch_all=True)
+
+    # Proteção defensiva
+    if not mensagens:
+        return []
 
     # Reverte para ordem cronológica
     mensagens = list(reversed(mensagens))
 
-    # Retorna mensagens formatadas para a OpenAI
     return [
         {
             "role": "assistant" if msg['tipo_mensagem'] == 'enviada' else "user",
