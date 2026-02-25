@@ -91,7 +91,7 @@ Exemplos de "sim":
         #envia pdf do produto
         logger.debug(f"[FLUXO-PEDIDO] 🤖 Enviando documento do produto para o cliente...")
         url_documento = "https://lneditor.com.br/static/arquivos/paes-sem-gluten.pdf"
-        caption = "Aqui está o seu e-book! 📚 "
+        caption = "Aqui está suas receitas sem glúten e sem lactose 📚 "
         filename = "RECEITAS LIBERADAS! ❤️ - Toque AQUI.pdf"
         message_id_resposta = enviar_documento(pedido, url_documento=url_documento, caption=caption, filename=filename)
         # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle

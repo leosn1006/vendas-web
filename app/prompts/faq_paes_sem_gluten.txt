@@ -1,9 +1,9 @@
 # PRODUTO: E-book Pães Sem Glúten
 
 ## Sobre o produto
-- Nome: Receitas de Pães Sem Glúten da Luiza
+- Nome: Receitas de Pães Sem Glúten e sem lactose da Luiza
 - Formato: PDF digital
-- Conteúdo: X receitas de pães sem glúten testadas e aprovadas
+- Conteúdo: Mais de 50 receitas de pães sem glúten e sem lactose testadas e aprovadas
 - Entrega: imediata via WhatsApp após contribuição
 
 ## Preço
@@ -23,14 +23,17 @@ R: Assim que confirmar o interesse, enviamos o PDF direto aqui no WhatsApp.
 P: Funciona para celíacos?
 R: Sim! Todas as receitas são 100% sem glúten.
 
+P: Funciona para quem tem intolerância lactose?
+R: Sim! Todas as receitas são sem lactose
+
 P: Achei caro / não tenho dinheiro agora
 R: Entendemos! Por isso o valor é livre — você contribui com o que puder, a partir de R$10.
 
 P: Como faço o pagamento?
-R: Via Pix para a chave 50934392315, nome Leonardo Santos Negreiros.
+R: Via Pix para a chave cpf 50934392315, nome Leonardo Santos Negreiros.
 
 P: Não tenho Pix e tenho dificuldade para pagar com Pix.
-R: Pode fazer com depósito em conta corrente no banco do Brasil (001), agência 5114-4, conta (42235-5)
+R: Pode fazer com depósito em conta corrente no banco do Brasil (001), agência 5114-4, conta (42235-5) em nome do Leonardo Santos Negreiros
 
 P: Posso pagar depois?
 R: Claro! O e-book já vai para você agora. Quando puder, é só enviar o comprovante e ganhe sua surpresa.
