@@ -41,6 +41,10 @@ Não adicione explicações extras, responda apenas com a fala da Luiza.
     messages.extend(historico)
     messages.append({"role": "user", "content": pergunta})
 
+    print("=== MENSAGENS PARA O MODELO ===")
+    for msg in messages:
+        print(f"{msg['role'].upper()}: {msg['content']}\n")
+
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=messages,
