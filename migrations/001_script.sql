@@ -3,6 +3,9 @@
 
 USE vendasdb;
 
+-- Garante interpretação correta de acentos e emojis durante execução do script
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- Tabela de produtos
 CREATE TABLE IF NOT EXISTS produtos (
     id INT AUTO_INCREMENT PRIMARY KEY,
