@@ -198,6 +198,7 @@ class Pedido(TypedDict):
     nome_pagador: Optional[str]
     data_pagamento: Optional[str]
     data_envio_pedido: Optional[str]
+    data_envio_google_ads: Optional[str]
 
 def criar_pedido(pedido: Pedido):
     """
@@ -231,6 +232,7 @@ def criar_pedido(pedido: Pedido):
     nome_pagador = pedido.get('nome_pagador')
     data_pagamento = pedido.get('data_pagamento')
     data_envio_pedido = pedido.get('data_envio_pedido')
+    data_envio_google_ads = pedido.get('data_envio_google_ads')
 
 
     query = """
@@ -261,6 +263,7 @@ def criar_pedido(pedido: Pedido):
            , nome_pagador
            , data_pagamento
            , data_envio_pedido
+           , data_envio_google_ads
             )
         VALUES (
              %s
@@ -271,6 +274,7 @@ def criar_pedido(pedido: Pedido):
            , %s
            , %s
            , CURRENT_TIMESTAMP
+           , %s
            , %s
            , %s
            , %s
@@ -316,6 +320,7 @@ def criar_pedido(pedido: Pedido):
            , nome_pagador
            , data_pagamento
            , data_envio_pedido
+           , data_envio_google_ads
         ))
     return pedido_id
 
@@ -566,3 +571,32 @@ def buscar_historico_conversa(pedido_id: int, limite: int = 10) -> list:
         }
         for msg in mensagens
     ]
+
+def busca_vendas_pendentes_google()-> list:
+    """
+    Busca vendas que converteram e possuem GCLID, mas ainda não foram enviadas para o Google Ads.
+    """
+    query = """
+        SELECT *
+        FROM pedidos
+        WHERE gclid IS NOT NULL
+          AND estado_id = 0 -- estado 'pago'
+          AND data_contato_site >= NOW() - INTERVAL 7 HOUR
+          AND data_envio_google_ads IS NULL
+          AND gclid != ''
+          AND gclid IS NOT NULL
+    """
+    vendas = db.execute_query(query, fetch_all=True)
+    #proteção defensiva caso o banco retorne None
+    if vendas is None:
+        return []
+
+    return vendas
+
+def marcar_venda_como_enviada_ao_google_ads(pedido_id):
+    """
+    Atualiza o pedido para marcar que a venda foi enviada ao Google Ads.
+    """
+    query = "UPDATE pedidos SET data_envio_google_ads = CURRENT_TIMESTAMP WHERE id = %s"
+    db.execute_query(query, (pedido_id,))
+    return pedido_id

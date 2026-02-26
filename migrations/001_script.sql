@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
     nome_pagador VARCHAR(150) NULL DEFAULT NULL,
     data_pagamento TIMESTAMP NULL DEFAULT NULL,
     data_envio_pedido TIMESTAMP NULL DEFAULT NULL,
+    data_envio_google_ads TIMESTAMP NULL DEFAULT NULL,
     FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE RESTRICT,
     FOREIGN KEY (estado_id) REFERENCES estado_pedidos(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -75,6 +76,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
 CREATE INDEX idx_pedidos_data_estado ON pedidos(data_pedido, estado_id);
 CREATE INDEX idx_pedidos_contact ON pedidos(contact_name, data_pedido);
 CREATE INDEX idx_pedidos_phone ON pedidos(contact_phone);
+CREATE INDEX idx_pedidos_data_envio_google_ads ON pedidos(estado_id, data_contato_site, data_envio_google_ads);
 
 -- Tabela de mensagens dos pedidos
 CREATE TABLE IF NOT EXISTS mensagens_pedidos (

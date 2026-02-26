@@ -84,4 +84,8 @@ htmlcov/
 .dmypy.json
 dmypy.json
 
+#testes
 teste.py
+
+# Configuração do Google Ads
+google-ads.yaml
