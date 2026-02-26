@@ -56,30 +56,18 @@ def gera_mensagem_inicial(produto):
 
 def gera_mensagem_inicial_randomicamente():
     dict_mensagens = [
-        "Oi! Quero saber mais sobre o produto",
-        "Me conta como funciona?",
-        "Amei! Tem mais detalhes?",
-        "Curti demais, pode explicar rapidinho?",
-        "Ótimo, me fale mais?",
-        "Maravilha! Quero saber mais?",
-        "Esse produto é pra mim! Me conta?",
-        "Olá, me ajuda a entender melhor?",
-        "Gostei, me explica?",
-        "Adorei a proposta! Me fala mais?",
-        "Quero entender os benefícios, pode me dizer?",
-        "Maravilha! Me avisa com mais informações, por favor",
-        "Esse produto é pra mim! Me conta mais?",
-        "Eu quero saber mais sobre esse produto, me explica rapidinho?",
-        "Bacana! Me conta tudo?",
-        "Pode me mandar mais detalhes sobre esse produto? Estou super interessada!",
-        "Que interesssante, mas queria entender melhor. Me explica rapidinho?",
-        "Eu quero saber mais sobre esse produto, me explica rapidinho?",
-        "Gostei! Como faço pra entender melhor?",
-        "Que bacana, me explica melhor?"
+        "Olá, tenho interesse nas receitas",
+        "Oi, tenho interesse nas receitas",
+        "Olá, quero receber as receitas",
+        "Oi, quero receber as receitas",
+        "Olá, pode me enviar as receitas?",
+        "Oi, pode me enviar as receitas?",
+        "Olá, gostaria de saber mais sobre as receitas",
+        "Oi, gostaria de saber mais sobre as receitas"
     ]
     dict_emojis = [
-        "😊", "😄", "😃", "😀", "😁", "🥰", "🤩", "😍", "🤗", "😂",
-        "🤭", "😸", "😺", "😻", "😉", "😇", "🙌", "✨", "🎉", "🥳"
+        "😊", "😄", "😃", "😀", "😁", "🥰", "🤩", "😍",
+        "😉", "✨"
     ]
 
     dict_lugares = ["inicio", "final"]
