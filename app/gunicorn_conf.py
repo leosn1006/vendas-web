@@ -1,4 +1,5 @@
 import logging
+import os
 
 from gunicorn.glogging import Logger
 
@@ -19,5 +20,7 @@ class HealthAwareGunicornLogger(Logger):
 
 accesslog = '-'
 errorlog = '-'
-loglevel = 'info'
+_VALID_LOG_LEVELS = {'debug', 'info', 'warning', 'error', 'critical'}
+_env_log_level = os.getenv('LOG_LEVEL', 'info').strip().lower()
+loglevel = _env_log_level if _env_log_level in _VALID_LOG_LEVELS else 'info'
 logger_class = 'gunicorn_conf.HealthAwareGunicornLogger'
