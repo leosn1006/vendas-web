@@ -326,6 +326,7 @@ def criar_pedido(pedido: Pedido):
            , data_envio_pedido
            , data_envio_google_ads
            , data_agendamento_pagamento
+
         ))
     return pedido_id
 
