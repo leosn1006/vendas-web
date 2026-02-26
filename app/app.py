@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify, render_template
-from whatsapp_orquestrador import recebe_webhook
 from whatsapp_seguranca import whatsapp_security, validar_assinatura_whatsapp
 from lide_incluir import persistir_lide
 from notificacoes import notificador, notificar_erro
 from error_handlers import registrar_error_handlers
+from celery_app import celery_app
 import logging
 
 logger = logging.getLogger(__name__)
@@ -73,11 +73,7 @@ def webhook_receive():
         logger.info(f"[WAP-WEBHOOK] 📦 Dados recebidos: {body}")
 
         # Joga na fila e responde 200 imediatamente
-            # tempo_espera = random.randint(10, 25) segundos
-            # Enfileirar com agendamento (Substituindo o .delay)
-            # processar_webhook.apply_async(args=[body], countdown=tempo_espera)
-        from tasks import processar_webhook
-        processar_webhook.delay(body)
+        celery_app.send_task("tasks.processar_webhook", args=[body])
 
         logger.info("[WAP-WEBHOOK] ✅ Mensagem enfileirada!")
         return jsonify({'status': 'ok'}), 200

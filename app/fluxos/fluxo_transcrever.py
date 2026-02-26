@@ -3,6 +3,7 @@ import random
 from whatsapp import marcar_como_lida
 from whatsapp_upload import receber_audio
 from agente_transcricao import transcrever_audio
+from celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -41,16 +42,13 @@ def executar(pedido, mensagem_whatsapp):
 
         tempo_espera = random.uniform(5, 10)
         if estado_pedido == 1:
-            from tasks import fluxo_enviar_introducao
-            fluxo_enviar_introducao.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+            celery_app.send_task("tasks.enviar_introducao", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
             logger.debug("[FLUXO-TRANSCREVER] ✅ Mensagem processada com sucesso e enviada ao fluxo de introdução!")
         elif estado_pedido == 2:
-            from tasks import fluxo_enviar_pedido
-            fluxo_enviar_pedido.apply_async(args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+            celery_app.send_task("tasks.enviar_pedido", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
             logger.debug("[FLUXO-TRANSCREVER] ✅ Mensagem processada com sucesso e enviada ao fluxo de enviar pedido!")
         else:
-            from tasks import fluxo_responder_mensagem
-            fluxo_responder_mensagem.apply_async(args=[pedido, mensagem_whatsapp], countdown=5)
+            celery_app.send_task("tasks.responder_mensagem", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
             logger.debug("[FLUXO-TRANSCREVER] ✅ Mensagem processada com sucesso e enviada ao fluxo de responder mensagem!")
 
     except Exception as exc:
