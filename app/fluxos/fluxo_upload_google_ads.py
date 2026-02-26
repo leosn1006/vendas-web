@@ -30,7 +30,8 @@ def executar():
             conversion_action_id,
             venda.gclid,
             conversion_date_time,
-            venda.valor_pago
+            #venda.valor_pago
+            10.00 # valor fixo para não expor o valor real pago, por questões de privacidade e para evitar erros de formatação do valor na API do Google Ads, que pode causar falhas no upload da conversão. O ideal é configurar um valor padrão no produto ou campanha para usar nesse caso, para não precisar hardcodar esse valor no código.
         )
 
         if sucesso:
