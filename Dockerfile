@@ -20,5 +20,5 @@ RUN pip install --no-cache-dir -r /requirements.txt
 COPY app/ /app/
 COPY static/ /static/
 
-# Gunicorn em produção com logs visíveis
-CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8000", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "info", "app:app"]
+# Gunicorn em produção com filtro de logs do health check
+CMD ["gunicorn", "-c", "gunicorn_conf.py", "-w", "2", "-b", "0.0.0.0:8000", "app:app"]
