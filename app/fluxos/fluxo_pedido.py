@@ -1,17 +1,59 @@
 import logging
 import time
 import random
-from database import salvar_mensagem_pedido, atualizar_estado_pedido, atualizar_pedido_com_interesse_produto, atualizar_pedido_com_data_envio_pedido
+from database import (
+    salvar_mensagem_pedido,
+    atualizar_estado_pedido,
+    atualizar_pedido_com_interesse_produto,
+    atualizar_pedido_com_data_envio_pedido,
+    get_produto_by_id,
+)
 from whatsapp import enviar_audio, enviar_mensagem, enviar_mensagem_digitando, marcar_como_lida, enviar_documento
-from agente_vendas_sem_gluten import responder_cliente
+from agente_verifica_interesse import classificar_interesse_compra
 
 logger = logging.getLogger(__name__)
+
+
+def _campos_produto_faltando(produto: dict | None) -> list[str]:
+    campos_obrigatorios = [
+        'url_arquivo_produto',
+        'caption_arquivo_produto',
+        'nome_arquivo_produto',
+        'url_audio_pedido_entregue',
+        'mensagem_pedido_enviado_sem_interesse',
+        'mensagem_para_pagamento',
+        'chave_pix',
+    ]
+
+    if not produto:
+        return campos_obrigatorios
+
+    return [
+        campo for campo in campos_obrigatorios
+        if not str(produto.get(campo) or '').strip()
+    ]
 
 def executar(pedido, mensagem_whatsapp):
     try:
         logger.info("=" * 120)
         logger.debug(f"[FLUXO-PEDIDO] 📦 Dados recebidos para pedido: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
         logger.debug("[FLUXO-PEDIDO] 🎬 Iniciando fluxo de pedido...")
+        produto = get_produto_by_id(pedido.get('produto_id'))
+
+        campos_faltando = _campos_produto_faltando(produto)
+        if campos_faltando:
+            raise ValueError(
+                f"[FLUXO-PEDIDO] Configuração do produto {pedido.get('produto_id')} incompleta. "
+                f"Campos obrigatórios ausentes: {', '.join(campos_faltando)}"
+            )
+
+        url_documento = produto['url_arquivo_produto']
+        caption_documento = produto['caption_arquivo_produto']
+        filename_documento = produto['nome_arquivo_produto']
+        url_audio_pedido_entregue = produto['url_audio_pedido_entregue']
+        msg_pedido_enviado_sem_interesse = produto['mensagem_pedido_enviado_sem_interesse']
+        mensagem_para_pagamento = produto['mensagem_para_pagamento']
+        chave_pix = produto['chave_pix']
         # ============================================================================================
         #grava mensagem recebida
         logger.debug(f"[FLUXO-PEDIDO] 📥 Gravando mensagem recebida no banco de dados...")
@@ -27,31 +69,7 @@ def executar(pedido, mensagem_whatsapp):
         # ============================================================================================
         #verifica se a mensagem é interessada ou não no produto
         mensagem_cliente = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
-        pergunta = f"""Você é um classificador de intenção de compra. Analise a mensagem do cliente e classifique se ele demonstra interesse em prosseguir com a compra.
-
-Contexto: O cliente acabou de ouvir um áudio apresentando um e-book de receitas sem glúten e respondeu com a seguinte mensagem:
-"{mensagem_cliente}"
-
-Regras de classificação:
-- Responda SOMENTE com a palavra "sim" ou "não", sem pontuação, sem explicação.
-- "sim" = cliente quer continuar, quer receber o produto, faz perguntas positivas, demonstra curiosidade ou entusiasmo.
-- "não" = cliente recusa, objeta preço, diz que não quer, ignora, responde negativamente, ou demonstra desinteresse de qualquer forma.
-
-Exemplos de "não":
-- "Não, achei caro!"
-- "Não tenho interesse"
-- "Tô sem dinheiro agora"
-- "Deixa pra depois"
-- "Não quero"
-
-Exemplos de "sim":
-- "Quero sim!"
-- "Me manda!"
-- "Quanto custa?"
-- "Adorei!"
-- "Como faço pra comprar?"
-            """
-        interesse_positivo = responder_cliente(pergunta)
+        interesse_positivo = classificar_interesse_compra(mensagem_cliente)
         # Limpar resposta do modelo (remover pontuação e espaços)
         interesse_positivo_limpo = interesse_positivo.strip().rstrip('.!?').lower()
         logger.debug(f"[FLUXO-PEDIDO] 🤖 Feedback do modelo sobre interesse do cliente: {interesse_positivo} (limpo: {interesse_positivo_limpo})")
@@ -90,12 +108,14 @@ Exemplos de "sim":
             salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
         #envia pdf do produto
         logger.debug(f"[FLUXO-PEDIDO] 🤖 Enviando documento do produto para o cliente...")
-        url_documento = "https://lneditor.com.br/static/arquivos/paes-sem-gluten.pdf"
-        caption = "Aqui está suas receitas sem glúten e sem lactose 📚 "
-        filename = "RECEITAS LIBERADAS! ❤️ - Toque AQUI.pdf"
-        message_id_resposta = enviar_documento(pedido, url_documento=url_documento, caption=caption, filename=filename)
+        message_id_resposta = enviar_documento(
+            pedido,
+            url_documento=url_documento,
+            caption=caption_documento,
+            filename=filename_documento,
+        )
         # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
-        mensagem = f"Enviado documento do produto: {filename}"
+        mensagem = f"Enviado documento do produto: {filename_documento}"
         salvar_mensagem_pedido(message_id_resposta, pedido_id, mensagem, tipo_mensagem='enviada')
         delay = random.uniform(10, 15)
         logger.debug(f"[FLUXO-PEDIDO] ⏳ Aguardando {delay:.1f}s antes de enviar áudio inicial...")
@@ -104,7 +124,6 @@ Exemplos de "sim":
         if interesse_positivo_limpo == 'sim':
             # =======================================================================================
             logger.debug(f"[FLUXO-PEDIDO] 🤖 Enviando mensagem de pedido entregue")
-            url_audio_pedido_entregue = "https://lneditor.com.br/static/audios/paes-pedido-entregue.ogg"
             delay = random.uniform(2.0, 5.0)
             logger.debug(f"[FLUXO-PEDIDO] ⏳ Aguardando {delay:.1f}s antes de enviar áudio inicial...")
             time.sleep(delay)
@@ -114,7 +133,7 @@ Exemplos de "sim":
             salvar_mensagem_pedido(message_id, pedido_id, mensagem, tipo_mensagem='enviada')
         else:
             # ========================================================================================
-            msg_pedido_entregue = "Se você gostou do presente e se for da sua vontade, você pode nos ajudar ajudar com R$10,00 ou mais. Essa ajuda irá permitir que outras pessoas conheçam essas receitas sem glutén e possam ter uma vida mais tranquila e saudável também ❤️ Para contribuir, vou mandar os dados do Pix ⬇"
+            msg_pedido_entregue = msg_pedido_enviado_sem_interesse
             message_id_resposta = enviar_mensagem(pedido, msg_pedido_entregue)
             # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
             mensagem = msg_pedido_entregue
@@ -125,15 +144,7 @@ Exemplos de "sim":
         logger.info(f"[FLUXO-PEDIDO] ⏳ Aguardando {delay:.1f}s antes de enviar mensagem de dados do Pix para contribuição...")
         time.sleep(delay)
         logger.info(f"[FLUXO-PEDIDO] 🤖 Enviando mensagem de dados do Pix para o cliente...")
-        msg_contribuicao = """
-            *Informações do PIX*:
-
-- 💸 *Valor*: R$10, 12, 15, 20
-- 📱 *Chave Pix* (cpf): 50934392315
-- 👤 *Nome*: Leonardo Santos Negreiros
-
-Para facilitar, vou te enviar a chave Pix separada, assim é só copiar e colar:
-        """
+        msg_contribuicao = mensagem_para_pagamento
         message_id_resposta = enviar_mensagem(pedido, msg_contribuicao  )
         # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
         mensagem = msg_contribuicao
@@ -141,7 +152,7 @@ Para facilitar, vou te enviar a chave Pix separada, assim é só copiar e colar:
         # ============================================================================================
         # enviar dados do Pix para contribuição
         logger.debug(f"[FLUXO-PEDIDO] 🤖 Enviando mensagem de dados do Pix para o cliente...")
-        msg_pix = "50934392315"
+        msg_pix = chave_pix
         message_id_resposta = enviar_mensagem(pedido, msg_pix)
         # grava mensagem enviada no banco de dados, associada ao pedido, para histórico e controle
         mensagem = msg_pix

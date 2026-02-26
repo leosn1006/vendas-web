@@ -3,7 +3,7 @@ import random
 from celery_app import celery_app
 from datetime import datetime
 from database import get_ultimo_pedido_by_phone, get_ultimo_pedido_por_mensagem_sugerida, vincula_pedido_com_contato, Pedido, criar_pedido, get_pedido
-from agente_vendas_sem_gluten import responder_cliente
+from agente_resposta_produto import responder_cliente
 from config import CAMPANHA_WHATSAPP
 
 logger = logging.getLogger(__name__)

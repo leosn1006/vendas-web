@@ -51,12 +51,29 @@ nano .env
 MYSQL_ROOT_PASSWORD=sua-senha-root-super-segura
 MYSQL_PASSWORD=sua-senha-app-segura
 
+# Log do Gunicorn (debug, info, warning, error, critical)
+LOG_LEVEL=info
+
 # WhatsApp (obtenha em developers.facebook.com)
 WHATSAPP_VERIFY_TOKEN=seu-token-verificacao
 WHATSAPP_APP_SECRET=seu-app-secret
 WHATSAPP_ACCESS_TOKEN=seu-access-token
 WHATSAPP_PHONE_NUMBER_ID=seu-phone-number-id
 ```
+
+### Configuração de produtos por fluxo
+
+A tabela `produtos` agora suporta campos de personalização por produto:
+
+- `prompt_vendas`
+- `prompt_followup`
+- `url_audio_introducao`
+- `url_audio_explicativo`
+- `url_imagem_complementar`
+- `url_arquivo_produto`
+- `mensagem_introducao`
+
+Esses campos permitem deixar os fluxos responsivos para diferentes produtos sem hardcode no Python.
 
 ### 3. Iniciar os containers
 

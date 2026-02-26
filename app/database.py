@@ -199,6 +199,7 @@ class Pedido(TypedDict):
     data_pagamento: Optional[str]
     data_envio_pedido: Optional[str]
     data_envio_google_ads: Optional[str]
+    data_agendamento_pagamento: Optional[str]
 
 def criar_pedido(pedido: Pedido):
     """
@@ -233,6 +234,7 @@ def criar_pedido(pedido: Pedido):
     data_pagamento = pedido.get('data_pagamento')
     data_envio_pedido = pedido.get('data_envio_pedido')
     data_envio_google_ads = pedido.get('data_envio_google_ads')
+    data_agendamento_pagamento = pedido.get('data_agendamento_pagamento')
 
 
     query = """
@@ -264,6 +266,7 @@ def criar_pedido(pedido: Pedido):
            , data_pagamento
            , data_envio_pedido
            , data_envio_google_ads
+           , data_agendamento_pagamento
             )
         VALUES (
              %s
@@ -274,6 +277,7 @@ def criar_pedido(pedido: Pedido):
            , %s
            , %s
            , CURRENT_TIMESTAMP
+           , %s
            , %s
            , %s
            , %s
@@ -321,6 +325,7 @@ def criar_pedido(pedido: Pedido):
            , data_pagamento
            , data_envio_pedido
            , data_envio_google_ads
+           , data_agendamento_pagamento
         ))
     return pedido_id
 

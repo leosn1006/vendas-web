@@ -30,7 +30,7 @@ def executar():
             conversion_action_id,
             venda.gclid,
             conversion_date_time,
-            venda.valor_total
+            venda.valor_pago
         )
 
         if sucesso:

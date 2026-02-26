@@ -1,323 +1,110 @@
-# 🛒 Vendas Web - Sistema de Vendas com WhatsApp
+# 🛒 Vendas Web
 
-Sistema de vendas integrado com WhatsApp Business API, desenvolvido em Python (Flask) com MySQL para persistência de dados.
+Sistema de vendas via WhatsApp Business API com Flask, Celery e MySQL, orientado por fluxos e configuração por produto.
 
-## 📋 Índice
+## ✅ Visão geral
 
-- [Características](#-características)
-- [Tecnologias](#-tecnologias)
-- [Pré-requisitos](#-pré-requisitos)
-- [Instalação](#-instalação)
-- [Uso](#-uso)
-- [Estrutura do Projeto](#-estrutura-do-projeto)
-- [Documentação](#-documentação)
-- [Comandos Úteis](#-comandos-úteis)
+- Webhook recebe mensagens e orquestra o fluxo por estado do pedido.
+- Processamento assíncrono via Celery (`worker`) com Redis.
+- Persistência no MySQL (`pedidos`, `mensagens_pedidos`, `produtos`).
+- Fluxos usam parâmetros da tabela `produtos` (sem hardcode/fallback silencioso).
+- Stack de execução: Gunicorn + Nginx + Docker Compose.
 
----
+## 🧱 Arquitetura rápida
 
-## ✨ Características
-
-- 🤖 **Integração com WhatsApp Business API** - Recebe e envia mensagens
-- 🗄️ **Banco de Dados MySQL** - Persistência de pedidos e mensagens
-- 🐳 **Docker** - Ambiente containerizado completo
-- 🔒 **Segurança** - Validação HMAC de webhooks
-- 🚀 **Produção Ready** - Gunicorn + Nginx com SSL
-- 📊 **Pool de Conexões** - Gerenciamento eficiente do BD
-- 🔄 **Auto-migrations** - Scripts SQL executados automaticamente
-
----
-
-## 🛠️ Tecnologias
-
-- **Backend:** Python 3.12, Flask 3.1.2
-- **Servidor:** Gunicorn, Nginx 1.27
-- **Banco de Dados:** MySQL 8.4
-- **Containerização:** Docker, Docker Compose
-- **Integrações:** WhatsApp Business API, OpenAI (opcional)
-
----
+- `app/app.py`: API Flask + endpoints de webhook/health.
+- `app/whatsapp_orquestrador.py`: roteamento por estado/tipo de mensagem.
+- `app/fluxos/`: regras de negócio (`introducao`, `pedido`, `comprovante`, `responder`, etc.).
+- `app/agente_resposta_produto.py`: agente de resposta contextual (prompt + FAQ + conteúdo do produto).
+- `app/agente_verifica_interesse.py`: classificador enxuto de intenção (`sim`/`não`).
+- `migrations/001_script.sql`: schema e seed inicial.
 
 ## 📦 Pré-requisitos
 
-- Docker e Docker Compose instalados
-- Ubuntu Linux (para persistência de dados)
+- Docker e Docker Compose
 - Conta WhatsApp Business API
-- Permissões sudo
+- Chave da OpenAI (fluxos com IA)
 
----
-
-## 🚀 Instalação
-
-### 1. Clonar o repositório
+## 🚀 Subir ambiente
 
 ```bash
-git clone git@github.com:leosn1006/vendas-web.git
-cd vendas-web
-```
-
-### 2. Configurar variáveis de ambiente
-
-```bash
-# Copiar template
+# 1) Configure o .env
 cp .env.example .env
 
-# Editar com suas credenciais
-nano .env
-```
-
-**Variáveis obrigatórias:**
-```bash
-# WhatsApp Business API
-WHATSAPP_VERIFY_TOKEN=seu-token-verificacao
-WHATSAPP_APP_SECRET=seu-app-secret
-WHATSAPP_ACCESS_TOKEN=seu-access-token
-WHATSAPP_PHONE_NUMBER_ID=seu-phone-number-id
-
-# MySQL (use senhas fortes!)
-MYSQL_ROOT_PASSWORD=senha-root-segura
-MYSQL_PASSWORD=senha-app-segura
-```
-
-### 3. Configurar volume do MySQL (Ubuntu)
-
-```bash
-# Criar diretório para persistência
-sudo mkdir -p /var/lib/mysql-vendas
-
-# Configurar permissões (UID 999 = mysql no container)
-sudo chown -R 999:999 /var/lib/mysql-vendas
-```
-
-### 4. Iniciar os containers
-
-```bash
-# Build e start
+# 2) Suba os serviços
 docker compose up -d --build
 
-# Verificar status
+# 3) Verifique saúde
 docker compose ps
-
-# Ver logs
-docker compose logs -f
-
-# Ver só logs do ForkPoolWorker-1
-docker compose logs -f worker | grep "ForkPoolWorker-1"
-
-# Ver só logs de tasks bem sucedidas
-docker compose logs -f worker | grep "succeeded"
-
-# Ver só erros
-docker compose logs -f worker | grep -E "ERROR|CRITICAL|failed"
-```
-
-### 5. Verificar instalação
-
-```bash
-# Testar conexão com BD
-docker compose exec app python scripts/verificar_bd.py
-
-# Verificar health check
 curl http://localhost/health
-
-# Ver logs da aplicação
-docker compose logs -f app
 ```
 
----
+## 🔐 Variáveis de ambiente mínimas
 
-## 💻 Uso
-
-### Instalação Local (Desenvolvimento)
+Use os nomes esperados no `docker-compose.yml`:
 
 ```bash
-# Criar ambiente virtual
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate  # Windows
+WHATSAPP_VERIFY_TOKEN=
+WHATSAPP_APP_SECRET=
+WHATSAPP_ACCESS_TOKEN=
+WHATSAPP_PHONE_NUMBER_ID=
 
-# Instalar dependências
-pip install -r requirements.txt
+MYSQL_ROOT_PASSWORD=
+MYSQL_PASSWORD=
 
-# Configurar variáveis de ambiente
-export DB_HOST=localhost
-export DB_USER=appuser
-export DB_PASSWORD=sua-senha
-# ... outras variáveis
-
-# Rodar aplicação
-python app/app.py
+OPENAI_API_KEY=
+LOG_LEVEL=info
 ```
 
-### Docker (Produção)
+## 🗃️ Configuração por produto (obrigatória)
+
+Os fluxos leem campos da tabela `produtos`. Com campo ausente, o fluxo lança erro para evitar envio incorreto.
+
+Principais campos usados hoje:
+
+- **Responder**: `prompt_vendas`, `url_faq_produto`, `url_arquivo_produto`
+- **Introdução**: `url_audio_introducao`, `url_audio_explicativo`, `url_imagem_complementar`, `mensagem_introducao`
+- **Pedido**: `url_arquivo_produto`, `caption_arquivo_produto`, `nome_arquivo_produto`, `url_audio_pedido_entregue`, `mensagem_pedido_enviado_sem_interesse`, `mensagem_para_pagamento`, `chave_pix`
+- **Comprovante**: `pix_destinatario_esperado`, `valor_minimo_pagamento`, `mensagem_pagamento_confirmado`, `mensagem_comprovante_invalido`, `url_arquivo_surpresa`, `caption_arquivo_surpresa`, `nome_arquivo_surpresa`
+
+## 🔁 Fluxos principais
+
+- `fluxo_introducao`: primeira sequência de contexto (áudios/imagem/mensagem)
+- `fluxo_pedido`: classifica interesse, envia produto, orienta pagamento
+- `fluxo_comprovante`: valida comprovante, confirma pagamento e entrega surpresa
+- `fluxo_responder`: respostas livres com contexto completo do produto
+
+## 🧪 Comandos úteis
 
 ```bash
-# Iniciar tudo
-docker compose up -d --build
-
-# Parar tudo
-docker compose down
-
-# Remover volumes antigos (⚠️ isso apaga dados!)
-# 1. Parar containers e remover volumes
-x# 2. Remover volume persistente manualmente (pode precisar de sudo no Ubuntu)
-sudo rm -rf /var/lib/mysql-vendas/*
-# 3. Recriar permissões corretas (usuário mysql = UID 999)
-    sudo chown -R 999:999 /var/lib/mysql-vendas
-# 4. Subir containers com BD limpo
-docker compose up -d
-
-# Acessar Mysql com Dbeaver
-# Aba main da conexão
-Connection name: Vendas Web (SSH)
-Host: localhost
-Port: 3306
-Database: vendasdb
-Username: appuser
-Password: [valor de MYSQL_PASSWORD do .env]
-
-#aba ssh
-Use SSH Tunnel
-Host/IP: [IP_DO_SEU_SERVIDOR]
-Port: 22
-Username: root (ou seu usuário SSH)
-Authentication Method: Public Key ou Password
-Private Key: [caminho para ~/.ssh/id_rsa]
-
-# Reiniciar apenas app
-docker compose restart app
-
-# Ver logs em tempo real
+# Logs
 docker compose logs -f app
-docker compose logs -f db
-docker compose logs -f nginx
-```
+docker compose logs -f worker
 
----
-
-## 📁 Estrutura do Projeto
-
-```
-vendas-web/
-├── app/                          # Código da aplicação
-│   ├── app.py                    # Entry point Flask
-│   ├── config.py                 # Configurações
-│   ├── database.py               # Conexão com MySQL ✨
-│   ├── seguranca.py              # Validação WhatsApp
-│   ├── webhook_whatsApp.py       # Handler de webhooks
-│   ├── enviar_mensagem_whatsApp.py  # Envio de mensagens
-│   ├── agente_vendas.py          # Agente IA (em desenvolvimento)
-│   └── templates/                # Templates HTML
-│
-├── static/                       # Arquivos estáticos
-│   └── images/
-│
-├── migrations/                   # Scripts SQL ✨
-│   └── 001_script.sql
-│
-├── scripts/                      # Scripts utilitários
-│   ├── gerar_token.py
-│   └── verificar_bd.py           # Teste de BD ✨
-│
-├── docs/                         # Documentação
-│   ├── DATABASE_SETUP.md         # Setup do MySQL ✨
-│   ├── SEGURANCA.md
-│   └── WEBHOOK_WHATSAPP.md
-│
-├── infra/                        # Infraestrutura
-│   └── nginx/
-│       ├── default.conf
-│       └── certs/
-│
-├── docker-compose.yml            # Orquestração
-├── Dockerfile                    # Build da aplicação
-├── requirements.txt              # Dependências Python
-├── .env.example                  # Template de variáveis ✨
-├── .gitignore
-├── CODE_REVIEW.md                # Review original
-├── CODE_REVIEW_ATUALIZADO.md     # Review atualizado ✨
-└── README.md
-```
-
----
-
-## 📚 Documentação
-
-- **[DATABASE_SETUP.md](docs/DATABASE_SETUP.md)** - Guia completo de setup do MySQL
-- **[CODE_REVIEW_ATUALIZADO.md](CODE_REVIEW_ATUALIZADO.md)** - Code review e melhorias
-- **[WEBHOOK_WHATSAPP.md](docs/WEBHOOK_WHATSAPP.md)** - Configuração do webhook
-- **[SEGURANCA.md](docs/SEGURANCA.md)** - Práticas de segurança
-
----
-
-## 🔧 Comandos Úteis
-
-### Docker
-
-```bash
-# Ver todos os containers
-docker compose ps
-
-# Logs em tempo real
-docker compose logs -f
-
-# Logs de um container específico
-docker compose logs -f app
-docker compose logs -f db
-docker compose logs -f nginx
-
-# Entrar em um container
-docker compose exec app bash
-docker compose exec db bash
-
-# Rebuild de um serviço específico
+# Rebuild de serviço específico
 docker compose up -d --build app
-```
+docker compose up -d --build worker
 
-### Banco de Dados
-
-```bash
-# Conectar ao MySQL
-docker compose exec db mysql -uappuser -p vendasdb
-
-# Ver tabelas
-docker compose exec db mysql -uappuser -p -e "USE vendasdb; SHOW TABLES;"
-
-# Backup do banco
-docker compose exec db mysqldump -uroot -p vendasdb > backup_$(date +%Y%m%d).sql
-
-# Restore de backup
-docker compose exec -T db mysql -uroot -p vendasdb < backup_20260215.sql
-
-# Verificar saúde do BD
+# Verificar banco
 docker compose exec app python scripts/verificar_bd.py
+
+# Acessar MySQL
+docker compose exec db mysql -uappuser -p vendasdb
 ```
 
-### SSL/TLS
+## 🧹 Reset de ambiente (desenvolvimento)
 
 ```bash
-# Verificar certificado
-openssl x509 -in infra/nginx/certs/cert.crt -text -noout
-
-# Verificar MD5 (certificado e chave devem ser iguais)
-openssl x509 -noout -modulus -in infra/nginx/certs/cert.crt | openssl md5
-openssl rsa -noout -modulus -in infra/nginx/certs/server.key | openssl md5
+docker compose down -v
+docker compose up -d --build
 ```
 
-### Git
+## 📚 Documentação complementar
 
-```bash
-# Configurar SSH
-ssh-keygen -t ed25519 -C "seu-email@exemplo.com"
-eval "$(ssh-agent -s)"
-ssh-add ~/.ssh/id_ed25519
-
-# Ver chave pública (adicionar no GitHub)
-cat ~/.ssh/id_ed25519.pub
-
-# Clonar com SSH
-git clone git@github.com:leosn1006/vendas-web.git
-```
+- `docs/DATABASE_SETUP.md`
+- `docs/WEBHOOK_WHATSAPP.md`
+- `docs/SEGURANCA.md`
+- `docs/NOTIFICACOES.md`
 
 ---
 

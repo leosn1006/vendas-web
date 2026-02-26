@@ -20,9 +20,15 @@ def executar():
 
     for pedido in pedidos:
         try:
-            logger.debug(f"[FLUXO-FOLLOWUP] 📱 Enviando followup para pedido #{pedido['id']}")
-            msg = "Oi! Sei que o dia a dia é bem corrido, mas o nosso sistema ainda não identificou o seu pagamento. \n \n Será que você consegue ajudar nosso projeto com apenas R$10,00? Posso te ajudar com alguma dúvida? 😊"
-            enviar_mensagem(pedido, msg)
+            if pedido.get('interesse_produto'):
+                logger.debug(f"[FLUXO-FOLLOWUP] 📱 Enviando followup para pedido #{pedido['id']} com interesse declarado")
+                msg = "Oi! Sei que o dia a dia é bem corrido, mas o nosso sistema ainda não identificou o seu pagamento. \n \n Será que você consegue ajudar nosso projeto com apenas R$10,00? Posso te ajudar com alguma dúvida? 😊"
+                enviar_mensagem(pedido, msg)
+            else:
+                logger.debug(f"[FLUXO-FOLLOWUP] ⏭️ Pedido #{pedido['id']} sem interesse declarado, pulando followup.")
+                msg = "Ola! Gostou do nosso presente. \n \n Será que você consegue ajudar nosso projeto com apenas R$10,00? E ainda você ganhará outro presente surpresa. Posso te ajudar com alguma dúvida? 😊"
+                enviar_mensagem(pedido, msg)
+
             logger.debug(f"[FLUXO-FOLLOWUP] ✅ Followup enviado para pedido #{pedido['id']}")
             # Atualiza estado do pedido para 'followup_enviado' (4)
             logger.debug("[FLUXO-FOLLOWUP] ✅ atualizando estado do pedido como 'followup_enviado' (4) no banco de dados...")
