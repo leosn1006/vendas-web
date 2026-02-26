@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
     data_pagamento TIMESTAMP NULL DEFAULT NULL,
     data_envio_pedido TIMESTAMP NULL DEFAULT NULL,
     data_envio_google_ads TIMESTAMP NULL DEFAULT NULL,
+    data_agendamento_pagamento TIMESTAMP NULL DEFAULT NULL ,
     FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE RESTRICT,
     FOREIGN KEY (estado_id) REFERENCES estado_pedidos(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
