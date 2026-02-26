@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 def persistir_lide(body):
     try:
+        logger.info(f"[LIDE] 📦 Dados recebidos para criar lide: {body}")
         # Por exemplo, extrair os dados do body e usar uma função do database.py para salvar
         gclide = body.get('gclid', "")
         url = body.get('url', "")
