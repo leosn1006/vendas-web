@@ -67,6 +67,9 @@ services:
       - DB_USER=appuser
       - DB_PASSWORD=${MYSQL_PASSWORD}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_ADS_ADM_ID=${GOOGLE_ADS_ADM_ID:-}
+      - GOOGLE_ADS_SUBACCOUNT_ID=${GOOGLE_ADS_SUBACCOUNT_ID:-}
+      - GOOGLE_ADS_META_ID=${GOOGLE_ADS_META_ID:-}
       - REDIS_URL=redis://redis:6379/0
       - LOG_LEVEL=${LOG_LEVEL:-info}
     volumes:
@@ -103,6 +106,9 @@ services:
       - DB_USER=appuser
       - DB_PASSWORD=${MYSQL_PASSWORD}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_ADS_ADM_ID=${GOOGLE_ADS_ADM_ID:-}
+      - GOOGLE_ADS_SUBACCOUNT_ID=${GOOGLE_ADS_SUBACCOUNT_ID:-}
+      - GOOGLE_ADS_META_ID=${GOOGLE_ADS_META_ID:-}
       - REDIS_URL=redis://redis:6379/0
     volumes:
       - ./storage:/app/storage
