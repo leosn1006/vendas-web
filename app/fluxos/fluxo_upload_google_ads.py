@@ -1,5 +1,7 @@
 import os
 import logging
+from datetime import datetime
+from types import SimpleNamespace
 from google.ads.googleads.client import GoogleAdsClient
 from database import busca_vendas_pendentes_google, marcar_venda_como_enviada_ao_google_ads
 
@@ -18,24 +20,39 @@ def executar():
     customer_id = os.getenv("GOOGLE_ADS_SUBACCOUNT_ID") # ID da conta das campanhas
     conversion_action_id = os.getenv("GOOGLE_ADS_META_ID")  # Pegue o ID numérico no painel do Ads
 
+    if not customer_id or not conversion_action_id:
+        raise ValueError("Variáveis GOOGLE_ADS_SUBACCOUNT_ID e GOOGLE_ADS_META_ID são obrigatórias para upload no Google Ads")
+
     for venda in vendas:
+        if isinstance(venda, dict):
+            venda = SimpleNamespace(**venda)
+
+        if isinstance(venda.data_pagamento, str):
+            try:
+                venda.data_pagamento = datetime.fromisoformat(venda.data_pagamento)
+            except ValueError:
+                venda.data_pagamento = datetime.strptime(venda.data_pagamento, "%Y-%m-%d %H:%M:%S")
+
+        gclid = venda.gclid
+        venda_id = venda.id
+
         # Garante o formato: 2023-10-27 14:30:00-03:00
         # Se sua data no banco já tiver timezone, o %z resolve.
         # Caso contrário, adicione manualmente o offset da sua região:
         conversion_date_time = venda.data_pagamento.strftime("%Y-%m-%d %H:%M:%S-03:00")
-
+        VL_10 = 10.00 # valor fixo para não expor o valor real pago, por questões de privacidade e para evitar erros de formatação do valor na API do Google Ads, que pode causar falhas no upload da conversão. O ideal é configurar um valor padrão no produto ou campanha para usar nesse caso, para não precisar hardcodar esse valor no código.
         sucesso = enviar_gclid_ads(
             client,
             customer_id,
             conversion_action_id,
-            venda.gclid,
+            gclid,
             conversion_date_time,
             #venda.valor_pago
-            10.00 # valor fixo para não expor o valor real pago, por questões de privacidade e para evitar erros de formatação do valor na API do Google Ads, que pode causar falhas no upload da conversão. O ideal é configurar um valor padrão no produto ou campanha para usar nesse caso, para não precisar hardcodar esse valor no código.
+            VL_10
         )
 
         if sucesso:
-            marcar_venda_como_enviada_ao_google_ads(venda.id)
+            marcar_venda_como_enviada_ao_google_ads(venda_id)
 
 def enviar_gclid_ads(client, customer_id, conversion_action_id, gclid, conversion_date_time, conversion_value):
     service = client.get_service("ConversionUploadService")
