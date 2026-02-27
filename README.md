@@ -77,6 +77,13 @@ Principais campos usados hoje:
 ## 🧪 Comandos úteis
 
 ```bash
+# Atalhos (Makefile)
+make help
+make upload-google-ads-now
+make logs-worker
+make logs-files
+make restart-worker
+
 # Logs
 docker compose logs -f app
 docker compose logs -f worker
@@ -90,6 +97,28 @@ docker compose exec app python scripts/verificar_bd.py
 
 # Acessar MySQL
 docker compose exec db mysql -uappuser -p vendasdb
+```
+
+## 🗂️ Logs rotacionados para auditoria
+
+O sistema gera logs em arquivo com rotação diária (virada de dia), incluindo app e worker.
+
+Padrão de nomes:
+
+- `log_app_YYYY_MM_DD_001.log`
+- `log_worker_YYYY_MM_DD_001.log`
+
+Comandos úteis:
+
+```bash
+# Aplicar alterações de env/logging
+docker compose up -d --force-recreate app worker
+
+# Listar arquivos de log no container
+docker compose exec worker ls -lah /app/storage/logs
+
+# Conferir variáveis Google Ads no worker
+docker compose exec worker env | grep GOOGLE_ADS
 ```
 
 ## 🧹 Reset de ambiente (desenvolvimento)

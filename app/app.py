@@ -4,7 +4,10 @@ from lide_incluir import persistir_lide
 from notificacoes import notificador, notificar_erro
 from error_handlers import registrar_error_handlers
 from celery_app import celery_app
+from logging_setup import setup_rotating_file_logging
 import logging
+
+setup_rotating_file_logging("app")
 
 logger = logging.getLogger(__name__)
 

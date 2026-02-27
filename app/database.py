@@ -8,8 +8,6 @@ from contextlib import contextmanager
 import logging
 from typing import TypedDict, Optional
 
-# Configuração de logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

@@ -1,6 +1,9 @@
 # worker para tratar as mensagens da fila Redis
 import logging
 from celery import shared_task
+from logging_setup import setup_rotating_file_logging
+
+setup_rotating_file_logging("worker")
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +117,7 @@ def fluxo_followup_pagamento(self):
         import traceback
         traceback.print_exc()
 
-@shared_task(bind=True, max_retries=0)
+@shared_task(bind=True, max_retries=1)
 def processar_uploads_google_ads(self):
     from google.ads.googleads.client import GoogleAdsClient
     try:
