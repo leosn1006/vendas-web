@@ -124,6 +124,10 @@ def lanche():
 def paes_sem_gluten():
     return render_template('paes-sem-gluten.html')
 
+@app.get("/paes-sem-gluten-2")
+def paes_sem_gluten_2():
+    return render_template('paes-sem-gluten-2.html')
+
 @app.post("/api/v1/webhook/gravar-lide")
 def gravar_lide():
     try:
