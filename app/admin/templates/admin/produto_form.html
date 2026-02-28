@@ -1,0 +1,174 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ 'Editar' if acao == 'editar' else 'Novo' }} Produto{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ 'Editar Produto' if acao == 'editar' else 'Novo Produto' }}</h1>
+        <p class="page-subtitle">{{ produto.nome if produto else 'Preencha os dados do produto' }}</p>
+    </div>
+    <a href="{{ url_for('admin.listar_produtos') }}" class="btn btn-ghost">← Voltar</a>
+</div>
+
+<div class="card">
+    <form method="POST">
+        <div class="form-grid">
+
+            <div class="form-group">
+                <label>Nome</label>
+                <input type="text" name="nome" required
+                       value="{{ produto.nome if produto else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>Preço (R$)</label>
+                <input type="number" name="preco" step="0.01" required
+                       value="{{ produto.preco if produto else '' }}">
+            </div>
+
+            <div class="form-group span-2">
+                <label>Descrição</label>
+                <textarea name="descricao">{{ produto.descricao if produto else '' }}</textarea>
+            </div>
+
+            <div class="form-group span-2">
+                <label>Prompt de Vendas (IA)</label>
+                <textarea name="prompt_vendas" style="min-height: 120px;">{{ produto.prompt_vendas if produto else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>URL FAQ Produto</label>
+                <input type="text" name="url_faq_produto"
+                       value="{{ produto.url_faq_produto if produto else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>Chave Pix</label>
+                <input type="text" name="chave_pix"
+                       value="{{ produto.chave_pix if produto else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>Destinatário Pix esperado</label>
+                <input type="text" name="pix_destinatario_esperado"
+                       value="{{ produto.pix_destinatario_esperado if produto else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>Valor mínimo pagamento</label>
+                <input type="number" name="valor_minimo_pagamento" step="0.01"
+                       value="{{ produto.valor_minimo_pagamento if produto else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>URL Áudio Introdução</label>
+                <input type="text" name="url_audio_introducao"
+                       value="{{ produto.url_audio_introducao if produto else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>URL Áudio Explicativo</label>
+                <input type="text" name="url_audio_explicativo"
+                       value="{{ produto.url_audio_explicativo if produto else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>URL Áudio Pedido Entregue</label>
+                <input type="text" name="url_audio_pedido_entregue"
+                       value="{{ produto.url_audio_pedido_entregue if produto else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>URL Imagem Complementar</label>
+                <input type="text" name="url_imagem_complementar"
+                       value="{{ produto.url_imagem_complementar if produto else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>URL Arquivo Produto (PDF)</label>
+                <input type="text" name="url_arquivo_produto"
+                       value="{{ produto.url_arquivo_produto if produto else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>Nome Arquivo Produto</label>
+                <input type="text" name="nome_arquivo_produto"
+                       value="{{ produto.nome_arquivo_produto if produto else '' }}">
+            </div>
+
+            <div class="form-group span-2">
+                <label>Caption Arquivo Produto</label>
+                <input type="text" name="caption_arquivo_produto"
+                       value="{{ produto.caption_arquivo_produto if produto else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>URL Arquivo Surpresa (PDF)</label>
+                <input type="text" name="url_arquivo_surpresa"
+                       value="{{ produto.url_arquivo_surpresa if produto else '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>Nome Arquivo Surpresa</label>
+                <input type="text" name="nome_arquivo_surpresa"
+                       value="{{ produto.nome_arquivo_surpresa if produto else '' }}">
+            </div>
+
+            <div class="form-group span-2">
+                <label>Caption Arquivo Surpresa</label>
+                <input type="text" name="caption_arquivo_surpresa"
+                       value="{{ produto.caption_arquivo_surpresa if produto else '' }}">
+            </div>
+
+            <div class="form-group span-2">
+                <label>Mensagem Introdução</label>
+                <textarea name="mensagem_introducao">{{ produto.mensagem_introducao if produto else '' }}</textarea>
+            </div>
+
+            <div class="form-group span-2">
+                <label>Mensagem Pedido Enviado sem Interesse</label>
+                <textarea name="mensagem_pedido_enviado_sem_interesse">{{ produto.mensagem_pedido_enviado_sem_interesse if produto else '' }}</textarea>
+            </div>
+
+            <div class="form-group span-2">
+                <label>Mensagem para Pagamento</label>
+                <textarea name="mensagem_para_pagamento">{{ produto.mensagem_para_pagamento if produto else '' }}</textarea>
+            </div>
+
+            <div class="form-group span-2">
+                <label>Mensagem Pagamento Confirmado</label>
+                <textarea name="mensagem_pagamento_confirmado">{{ produto.mensagem_pagamento_confirmado if produto else '' }}</textarea>
+            </div>
+
+            <div class="form-group span-2">
+                <label>Mensagem Comprovante Inválido</label>
+                <textarea name="mensagem_comprovante_invalido">{{ produto.mensagem_comprovante_invalido if produto else '' }}</textarea>
+            </div>
+
+            {% if acao == 'editar' and current_user.is_admin() %}
+            <div class="form-group">
+                <label>Status</label>
+                <select name="ativo">
+                    <option value="1" {% if produto.ativo %}selected{% endif %}>Ativo</option>
+                    <option value="" {% if not produto.ativo %}selected{% endif %}>Inativo</option>
+                </select>
+            </div>
+            {% endif %}
+
+        </div>
+
+        {% if current_user.is_admin() %}
+        <div class="form-actions">
+            <a href="{{ url_for('admin.listar_produtos') }}" class="btn btn-ghost">Cancelar</a>
+            <button type="submit" class="btn btn-primary">
+                {{ 'Salvar Alterações' if acao == 'editar' else 'Criar Produto' }}
+            </button>
+        </div>
+        {% else %}
+        <div class="form-actions">
+            <a href="{{ url_for('admin.listar_produtos') }}" class="btn btn-ghost">← Voltar</a>
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

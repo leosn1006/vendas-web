@@ -5,6 +5,10 @@ from notificacoes import notificador, notificar_erro
 from error_handlers import registrar_error_handlers
 from celery_app import celery_app
 from logging_setup import setup_rotating_file_logging
+from flask_login import LoginManager
+from admin import admin_bp
+from admin.auth import init_login_manager
+import os
 import logging
 
 setup_rotating_file_logging("app")
@@ -18,9 +22,14 @@ app = Flask(__name__,
 
 # Configurar JSON para não escapar caracteres Unicode (permite acentuação)
 app.config['JSON_AS_ASCII'] = False
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'troque-em-producao')
 
 # Registrar error handlers centralizados
 registrar_error_handlers(app)
+
+# Registra o Blueprint do admin
+app.register_blueprint(admin_bp)
+init_login_manager(app)
 
 # ============ ROTAS DA APLICAÇÃO ============
 

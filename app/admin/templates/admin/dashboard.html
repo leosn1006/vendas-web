@@ -1,0 +1,30 @@
+{% extends "admin/base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Visão geral do sistema</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card green">
+        <div class="stat-label">Total Pedidos</div>
+        <div class="stat-value">{{ total_pedidos }}</div>
+    </div>
+    <div class="stat-card blue">
+        <div class="stat-label">Pagos</div>
+        <div class="stat-value">{{ total_pagos }}</div>
+    </div>
+    <div class="stat-card yellow">
+        <div class="stat-label">Aguardando</div>
+        <div class="stat-value">{{ total_aguardando }}</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-label">Produtos Ativos</div>
+        <div class="stat-value">{{ total_produtos }}</div>
+    </div>
+</div>
+{% endblock %}

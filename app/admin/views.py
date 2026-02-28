@@ -1,0 +1,236 @@
+import logging
+from flask import render_template, redirect, url_for, request, flash
+from flask_login import current_user
+from admin import admin_bp
+from admin.auth import requer_login, requer_admin
+from database import db
+
+logger = logging.getLogger(__name__)
+
+# ============================================================
+# Dashboard
+# ============================================================
+@admin_bp.route('/')
+@admin_bp.route('/dashboard')
+@requer_login
+def dashboard():
+    try:
+        # Resumo para o dashboard
+        total_pedidos = db.execute_query(
+            "SELECT COUNT(*) as total FROM pedidos",
+            fetch_one=True
+        )['total']
+
+        total_pagos = db.execute_query(
+            "SELECT COUNT(*) as total FROM pedidos WHERE estado_id = 0",
+            fetch_one=True
+        )['total']
+
+        total_aguardando = db.execute_query(
+            "SELECT COUNT(*) as total FROM pedidos WHERE estado_id = 3",
+            fetch_one=True
+        )['total']
+
+        total_produtos = db.execute_query(
+            "SELECT COUNT(*) as total FROM produtos WHERE ativo = TRUE",
+            fetch_one=True
+        )['total']
+
+        return render_template('admin/dashboard.html',
+            total_pedidos   = total_pedidos,
+            total_pagos     = total_pagos,
+            total_aguardando= total_aguardando,
+            total_produtos  = total_produtos,
+        )
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro no dashboard: {e}")
+        flash('Erro ao carregar dashboard.', 'danger')
+        return render_template('admin/dashboard.html')
+
+# ============================================================
+# Produtos
+# ============================================================
+@admin_bp.route('/produtos')
+@requer_login
+def listar_produtos():
+    try:
+        produtos = db.execute_query(
+            "SELECT * FROM produtos ORDER BY created_at DESC",
+            fetch_all=True
+        )
+        return render_template('admin/produtos.html', produtos=produtos)
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao listar produtos: {e}")
+        flash('Erro ao carregar produtos.', 'danger')
+        return redirect(url_for('admin.dashboard'))
+
+@admin_bp.route('/produtos/novo', methods=['GET', 'POST'])
+@requer_admin
+def novo_produto():
+    if request.method == 'POST':
+        try:
+            db.execute_query("""
+                INSERT INTO produtos (
+                    nome, preco, descricao, prompt_vendas,
+                    url_faq_produto, url_audio_introducao, url_audio_explicativo,
+                    url_audio_pedido_entregue, url_imagem_complementar,
+                    url_arquivo_produto, caption_arquivo_produto, nome_arquivo_produto,
+                    mensagem_introducao, mensagem_pedido_enviado_sem_interesse,
+                    mensagem_para_pagamento, chave_pix, pix_destinatario_esperado,
+                    valor_minimo_pagamento, mensagem_pagamento_confirmado,
+                    mensagem_comprovante_invalido, url_arquivo_surpresa,
+                    caption_arquivo_surpresa, nome_arquivo_surpresa, ativo
+                ) VALUES (
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                )
+            """, (
+                request.form.get('nome'),
+                request.form.get('preco'),
+                request.form.get('descricao'),
+                request.form.get('prompt_vendas'),
+                request.form.get('url_faq_produto'),
+                request.form.get('url_audio_introducao'),
+                request.form.get('url_audio_explicativo'),
+                request.form.get('url_audio_pedido_entregue'),
+                request.form.get('url_imagem_complementar'),
+                request.form.get('url_arquivo_produto'),
+                request.form.get('caption_arquivo_produto'),
+                request.form.get('nome_arquivo_produto'),
+                request.form.get('mensagem_introducao'),
+                request.form.get('mensagem_pedido_enviado_sem_interesse'),
+                request.form.get('mensagem_para_pagamento'),
+                request.form.get('chave_pix'),
+                request.form.get('pix_destinatario_esperado'),
+                request.form.get('valor_minimo_pagamento'),
+                request.form.get('mensagem_pagamento_confirmado'),
+                request.form.get('mensagem_comprovante_invalido'),
+                request.form.get('url_arquivo_surpresa'),
+                request.form.get('caption_arquivo_surpresa'),
+                request.form.get('nome_arquivo_surpresa'),
+                1  # ativo por padrão
+            ))
+            flash('Produto criado com sucesso!', 'success')
+            logger.info(f"[ADMIN] ✅ Produto criado por {current_user.email}")
+            return redirect(url_for('admin.listar_produtos'))
+
+        except Exception as e:
+            logger.error(f"[ADMIN] ❌ Erro ao criar produto: {e}")
+            flash(f'Erro ao criar produto: {e}', 'danger')
+
+    return render_template('admin/produto_form.html', produto=None, acao='novo')
+
+@admin_bp.route('/produtos/<int:produto_id>', methods=['GET', 'POST'])
+@requer_login
+def editar_produto(produto_id):
+    produto = db.execute_query(
+        "SELECT * FROM produtos WHERE id = %s",
+        (produto_id,), fetch_one=True
+    )
+
+    if produto is None:
+        flash('Produto não encontrado.', 'danger')
+        return redirect(url_for('admin.listar_produtos'))
+
+    # perfil consulta só visualiza
+    if request.method == 'POST' and not current_user.is_admin():
+        flash('Você não tem permissão para editar produtos.', 'danger')
+        return redirect(url_for('admin.listar_produtos'))
+
+    if request.method == 'POST':
+        try:
+            db.execute_query("""
+                UPDATE produtos SET
+                    nome                                = %s,
+                    preco                               = %s,
+                    descricao                           = %s,
+                    prompt_vendas                       = %s,
+                    url_faq_produto                     = %s,
+                    url_audio_introducao                = %s,
+                    url_audio_explicativo               = %s,
+                    url_audio_pedido_entregue           = %s,
+                    url_imagem_complementar             = %s,
+                    url_arquivo_produto                 = %s,
+                    caption_arquivo_produto             = %s,
+                    nome_arquivo_produto                = %s,
+                    mensagem_introducao                 = %s,
+                    mensagem_pedido_enviado_sem_interesse = %s,
+                    mensagem_para_pagamento             = %s,
+                    chave_pix                           = %s,
+                    pix_destinatario_esperado           = %s,
+                    valor_minimo_pagamento              = %s,
+                    mensagem_pagamento_confirmado       = %s,
+                    mensagem_comprovante_invalido       = %s,
+                    url_arquivo_surpresa                = %s,
+                    caption_arquivo_surpresa            = %s,
+                    nome_arquivo_surpresa               = %s,
+                    ativo                               = %s
+                WHERE id = %s
+            """, (
+                request.form.get('nome'),
+                request.form.get('preco'),
+                request.form.get('descricao'),
+                request.form.get('prompt_vendas'),
+                request.form.get('url_faq_produto'),
+                request.form.get('url_audio_introducao'),
+                request.form.get('url_audio_explicativo'),
+                request.form.get('url_audio_pedido_entregue'),
+                request.form.get('url_imagem_complementar'),
+                request.form.get('url_arquivo_produto'),
+                request.form.get('caption_arquivo_produto'),
+                request.form.get('nome_arquivo_produto'),
+                request.form.get('mensagem_introducao'),
+                request.form.get('mensagem_pedido_enviado_sem_interesse'),
+                request.form.get('mensagem_para_pagamento'),
+                request.form.get('chave_pix'),
+                request.form.get('pix_destinatario_esperado'),
+                request.form.get('valor_minimo_pagamento'),
+                request.form.get('mensagem_pagamento_confirmado'),
+                request.form.get('mensagem_comprovante_invalido'),
+                request.form.get('url_arquivo_surpresa'),
+                request.form.get('caption_arquivo_surpresa'),
+                request.form.get('nome_arquivo_surpresa'),
+                1 if request.form.get('ativo') else 0,
+                produto_id
+            ))
+            flash('Produto atualizado com sucesso!', 'success')
+            logger.info(f"[ADMIN] ✅ Produto #{produto_id} atualizado por {current_user.email}")
+            return redirect(url_for('admin.listar_produtos'))
+
+        except Exception as e:
+            logger.error(f"[ADMIN] ❌ Erro ao atualizar produto: {e}")
+            flash(f'Erro ao atualizar produto: {e}', 'danger')
+
+    return render_template('admin/produto_form.html', produto=produto, acao='editar')
+
+@admin_bp.route('/produtos/<int:produto_id>/desativar', methods=['POST'])
+@requer_admin
+def desativar_produto(produto_id):
+    try:
+        db.execute_query(
+            "UPDATE produtos SET ativo = FALSE WHERE id = %s",
+            (produto_id,)
+        )
+        flash('Produto desativado com sucesso!', 'success')
+        logger.info(f"[ADMIN] ✅ Produto #{produto_id} desativado por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao desativar produto: {e}")
+        flash(f'Erro ao desativar produto: {e}', 'danger')
+    return redirect(url_for('admin.listar_produtos'))
+
+# ============================================================
+# Usuários — só admin
+# ============================================================
+@admin_bp.route('/usuarios')
+@requer_admin
+def listar_usuarios():
+    try:
+        usuarios = db.execute_query(
+            "SELECT id, email, nome, perfil, ativo, created_at FROM usuarios ORDER BY created_at DESC",
+            fetch_all=True
+        )
+        return render_template('admin/usuarios.html', usuarios=usuarios)
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao listar usuários: {e}")
+        flash('Erro ao carregar usuários.', 'danger')
+        return redirect(url_for('admin.dashboard'))

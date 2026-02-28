@@ -1,0 +1,70 @@
+{% extends "admin/base.html" %}
+{% block title %}Produtos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Produtos</h1>
+        <p class="page-subtitle">{{ produtos|length }} produto(s) cadastrado(s)</p>
+    </div>
+    {% if current_user.is_admin() %}
+    <a href="{{ url_for('admin.novo_produto') }}" class="btn btn-primary">+ Novo Produto</a>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nome</th>
+                    <th>Preço</th>
+                    <th>Status</th>
+                    <th>Criado em</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in produtos %}
+                <tr>
+                    <td style="font-family: var(--mono); color: var(--muted);">{{ p.id }}</td>
+                    <td style="font-weight: 500;">{{ p.nome }}</td>
+                    <td style="font-family: var(--mono);">R$ {{ "%.2f"|format(p.preco) }}</td>
+                    <td>
+                        {% if p.ativo %}
+                        <span class="badge badge-green">ativo</span>
+                        {% else %}
+                        <span class="badge badge-red">inativo</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--muted); font-size: 13px;">
+                        {{ p.created_at.strftime('%d/%m/%Y') if p.created_at else '—' }}
+                    </td>
+                    <td style="text-align: right;">
+                        <a href="{{ url_for('admin.editar_produto', produto_id=p.id) }}"
+                           class="btn btn-ghost btn-sm">
+                           {% if current_user.is_admin() %}Editar{% else %}Ver{% endif %}
+                        </a>
+                        {% if current_user.is_admin() and p.ativo %}
+                        <form method="POST"
+                              action="{{ url_for('admin.desativar_produto', produto_id=p.id) }}"
+                              style="display:inline"
+                              onsubmit="return confirm('Desativar este produto?')">
+                            <button type="submit" class="btn btn-danger btn-sm">Desativar</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align:center; color: var(--muted); padding: 40px;">
+                        Nenhum produto cadastrado ainda.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

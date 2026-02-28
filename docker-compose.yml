@@ -72,6 +72,8 @@ services:
       - GOOGLE_ADS_META_ID=${GOOGLE_ADS_META_ID:-}
       - REDIS_URL=redis://redis:6379/0
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      - SECRET_KEY=${SECRET_KEY}
+
     volumes:
       - ./storage:/app/storage
     networks:
