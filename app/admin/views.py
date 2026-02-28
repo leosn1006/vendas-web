@@ -234,3 +234,78 @@ def listar_usuarios():
         logger.error(f"[ADMIN] ❌ Erro ao listar usuários: {e}")
         flash('Erro ao carregar usuários.', 'danger')
         return redirect(url_for('admin.dashboard'))
+
+#criar produto a partir de um outro produto, para facilitar a criação de variações
+@admin_bp.route('/produtos/<int:produto_id>/clonar', methods=['POST'])
+@requer_admin
+def clonar_produto(produto_id):
+    try:
+        # Busca o produto original
+        produto = db.execute_query(
+            "SELECT * FROM produtos WHERE id = %s",
+            (produto_id,), fetch_one=True
+        )
+
+        if produto is None:
+            flash('Produto não encontrado.', 'danger')
+            return redirect(url_for('admin.listar_produtos'))
+
+        # Insere uma cópia com nome diferente
+        db.execute_query("""
+            INSERT INTO produtos (
+                nome, preco, descricao, prompt_vendas,
+                url_faq_produto, url_audio_introducao, url_audio_explicativo,
+                url_audio_pedido_entregue, url_imagem_complementar,
+                url_arquivo_produto, caption_arquivo_produto, nome_arquivo_produto,
+                mensagem_introducao, mensagem_pedido_enviado_sem_interesse,
+                mensagem_para_pagamento, chave_pix, pix_destinatario_esperado,
+                valor_minimo_pagamento, mensagem_pagamento_confirmado,
+                mensagem_comprovante_invalido, url_arquivo_surpresa,
+                caption_arquivo_surpresa, nome_arquivo_surpresa, ativo
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            )
+        """, (
+            f"Cópia de {produto['nome']}",  # nome diferente para identificar
+            produto['preco'],
+            produto['descricao'],
+            produto['prompt_vendas'],
+            produto['url_faq_produto'],
+            produto['url_audio_introducao'],
+            produto['url_audio_explicativo'],
+            produto['url_audio_pedido_entregue'],
+            produto['url_imagem_complementar'],
+            produto['url_arquivo_produto'],
+            produto['caption_arquivo_produto'],
+            produto['nome_arquivo_produto'],
+            produto['mensagem_introducao'],
+            produto['mensagem_pedido_enviado_sem_interesse'],
+            produto['mensagem_para_pagamento'],
+            produto['chave_pix'],
+            produto['pix_destinatario_esperado'],
+            produto['valor_minimo_pagamento'],
+            produto['mensagem_pagamento_confirmado'],
+            produto['mensagem_comprovante_invalido'],
+            produto['url_arquivo_surpresa'],
+            produto['caption_arquivo_surpresa'],
+            produto['nome_arquivo_surpresa'],
+            0  # inativo por padrão — força o admin a revisar antes de ativar
+        ))
+
+        # Busca o ID do produto recém criado
+        novo = db.execute_query(
+            "SELECT id FROM produtos WHERE nome = %s ORDER BY created_at DESC LIMIT 1",
+            (f"Cópia de {produto['nome']}",), fetch_one=True
+        )
+
+        flash(f'Produto clonado com sucesso! Revise e ative quando estiver pronto.', 'success')
+        logger.info(f"[ADMIN] ✅ Produto #{produto_id} clonado por {current_user.email}")
+
+        # Redireciona direto para edição do clone
+        return redirect(url_for('admin.editar_produto', produto_id=novo['id']))
+
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao clonar produto: {e}")
+        flash(f'Erro ao clonar produto: {e}', 'danger')
+        return redirect(url_for('admin.listar_produtos'))

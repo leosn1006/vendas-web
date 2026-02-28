@@ -43,14 +43,22 @@
                     </td>
                     <td style="text-align: right;">
                         <a href="{{ url_for('admin.editar_produto', produto_id=p.id) }}"
-                           class="btn btn-ghost btn-sm">
-                           {% if current_user.is_admin() %}Editar{% else %}Ver{% endif %}
+                        class="btn btn-ghost btn-sm">
+                        {% if current_user.is_admin() %}Editar{% else %}Ver{% endif %}
                         </a>
+                        {% if current_user.is_admin() %}
+                        <form method="POST"
+                            action="{{ url_for('admin.clonar_produto', produto_id=p.id) }}"
+                            style="display:inline"
+                            onsubmit="return confirm('Clonar o produto {{ p.nome }}?')">
+                            <button type="submit" class="btn btn-ghost btn-sm">Clonar</button>
+                        </form>
+                        {% endif %}
                         {% if current_user.is_admin() and p.ativo %}
                         <form method="POST"
-                              action="{{ url_for('admin.desativar_produto', produto_id=p.id) }}"
-                              style="display:inline"
-                              onsubmit="return confirm('Desativar este produto?')">
+                            action="{{ url_for('admin.desativar_produto', produto_id=p.id) }}"
+                            style="display:inline"
+                            onsubmit="return confirm('Desativar este produto?')">
                             <button type="submit" class="btn btn-danger btn-sm">Desativar</button>
                         </form>
                         {% endif %}
