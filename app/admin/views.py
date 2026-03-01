@@ -217,6 +217,74 @@ def editar_produto(produto_id):
 
     return render_template('admin/produto_form.html', produto=produto, acao='editar')
 
+@admin_bp.route('/produtos/<int:produto_id>/agente-vendas', methods=['GET', 'POST'])
+@requer_login
+def agente_vendas_produto(produto_id):
+    produto = db.execute_query(
+        "SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True
+    )
+    if produto is None:
+        flash('Produto não encontrado.', 'danger')
+        return redirect(url_for('admin.listar_produtos'))
+
+    if request.method == 'POST':
+        if not current_user.is_admin():
+            flash('Você não tem permissão para editar produtos.', 'danger')
+            return redirect(url_for('admin.agente_vendas_produto', produto_id=produto_id))
+        try:
+            db.execute_query(
+                "UPDATE produtos SET prompt_vendas = %s WHERE id = %s",
+                (request.form.get('prompt_vendas'), produto_id)
+            )
+            flash('Prompt atualizado com sucesso!', 'success')
+            logger.info(f"[ADMIN] ✅ prompt_vendas do produto #{produto_id} atualizado por {current_user.email}")
+        except Exception as e:
+            logger.error(f"[ADMIN] ❌ Erro ao atualizar prompt: {e}")
+            flash(f'Erro ao atualizar: {e}', 'danger')
+        return redirect(url_for('admin.agente_vendas_produto', produto_id=produto_id))
+
+    return render_template('admin/produto_agente_vendas.html', produto=produto)
+
+@admin_bp.route('/produtos/<int:produto_id>/dados-basicos', methods=['GET', 'POST'])
+@requer_login
+def dados_basicos_produto(produto_id):
+    produto = db.execute_query(
+        "SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True
+    )
+    if produto is None:
+        flash('Produto não encontrado.', 'danger')
+        return redirect(url_for('admin.listar_produtos'))
+
+    if request.method == 'POST':
+        if not current_user.is_admin():
+            flash('Você não tem permissão para editar produtos.', 'danger')
+            return redirect(url_for('admin.dados_basicos_produto', produto_id=produto_id))
+        try:
+            db.execute_query("""
+                UPDATE produtos SET
+                    nome                    = %s,
+                    descricao               = %s,
+                    preco                   = %s,
+                    valor_minimo_pagamento  = %s,
+                    pix_destinatario_esperado = %s
+                WHERE id = %s
+            """, (
+                request.form.get('nome'),
+                request.form.get('descricao'),
+                request.form.get('preco'),
+                request.form.get('valor_minimo_pagamento'),
+                request.form.get('pix_destinatario_esperado'),
+                produto_id
+            ))
+            flash('Dados básicos atualizados com sucesso!', 'success')
+            logger.info(f"[ADMIN] ✅ Dados básicos do produto #{produto_id} atualizados por {current_user.email}")
+        except Exception as e:
+            logger.error(f"[ADMIN] ❌ Erro ao atualizar dados básicos: {e}")
+            flash(f'Erro ao atualizar: {e}', 'danger')
+        return redirect(url_for('admin.dados_basicos_produto', produto_id=produto_id))
+
+    return render_template('admin/produto_dados_basicos.html', produto=produto)
+
 @admin_bp.route('/produtos/<int:produto_id>/desativar', methods=['POST'])
 @requer_admin
 def desativar_produto(produto_id):

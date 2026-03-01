@@ -1,0 +1,52 @@
+{% extends 'admin/base.html' %}
+{% block title %}Dados Básicos — {{ produto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Dados Básicos</div>
+        <div class="page-subtitle">{{ produto.nome }}</div>
+    </div>
+</div>
+
+<div class="card">
+    <form method="POST">
+        <div class="form-grid">
+
+            <div class="form-group span-2">
+                <label for="nome">Nome do produto</label>
+                <input type="text" id="nome" name="nome" value="{{ produto.nome or '' }}" required>
+            </div>
+
+            <div class="form-group span-2">
+                <label for="descricao">Descrição</label>
+                <textarea id="descricao" name="descricao" rows="4">{{ produto.descricao or '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="preco">Preço (R$)</label>
+                <input type="number" id="preco" name="preco" step="0.01" min="0"
+                       value="{{ produto.preco or '' }}">
+            </div>
+
+            <div class="form-group">
+                <label for="valor_minimo_pagamento">Valor mínimo de pagamento (R$)</label>
+                <input type="number" id="valor_minimo_pagamento" name="valor_minimo_pagamento"
+                       step="0.01" min="0" value="{{ produto.valor_minimo_pagamento or '' }}">
+            </div>
+
+            <div class="form-group span-2">
+                <label for="pix_destinatario_esperado">PIX destinatário esperado</label>
+                <input type="text" id="pix_destinatario_esperado" name="pix_destinatario_esperado"
+                       value="{{ produto.pix_destinatario_esperado or '' }}"
+                       placeholder="CPF, CNPJ, e-mail ou chave aleatória">
+            </div>
+
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

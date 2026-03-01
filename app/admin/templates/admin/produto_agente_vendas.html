@@ -1,0 +1,49 @@
+{% extends 'admin/base.html' %}
+{% block title %}Agente de Vendas IA — {{ produto.nome }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .prompt-hint {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+        line-height: 1.5;
+    }
+    textarea#prompt_vendas {
+        min-height: 420px;
+        font-family: var(--mono);
+        font-size: 13px;
+        line-height: 1.6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Agente de Vendas IA</div>
+        <div class="page-subtitle">{{ produto.nome }}</div>
+    </div>
+</div>
+
+<div class="card">
+    <form method="POST">
+        <div class="form-grid full">
+
+            <div class="form-group">
+                <label for="prompt_vendas">Prompt do agente</label>
+                <textarea id="prompt_vendas" name="prompt_vendas">{{ produto.prompt_vendas or '' }}</textarea>
+                <p class="prompt-hint">
+                    Este prompt é enviado ao modelo de IA para personalizar as respostas do agente de vendas.
+                    Descreva o produto, tom de voz, objeções comuns e instruções de atendimento.
+                </p>
+            </div>
+
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

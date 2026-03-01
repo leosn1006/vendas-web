@@ -483,6 +483,14 @@
         <!-- Sub-menu do produto ativo -->
         {% if produto_ativo %}
         <div class="nav-produto-nome">{{ produto_ativo.nome }}</div>
+        <a href="{{ url_for('admin.dados_basicos_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.dados_basicos_produto' %}active{% endif %}">
+            <span class="icon">📋</span> Dados Básicos
+        </a>
+        <a href="{{ url_for('admin.agente_vendas_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.agente_vendas_produto' %}active{% endif %}">
+            <span class="icon">🤖</span> Agente de Vendas IA
+        </a>
         <a href="{{ url_for('admin.numeros_whatsapp', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint == 'admin.numeros_whatsapp' %}active{% endif %}">
             <span class="icon">📞</span> Números WhatsApp
