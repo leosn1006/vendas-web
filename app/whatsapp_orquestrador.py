@@ -63,10 +63,18 @@ def recebe_webhook(mensagem_whatsapp):
             celery_app.send_task("tasks.transcrever_audio", args=[pedido, mensagem_whatsapp],countdown=tempo_espera)
             return "Mensagem de áudio recebida e enviada para transcrição"
 
+        # Mock: redireciona o telefone de teste para os fluxos dinâmicos
+        _MOCK_TELEFONE = '556181163324'
+        _usar_dinamico = dados.get('numero_remetente') == _MOCK_TELEFONE
+
         match pedido.get('estado_id'):
             case 1: # Cliente acessou a página de vendas e clicou para enviar mensagem ou veio direto pelo whatsapp sem passar pela página de vendas, ou seja, estado inicial do pedido'
-                logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de introdução: {mensagem_whatsapp}" )
-                celery_app.send_task("tasks.enviar_introducao", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                if _usar_dinamico:
+                    logger.info(f"[ORQUESTRADOR-WEBHOOK] 🧪 [MOCK] mandando para o fluxo DINÂMICO de introdução: {dados.get('numero_remetente')}")
+                    celery_app.send_task("tasks.enviar_introducao_dinamico", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                else:
+                    logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de introdução: {mensagem_whatsapp}" )
+                    celery_app.send_task("tasks.enviar_introducao", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
             case 2: # cliente respondendo a introdução, se quer ou não receber o produto
                 logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de enviar pedido: {mensagem_whatsapp}" )
                 celery_app.send_task("tasks.enviar_pedido", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
