@@ -1,0 +1,308 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ fluxos_labels[fluxo] }} — {{ produto.nome }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .fluxo-tabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 28px;
+        flex-wrap: wrap;
+    }
+
+    .fluxo-tab {
+        padding: 7px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        background: var(--surface);
+        transition: all 0.15s;
+    }
+
+    .fluxo-tab:hover { color: var(--text); border-color: #b0a090; }
+    .fluxo-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    .condicao-section { margin-bottom: 28px; }
+
+    .condicao-header {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-family: var(--mono);
+        padding: 8px 0 6px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0;
+    }
+
+    .campo-preview {
+        font-size: 13px;
+        color: var(--text);
+        max-width: 320px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .campo-null { color: var(--muted); font-style: italic; font-size: 12px; }
+
+    .delay-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 2px 10px;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+        white-space: nowrap;
+    }
+
+    /* form add */
+    .add-form-wrap {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        margin-top: 32px;
+    }
+
+    .add-form-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #3d2510;
+        margin-bottom: 20px;
+    }
+
+    .field-grid {
+        display: grid;
+        grid-template-columns: 80px 1fr 1fr 1fr 90px 90px;
+        gap: 12px;
+        align-items: end;
+    }
+
+    .field-group { display: flex; flex-direction: column; gap: 5px; }
+
+    .field-label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-family: var(--mono);
+    }
+
+    .content-fields { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .content-fields .span-full { grid-column: 1 / -1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">{{ fluxos_labels[fluxo] }}</div>
+        <div class="page-subtitle">{{ produto.nome }}</div>
+    </div>
+    <a href="{{ url_for('admin.fluxos_overview', produto_id=produto.id) }}" class="btn btn-ghost btn-sm">← Todos os fluxos</a>
+</div>
+
+<!-- Abas de navegação entre fluxos -->
+<div class="fluxo-tabs">
+    {% for f in fluxos %}
+    <a href="{{ url_for('admin.fluxo_acoes', produto_id=produto.id, fluxo=f) }}"
+       class="fluxo-tab {% if f == fluxo %}active{% endif %}">
+        {{ fluxos_labels[f] }}
+    </a>
+    {% endfor %}
+</div>
+
+{% if readonly %}
+<div class="alert alert-warning" style="margin-bottom: 24px;">
+    👁 Este fluxo é <strong>somente leitura</strong>. As ações são geradas dinamicamente pelo agente de IA e não podem ser editadas aqui.
+</div>
+{% endif %}
+
+<!-- Tabela de ações agrupadas por condição -->
+{% if acoes %}
+{% set condicoes_vistas = namespace(lista=[]) %}
+{% for acao in acoes %}
+  {% if acao.condicao not in condicoes_vistas.lista %}
+    {% set condicoes_vistas.lista = condicoes_vistas.lista + [acao.condicao] %}
+
+    <div class="condicao-section">
+        <div class="condicao-header">
+            {% if acao.condicao == 'sempre' %}⬛ Sempre
+            {% elif acao.condicao == 'interesse_sim' %}✅ Se interesse = Sim
+            {% elif acao.condicao == 'interesse_nao' %}❌ Se interesse = Não
+            {% elif acao.condicao == 'pagamento_valido' %}✅ Se pagamento válido
+            {% elif acao.condicao == 'pagamento_invalido' %}❌ Se pagamento inválido
+            {% endif %}
+        </div>
+
+        <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 60px;">Ordem</th>
+                    <th>Ação</th>
+                    <th>Conteúdo</th>
+                    <th>Delay</th>
+                    {% if not readonly %}<th style="width: 120px;"></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+            {% for a in acoes %}
+            {% if a.condicao == acao.condicao %}
+            <tr>
+                <td>
+                    <span style="font-family: var(--mono); font-weight: 600; color: #3d2510;">{{ a.ordem }}</span>
+                </td>
+                <td>
+                    {% if a.acao == 'marcar_lida' %}<span class="badge badge-blue">👁 marcar lida</span>
+                    {% elif a.acao == 'digitando' %}<span class="badge badge-yellow">⌨️ digitando</span>
+                    {% elif a.acao == 'enviar_audio' %}<span class="badge badge-green">🎵 áudio</span>
+                    {% elif a.acao == 'enviar_imagem' %}<span class="badge badge-green">🖼 imagem</span>
+                    {% elif a.acao == 'enviar_arquivo' %}<span class="badge badge-green">📄 arquivo</span>
+                    {% elif a.acao == 'enviar_mensagem' %}<span class="badge badge-blue">💬 mensagem</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if a.mensagem %}
+                        <div class="campo-preview" title="{{ a.mensagem }}">{{ a.mensagem }}</div>
+                    {% elif a.url %}
+                        <div class="campo-preview" title="{{ a.url }}" style="font-family: var(--mono); font-size: 12px; color: var(--muted);">{{ a.url }}</div>
+                    {% else %}
+                        <span class="campo-null">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if a.delay_inicial or a.delay_final %}
+                    <span class="delay-pill">⏱ {{ a.delay_inicial }}–{{ a.delay_final }}s</span>
+                    {% else %}
+                    <span class="campo-null">sem delay</span>
+                    {% endif %}
+                </td>
+                {% if not readonly %}
+                <td>
+                    <div style="display: flex; gap: 6px;">
+                        <a href="{{ url_for('admin.editar_acao_fluxo', produto_id=produto.id, fluxo=fluxo, acao_id=a.id) }}"
+                           class="btn btn-ghost btn-sm">Editar</a>
+                        <form method="POST"
+                              action="{{ url_for('admin.remover_acao_fluxo_view', produto_id=produto.id, fluxo=fluxo, acao_id=a.id) }}"
+                              onsubmit="return confirm('Remover esta ação?')">
+                            <button class="btn btn-danger btn-sm">✕</button>
+                        </form>
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+  {% endif %}
+{% endfor %}
+
+{% else %}
+<div class="card" style="text-align: center; padding: 48px; color: var(--muted);">
+    Nenhuma ação configurada para este fluxo.
+</div>
+{% endif %}
+
+<!-- Formulário de adição (somente para fluxos editáveis e admins) -->
+{% if not readonly and current_user.is_admin() %}
+<div class="add-form-wrap">
+    <div class="add-form-title">+ Nova ação</div>
+    <form method="POST" action="{{ url_for('admin.adicionar_acao_fluxo_view', produto_id=produto.id, fluxo=fluxo) }}">
+        <div class="field-grid">
+            <div class="field-group">
+                <span class="field-label">Ordem</span>
+                <input type="number" name="ordem" min="1" max="99" value="1" required>
+            </div>
+            <div class="field-group">
+                <span class="field-label">Condição</span>
+                <select name="condicao">
+                    <option value="sempre">⬛ Sempre</option>
+                    <option value="interesse_sim">✅ Interesse Sim</option>
+                    <option value="interesse_nao">❌ Interesse Não</option>
+                    <option value="pagamento_valido">✅ Pgto Válido</option>
+                    <option value="pagamento_invalido">❌ Pgto Inválido</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <span class="field-label">Ação</span>
+                <select name="acao" id="acao-select" onchange="toggleContentFields()">
+                    <option value="marcar_lida">👁 Marcar lida</option>
+                    <option value="digitando">⌨️ Digitando</option>
+                    <option value="enviar_audio">🎵 Enviar áudio</option>
+                    <option value="enviar_imagem">🖼 Enviar imagem</option>
+                    <option value="enviar_arquivo">📄 Enviar arquivo</option>
+                    <option value="enviar_mensagem">💬 Enviar mensagem</option>
+                </select>
+            </div>
+            <div></div>
+            <div class="field-group">
+                <span class="field-label">Delay mín (s)</span>
+                <input type="number" name="delay_inicial" min="0" step="0.5" value="0">
+            </div>
+            <div class="field-group">
+                <span class="field-label">Delay máx (s)</span>
+                <input type="number" name="delay_final" min="0" step="0.5" value="0">
+            </div>
+        </div>
+
+        <!-- Campos de conteúdo dinâmicos -->
+        <div class="content-fields" id="content-fields" style="margin-top: 14px;">
+            <div class="field-group" id="field-url" style="display:none;">
+                <span class="field-label">URL</span>
+                <input type="text" name="url" placeholder="https://…">
+            </div>
+            <div class="field-group span-full" id="field-mensagem" style="display:none;">
+                <span class="field-label">Mensagem</span>
+                <textarea name="mensagem" rows="3" placeholder="Texto da mensagem…"></textarea>
+            </div>
+            <div class="field-group" id="field-caption" style="display:none;">
+                <span class="field-label">Caption</span>
+                <input type="text" name="caption" placeholder="Legenda do arquivo">
+            </div>
+            <div class="field-group" id="field-nome_arquivo" style="display:none;">
+                <span class="field-label">Nome arquivo</span>
+                <input type="text" name="nome_arquivo" placeholder="receitas.pdf">
+            </div>
+        </div>
+
+        <div style="margin-top: 16px;">
+            <button type="submit" class="btn btn-primary btn-sm">+ Adicionar ação</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleContentFields() {
+    const acao = document.getElementById('acao-select').value;
+    const url       = document.getElementById('field-url');
+    const mensagem  = document.getElementById('field-mensagem');
+    const caption   = document.getElementById('field-caption');
+    const nomearq   = document.getElementById('field-nome_arquivo');
+
+    url.style.display      = (acao === 'enviar_audio' || acao === 'enviar_imagem' || acao === 'enviar_arquivo') ? '' : 'none';
+    mensagem.style.display = (acao === 'enviar_mensagem') ? '' : 'none';
+    caption.style.display  = (acao === 'enviar_arquivo') ? '' : 'none';
+    nomearq.style.display  = (acao === 'enviar_arquivo') ? '' : 'none';
+}
+// init
+toggleContentFields();
+</script>
+{% endblock %}

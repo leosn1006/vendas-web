@@ -1,0 +1,139 @@
+{% extends "admin/base.html" %}
+{% block title %}Editar Ação — {{ fluxos_labels[fluxo] }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .edit-grid {
+        display: grid;
+        grid-template-columns: 80px 1fr 1fr;
+        gap: 20px;
+    }
+
+    .edit-grid-delays {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Editar Ação</div>
+        <div class="page-subtitle">{{ fluxos_labels[fluxo] }} — {{ produto.nome }}</div>
+    </div>
+    <a href="{{ url_for('admin.fluxo_acoes', produto_id=produto.id, fluxo=fluxo) }}"
+       class="btn btn-ghost btn-sm">← Voltar</a>
+</div>
+
+<div class="card" style="max-width: 760px;">
+    <form method="POST">
+        <div class="form-grid">
+
+            <div class="form-group">
+                <label>Ordem</label>
+                <input type="number" name="ordem" min="1" max="99"
+                       value="{{ acao.ordem }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Condição</label>
+                <select name="condicao">
+                    {% for val, lbl in [
+                        ('sempre',           '⬛ Sempre'),
+                        ('interesse_sim',    '✅ Interesse Sim'),
+                        ('interesse_nao',    '❌ Interesse Não'),
+                        ('pagamento_valido', '✅ Pgto Válido'),
+                        ('pagamento_invalido','❌ Pgto Inválido'),
+                    ] %}
+                    <option value="{{ val }}" {% if acao.condicao == val %}selected{% endif %}>{{ lbl }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Ação</label>
+                <select name="acao" id="acao-select" onchange="toggleContentFields()">
+                    {% for val, lbl in [
+                        ('marcar_lida',    '👁 Marcar lida'),
+                        ('digitando',      '⌨️ Digitando'),
+                        ('enviar_audio',   '🎵 Enviar áudio'),
+                        ('enviar_imagem',  '🖼 Enviar imagem'),
+                        ('enviar_arquivo', '📄 Enviar arquivo'),
+                        ('enviar_mensagem','💬 Enviar mensagem'),
+                    ] %}
+                    <option value="{{ val }}" {% if acao.acao == val %}selected{% endif %}>{{ lbl }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Delay mín (s)</label>
+                <input type="number" name="delay_inicial" min="0" step="0.5"
+                       value="{{ acao.delay_inicial }}">
+            </div>
+
+            <div class="form-group">
+                <label>Delay máx (s)</label>
+                <input type="number" name="delay_final" min="0" step="0.5"
+                       value="{{ acao.delay_final }}">
+            </div>
+
+        </div>
+
+        <!-- Campos de conteúdo -->
+        <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 16px;">
+
+            <div class="form-group" id="field-url" style="display:none;">
+                <label>URL</label>
+                <input type="text" name="url"
+                       value="{{ acao.url or '' }}" placeholder="https://…">
+            </div>
+
+            <div class="form-group" id="field-mensagem" style="display:none;">
+                <label>Mensagem</label>
+                <textarea name="mensagem" rows="4">{{ acao.mensagem or '' }}</textarea>
+            </div>
+
+            <div class="form-group" id="field-caption" style="display:none;">
+                <label>Caption</label>
+                <input type="text" name="caption"
+                       value="{{ acao.caption or '' }}" placeholder="Legenda do arquivo">
+            </div>
+
+            <div class="form-group" id="field-nome_arquivo" style="display:none;">
+                <label>Nome do arquivo</label>
+                <input type="text" name="nome_arquivo"
+                       value="{{ acao.nome_arquivo or '' }}" placeholder="receitas.pdf">
+            </div>
+
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('admin.fluxo_acoes', produto_id=produto.id, fluxo=fluxo) }}"
+               class="btn btn-ghost">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Salvar alterações</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleContentFields() {
+    const acao = document.getElementById('acao-select').value;
+    const url       = document.getElementById('field-url');
+    const mensagem  = document.getElementById('field-mensagem');
+    const caption   = document.getElementById('field-caption');
+    const nomearq   = document.getElementById('field-nome_arquivo');
+
+    url.style.display      = (acao === 'enviar_audio' || acao === 'enviar_imagem' || acao === 'enviar_arquivo') ? '' : 'none';
+    mensagem.style.display = (acao === 'enviar_mensagem') ? '' : 'none';
+    caption.style.display  = (acao === 'enviar_arquivo') ? '' : 'none';
+    nomearq.style.display  = (acao === 'enviar_arquivo') ? '' : 'none';
+}
+// init on page load
+toggleContentFields();
+</script>
+{% endblock %}

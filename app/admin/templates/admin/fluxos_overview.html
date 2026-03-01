@@ -1,0 +1,41 @@
+{% extends "admin/base.html" %}
+{% block title %}Fluxos — {{ produto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Fluxos</div>
+        <div class="page-subtitle">{{ produto.nome }}</div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px;">
+{% for fluxo in fluxos %}
+<div class="card" style="display: flex; flex-direction: column; gap: 16px;">
+    <div>
+        <div style="font-size: 22px; margin-bottom: 6px;">
+            {% if fluxo == 'introducao' %}👋
+            {% elif fluxo == 'pedido' %}📦
+            {% elif fluxo == 'comprovante' %}🧾
+            {% elif fluxo == 'responder' %}💬
+            {% elif fluxo == 'followup' %}🔔
+            {% endif %}
+        </div>
+        <div style="font-size: 16px; font-weight: 600; color: #3d2510;">{{ fluxos_labels[fluxo] }}</div>
+        <div style="font-size: 13px; color: var(--muted); margin-top: 4px; font-family: var(--mono);">
+            {{ resumo[fluxo] }} ação{% if resumo[fluxo] != 1 %}ões{% endif %} configurada{% if resumo[fluxo] != 1 %}s{% endif %}
+        </div>
+        {% if fluxo == 'responder' %}
+        <div style="margin-top: 8px;">
+            <span class="badge badge-yellow">somente leitura</span>
+        </div>
+        {% endif %}
+    </div>
+    <a href="{{ url_for('admin.fluxo_acoes', produto_id=produto.id, fluxo=fluxo) }}"
+       class="btn btn-ghost btn-sm" style="align-self: flex-start;">
+        {% if fluxo == 'responder' %}👁 Consultar{% else %}⚙️ Gerenciar{% endif %}
+    </a>
+</div>
+{% endfor %}
+</div>
+{% endblock %}

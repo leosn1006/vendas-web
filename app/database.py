@@ -700,3 +700,59 @@ def adicionar_mensagem_sugerida(produto_id, mensagem):
 def remover_mensagem_sugerida(mensagem_id):
     """Remove uma mensagem sugerida pelo ID."""
     db.execute_query("DELETE FROM mensagens_sugeridas_produto WHERE id = %s", (mensagem_id,))
+
+
+# ============================================================
+# Ações de fluxo por produto  (tabela acoes_fluxo_produto)
+# ============================================================
+
+def listar_acoes_fluxo(produto_id, fluxo):
+    """Retorna todas as ações de um fluxo para um produto, ordenadas por condicao e ordem."""
+    return db.execute_query(
+        "SELECT * FROM acoes_fluxo_produto WHERE produto_id = %s AND fluxo = %s ORDER BY condicao, ordem",
+        (produto_id, fluxo), fetch_all=True
+    ) or []
+
+
+def get_acao_fluxo(acao_id):
+    """Retorna uma ação pelo ID."""
+    return db.execute_query(
+        "SELECT * FROM acoes_fluxo_produto WHERE id = %s",
+        (acao_id,), fetch_one=True
+    )
+
+
+def adicionar_acao_fluxo(produto_id, fluxo, ordem, condicao, acao,
+                          url, mensagem, caption, nome_arquivo,
+                          delay_inicial, delay_final):
+    """Insere uma nova ação de fluxo. Retorna o ID criado."""
+    return db.execute_query(
+        """INSERT INTO acoes_fluxo_produto
+               (produto_id, fluxo, ordem, condicao, acao,
+                url, mensagem, caption, nome_arquivo, delay_inicial, delay_final)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+        (produto_id, fluxo, ordem, condicao, acao,
+         url or None, mensagem or None, caption or None, nome_arquivo or None,
+         delay_inicial, delay_final)
+    )
+
+
+def atualizar_acao_fluxo(acao_id, ordem, condicao, acao,
+                          url, mensagem, caption, nome_arquivo,
+                          delay_inicial, delay_final):
+    """Atualiza uma ação existente pelo ID."""
+    db.execute_query(
+        """UPDATE acoes_fluxo_produto SET
+               ordem=%s, condicao=%s, acao=%s,
+               url=%s, mensagem=%s, caption=%s, nome_arquivo=%s,
+               delay_inicial=%s, delay_final=%s
+           WHERE id=%s""",
+        (ordem, condicao, acao,
+         url or None, mensagem or None, caption or None, nome_arquivo or None,
+         delay_inicial, delay_final, acao_id)
+    )
+
+
+def remover_acao_fluxo(acao_id):
+    """Remove uma ação de fluxo pelo ID."""
+    db.execute_query("DELETE FROM acoes_fluxo_produto WHERE id = %s", (acao_id,))

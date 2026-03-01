@@ -5,7 +5,19 @@ from admin import admin_bp
 from admin.auth import requer_login, requer_admin
 from database import (db,
     listar_telefones_produto, adicionar_telefone_produto, remover_telefone_produto,
-    listar_mensagens_sugeridas, adicionar_mensagem_sugerida, remover_mensagem_sugerida)
+    listar_mensagens_sugeridas, adicionar_mensagem_sugerida, remover_mensagem_sugerida,
+    listar_acoes_fluxo, get_acao_fluxo,
+    adicionar_acao_fluxo, atualizar_acao_fluxo, remover_acao_fluxo)
+
+_FLUXOS = ['introducao', 'pedido', 'comprovante', 'responder', 'followup']
+_FLUXOS_READONLY = {'responder'}
+_FLUXOS_LABELS = {
+    'introducao':  '👋 Introdução',
+    'pedido':      '📦 Pedido',
+    'comprovante': '🧾 Comprovante',
+    'responder':   '💬 Responder',
+    'followup':    '🔔 Follow-up',
+}
 
 logger = logging.getLogger(__name__)
 
@@ -419,3 +431,147 @@ def remover_mensagem_sugerida_view(produto_id, mensagem_id):
         logger.error(f"[ADMIN] ❌ Erro ao remover mensagem: {e}")
         flash(f'Erro ao remover mensagem: {e}', 'danger')
     return redirect(url_for('admin.mensagens_sugeridas', produto_id=produto_id))
+
+
+# ============================================================
+# Fluxos por produto
+# ============================================================
+
+def _get_produto_or_redirect(produto_id):
+    p = db.execute_query(
+        "SELECT id, nome FROM produtos WHERE id = %s", (produto_id,), fetch_one=True
+    )
+    if not p:
+        flash('Produto não encontrado.', 'danger')
+    return p
+
+
+@admin_bp.route('/produto/<int:produto_id>/fluxos')
+@requer_login
+def fluxos_overview(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    resumo = {}
+    for fluxo in _FLUXOS:
+        row = db.execute_query(
+            "SELECT COUNT(*) as total FROM acoes_fluxo_produto WHERE produto_id=%s AND fluxo=%s",
+            (produto_id, fluxo), fetch_one=True
+        )
+        resumo[fluxo] = row['total'] if row else 0
+
+    return render_template('admin/fluxos_overview.html',
+                           produto=produto,
+                           fluxos=_FLUXOS,
+                           fluxos_labels=_FLUXOS_LABELS,
+                           resumo=resumo)
+
+
+@admin_bp.route('/produto/<int:produto_id>/fluxos/<fluxo>')
+@requer_login
+def fluxo_acoes(produto_id, fluxo):
+    if fluxo not in _FLUXOS:
+        flash('Fluxo inválido.', 'danger')
+        return redirect(url_for('admin.fluxos_overview', produto_id=produto_id))
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    acoes = listar_acoes_fluxo(produto_id, fluxo)
+    return render_template('admin/fluxo_acoes.html',
+                           produto=produto,
+                           fluxo=fluxo,
+                           fluxos=_FLUXOS,
+                           fluxos_labels=_FLUXOS_LABELS,
+                           acoes=acoes,
+                           readonly=fluxo in _FLUXOS_READONLY)
+
+
+@admin_bp.route('/produto/<int:produto_id>/fluxos/<fluxo>/adicionar', methods=['POST'])
+@requer_admin
+def adicionar_acao_fluxo_view(produto_id, fluxo):
+    if fluxo in _FLUXOS_READONLY:
+        flash('Este fluxo é somente leitura.', 'warning')
+        return redirect(url_for('admin.fluxo_acoes', produto_id=produto_id, fluxo=fluxo))
+    try:
+        adicionar_acao_fluxo(
+            produto_id, fluxo,
+            ordem=int(request.form['ordem']),
+            condicao=request.form['condicao'],
+            acao=request.form['acao'],
+            url=request.form.get('url'),
+            mensagem=request.form.get('mensagem'),
+            caption=request.form.get('caption'),
+            nome_arquivo=request.form.get('nome_arquivo'),
+            delay_inicial=float(request.form.get('delay_inicial') or 0),
+            delay_final=float(request.form.get('delay_final') or 0),
+        )
+        flash('Ação adicionada com sucesso!', 'success')
+        logger.info(f"[ADMIN] ✅ Ação adicionada ao fluxo '{fluxo}' produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao adicionar ação: {e}")
+        flash(f'Erro ao adicionar ação: {e}', 'danger')
+    return redirect(url_for('admin.fluxo_acoes', produto_id=produto_id, fluxo=fluxo))
+
+
+@admin_bp.route('/produto/<int:produto_id>/fluxos/<fluxo>/<int:acao_id>/editar', methods=['GET', 'POST'])
+@requer_admin
+def editar_acao_fluxo(produto_id, fluxo, acao_id):
+    if fluxo in _FLUXOS_READONLY:
+        flash('Este fluxo é somente leitura.', 'warning')
+        return redirect(url_for('admin.fluxo_acoes', produto_id=produto_id, fluxo=fluxo))
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    acao = get_acao_fluxo(acao_id)
+    if not acao:
+        flash('Ação não encontrada.', 'danger')
+        return redirect(url_for('admin.fluxo_acoes', produto_id=produto_id, fluxo=fluxo))
+
+    if request.method == 'POST':
+        try:
+            atualizar_acao_fluxo(
+                acao_id,
+                ordem=int(request.form['ordem']),
+                condicao=request.form['condicao'],
+                acao=request.form['acao'],
+                url=request.form.get('url'),
+                mensagem=request.form.get('mensagem'),
+                caption=request.form.get('caption'),
+                nome_arquivo=request.form.get('nome_arquivo'),
+                delay_inicial=float(request.form.get('delay_inicial') or 0),
+                delay_final=float(request.form.get('delay_final') or 0),
+            )
+            flash('Ação atualizada com sucesso!', 'success')
+            logger.info(f"[ADMIN] ✅ Ação #{acao_id} do fluxo '{fluxo}' atualizada por {current_user.email}")
+            return redirect(url_for('admin.fluxo_acoes', produto_id=produto_id, fluxo=fluxo))
+        except Exception as e:
+            logger.error(f"[ADMIN] ❌ Erro ao atualizar ação: {e}")
+            flash(f'Erro ao salvar: {e}', 'danger')
+
+    return render_template('admin/fluxo_acao_editar.html',
+                           produto=produto,
+                           fluxo=fluxo,
+                           fluxos_labels=_FLUXOS_LABELS,
+                           acao=acao)
+
+
+@admin_bp.route('/produto/<int:produto_id>/fluxos/<fluxo>/<int:acao_id>/remover', methods=['POST'])
+@requer_admin
+def remover_acao_fluxo_view(produto_id, fluxo, acao_id):
+    if fluxo in _FLUXOS_READONLY:
+        flash('Este fluxo é somente leitura.', 'warning')
+        return redirect(url_for('admin.fluxo_acoes', produto_id=produto_id, fluxo=fluxo))
+    try:
+        remover_acao_fluxo(acao_id)
+        flash('Ação removida.', 'success')
+        logger.info(f"[ADMIN] ✅ Ação #{acao_id} do fluxo '{fluxo}' removida por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao remover ação: {e}")
+        flash(f'Erro ao remover ação: {e}', 'danger')
+    return redirect(url_for('admin.fluxo_acoes', produto_id=produto_id, fluxo=fluxo))

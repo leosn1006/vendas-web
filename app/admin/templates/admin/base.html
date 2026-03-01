@@ -491,6 +491,10 @@
            class="nav-link {% if request.endpoint == 'admin.mensagens_sugeridas' %}active{% endif %}">
             <span class="icon">💬</span> Mensagens Sugeridas
         </a>
+        <a href="{{ url_for('admin.fluxos_overview', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint in ['admin.fluxos_overview','admin.fluxo_acoes','admin.editar_acao_fluxo'] %}active{% endif %}">
+            <span class="icon">⚙️</span> Fluxos
+        </a>
         {% endif %}
 
         {% if current_user.is_admin() %}
