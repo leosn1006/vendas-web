@@ -2,9 +2,10 @@ import logging
 import random
 from celery_app import celery_app
 from datetime import datetime
-from database import get_ultimo_pedido_by_phone, get_ultimo_pedido_por_mensagem_sugerida, vincula_pedido_com_contato, Pedido, criar_pedido, get_pedido
+from database import (get_ultimo_pedido_by_phone, get_ultimo_pedido_por_mensagem_sugerida,
+                      vincula_pedido_com_contato, Pedido, criar_pedido, get_pedido,
+                      get_produto_by_phone_number_id)
 from agente_resposta_produto import responder_cliente
-from config import CAMPANHA_WHATSAPP
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,9 @@ def extrair_dados_mensagem(mensagem_whatsapp):
         if mensagem['type'] != 'text' and mensagem['type'] != 'document' and mensagem['type'] != 'image'and mensagem['type'] != 'audio':
             return None
 
-        produto = CAMPANHA_WHATSAPP.get(metadata.get('display_phone_number'), 1)
+        display_phone = metadata.get('display_phone_number')
+        produto_db = get_produto_by_phone_number_id(display_phone) if display_phone else None
+        produto = produto_db['id'] if produto_db else 1
         return {
             'numero_remetente': mensagem['from'],
             'id_conversa': mensagem['id'],
