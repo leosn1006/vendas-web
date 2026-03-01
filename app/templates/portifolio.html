@@ -2,1027 +2,946 @@
 <html lang="pt-BR">
 <head>
     <meta name="facebook-domain-verification" content="d7m7s0rgmbndq2pjddyyzhdpqnzwm8" />
-    <meta charset="UTF-8">x
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LN Editor (Leonardo Santos Negreiros) - Portfólio Empresarial</title>
+    <title>LN Editor — Leonardo Santos Negreiros</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --verde:      #2d6a1f;
+            --verde-med:  #4a9632;
+            --verde-claro:#7bc34a;
+            --laranja:    #e07b2a;
+            --laranja-cl: #f5a623;
+            --creme:      #fdf6ec;
+            --marrom:     #5c3d1e;
+            --texto:      #2c2c2c;
+            --cinza:      #555;
+            --branco:     #ffffff;
+            --sombra:     0 4px 24px rgba(0,0,0,0.10);
         }
+
+        html { scroll-behavior: smooth; }
 
         body {
-            font-family: 'Open Sans', sans-serif;
-            color: #1F2937;
+            font-family: 'Lato', sans-serif;
+            background: var(--creme);
+            color: var(--texto);
             line-height: 1.6;
-            background-color: #FFFFFF;
-        }
-
-        h1, h2, h3, h4, h5, h6 {
-            font-family: 'Poppins', sans-serif;
-            font-weight: 700;
         }
 
         .container {
-            max-width: 1280px;
+            max-width: 1100px;
             margin: 0 auto;
-            padding: 0 1rem;
+            padding: 0 24px;
         }
 
-        @media (min-width: 768px) {
-            .container {
-                padding: 0 1.5rem;
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .container {
-                padding: 0 2rem;
-            }
-        }
-
-        /* Header */
+        /* ── HEADER ── */
         header {
             position: sticky;
             top: 0;
             z-index: 50;
-            background-color: #FFFFFF;
-            border-bottom: 1px solid #E5E7EB;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            background: var(--branco);
+            border-bottom: 1px solid #e8ddd0;
+            box-shadow: 0 1px 8px rgba(92,61,30,0.08);
         }
 
         .header-content {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 1rem 0;
+            padding: 14px 0;
         }
 
         .logo {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 10px;
+            text-decoration: none;
         }
 
         .logo-icon {
             width: 40px;
             height: 40px;
-            background: linear-gradient(135deg, #059669 0%, #F97316 100%);
-            border-radius: 0.5rem;
+            background: linear-gradient(135deg, var(--verde-med), var(--laranja));
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-size: 1.5rem;
+            font-size: 20px;
         }
 
         .logo-text {
-            font-size: 1.25rem;
-            font-weight: bold;
-            color: #059669;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--verde);
         }
 
         nav {
             display: none;
-            gap: 2rem;
+            gap: 28px;
         }
 
         nav a {
-            color: #4B5563;
+            color: var(--cinza);
             text-decoration: none;
-            transition: color 0.3s;
+            font-size: 14px;
+            font-weight: 700;
+            transition: color 0.2s;
         }
 
-        nav a:hover {
-            color: #059669;
-        }
+        nav a:hover { color: var(--verde); }
 
-        @media (min-width: 768px) {
-            nav {
-                display: flex;
-            }
-        }
+        @media (min-width: 768px) { nav { display: flex; } }
 
-        /* Hero Section */
+        /* ── HERO ── */
         .hero {
+            background: linear-gradient(135deg, var(--marrom) 0%, #8a5a2f 60%, #a06e3e 100%);
+            padding: 80px 0 90px;
             position: relative;
             overflow: hidden;
-            padding: 5rem 0;
         }
 
-        @media (min-width: 768px) {
-            .hero {
-                padding: 8rem 0;
-            }
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -40px;
+            left: 0; right: 0;
+            height: 80px;
+            background: var(--creme);
+            clip-path: ellipse(55% 100% at 50% 100%);
         }
 
         .hero-grid {
             display: grid;
-            gap: 3rem;
+            gap: 40px;
             align-items: center;
         }
 
         @media (min-width: 768px) {
-            .hero-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-        .hero-content {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
+            .hero-grid { grid-template-columns: 1fr 1fr; }
         }
 
         .badge {
             display: inline-block;
-            background-color: #D1FAE5;
-            color: #059669;
-            padding: 0.5rem 1rem;
-            border-radius: 9999px;
-            font-weight: 600;
-            font-size: 0.875rem;
-            width: fit-content;
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 18px;
         }
 
         .hero h2 {
-            font-size: 2.25rem;
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+            font-weight: 900;
+            color: #fff;
             line-height: 1.2;
-            color: #111827;
-        }
-
-        @media (min-width: 768px) {
-            .hero h2 {
-                font-size: 3rem;
-            }
+            margin-bottom: 16px;
         }
 
         .hero p {
-            font-size: 1.125rem;
-            color: #4B5563;
+            font-size: 15px;
+            color: rgba(255,255,255,0.85);
             line-height: 1.8;
+            margin-bottom: 28px;
         }
 
         .button-group {
             display: flex;
-            gap: 1rem;
+            gap: 12px;
             flex-wrap: wrap;
         }
 
         .btn {
-            padding: 1rem 2rem;
-            font-size: 1rem;
+            padding: 14px 28px;
+            font-size: 14px;
+            font-family: 'Lato', sans-serif;
+            font-weight: 700;
             border: none;
-            border-radius: 0.75rem;
+            border-radius: 50px;
             cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 600;
+            transition: all 0.2s;
             text-decoration: none;
             display: inline-block;
-            text-align: center;
         }
 
         .btn-primary {
-            background-color: #059669;
-            color: white;
+            background: var(--laranja);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(224,123,42,0.4);
         }
 
         .btn-primary:hover {
-            background-color: #047857;
+            background: #c96a1a;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+            box-shadow: 0 8px 24px rgba(224,123,42,0.5);
         }
 
         .btn-outline {
-            border: 2px solid #059669;
-            color: #059669;
-            background-color: transparent;
+            border: 2px solid rgba(255,255,255,0.7);
+            color: #fff;
+            background: transparent;
         }
 
         .btn-outline:hover {
-            background-color: #F0FDF4;
+            background: rgba(255,255,255,0.15);
         }
 
-        .hero-image {
-            position: relative;
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 40px;
         }
 
-        .hero-image img {
-            width: 100%;
-            height: auto;
-            border-radius: 1rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        .stat-box {
+            background: rgba(255,255,255,0.15);
+            border-radius: 14px;
+            padding: 20px;
+            text-align: center;
         }
 
-        .blur-circle {
-            position: absolute;
-            width: 128px;
-            height: 128px;
-            background-color: #FED7AA;
-            border-radius: 50%;
-            opacity: 0.5;
-            filter: blur(40px);
-            bottom: -24px;
-            right: -24px;
+        .stat-num {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            font-weight: 900;
+            color: #fff;
+            line-height: 1;
         }
 
-        /* Services Section */
-        .services {
-            padding: 5rem 0;
-            background: linear-gradient(to bottom, #FFFFFF, #F0FDF4);
+        .stat-label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.75);
+            margin-top: 4px;
+        }
+
+        /* ── SEÇÕES ── */
+        section { padding: 64px 0; }
+
+        .section-label {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--verde-med);
+            margin-bottom: 8px;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            font-weight: 700;
+            color: var(--marrom);
+            margin-bottom: 16px;
+        }
+
+        .section-sub {
+            font-size: 15px;
+            color: var(--cinza);
+            max-width: 560px;
+            line-height: 1.7;
         }
 
         .section-header {
             text-align: center;
-            margin-bottom: 4rem;
+            margin-bottom: 48px;
         }
 
-        .section-header h3 {
-            font-size: 1.875rem;
-            margin-bottom: 1rem;
-            color: #111827;
-        }
+        .section-header .section-sub { margin: 0 auto; }
 
-        @media (min-width: 768px) {
-            .section-header h3 {
-                font-size: 2.25rem;
-            }
-        }
-
-        .section-header p {
-            font-size: 1.125rem;
-            color: #4B5563;
-            max-width: 42rem;
-            margin: 0 auto;
+        /* ── SERVIÇOS ── */
+        .services {
+            background: var(--branco);
         }
 
         .services-grid {
             display: grid;
-            gap: 2rem;
+            gap: 24px;
         }
 
-        @media (min-width: 768px) {
-            .services-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
+        @media (min-width: 640px) {
+            .services-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (min-width: 900px) {
+            .services-grid { grid-template-columns: repeat(3, 1fr); }
         }
 
         .card {
-            background-color: #FFFFFF;
-            border: none;
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-            padding: 2rem;
-            transition: all 0.3s;
+            background: var(--branco);
+            border-radius: 16px;
+            box-shadow: var(--sombra);
+            padding: 28px;
+            transition: all 0.25s;
+            border: 1px solid #f0e8da;
         }
 
         .card:hover {
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
             transform: translateY(-4px);
+            box-shadow: 0 12px 36px rgba(0,0,0,0.12);
         }
 
         .card-icon {
-            width: 56px;
-            height: 56px;
-            border-radius: 0.75rem;
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 1.5rem;
-            font-size: 1.75rem;
+            margin-bottom: 18px;
+            font-size: 24px;
         }
 
-        .card-icon-green {
-            background-color: #D1FAE5;
-            color: #059669;
-        }
-
-        .card-icon-orange {
-            background-color: #FFEDD5;
-            color: #F97316;
-        }
+        .icon-verde-bg  { background: #e5f5d8; }
+        .icon-laranja-bg { background: #fdf0e3; }
+        .icon-creme-bg  { background: var(--creme); }
 
         .card h4 {
-            font-size: 1.25rem;
-            margin-bottom: 0.75rem;
-            color: #111827;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--marrom);
+            margin-bottom: 10px;
         }
 
         .card p {
-            color: #4B5563;
-            line-height: 1.8;
+            color: var(--cinza);
+            font-size: 14px;
+            line-height: 1.7;
         }
 
-        /* Ebooks Section */
+        /* ── EBOOKS ── */
         .ebooks {
-            padding: 5rem 0;
-            background-color: #FFFFFF;
+            background: var(--creme);
         }
 
         .ebooks-grid {
             display: grid;
-            gap: 3rem;
+            gap: 48px;
             align-items: center;
         }
 
         @media (min-width: 768px) {
-            .ebooks-grid {
-                grid-template-columns: 1fr 1fr;
-            }
+            .ebooks-grid { grid-template-columns: 1fr 1fr; }
         }
 
         .ebooks-content h3 {
-            font-size: 1.875rem;
-            margin-bottom: 1.5rem;
-            color: #111827;
-        }
-
-        @media (min-width: 768px) {
-            .ebooks-content h3 {
-                font-size: 2.25rem;
-            }
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.4rem, 2.5vw, 1.8rem);
+            font-weight: 700;
+            color: var(--marrom);
+            margin-bottom: 14px;
         }
 
         .ebooks-content p {
-            font-size: 1.125rem;
-            color: #4B5563;
-            margin-bottom: 1.5rem;
-            line-height: 1.8;
+            font-size: 14px;
+            color: var(--cinza);
+            margin-bottom: 20px;
+            line-height: 1.7;
         }
 
         .checklist {
             list-style: none;
-            margin-bottom: 2rem;
+            margin-bottom: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         .checklist li {
             display: flex;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-            color: #1F2937;
+            gap: 12px;
+            font-size: 14px;
+            color: var(--texto);
+            align-items: flex-start;
         }
 
         .checklist-icon {
-            width: 24px;
-            height: 24px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
-            background-color: #059669;
-            color: white;
+            background: var(--verde-med);
+            color: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            margin-top: 0.25rem;
-            font-size: 0.875rem;
-            font-weight: bold;
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 1px;
         }
 
-        .btn-orange {
-            background-color: #F97316;
-            color: white;
+        .btn-laranja {
+            background: var(--laranja);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(224,123,42,0.35);
         }
 
-        .btn-orange:hover {
-            background-color: #EA580C;
+        .btn-laranja:hover {
+            background: #c96a1a;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
         }
 
-        .ebooks-image img {
-            width: 100%;
-            height: auto;
-            border-radius: 1rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        .ebooks-visual {
+            background: linear-gradient(135deg, var(--verde-med), var(--verde));
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            color: #fff;
         }
 
-        /* Verification Section */
+        .ebooks-visual .big-num {
+            font-family: 'Playfair Display', serif;
+            font-size: 5rem;
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .ebooks-visual p {
+            font-size: 14px;
+            opacity: 0.85;
+        }
+
+        /* ── VERIFICAÇÃO ── */
         .verification {
-            padding: 5rem 0;
-            background: linear-gradient(to bottom, #FFFFFF, #FEF3C7);
+            background: var(--branco);
         }
 
         .verification-grid {
             display: grid;
-            gap: 2rem;
-            margin-bottom: 3rem;
+            gap: 24px;
+            margin-bottom: 24px;
         }
 
         @media (min-width: 768px) {
-            .verification-grid {
-                grid-template-columns: 1fr 1fr;
-            }
+            .verification-grid { grid-template-columns: 1fr 1fr; }
         }
 
         .verification-card {
-            background-color: #FFFFFF;
-            border: 2px solid #D1FAE5;
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-            padding: 2rem;
+            background: var(--creme);
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid #e8ddd0;
         }
 
-        .verification-card.orange {
-            border-color: #FFEDD5;
-        }
-
-        .verification-header {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .verification-badge {
-            width: 80px;
-            height: 80px;
-            flex-shrink: 0;
-        }
-
-        .verification-badge img {
-            width: 100%;
-            height: auto;
-        }
-
-        .verification-title h4 {
-            font-size: 1.25rem;
-            color: #111827;
-            margin-bottom: 0.25rem;
-        }
-
-        .verification-title p {
-            font-size: 0.875rem;
-            color: #4B5563;
-        }
-
-        .verification-info {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
+        .verification-card h4 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--marrom);
+            margin-bottom: 20px;
         }
 
         .info-item {
-            border-bottom: 1px solid #E5E7EB;
-            padding-bottom: 1rem;
+            padding: 12px 0;
+            border-bottom: 1px solid #e0d5c5;
         }
 
-        .info-item:last-child {
-            border-bottom: none;
-        }
+        .info-item:last-child { border-bottom: none; }
 
         .info-label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #6B7280;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--cinza);
             text-transform: uppercase;
-            margin-bottom: 0.25rem;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
         }
 
         .info-value {
-            font-size: 1.125rem;
-            font-weight: bold;
-            color: #111827;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--marrom);
         }
 
-        .contact-info {
+        .contact-row {
             display: flex;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            gap: 14px;
+            align-items: flex-start;
+            margin-bottom: 16px;
         }
 
-        .contact-icon {
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .contact-row:last-child { margin-bottom: 0; }
+
+        .contact-emoji {
+            font-size: 20px;
             flex-shrink: 0;
-            margin-top: 0.25rem;
-            font-size: 1.5rem;
+            margin-top: 2px;
         }
 
-        .contact-icon.green {
-            color: #059669;
-        }
-
-        .contact-icon.orange {
-            color: #F97316;
-        }
-
-        .contact-details h5 {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #6B7280;
+        .contact-row h5 {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--cinza);
             text-transform: uppercase;
-            margin-bottom: 0.25rem;
+            letter-spacing: 1px;
+            margin-bottom: 3px;
         }
 
-        .contact-details p {
-            color: #111827;
+        .contact-row p, .contact-row a {
+            font-size: 14px;
+            color: var(--texto);
             font-weight: 500;
-        }
-
-        .contact-details a {
-            color: #111827;
             text-decoration: none;
-            transition: color 0.3s;
         }
 
-        .contact-details a:hover {
-            color: #059669;
-        }
+        .contact-row a:hover { color: var(--verde); }
 
         .compliance-card {
-            background: linear-gradient(135deg, #F0FDF4 0%, #FEF3C7 100%);
-            border: none;
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-            padding: 2rem;
+            background: linear-gradient(135deg, #e8f5e0, #fdf6ec);
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid #d5e8c5;
         }
 
         .compliance-card h4 {
-            font-size: 1.25rem;
-            color: #111827;
-            margin-bottom: 1rem;
+            font-family: 'Playfair Display', serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--marrom);
+            margin-bottom: 10px;
         }
 
-        .compliance-card p {
-            color: #1F2937;
-            line-height: 1.8;
-            margin-bottom: 1.5rem;
+        .compliance-card > p {
+            font-size: 14px;
+            color: var(--cinza);
+            line-height: 1.7;
+            margin-bottom: 20px;
         }
 
         .compliance-grid {
             display: grid;
-            gap: 1rem;
+            gap: 12px;
         }
 
-        @media (min-width: 768px) {
-            .compliance-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
+        @media (min-width: 640px) {
+            .compliance-grid { grid-template-columns: repeat(3, 1fr); }
         }
 
         .compliance-item {
-            background-color: #FFFFFF;
-            border-radius: 0.5rem;
-            padding: 1rem;
+            background: var(--branco);
+            border-radius: 10px;
+            padding: 14px;
         }
 
-        .compliance-item p:first-child {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: #059669;
-            margin-bottom: 0.25rem;
+        .compliance-item .ci-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--verde-med);
+            margin-bottom: 4px;
         }
 
-        .compliance-item p:last-child {
-            font-size: 0.75rem;
-            color: #4B5563;
-            margin: 0;
+        .compliance-item .ci-sub {
+            font-size: 12px;
+            color: var(--cinza);
         }
 
-        /* CTA Section */
-        .cta {
-            background: linear-gradient(135deg, #059669 0%, #047857 100%);
-            padding: 5rem 0;
+        /* ── CTA ── */
+        .cta-section {
+            background: linear-gradient(135deg, var(--marrom), #3d2510);
+            padding: 64px 0;
             text-align: center;
-            color: white;
         }
 
-        .cta h3 {
-            font-size: 1.875rem;
-            margin-bottom: 1.5rem;
-            color: white;
+        .cta-section h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 16px;
         }
 
-        @media (min-width: 768px) {
-            .cta h3 {
-                font-size: 2.25rem;
-            }
-        }
-
-        .cta p {
-            font-size: 1.125rem;
-            color: #D1FAE5;
-            margin-bottom: 2rem;
-            max-width: 42rem;
+        .cta-section p {
+            font-size: 15px;
+            color: rgba(255,255,255,0.75);
+            margin-bottom: 32px;
+            max-width: 480px;
             margin-left: auto;
             margin-right: auto;
-            line-height: 1.8;
+            line-height: 1.7;
         }
 
         .cta-buttons {
             display: flex;
-            flex-direction: column;
-            gap: 1rem;
+            gap: 12px;
             justify-content: center;
-        }
-
-        @media (min-width: 640px) {
-            .cta-buttons {
-                flex-direction: row;
-            }
+            flex-wrap: wrap;
         }
 
         .btn-white {
-            background-color: white;
-            color: #059669;
+            background: #fff;
+            color: var(--marrom);
         }
 
         .btn-white:hover {
-            background-color: #F0FDF4;
+            background: var(--creme);
+            transform: translateY(-2px);
         }
 
         .btn-outline-white {
-            border: 2px solid white;
-            color: white;
-            background-color: transparent;
+            border: 2px solid rgba(255,255,255,0.6);
+            color: #fff;
+            background: transparent;
         }
 
         .btn-outline-white:hover {
-            background-color: rgba(255, 255, 255, 0.1);
+            background: rgba(255,255,255,0.1);
         }
 
-        /* Footer */
+        /* ── FOOTER ── */
         footer {
-            background-color: #111827;
-            color: #9CA3AF;
-            padding: 3rem 0;
+            background: var(--marrom);
+            padding: 48px 0 24px;
         }
 
         .footer-grid {
             display: grid;
-            gap: 2rem;
-            margin-bottom: 2rem;
+            gap: 32px;
+            margin-bottom: 32px;
         }
 
-        @media (min-width: 768px) {
-            .footer-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
+        @media (min-width: 640px) {
+            .footer-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (min-width: 900px) {
+            .footer-grid { grid-template-columns: 2fr 1fr 1fr 1fr; }
         }
 
         .footer-section h5 {
-            font-weight: 600;
-            color: white;
-            margin-bottom: 1rem;
+            font-family: 'Lato', sans-serif;
+            font-weight: 700;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 14px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .footer-section ul {
-            list-style: none;
-        }
+        .footer-section ul { list-style: none; }
 
         .footer-section ul li {
-            margin-bottom: 0.5rem;
-            font-size: 0.875rem;
+            margin-bottom: 8px;
+            font-size: 13px;
         }
 
         .footer-section ul li a {
-            color: #9CA3AF;
+            color: rgba(255,255,255,0.65);
             text-decoration: none;
-            transition: color 0.3s;
+            transition: color 0.2s;
         }
 
-        .footer-section ul li a:hover {
-            color: white;
+        .footer-section ul li a:hover { color: #fff; }
+
+        .footer-section > p {
+            font-size: 13px;
+            color: rgba(255,255,255,0.65);
+            line-height: 1.7;
         }
 
         .footer-logo {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
+            gap: 10px;
+            margin-bottom: 12px;
         }
 
         .footer-logo-icon {
-            width: 24px;
-            height: 24px;
-            background: linear-gradient(135deg, #059669 0%, #F97316 100%);
-            border-radius: 0.375rem;
+            width: 28px;
+            height: 28px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 7px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-size: 0.875rem;
+            font-size: 14px;
         }
 
         .footer-logo-text {
-            font-weight: bold;
-            color: white;
-        }
-
-        .footer-section p {
-            font-size: 0.875rem;
-            line-height: 1.6;
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            color: #fff;
+            font-size: 15px;
         }
 
         .footer-bottom {
-            border-top: 1px solid #374151;
-            padding-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.15);
+            padding-top: 20px;
             text-align: center;
-            font-size: 0.875rem;
-        }
-
-        /* Responsive */
-        @media (max-width: 640px) {
-            .hero h2 {
-                font-size: 1.875rem;
-            }
-
-            .section-header h3 {
-                font-size: 1.5rem;
-            }
-
-            .btn {
-                width: 100%;
-            }
-
-            .cta-buttons {
-                width: 100%;
-            }
-
-            .cta-buttons .btn {
-                width: 100%;
-            }
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header>
-        <div class="container">
-            <div class="header-content">
-                <div class="logo">
-                    <div class="logo-icon">🌿</div>
-                    <div class="logo-text">LN Editor - Leonardo Santos Negreiros</div>
-                </div>
-                <nav>
-                    <a href="/politica-privacidade.html">Política de Privacidade</a>
-                    <a href="/termos-de-uso.html">Termos de Uso</a>
-                    <a href="/contato.html">Contato</a>
-                </nav>
-            </div>
+
+<!-- ── HEADER ── -->
+<header>
+    <div class="container">
+        <div class="header-content">
+            <a href="/portifolio" class="logo">
+                <div class="logo-icon">🌿</div>
+                <span class="logo-text">LN Editor</span>
+            </a>
+            <nav>
+                <a href="#servicos">Serviços</a>
+                <a href="#ebooks">E-books</a>
+                <a href="#verificacao">Verificação</a>
+                <a href="/contato">Contato</a>
+            </nav>
         </div>
-    </header>
+    </div>
+</header>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="container">
-            <div class="hero-grid">
-                <div class="hero-content">
-                    <div class="badge">Bem-vindo à LN Editor</div>
-                    <h2>Receitas Saudáveis &amp; Emagrecimento</h2>
-                    <p>Transforme sua vida com receitas deliciosas, práticas e nutritivas. Nossos ebooks especializados combinam nutrição científica com praticidade para resultados reais.</p>
-                    <div class="button-group">
-                        <button class="btn btn-primary">Conheça Nossos Ebooks</button>
-                        <button class="btn btn-outline">Saiba Mais</button>
-                    </div>
-                </div>
-                <div class="hero-image">
-                    <img src="https://private-us-east-1.manuscdn.com/sessionFile/cT5ijP0MRetsS42SZaNE7i/sandbox/ETkgwhpfe9GP1ox0bpsIi3-img-1_1770843655000_na1fn_aGVyby13ZWxsbmVzcw.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvY1Q1aWpQME1SZXRzUzQyU1phTkU3aS9zYW5kYm94L0VUa2d3aHBmZTlHUDFveDBicHNJaTMtaW1nLTFfMTc3MDg0MzY1NTAwMF9uYTFmbl9hR1Z5YnkxM1pXeHNibVZ6Y3cucG5nP3gtb3NzLXByb2Nlc3M9aW1hZ2UvcmVzaXplLHdfMTkyMCxoXzE5MjAvZm9ybWF0LHdlYnAvcXVhbGl0eSxxXzgwIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk4NzYxNjAwfX19XX0_&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=j6IgQ6SIiBkN98oGLHyLaYpjN4kbXyc6Agk8Kd4ttI3EYvAspr3VhwWJT2-cbIgNdNT0AItt0lazks~I-A9szircoNJcA9nd0GvJy2gTYr5BX8O~8quWNUHJMSXpFD-bUDlOc0avojkq3ZfMPYw3ArLASEezLxVIuPFf-ycj4gjsxsUAd7wXANUCwKWVvwa~ZGxVjymqlPNcJ0-UU8dvZE20G2Q9z1KkgVuTdNfEwGB5EUOw~kUCcSo1yIr77aGNoYhLOGNGJURgUqtpcLR4aJ1Em0tZHu5Z0G8Ini~LhZFBUDvAIowxctWwV803pE1Igu6iIMu0tP2KHGlyubmg7Q__" alt="Cozinha Saudável">
-                    <div class="blur-circle"></div>
+<!-- ── HERO ── -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-grid">
+            <div>
+                <span class="badge">Bem-vindo à LN Editor</span>
+                <h2>Receitas Saborosas &amp; Alimentação Natural</h2>
+                <p>E-books com receitas deliciosas, práticas e feitas para o dia a dia. Conteúdo testado, ingredientes fáceis de encontrar e entrega imediata pelo WhatsApp.</p>
+                <div class="button-group">
+                    <a href="#ebooks" class="btn btn-primary">Conheça nossos e-books</a>
+                    <a href="#verificacao" class="btn btn-outline">Sobre a empresa</a>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <!-- Services Section -->
-    <section class="services" id="servicos">
-        <div class="container">
-            <div class="section-header">
-                <h3>Nossos Serviços</h3>
-                <p>Oferecemos soluções para sua jornada de saúde e bem-estar</p>
-            </div>
-
-            <div class="services-grid">
-                <!-- Card 1 -->
-                <div class="card">
-                    <div class="card-icon card-icon-green">📚</div>
-                    <h4>Ebooks Especializados</h4>
-                    <p>Guias com receitas simples, saudáveis, dicas nutricionais.</p>
-                </div>
-
-                <!-- Card 2 -->
-                <div class="card">
-                    <div class="card-icon card-icon-orange">⚡</div>
-                    <h4>Receitas Práticas</h4>
-                    <p>Receitas deliciosas e fáceis de preparar que combinam sabor, nutrição e eficiência para sua rotina.</p>
-                </div>
-
-                <!-- Card 3 -->
-                <div class="card">
-                    <div class="card-icon card-icon-green">🌿</div>
-                    <h4>Bem-Estar Total</h4>
-                    <p>Abordagem holística que integra nutrição, saúde mental e estilo de vida para resultados duradouros.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Ebooks Section -->
-    <section class="ebooks">
-        <div class="container">
-            <div class="ebooks-grid">
-                <div class="ebooks-content">
-                    <h3>Nossos Ebooks</h3>
-                    <p>Cada ebook é cuidadosamente desenvolvido por especialistas em nutrição e culinária para oferecer conteúdo de qualidade comprovada.</p>
-
-                    <ul class="checklist">
-                        <li>
-                            <div class="checklist-icon">✓</div>
-                            <span>Receitas testadas e aprovadas</span>
-                        </li>
-                        <li>
-                            <div class="checklist-icon">✓</div>
-                            <span>Informações nutricionais detalhadas</span>
-                        </li>
-                        <li>
-                            <div class="checklist-icon">✓</div>
-                            <span>Suporte contínuo e atualizações</span>
-                        </li>
-                    </ul>
-
-                    <button class="btn btn-orange">Explorar Ebooks</button>
-                </div>
-
-                <div class="ebooks-image">
-                    <img src="https://private-us-east-1.manuscdn.com/sessionFile/cT5ijP0MRetsS42SZaNE7i/sandbox/ETkgwhpfe9GP1ox0bpsIi3-img-2_1770843647000_na1fn_ZWJvb2stc2hvd2Nhc2U.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvY1Q1aWpQME1SZXRzUzQyU1phTkU3aS9zYW5kYm94L0VUa2d3aHBmZTlHUDFveDBicHNJaTMtaW1nLTJfMTc3MDg0MzY0NzAwMF9uYTFmbl9aV0p2YjJzdGMyaHZkMk5oYzJVLnBuZz94LW9zcy1wcm9jZXNzPWltYWdlL3Jlc2l6ZSx3XzE5MjAsaF8xOTIwL2Zvcm1hdCx3ZWJwL3F1YWxpdHkscV84MCIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc5ODc2MTYwMH19fV19&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=H3XhfNAm98n1EZfp67hs6Enop5pUQ39-zzFNzlUhRVq14CYpv1cyny4gDhtNC0IfhvBPMsbdK6iVL9CyGjU8lYBbcIzrWvk4f9mSwedajgf27MixGqFsfLUDnbSKf6tRiWYctjOspSa3vJTR-FiDIo5KKLj0KC9jAXi3ZnpQ8d7GTClS4GDUd7Q5B0gce1qSZsURG~2-OO90gD6o569v6Ofgs~NcWtM2Ke-lSswNjn9UBsPp2LerGcjzcuQMUa110UbInfkTnZ3msInAKR46LzGh~2zFyX4GyJL5TMT~LwVDqloVU9XI4TXYk4sFJMzBfZ917kj5EfJSJSS-4ss30g__" alt="Ebooks">
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Verification Section -->
-    <section class="verification" id="verificacao">
-        <div class="container">
-            <div class="section-header">
-                <h3>Informações de Verificação</h3>
-                <p>Empresa registrada e verificada para operações comerciais legítimas</p>
-            </div>
-
-            <div class="verification-grid">
-                <!-- Verification Card -->
-                <div class="verification-card">
-                    <div class="verification-header">
-                        <div class="verification-badge">
-                            <img src="https://private-us-east-1.manuscdn.com/sessionFile/cT5ijP0MRetsS42SZaNE7i/sandbox/ETkgwhpfe9GP1ox0bpsIi3-img-4_1770843646000_na1fn_dmVyaWZpY2F0aW9uLWJhZGdl.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvY1Q1aWpQME1SZXRzUzQyU1phTkU3aS9zYW5kYm94L0VUa2d3aHBmZTlHUDFveDBicHNJaTMtaW1nLTRfMTc3MDg0MzY0NjAwMF9uYTFmbl9kbVZ5YVdacFkyRjBhVzl1TFdKaFpHZGwucG5nP3gtb3NzLXByb2Nlc3M9aW1hZ2UvcmVzaXplLHdfMTkyMCxoXzE5MjAvZm9ybWF0LHdlYnAvcXVhbGl0eSxxXzgwIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk4NzYxNjAwfX19XX0_&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=FwPBzRpEvv1pBhl7i2hM1q9va4mNc0BKY2DG2AZO~RyjmigC76slj~SS8Y~wRQvdSvq2LRxB32O03iHWrmYBQmbtmTq0Oh6hAn5Jju-nMONZs6hKZgJUZqcN68aYDxu42VL18JSbSUsVW1iT4HTUO54zz7CI1McG~4x7D8fash5YkCmxAqT~8EaLgGGYCm81HdiFHj6jo8QPMLiUzqIYCMycoOucNllr31vxSoe9nQe2nuZdnFp2j0M5xbTP-4-FMid3Gcx5LD9Ar0nJJdbCzxB-2L6RMvBPW1lej9uafIXzaE9kH-w5kM4xiy8mtrNM8136YlsnfGQqy9JKMsc4SQ__" alt="Verified Business">
-                        </div>
-                        <div class="verification-title">
-                            <h4>Empresa Verificada</h4>
-                            <p>Registrada e certificada</p>
-                        </div>
+            <div>
+                <div class="hero-stats">
+                    <div class="stat-box">
+                        <div class="stat-num">50+</div>
+                        <div class="stat-label">Receitas por e-book</div>
                     </div>
-                    <div class="verification-info">
-                        <div class="info-item">
-                            <div class="info-label">CNPJ</div>
-                            <div class="info-value">649.980.953/0001-46</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Razão Social</div>
-                            <div class="info-value">Leonardo Santos Negreiros</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Segmento</div>
-                            <div class="info-value">Receitas Saudáveis &amp; Emagrecimento</div>
-                        </div>
+                    <div class="stat-box">
+                        <div class="stat-num">★4.9</div>
+                        <div class="stat-label">Avaliação média</div>
                     </div>
-                </div>
-
-                <!-- Contact Card -->
-                <div class="verification-card orange">
-                    <h4 style="margin-bottom: 1.5rem;">Endereço &amp; Contato</h4>
-                    <div class="verification-info">
-                        <div class="contact-info">
-                            <div class="contact-icon green">📍</div>
-                            <div class="contact-details">
-                                <h5>Endereço</h5>
-                                <p>SHA Conjunto 04 - Arniqueiras</p>
-                                <p>Brasília - DF</p>
-                            </div>
-                        </div>
-                        <div class="contact-info">
-                            <div class="contact-icon orange">📞</div>
-                            <div class="contact-details">
-                                <h5>Telefone</h5>
-                                <a href="tel:+5561981163324">(61) 98116-3324</a>
-                            </div>
-                        </div>
-                        <div class="contact-info">
-                            <div class="contact-icon green">✉️</div>
-                            <div class="contact-details">
-                                <h5>Email</h5>
-                                <p>admin@lneditor.com.br</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Compliance Info -->
-            <div class="compliance-card">
-                <h4>Conformidade & Segurança</h4>
-                <p>A LN Editor opera em conformidade com todas as regulamentações brasileiras de comércio eletrônico e proteção de dados. Nossas operações são transparentes e verificáveis, garantindo segurança e confiabilidade para todos os clientes.</p>
-                <div class="compliance-grid">
-                    <div class="compliance-item">
-                        <p>✓ CNPJ Ativo</p>
-                        <p>Registrado na Receita Federal</p>
-                    </div>
-                    <div class="compliance-item">
-                        <p>✓ Dados Protegidos</p>
-                        <p>Conformidade LGPD</p>
-                    </div>
-                    <div class="compliance-item">
-                        <p>✓ Transações Seguras</p>
-                        <p>Criptografia de ponta a ponta</p>
+                    <div class="stat-box">
+                        <div class="stat-num">3k+</div>
+                        <div class="stat-label">Clientes atendidos</div>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <!-- CTA Section -->
-    <section class="cta" id="contato">
-        <div class="container">
-            <h3>Pronto para Transformar Sua Vida?</h3>
-            <p>Entre em contato conosco para conhecer nossos ebooks e iniciar sua jornada de saúde e bem-estar</p>
-            <div class="cta-buttons">
-                <button class="btn btn-white">Fale Conosco</button>
-                <button class="btn btn-outline-white">Explorar Ebooks</button>
+<!-- ── SERVIÇOS ── -->
+<section class="services" id="servicos">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-label">O que oferecemos</span>
+            <h2 class="section-title">Nossos Serviços</h2>
+            <p class="section-sub">Soluções simples e práticas para quem quer comer bem, com sabor e sem complicação.</p>
+        </div>
+
+        <div class="services-grid">
+            <div class="card">
+                <div class="card-icon icon-verde-bg">📚</div>
+                <h4>E-books Especializados</h4>
+                <p>Guias completos com receitas simples, saborosas e bem detalhadas — do básico ao avançado.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon icon-laranja-bg">⚡</div>
+                <h4>Receitas Práticas</h4>
+                <p>Receitas rápidas e fáceis, com ingredientes do supermercado perto de você. Nada complicado.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon icon-creme-bg">🌿</div>
+                <h4>Alimentação Natural</h4>
+                <p>Foco em ingredientes naturais e preparações caseiras que respeitam o seu ritmo e a sua família.</p>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <div class="footer-grid">
-                <div class="footer-section">
-                    <div class="footer-logo">
-                        <div class="footer-logo-icon">🌿</div>
-                        <div class="footer-logo-text">LN Editor</div>
+<!-- ── EBOOKS ── -->
+<section class="ebooks" id="ebooks">
+    <div class="container">
+        <div class="ebooks-grid">
+            <div class="ebooks-content">
+                <span class="section-label">Conteúdo digital</span>
+                <h3>Nossos E-books</h3>
+                <p>Cada e-book é cuidadosamente desenvolvido para oferecer receitas testadas, com passo a passo claro e resultados garantidos na sua cozinha.</p>
+                <ul class="checklist">
+                    <li>
+                        <div class="checklist-icon">✓</div>
+                        <span>Receitas testadas e aprovadas por quem cozinha de verdade</span>
+                    </li>
+                    <li>
+                        <div class="checklist-icon">✓</div>
+                        <span>Ingredientes fáceis de encontrar em qualquer mercado</span>
+                    </li>
+                    <li>
+                        <div class="checklist-icon">✓</div>
+                        <span>Entrega imediata em PDF pelo WhatsApp</span>
+                    </li>
+                    <li>
+                        <div class="checklist-icon">✓</div>
+                        <span>Apenas R$10,00 por e-book completo</span>
+                    </li>
+                </ul>
+                <a href="/contato" class="btn btn-laranja">Adquirir um e-book</a>
+            </div>
+            <div class="ebooks-visual">
+                <div class="big-num">50</div>
+                <p>receitas exclusivas<br>por apenas <strong>R$10</strong></p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── VERIFICAÇÃO ── -->
+<section class="verification" id="verificacao">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-label">Transparência</span>
+            <h2 class="section-title">Informações da Empresa</h2>
+            <p class="section-sub">Empresa registrada e verificada para operações comerciais legítimas no Brasil.</p>
+        </div>
+
+        <div class="verification-grid">
+            <!-- Card dados empresariais -->
+            <div class="verification-card">
+                <h4>🏢 Dados Empresariais</h4>
+                <div class="info-item">
+                    <div class="info-label">CNPJ</div>
+                    <div class="info-value">649.980.953/0001-46</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Razão Social</div>
+                    <div class="info-value">Leonardo Santos Negreiros</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Segmento</div>
+                    <div class="info-value">E-books de Receitas Culinárias</div>
+                </div>
+            </div>
+
+            <!-- Card contato e endereço -->
+            <div class="verification-card">
+                <h4>📬 Endereço &amp; Contato</h4>
+                <div class="contact-row">
+                    <span class="contact-emoji">📍</span>
+                    <div>
+                        <h5>Endereço</h5>
+                        <p>SHA Conjunto 04 — Arniqueiras</p>
+                        <p>Brasília — DF</p>
                     </div>
-                    <p>Receitas saudáveis e emagrecimento com qualidade comprovada.</p>
                 </div>
-                <div class="footer-section">
-                    <h5>Empresa</h5>
-                    <ul>
-                        <li><a href="#sobre">Sobre Nós</a></li>
-                        <li><a href="#servicos">Serviços</a></li>
-                        <li><a href="#verificacao">Verificação</a></li>
-                    </ul>
+                <div class="contact-row">
+                    <span class="contact-emoji">📞</span>
+                    <div>
+                        <h5>Telefone</h5>
+                        <a href="tel:+5561981163324">(61) 98116-3324</a>
+                    </div>
                 </div>
-                <div class="footer-section">
-                    <h5>Contato</h5>
-                    <ul>
-                        <li><a href="tel:+5561981163324">(61) 98116-3324</a></li>
-                        <li><a href="mailto:admin@lneditor.com.br">contato@lneditor.com.br</a></li>
-                        <li>SHA Conjunto 04 - Brasília, DF</li>
-                    </ul>
+                <div class="contact-row">
+                    <span class="contact-emoji">✉️</span>
+                    <div>
+                        <h5>E-mail</h5>
+                        <a href="mailto:admin@lneditor.com.br">admin@lneditor.com.br</a>
+                    </div>
                 </div>
-                <div class="footer-section">
-                    <h5>Legal</h5>
-                    <ul>
-                        <li><a href="#">Privacidade</a></li>
-                        <li><a href="#">Termos de Uso</a></li>
-                        <li><a href="#">Cookies</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2026 Leonardo Santos Negreiros. Todos os direitos reservados. | CNPJ: 649.980.953/0001-46</p>
             </div>
         </div>
-    </footer>
 
-    <script>
-        // Smooth scroll para links de navegação
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            });
+        <!-- Compliance -->
+        <div class="compliance-card">
+            <h4>Conformidade &amp; Segurança</h4>
+            <p>A LN Editor opera em conformidade com todas as regulamentações brasileiras de comércio eletrônico e proteção de dados. Nossas operações são transparentes e verificáveis, garantindo segurança e confiança para todos os clientes.</p>
+            <div class="compliance-grid">
+                <div class="compliance-item">
+                    <p class="ci-title">✓ CNPJ Ativo</p>
+                    <p class="ci-sub">Registrado na Receita Federal</p>
+                </div>
+                <div class="compliance-item">
+                    <p class="ci-title">✓ Dados Protegidos</p>
+                    <p class="ci-sub">Conformidade com a LGPD</p>
+                </div>
+                <div class="compliance-item">
+                    <p class="ci-title">✓ Transações Seguras</p>
+                    <p class="ci-sub">SSL e pagamento via PIX</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── CTA ── -->
+<section class="cta-section" id="contato-cta">
+    <div class="container">
+        <h3>Pronto para experimentar nossas receitas?</h3>
+        <p>Entre em contato pelo WhatsApp ou e-mail. Nossa equipe responde rápido e entrega o e-book na hora.</p>
+        <div class="cta-buttons">
+            <a href="/contato" class="btn btn-white">Fale Conosco</a>
+            <a href="#ebooks" class="btn btn-outline-white">Ver E-books</a>
+        </div>
+    </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-section">
+                <div class="footer-logo">
+                    <div class="footer-logo-icon">🌿</div>
+                    <span class="footer-logo-text">LN Editor</span>
+                </div>
+                <p>E-books com receitas saborosas, naturais e práticas para o seu dia a dia.</p>
+            </div>
+            <div class="footer-section">
+                <h5>Empresa</h5>
+                <ul>
+                    <li><a href="#servicos">Serviços</a></li>
+                    <li><a href="#ebooks">E-books</a></li>
+                    <li><a href="#verificacao">Verificação</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h5>Contato</h5>
+                <ul>
+                    <li><a href="tel:+5561981163324">(61) 98116-3324</a></li>
+                    <li><a href="mailto:admin@lneditor.com.br">admin@lneditor.com.br</a></li>
+                    <li>Brasília — DF</li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h5>Legal</h5>
+                <ul>
+                    <li><a href="/politica-privacidade">Política de Privacidade</a></li>
+                    <li><a href="/termos-de-uso">Termos de Uso</a></li>
+                    <li><a href="/contato">Contato</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 Leonardo Santos Negreiros — LN Editor. Todos os direitos reservados. | CNPJ: 649.980.953/0001-46</p>
+        </div>
+    </div>
+</footer>
+
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
+    });
+</script>
 
-        // Adicionar efeito de hover aos botões
-        document.querySelectorAll('.btn').forEach(button => {
-            button.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-2px)';
-            });
-            button.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0)';
-            });
-        });
-    </script>
 </body>
 </html>
