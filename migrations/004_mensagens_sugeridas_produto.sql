@@ -9,7 +9,7 @@ SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS mensagens_sugeridas_produto (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     produto_id INT          NOT NULL,
-    mensagem   VARCHAR(300) NOT NULL CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    mensagem   VARCHAR(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     CONSTRAINT fk_msp_produto FOREIGN KEY (produto_id) REFERENCES produtos(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Mensagens iniciais sugeridas ao visitante por produto';
