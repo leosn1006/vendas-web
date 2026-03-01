@@ -46,11 +46,13 @@
             position: fixed;
             top: 0; left: 0;
             z-index: 100;
+            overflow-y: auto;
         }
 
         .sidebar-logo {
-            padding: 28px 24px 20px;
+            padding: 24px 24px 16px;
             border-bottom: 1px solid var(--sidebar-border);
+            flex-shrink: 0;
         }
 
         .sidebar-logo span {
@@ -69,8 +71,43 @@
             margin-top: 4px;
         }
 
+        /* ── Seletor de produto ── */
+        .produto-selector {
+            padding: 12px 12px 14px;
+            border-bottom: 1px solid var(--sidebar-border);
+            flex-shrink: 0;
+        }
+
+        .produto-selector-label {
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--sidebar-muted);
+            font-family: var(--mono);
+            margin-bottom: 7px;
+        }
+
+        .select-produto {
+            width: 100%;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 6px;
+            padding: 8px 10px;
+            color: var(--sidebar-text);
+            font-family: var(--font);
+            font-size: 13px;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .select-produto option { background: #2c1810; }
+        .select-produto:focus { border-color: var(--accent); }
+
+        /* ── Nav ── */
         .sidebar-nav {
-            padding: 16px 12px;
+            padding: 12px 12px;
             flex: 1;
         }
 
@@ -82,6 +119,19 @@
             color: var(--sidebar-muted);
             padding: 12px 12px 6px;
             font-family: var(--mono);
+        }
+
+        .nav-produto-nome {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--accent);
+            font-family: var(--mono);
+            padding: 12px 12px 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .nav-link {
@@ -105,6 +155,7 @@
         .sidebar-footer {
             padding: 16px 12px;
             border-top: 1px solid var(--sidebar-border);
+            flex-shrink: 0;
         }
 
         .user-badge {
@@ -400,16 +451,44 @@
         <span>painel</span>
         <p>🌿 LN Editor</p>
     </div>
+
+    <!-- Seletor de produto ativo -->
+    <div class="produto-selector">
+        <div class="produto-selector-label">Produto ativo</div>
+        <form method="POST" action="{{ url_for('admin.selecionar_produto') }}">
+            <select name="produto_id" class="select-produto" onchange="this.form.submit()">
+                <option value="">— selecionar —</option>
+                {% for p in produtos_lista %}
+                <option value="{{ p.id }}"
+                    {% if produto_ativo and produto_ativo.id == p.id %}selected{% endif %}>
+                    {{ p.nome }}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
     <nav class="sidebar-nav">
-        <div class="nav-section">Menu</div>
+        <!-- Menu geral -->
+        <div class="nav-section">Geral</div>
         <a href="{{ url_for('admin.dashboard') }}"
            class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
             <span class="icon">◈</span> Dashboard
         </a>
         <a href="{{ url_for('admin.listar_produtos') }}"
-           class="nav-link {% if 'produto' in request.endpoint %}active{% endif %}">
+           class="nav-link {% if request.endpoint in ['admin.listar_produtos','admin.novo_produto','admin.editar_produto','admin.clonar_produto'] %}active{% endif %}">
             <span class="icon">◉</span> Produtos
         </a>
+
+        <!-- Sub-menu do produto ativo -->
+        {% if produto_ativo %}
+        <div class="nav-produto-nome">{{ produto_ativo.nome }}</div>
+        <a href="{{ url_for('admin.numeros_whatsapp', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.numeros_whatsapp' %}active{% endif %}">
+            <span class="icon">📞</span> Números WhatsApp
+        </a>
+        {% endif %}
+
         {% if current_user.is_admin() %}
         <div class="nav-section">Gestão</div>
         <a href="{{ url_for('admin.listar_usuarios') }}"
@@ -418,6 +497,7 @@
         </a>
         {% endif %}
     </nav>
+
     <div class="sidebar-footer">
         <div class="user-badge">
             <div class="user-avatar">{{ current_user.nome[0].upper() }}</div>

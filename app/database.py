@@ -603,3 +603,71 @@ def marcar_venda_como_enviada_ao_google_ads(pedido_id):
     query = "UPDATE pedidos SET data_envio_google_ads = CURRENT_TIMESTAMP WHERE id = %s"
     db.execute_query(query, (pedido_id,))
     return pedido_id
+
+
+# ── telefones_produto ─────────────────────────────────────────────────────────
+
+def get_produto_by_phone_number_id(phone_number_id):
+    """
+    Busca o produto associado a um phone_number_id do WhatsApp Business.
+    Usado como fallback quando campaignid/gclid não chegam.
+
+    Args:
+        phone_number_id: Número WhatsApp do vendedor (phone_number_id da API)
+
+    Returns:
+        dict: Dados do produto ou None
+    """
+    query = """
+        SELECT p.*
+        FROM produtos p
+        INNER JOIN telefones_produto tp ON tp.produto_id = p.id
+        WHERE tp.telefone = %s AND p.ativo = TRUE
+        LIMIT 1
+    """
+    return db.execute_query(query, (phone_number_id,), fetch_one=True)
+
+
+def listar_telefones_produto(produto_id):
+    """
+    Lista todos os telefones associados a um produto.
+
+    Args:
+        produto_id: ID do produto
+
+    Returns:
+        list: Lista de dicts com id, telefone, created_at
+    """
+    query = """
+        SELECT id, telefone, created_at
+        FROM telefones_produto
+        WHERE produto_id = %s
+        ORDER BY created_at ASC
+    """
+    return db.execute_query(query, (produto_id,), fetch_all=True) or []
+
+
+def adicionar_telefone_produto(telefone, produto_id):
+    """
+    Adiciona um mapeamento telefone → produto.
+
+    Args:
+        telefone: phone_number_id do WhatsApp Business
+        produto_id: ID do produto
+
+    Returns:
+        int: ID do registro criado
+    """
+    query = "INSERT INTO telefones_produto (telefone, produto_id) VALUES (%s, %s)"
+    return db.execute_query(query, (telefone, produto_id))
+
+
+def remover_telefone_produto(telefone_id):
+    """
+    Remove um mapeamento telefone → produto pelo ID do registro.
+
+    Args:
+        telefone_id: ID do registro em telefones_produto
+    """
+    query = "DELETE FROM telefones_produto WHERE id = %s"
+    db.execute_query(query, (telefone_id,))

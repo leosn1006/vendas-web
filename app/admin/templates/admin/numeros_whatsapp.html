@@ -1,0 +1,81 @@
+{% extends "admin/base.html" %}
+{% block title %}Números WhatsApp — {{ produto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Números WhatsApp</h1>
+        <p class="page-subtitle">{{ produto.nome }}</p>
+    </div>
+</div>
+
+<div class="card">
+    <!-- Tabela de números cadastrados -->
+    {% if telefones %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Número (phone_number_id)</th>
+                    <th>Cadastrado em</th>
+                    {% if current_user.is_admin() %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in telefones %}
+                <tr>
+                    <td>
+                        <span style="font-family: var(--mono); font-size: 14px;">{{ t.telefone }}</span>
+                    </td>
+                    <td style="color: var(--muted); font-size: 13px;">
+                        {{ t.created_at.strftime('%d/%m/%Y %H:%M') if t.created_at else '—' }}
+                    </td>
+                    {% if current_user.is_admin() %}
+                    <td style="text-align: right;">
+                        <form method="POST"
+                              action="{{ url_for('admin.remover_numero_whatsapp', produto_id=produto.id, telefone_id=t.id) }}"
+                              onsubmit="return confirm('Remover o número {{ t.telefone }}?')">
+                            <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--muted); font-size: 14px; padding: 8px 0 20px;">
+        Nenhum número cadastrado ainda.
+    </p>
+    {% endif %}
+
+    <!-- Formulário de adição -->
+    {% if current_user.is_admin() %}
+    <div style="margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border);">
+        <p style="font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+                  color: var(--muted); font-family: var(--mono); margin-bottom: 12px;">
+            Adicionar número
+        </p>
+        <form method="POST"
+              action="{{ url_for('admin.adicionar_numero_whatsapp', produto_id=produto.id) }}"
+              style="display: flex; gap: 12px; align-items: flex-end; max-width: 480px;">
+            <div style="flex: 1;">
+                <label for="telefone">phone_number_id do WhatsApp Business</label>
+                <input type="text" id="telefone" name="telefone"
+                       placeholder="ex: 5561982155687"
+                       required autocomplete="off">
+            </div>
+            <button type="submit" class="btn btn-primary" style="white-space: nowrap; margin-bottom: 0;">
+                + Adicionar
+            </button>
+        </form>
+        <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">
+            Informe o <code style="font-family: var(--mono); background: var(--bg);
+            padding: 1px 5px; border-radius: 4px; border: 1px solid var(--border);">phone_number_id</code>
+            exatamente como aparece no painel Meta / webhook do WhatsApp Business API.
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
