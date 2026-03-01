@@ -3,7 +3,9 @@ from flask import render_template, redirect, url_for, request, flash, session
 from flask_login import current_user
 from admin import admin_bp
 from admin.auth import requer_login, requer_admin
-from database import db, listar_telefones_produto, adicionar_telefone_produto, remover_telefone_produto
+from database import (db,
+    listar_telefones_produto, adicionar_telefone_produto, remover_telefone_produto,
+    listar_mensagens_sugeridas, adicionar_mensagem_sugerida, remover_mensagem_sugerida)
 
 logger = logging.getLogger(__name__)
 
@@ -370,3 +372,50 @@ def remover_numero_whatsapp(produto_id, telefone_id):
         logger.error(f"[ADMIN] ❌ Erro ao remover telefone: {e}")
         flash(f'Erro ao remover número: {e}', 'danger')
     return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+
+
+# ============================================================
+# Mensagens Sugeridas por produto
+# ============================================================
+@admin_bp.route('/produto/<int:produto_id>/mensagens-sugeridas')
+@requer_login
+def mensagens_sugeridas(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = db.execute_query(
+        "SELECT id, nome FROM produtos WHERE id = %s", (produto_id,), fetch_one=True
+    )
+    if not produto:
+        flash('Produto não encontrado.', 'danger')
+        return redirect(url_for('admin.dashboard'))
+    mensagens = listar_mensagens_sugeridas(produto_id)
+    return render_template('admin/mensagens_sugeridas.html', produto=produto, mensagens=mensagens)
+
+
+@admin_bp.route('/produto/<int:produto_id>/mensagens-sugeridas/adicionar', methods=['POST'])
+@requer_admin
+def adicionar_mensagem_sugerida_view(produto_id):
+    mensagem = request.form.get('mensagem', '').strip()
+    if not mensagem:
+        flash('Informe a mensagem.', 'warning')
+        return redirect(url_for('admin.mensagens_sugeridas', produto_id=produto_id))
+    try:
+        adicionar_mensagem_sugerida(produto_id, mensagem)
+        flash('Mensagem adicionada com sucesso!', 'success')
+        logger.info(f"[ADMIN] ✅ Mensagem sugerida adicionada ao produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao adicionar mensagem: {e}")
+        flash(f'Erro ao adicionar mensagem: {e}', 'danger')
+    return redirect(url_for('admin.mensagens_sugeridas', produto_id=produto_id))
+
+
+@admin_bp.route('/produto/<int:produto_id>/mensagens-sugeridas/<int:mensagem_id>/remover', methods=['POST'])
+@requer_admin
+def remover_mensagem_sugerida_view(produto_id, mensagem_id):
+    try:
+        remover_mensagem_sugerida(mensagem_id)
+        flash('Mensagem removida.', 'success')
+        logger.info(f"[ADMIN] ✅ Mensagem #{mensagem_id} removida do produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao remover mensagem: {e}")
+        flash(f'Erro ao remover mensagem: {e}', 'danger')
+    return redirect(url_for('admin.mensagens_sugeridas', produto_id=produto_id))

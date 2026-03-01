@@ -487,6 +487,10 @@
            class="nav-link {% if request.endpoint == 'admin.numeros_whatsapp' %}active{% endif %}">
             <span class="icon">📞</span> Números WhatsApp
         </a>
+        <a href="{{ url_for('admin.mensagens_sugeridas', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.mensagens_sugeridas' %}active{% endif %}">
+            <span class="icon">💬</span> Mensagens Sugeridas
+        </a>
         {% endif %}
 
         {% if current_user.is_admin() %}

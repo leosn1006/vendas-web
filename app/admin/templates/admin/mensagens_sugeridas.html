@@ -1,0 +1,75 @@
+{% extends "admin/base.html" %}
+{% block title %}Mensagens Sugeridas — {{ produto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Mensagens Sugeridas</h1>
+        <p class="page-subtitle">{{ produto.nome }} — sorteadas aleatoriamente ao criar um novo lide</p>
+    </div>
+</div>
+
+<div class="card">
+    {% if mensagens %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Mensagem</th>
+                    {% if current_user.is_admin() %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in mensagens %}
+                <tr>
+                    <td style="color: var(--muted); font-family: var(--mono); font-size: 13px; width: 40px;">
+                        {{ loop.index }}
+                    </td>
+                    <td style="font-size: 14px;">{{ m.mensagem }}</td>
+                    {% if current_user.is_admin() %}
+                    <td style="text-align: right;">
+                        <form method="POST"
+                              action="{{ url_for('admin.remover_mensagem_sugerida_view', produto_id=produto.id, mensagem_id=m.id) }}"
+                              onsubmit="return confirm('Remover esta mensagem?')">
+                            <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--muted); font-size: 14px; padding: 8px 0 20px;">
+        Nenhuma mensagem cadastrada. O sistema usará as mensagens padrão do código.
+    </p>
+    {% endif %}
+
+    {% if current_user.is_admin() %}
+    <div style="margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border);">
+        <p style="font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+                  color: var(--muted); font-family: var(--mono); margin-bottom: 12px;">
+            Adicionar mensagem
+        </p>
+        <form method="POST"
+              action="{{ url_for('admin.adicionar_mensagem_sugerida_view', produto_id=produto.id) }}"
+              style="display: flex; gap: 12px; align-items: flex-end; max-width: 560px;">
+            <div style="flex: 1;">
+                <label for="mensagem">Texto da mensagem (sem emoji)</label>
+                <input type="text" id="mensagem" name="mensagem"
+                       placeholder="ex: Olá, gostaria de saber mais sobre as receitas"
+                       maxlength="300" required autocomplete="off">
+            </div>
+            <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                + Adicionar
+            </button>
+        </form>
+        <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">
+            O emoji é sorteado automaticamente e combinado aleatoriamente com a mensagem.
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

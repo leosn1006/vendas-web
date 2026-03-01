@@ -19,9 +19,11 @@ def persistir_lide(body):
         device = body.get('device', "")
         placement = body.get('placement', "")
         video_id = body.get('video_id', "")
-        produto = 1 # TODO mapear produto com base na url ou outros parâmetros
-
-        texto, emoji = gera_mensagem_inicial_randomicamente()
+        if "paes-sem-gluten" in url:
+            produto = 1
+        else:
+            produto = 1 # produto padrão para campanhas desconhecidas, pode ser ajustado para criar regras específicas por URL ou campanha
+        texto, emoji = gera_mensagem_inicial_randomicamente(produto)
 
         # preeche o dict Pedido com os dados necessários
         pedido = Pedido(

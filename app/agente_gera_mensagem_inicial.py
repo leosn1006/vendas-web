@@ -54,30 +54,33 @@ def gera_mensagem_inicial(produto):
         traceback.print_exc()
         return "Maravilha! Quero saber mais sobre o produto 😊"
 
-def gera_mensagem_inicial_randomicamente():
-    dict_mensagens = [
-        "Olá, tenho interesse nas receitas",
-        "Oi, tenho interesse nas receitas",
-        "Olá, quero receber as receitas",
-        "Oi, quero receber as receitas",
-        "Olá, pode me enviar as receitas?",
-        "Oi, pode me enviar as receitas?",
-        "Olá, gostaria de saber mais sobre as receitas",
-        "Oi, gostaria de saber mais sobre as receitas"
-    ]
-    dict_emojis = [
-        "😊", "😄", "😃", "😀", "😁", "🥰", "🤩", "😍",
-        "😉", "✨"
-    ]
+_EMOJIS = ["😊", "😄", "😃", "😀", "😁", "🥰", "🤩", "😍", "😉", "✨"]
 
-    dict_lugares = ["inicio", "final"]
+_MENSAGENS_FALLBACK = [
+    "Olá, tenho interesse nas receitas",
+    "Oi, tenho interesse nas receitas",
+    "Olá, quero receber as receitas",
+    "Oi, quero receber as receitas",
+    "Olá, pode me enviar as receitas?",
+    "Oi, pode me enviar as receitas?",
+    "Olá, gostaria de saber mais sobre as receitas",
+    "Oi, gostaria de saber mais sobre as receitas",
+]
 
-    # Gerar mensagem aleatória com um emoji.
-    mensagem = random.choice(list(dict_mensagens))
-    emoji = random.choice(list(dict_emojis))
-    lugar_emoji = random.choice(list(dict_lugares))
-    if lugar_emoji == "inicio":
-        mensagem_completa = f"{emoji} {mensagem}"
-    else:
-        mensagem_completa = f"{mensagem} {emoji}"
-    return mensagem_completa, emoji
+
+def gera_mensagem_inicial_randomicamente(produto_id=1):
+    from database import listar_mensagens_sugeridas
+
+    try:
+        rows = listar_mensagens_sugeridas(produto_id)
+        mensagens = [r['mensagem'] for r in rows] if rows else _MENSAGENS_FALLBACK
+    except Exception as e:
+        logger.warning(f"[AGENTE] ⚠️ Erro ao buscar mensagens do BD, usando fallback: {e}")
+        mensagens = _MENSAGENS_FALLBACK
+
+    mensagem = random.choice(mensagens)
+    emoji = random.choice(_EMOJIS)
+
+    if random.choice(["inicio", "final"]) == "inicio":
+        return f"{emoji} {mensagem}", emoji
+    return f"{mensagem} {emoji}", emoji

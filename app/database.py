@@ -671,3 +671,32 @@ def remover_telefone_produto(telefone_id):
     """
     query = "DELETE FROM telefones_produto WHERE id = %s"
     db.execute_query(query, (telefone_id,))
+
+
+# ── mensagens_sugeridas_produto ───────────────────────────────────────────────
+
+def listar_mensagens_sugeridas(produto_id):
+    """
+    Lista todas as mensagens sugeridas de um produto.
+
+    Returns:
+        list: Lista de dicts com id e mensagem
+    """
+    query = "SELECT id, mensagem FROM mensagens_sugeridas_produto WHERE produto_id = %s ORDER BY id ASC"
+    return db.execute_query(query, (produto_id,), fetch_all=True) or []
+
+
+def adicionar_mensagem_sugerida(produto_id, mensagem):
+    """
+    Adiciona uma mensagem sugerida para um produto.
+
+    Returns:
+        int: ID do registro criado
+    """
+    query = "INSERT INTO mensagens_sugeridas_produto (produto_id, mensagem) VALUES (%s, %s)"
+    return db.execute_query(query, (produto_id, mensagem))
+
+
+def remover_mensagem_sugerida(mensagem_id):
+    """Remove uma mensagem sugerida pelo ID."""
+    db.execute_query("DELETE FROM mensagens_sugeridas_produto WHERE id = %s", (mensagem_id,))
