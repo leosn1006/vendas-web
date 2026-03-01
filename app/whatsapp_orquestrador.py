@@ -76,8 +76,12 @@ def recebe_webhook(mensagem_whatsapp):
                     logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de introdução: {mensagem_whatsapp}" )
                     celery_app.send_task("tasks.enviar_introducao", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
             case 2: # cliente respondendo a introdução, se quer ou não receber o produto
-                logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de enviar pedido: {mensagem_whatsapp}" )
-                celery_app.send_task("tasks.enviar_pedido", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                if _usar_dinamico:
+                    logger.info(f"[ORQUESTRADOR-WEBHOOK] 🧪 [MOCK] mandando para o fluxo DINÂMICO de pedido: {dados.get('numero_remetente')}")
+                    celery_app.send_task("tasks.enviar_pedido_dinamico", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                else:
+                    logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de enviar pedido: {mensagem_whatsapp}" )
+                    celery_app.send_task("tasks.enviar_pedido", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
             case _:
                 if mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'text':
                     logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de responder cliente: {mensagem_whatsapp}" )

@@ -60,6 +60,23 @@ def fluxo_enviar_introducao_dinamico(self, pedido, mensagem_whatsapp):
         raise self.retry(exc=exc, countdown=30)
 
 
+@shared_task(name="tasks.enviar_pedido_dinamico", bind=True, max_retries=0)
+def fluxo_enviar_pedido_dinamico(self, pedido, mensagem_whatsapp):
+    from fluxos.fluxo_pedido_dinamico import executar
+    try:
+        logger.info("=" * 120)
+        logger.info(f"[TASK-PEDIDO-DIN] 📦 Dados recebidos: \n Pedido: {pedido}")
+        executar(pedido, mensagem_whatsapp)
+        logger.info(f"[TASK-PEDIDO-DIN] ✅ Mensagem processada com sucesso")
+        logger.info("=" * 120)
+    except Exception as exc:
+        logger.error(f"[TASK-PEDIDO-DIN] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        import traceback
+        traceback.print_exc()
+        logger.info("=" * 120)
+        raise self.retry(exc=exc, countdown=30)
+
+
 @shared_task(name="tasks.enviar_pedido", bind=True, max_retries=0)
 def fluxo_enviar_pedido(self, pedido, mensagem_whatsapp):
     logger.info("=" * 120)
