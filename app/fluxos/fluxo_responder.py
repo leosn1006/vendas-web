@@ -35,16 +35,18 @@ def executar(pedido, mensagem_whatsapp):
         pedido_id = pedido['id']
         mensagem_cliente = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
         message_id = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['id']
-        salvar_mensagem_pedido(message_id, pedido_id, mensagem_cliente, tipo_mensagem='recebida')
         # ============================================================================================
         # marcar mensagem como lida
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 📥 Marcando mensagem como lida...")
         marcar_como_lida(message_id)
         # ============================================================================================
-        # busca histórico da conversa para contextualizar o agente
+        # busca histórico ANTES de salvar a mensagem atual para evitar duplicação no contexto do agente
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 📚 Buscando histórico do pedido #{pedido_id}...")
         historico = buscar_historico_conversa(pedido_id, limite=10)
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 📚 {len(historico)} mensagens no histórico")
+        # ============================================================================================
+        # salva a mensagem atual após buscar o histórico
+        salvar_mensagem_pedido(message_id, pedido_id, mensagem_cliente, tipo_mensagem='recebida')
         # ============================================================================================
         # gera resposta com histórico e contexto completo do produto (prompt + FAQ + PDF)
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 🤖 Gerando resposta com contexto completo do produto...")

@@ -37,6 +37,7 @@ def responder_cliente_com_historico_produto(pergunta: str, historico: list, prod
     if fonte_pdf:
         try:
             pdf = _ler_pdf_fonte(fonte_pdf)
+            logger.info("[AGENTE] ✅ PDF carregado: %s chars de '%s'", len(pdf), fonte_pdf)
         except Exception as e:
             logger.warning("[AGENTE] ⚠️ PDF não carregado '%s': %s", fonte_pdf, e)
 
@@ -45,6 +46,9 @@ def responder_cliente_com_historico_produto(pergunta: str, historico: list, prod
         system_prompt += f"\n\n=== FAQ E INFORMAÇÕES DO PRODUTO ===\n{faq}\n=== FIM DO FAQ ==="
     if pdf:
         system_prompt += f"\n\n=== CONTEÚDO DO PRODUTO ===\n{pdf}\n=== FIM DO CONTEÚDO ==="
+
+    logger.info("[AGENTE] 📋 Contexto montado — prompt: %d chars | faq: %d chars | pdf: %d chars",
+                len(prompt_vendas), len(faq), len(pdf))
 
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(historico)
