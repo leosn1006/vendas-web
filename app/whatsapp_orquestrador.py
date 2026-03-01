@@ -63,9 +63,9 @@ def recebe_webhook(mensagem_whatsapp):
             celery_app.send_task("tasks.transcrever_audio", args=[pedido, mensagem_whatsapp],countdown=tempo_espera)
             return "Mensagem de áudio recebida e enviada para transcrição"
 
-        # Mock: redireciona o telefone de teste para os fluxos dinâmicos
-        _MOCK_TELEFONE = '556181163324'
-        _usar_dinamico = dados.get('numero_remetente') == _MOCK_TELEFONE
+        # Mock: redireciona os telefones de teste para os fluxos dinâmicos
+        _MOCK_TELEFONES = {'556181163324', '5561981477119'}
+        _usar_dinamico = dados.get('numero_remetente') in _MOCK_TELEFONES
 
         match pedido.get('estado_id'):
             case 1: # Cliente acessou a página de vendas e clicou para enviar mensagem ou veio direto pelo whatsapp sem passar pela página de vendas, ou seja, estado inicial do pedido'
