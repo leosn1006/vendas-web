@@ -9,12 +9,13 @@
         margin-top: 6px;
         line-height: 1.5;
     }
-    textarea#prompt_vendas {
-        min-height: 420px;
+    textarea.mono {
         font-family: var(--mono);
         font-size: 13px;
         line-height: 1.6;
     }
+    textarea#prompt_vendas { min-height: 280px; }
+    textarea#faq           { min-height: 360px; }
 </style>
 {% endblock %}
 
@@ -32,10 +33,18 @@
 
             <div class="form-group">
                 <label for="prompt_vendas">Prompt do agente</label>
-                <textarea id="prompt_vendas" name="prompt_vendas">{{ produto.prompt_vendas or '' }}</textarea>
+                <textarea id="prompt_vendas" name="prompt_vendas" class="mono">{{ produto.prompt_vendas or '' }}</textarea>
                 <p class="prompt-hint">
-                    Este prompt é enviado ao modelo de IA para personalizar as respostas do agente de vendas.
-                    Descreva o produto, tom de voz, objeções comuns e instruções de atendimento.
+                    Personalidade, tom de voz, regras de atendimento e instruções gerais do agente.
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label for="faq">FAQ do produto</label>
+                <textarea id="faq" name="faq" class="mono">{{ produto.faq or '' }}</textarea>
+                <p class="prompt-hint">
+                    Perguntas e respostas frequentes sobre o produto. O agente usa esse conteúdo
+                    para responder dúvidas dos clientes.
                 </p>
             </div>
 

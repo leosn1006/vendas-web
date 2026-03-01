@@ -233,11 +233,11 @@ def agente_vendas_produto(produto_id):
             return redirect(url_for('admin.agente_vendas_produto', produto_id=produto_id))
         try:
             db.execute_query(
-                "UPDATE produtos SET prompt_vendas = %s WHERE id = %s",
-                (request.form.get('prompt_vendas'), produto_id)
+                "UPDATE produtos SET prompt_vendas = %s, faq = %s WHERE id = %s",
+                (request.form.get('prompt_vendas'), request.form.get('faq'), produto_id)
             )
-            flash('Prompt atualizado com sucesso!', 'success')
-            logger.info(f"[ADMIN] ✅ prompt_vendas do produto #{produto_id} atualizado por {current_user.email}")
+            flash('Agente de Vendas IA atualizado com sucesso!', 'success')
+            logger.info(f"[ADMIN] ✅ prompt_vendas/faq do produto #{produto_id} atualizado por {current_user.email}")
         except Exception as e:
             logger.error(f"[ADMIN] ❌ Erro ao atualizar prompt: {e}")
             flash(f'Erro ao atualizar: {e}', 'danger')
