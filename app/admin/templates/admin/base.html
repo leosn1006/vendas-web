@@ -10,17 +10,21 @@
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-            --bg:        #0f1117;
-            --surface:   #1a1d27;
-            --border:    #2a2d3a;
-            --accent:    #4ade80;
-            --accent2:   #22d3ee;
-            --danger:    #f87171;
-            --warning:   #fbbf24;
-            --text:      #e2e8f0;
-            --muted:     #64748b;
+            --bg:        #fdf6ec;
+            --surface:   #ffffff;
+            --border:    #e8ddd0;
+            --accent:    #e07b2a;
+            --accent2:   #4a9632;
+            --danger:    #dc2626;
+            --warning:   #f5a623;
+            --text:      #2c2c2c;
+            --muted:     #888;
             --font:      'DM Sans', sans-serif;
             --mono:      'DM Mono', monospace;
+            --sidebar-bg:     #2c1810;
+            --sidebar-border: rgba(255,255,255,0.08);
+            --sidebar-text:   rgba(255,255,255,0.90);
+            --sidebar-muted:  rgba(255,255,255,0.45);
         }
 
         body {
@@ -35,8 +39,8 @@
         .sidebar {
             width: 240px;
             min-height: 100vh;
-            background: var(--surface);
-            border-right: 1px solid var(--border);
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--sidebar-border);
             display: flex;
             flex-direction: column;
             position: fixed;
@@ -46,7 +50,7 @@
 
         .sidebar-logo {
             padding: 28px 24px 20px;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--sidebar-border);
         }
 
         .sidebar-logo span {
@@ -54,14 +58,14 @@
             font-weight: 600;
             letter-spacing: 3px;
             text-transform: uppercase;
-            color: var(--accent);
+            color: var(--warning);
             font-family: var(--mono);
         }
 
         .sidebar-logo p {
             font-size: 18px;
             font-weight: 600;
-            color: var(--text);
+            color: var(--sidebar-text);
             margin-top: 4px;
         }
 
@@ -75,7 +79,7 @@
             font-weight: 600;
             letter-spacing: 2px;
             text-transform: uppercase;
-            color: var(--muted);
+            color: var(--sidebar-muted);
             padding: 12px 12px 6px;
             font-family: var(--mono);
         }
@@ -86,7 +90,7 @@
             gap: 10px;
             padding: 9px 12px;
             border-radius: 8px;
-            color: var(--muted);
+            color: var(--sidebar-muted);
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
@@ -94,13 +98,13 @@
             margin-bottom: 2px;
         }
 
-        .nav-link:hover { background: var(--border); color: var(--text); }
-        .nav-link.active { background: rgba(74,222,128,0.1); color: var(--accent); }
+        .nav-link:hover { background: rgba(255,255,255,0.08); color: var(--sidebar-text); }
+        .nav-link.active { background: rgba(224,123,42,0.18); color: var(--accent); }
         .nav-link .icon { font-size: 16px; width: 20px; text-align: center; }
 
         .sidebar-footer {
             padding: 16px 12px;
-            border-top: 1px solid var(--border);
+            border-top: 1px solid var(--sidebar-border);
         }
 
         .user-badge {
@@ -109,21 +113,21 @@
             gap: 10px;
             padding: 10px 12px;
             border-radius: 8px;
-            background: var(--border);
+            background: rgba(255,255,255,0.07);
         }
 
         .user-avatar {
             width: 32px; height: 32px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            background: linear-gradient(135deg, var(--accent), var(--warning));
             display: flex; align-items: center; justify-content: center;
-            font-size: 13px; font-weight: 700; color: #0f1117;
+            font-size: 13px; font-weight: 700; color: #fff;
         }
 
-        .user-info p { font-size: 13px; font-weight: 500; }
+        .user-info p { font-size: 13px; font-weight: 500; color: var(--sidebar-text); }
         .user-info span {
             font-size: 11px;
-            color: var(--muted);
+            color: var(--sidebar-muted);
             font-family: var(--mono);
         }
 
@@ -134,11 +138,11 @@
             padding: 8px;
             border-radius: 6px;
             font-size: 13px;
-            color: var(--danger);
+            color: rgba(220,88,88,0.85);
             text-decoration: none;
             transition: background 0.15s;
         }
-        .btn-logout:hover { background: rgba(248,113,113,0.1); }
+        .btn-logout:hover { background: rgba(220,88,88,0.12); }
 
         /* ── Main ── */
         .main {
@@ -158,6 +162,7 @@
         .page-title {
             font-size: 24px;
             font-weight: 600;
+            color: #3d2510;
         }
 
         .page-subtitle {
@@ -195,11 +200,11 @@
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0;
-            height: 2px;
+            height: 3px;
         }
 
-        .stat-card.green::before  { background: var(--accent); }
-        .stat-card.blue::before   { background: var(--accent2); }
+        .stat-card.green::before  { background: var(--accent2); }
+        .stat-card.blue::before   { background: var(--accent); }
         .stat-card.yellow::before { background: var(--warning); }
         .stat-card.red::before    { background: var(--danger); }
 
@@ -217,6 +222,7 @@
             font-weight: 600;
             margin-top: 8px;
             font-family: var(--mono);
+            color: #3d2510;
         }
 
         /* ── Table ── */
@@ -238,6 +244,7 @@
             color: var(--muted);
             font-family: var(--mono);
             border-bottom: 1px solid var(--border);
+            background: var(--bg);
         }
 
         tbody tr {
@@ -245,7 +252,7 @@
             transition: background 0.1s;
         }
 
-        tbody tr:hover { background: rgba(255,255,255,0.02); }
+        tbody tr:hover { background: #fdf0e3; }
         tbody tr:last-child { border-bottom: none; }
 
         td { padding: 14px 16px; }
@@ -261,10 +268,10 @@
             font-family: var(--mono);
         }
 
-        .badge-green  { background: rgba(74,222,128,0.12);  color: var(--accent); }
-        .badge-red    { background: rgba(248,113,113,0.12); color: var(--danger); }
-        .badge-blue   { background: rgba(34,211,238,0.12);  color: var(--accent2); }
-        .badge-yellow { background: rgba(251,191,36,0.12);  color: var(--warning); }
+        .badge-green  { background: rgba(74,150,50,0.12);  color: #2d6a1f; }
+        .badge-red    { background: rgba(220,38,38,0.10);  color: var(--danger); }
+        .badge-blue   { background: rgba(224,123,42,0.12); color: var(--accent); }
+        .badge-yellow { background: rgba(245,166,35,0.15); color: #b07010; }
 
         /* ── Buttons ── */
         .btn {
@@ -284,23 +291,23 @@
 
         .btn-primary {
             background: var(--accent);
-            color: #0f1117;
+            color: #fff;
         }
-        .btn-primary:hover { background: #22c55e; }
+        .btn-primary:hover { background: #c96a1a; transform: translateY(-1px); }
 
         .btn-ghost {
             background: transparent;
             color: var(--muted);
             border: 1px solid var(--border);
         }
-        .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+        .btn-ghost:hover { color: var(--text); border-color: #b0a090; }
 
         .btn-danger {
-            background: rgba(248,113,113,0.1);
+            background: rgba(220,38,38,0.08);
             color: var(--danger);
-            border: 1px solid rgba(248,113,113,0.2);
+            border: 1px solid rgba(220,38,38,0.18);
         }
-        .btn-danger:hover { background: rgba(248,113,113,0.2); }
+        .btn-danger:hover { background: rgba(220,38,38,0.16); }
 
         .btn-sm { padding: 5px 12px; font-size: 13px; }
 
@@ -345,6 +352,7 @@
         input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(224,123,42,0.12);
         }
 
         textarea { resize: vertical; min-height: 100px; }
@@ -371,9 +379,9 @@
             gap: 8px;
         }
 
-        .alert-success { background: rgba(74,222,128,0.1);  color: var(--accent);  border: 1px solid rgba(74,222,128,0.2); }
-        .alert-danger  { background: rgba(248,113,113,0.1); color: var(--danger);  border: 1px solid rgba(248,113,113,0.2); }
-        .alert-warning { background: rgba(251,191,36,0.1);  color: var(--warning); border: 1px solid rgba(251,191,36,0.2); }
+        .alert-success { background: rgba(74,150,50,0.10); color: #2d6a1f; border: 1px solid rgba(74,150,50,0.25); }
+        .alert-danger  { background: rgba(220,38,38,0.08); color: var(--danger); border: 1px solid rgba(220,38,38,0.20); }
+        .alert-warning { background: rgba(245,166,35,0.12); color: #8a6010; border: 1px solid rgba(245,166,35,0.30); }
 
         /* ── Responsivo básico ── */
         @media (max-width: 768px) {
@@ -390,7 +398,7 @@
 <aside class="sidebar">
     <div class="sidebar-logo">
         <span>painel</span>
-        <p>Vendas Admin</p>
+        <p>🌿 LN Editor</p>
     </div>
     <nav class="sidebar-nav">
         <div class="nav-section">Menu</div>
