@@ -83,12 +83,17 @@ def recebe_webhook(mensagem_whatsapp):
                     logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de enviar pedido: {mensagem_whatsapp}" )
                     celery_app.send_task("tasks.enviar_pedido", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
             case _:
-                if mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'text':
+                tipo_msg = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type']
+                if tipo_msg == 'text':
                     logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de responder cliente: {mensagem_whatsapp}" )
                     celery_app.send_task("tasks.responder_mensagem", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
-                elif (mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'document') or (mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'image'):
-                    logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de conferir comprovante: {mensagem_whatsapp}" )
-                    celery_app.send_task("tasks.conferir_comprovante", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                elif tipo_msg in ('document', 'image'):
+                    if _usar_dinamico:
+                        logger.info(f"[ORQUESTRADOR-WEBHOOK] 🧪 [MOCK] mandando para o fluxo DINÂMICO de comprovante: {dados.get('numero_remetente')}")
+                        celery_app.send_task("tasks.conferir_comprovante_dinamico", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                    else:
+                        logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de conferir comprovante: {mensagem_whatsapp}" )
+                        celery_app.send_task("tasks.conferir_comprovante", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
 
         return "Mensagem processada com sucesso!"
 

@@ -108,6 +108,22 @@ def fluxo_responder_mensagem(self, pedido, mensagem_whatsapp):
         logger.info("=" * 120)
         raise self.retry(exc=exc, countdown=30)
 
+@shared_task(name="tasks.conferir_comprovante_dinamico", bind=True, max_retries=0)
+def fluxo_conferir_comprovante_dinamico(self, pedido, mensagem_whatsapp):
+    logger.info("=" * 120)
+    logger.info(f"[TASK-COMPROVANTE-DIN] 📦 Dados recebidos: \n Pedido: {pedido}")
+    from fluxos.fluxo_comprovante_dinamico import executar
+    try:
+        executar(pedido, mensagem_whatsapp)
+        logger.info(f"[TASK-COMPROVANTE-DIN] ✅ Mensagem processada com sucesso!")
+        logger.info("=" * 120)
+    except Exception as exc:
+        logger.error(f"[TASK-COMPROVANTE-DIN] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        import traceback
+        traceback.print_exc()
+        logger.info("=" * 120)
+        raise self.retry(exc=exc, countdown=30)
+
 @shared_task(name="tasks.conferir_comprovante", bind=True, max_retries=0)
 def fluxo_conferir_comprovante(self, pedido, mensagem_whatsapp):
     logger.info("=" * 120)
@@ -148,6 +164,17 @@ def fluxo_followup_pagamento(self):
         logger.info(f"[TASK-FOLLOWUP] ✅ rotina executada com sucesso!")
     except Exception as exc:
         logger.error(f"[TASK-FOLLOWUP] ❌ Erro: {exc}")
+        import traceback
+        traceback.print_exc()
+
+@shared_task(name="tasks.followup_pagamento_dinamico", bind=True, max_retries=0)
+def fluxo_followup_pagamento_dinamico(self):
+    from fluxos.fluxo_followup_dinamico import executar
+    try:
+        executar()
+        logger.info(f"[TASK-FOLLOWUP-DIN] ✅ rotina executada com sucesso!")
+    except Exception as exc:
+        logger.error(f"[TASK-FOLLOWUP-DIN] ❌ Erro: {exc}")
         import traceback
         traceback.print_exc()
 
