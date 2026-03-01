@@ -40,7 +40,7 @@ def executar(pedido, mensagem_whatsapp):
         }
         logger.debug(f"[FLUXO-TRANSCREVER] ✅ Texto transcrito adicionado ao body da mensagem: {texto_transcricao[:50]}...")
 
-        _MOCK_TELEFONES = {'556181163324', '5561981477119'}
+        _MOCK_TELEFONES = {'556181163324', '556181477119'}
         _usar_dinamico = pedido.get('contact_phone') in _MOCK_TELEFONES
 
         tempo_espera = random.uniform(5, 10)

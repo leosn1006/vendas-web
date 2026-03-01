@@ -64,7 +64,7 @@ def recebe_webhook(mensagem_whatsapp):
             return "Mensagem de áudio recebida e enviada para transcrição"
 
         # Mock: redireciona os telefones de teste para os fluxos dinâmicos
-        _MOCK_TELEFONES = {'556181163324', '5561981477119'}
+        _MOCK_TELEFONES = {'556181163324', '556181477119'}
         _usar_dinamico = dados.get('numero_remetente') in _MOCK_TELEFONES
 
         match pedido.get('estado_id'):
