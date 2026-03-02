@@ -21,9 +21,9 @@ def enviar_introducao(pedido, url_audio=None):
     except Exception as e:
         raise e
 
-def marcar_como_lida(message_id: str):
+def marcar_como_lida(message_id: str, phone_number_id: str = None):
 
-    phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '927793497092010')
+    phone_number_id = phone_number_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
     url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
     token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
 
@@ -51,7 +51,7 @@ def enviar_audio(pedido: Pedido, url_audio: str):
 
     try:
         # Envia uma mensagem de audio para o WhatsApp usando a API.
-        phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '123456789012345678')  # Substitua pelo seu phone_number_id real
+        phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
         url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
         token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
 
@@ -101,7 +101,7 @@ def enviar_mensagem(pedido: Pedido, mensagem: str):
 
     try:
         # Envia uma mensagem de audio para o WhatsApp usando a API.
-        phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '123456789012345678')  # Substitua pelo seu phone_number_id real
+        phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
         url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
         token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
 
@@ -143,7 +143,7 @@ def enviar_mensagem(pedido: Pedido, mensagem: str):
     except Exception as e:
         raise ValueError(f"[MENSAGEM-ENVIAR] ❌ Erro ao enviar mensagem: {response.json()}")
 
-def enviar_mensagem_digitando(message_id: str):
+def enviar_mensagem_digitando(message_id: str, phone_number_id: str = None):
     id_message = None
 
     if message_id is None:
@@ -151,7 +151,7 @@ def enviar_mensagem_digitando(message_id: str):
 
     try:
         # Envia uma mensagem de audio para o WhatsApp usando a API.
-        phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '123456789012345678')  # Substitua pelo seu phone_number_id real
+        phone_number_id = phone_number_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
         url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
         token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
 
@@ -197,7 +197,7 @@ def enviar_documento(pedido: Pedido, url_documento: str, caption: str, filename:
 
     try:
         # Envia uma mensagem de documento para o WhatsApp usando a API.
-        phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '123456789012345678')  # Substitua pelo seu phone_number_id real
+        phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
         url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
         token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
 
@@ -249,7 +249,7 @@ def enviar_imagem(pedido: Pedido, url_imagem: str):
 
     try:
         # Envia uma mensagem de imagem para o WhatsApp usando a API.
-        phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '123456789012345678')  # Substitua pelo seu phone_number_id real
+        phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
         url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
         token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
 

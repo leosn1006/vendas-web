@@ -27,21 +27,6 @@ def processar_webhook(self, body):
         raise self.retry(exc=exc, countdown=30)
 
 
-@shared_task(name="tasks.enviar_introducao", bind=True, max_retries=0)
-def fluxo_enviar_introducao(self, pedido, mensagem_whatsapp):
-    from fluxos.fluxo_introducao import executar
-    try:
-        logger.info("=" * 120)
-        logger.info(f"[TASK-INTRODUCAO] 📦 Dados recebidos para introdução: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
-        executar(pedido, mensagem_whatsapp)
-        logger.info(f"[TASK-INTRODUCAO] ✅ Mensagem processada com sucesso")
-        logger.info("=" * 120)
-    except Exception as exc:
-        logger.error(f"[TASK-INTRODUCAO] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
-        import traceback
-        traceback.print_exc()
-        logger.info("=" * 120)
-        raise self.retry(exc=exc, countdown=30)
 
 @shared_task(name="tasks.enviar_introducao_dinamico", bind=True, max_retries=0)
 def fluxo_enviar_introducao_dinamico(self, pedido, mensagem_whatsapp):
@@ -77,20 +62,6 @@ def fluxo_enviar_pedido_dinamico(self, pedido, mensagem_whatsapp):
         raise self.retry(exc=exc, countdown=30)
 
 
-@shared_task(name="tasks.enviar_pedido", bind=True, max_retries=0)
-def fluxo_enviar_pedido(self, pedido, mensagem_whatsapp):
-    logger.info("=" * 120)
-    logger.info(f"[TASK-PEDIDO] 📦 Dados recebidos para introdução: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
-    from fluxos.fluxo_pedido import executar
-    try:
-        executar(pedido, mensagem_whatsapp)
-        logger.info(f"[TASK-PEDIDO] ✅ Mensagem processada com sucesso!")
-    except Exception as exc:
-        logger.error(f"[TASK-PEDIDO] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1} ")
-        import traceback
-        traceback.print_exc()
-        logger.info("=" * 120)
-        raise self.retry(exc=exc, countdown=30)
 
 @shared_task(name="tasks.responder_mensagem", bind=True, max_retries=0)
 def fluxo_responder_mensagem(self, pedido, mensagem_whatsapp):
@@ -124,21 +95,6 @@ def fluxo_conferir_comprovante_dinamico(self, pedido, mensagem_whatsapp):
         logger.info("=" * 120)
         raise self.retry(exc=exc, countdown=30)
 
-@shared_task(name="tasks.conferir_comprovante", bind=True, max_retries=0)
-def fluxo_conferir_comprovante(self, pedido, mensagem_whatsapp):
-    logger.info("=" * 120)
-    logger.info(f"[TASK-CONFERIR-COMPROVANTE] 📦 Dados recebidos para conferir comprovante: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
-    from fluxos.fluxo_comprovante import executar
-    try:
-        executar(pedido, mensagem_whatsapp)
-        logger.info(f"[TASK-CONFERIR-COMPROVANTE] ✅ Mensagem processada com sucesso!")
-        logger.info("=" * 120)
-    except Exception as exc:
-        logger.error(f"[TASK-CONFERIR-COMPROVANTE] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1} ")
-        import traceback
-        traceback.print_exc()
-        logger.info("=" * 120)
-        raise self.retry(exc=exc, countdown=30)
 
 @shared_task(name="tasks.transcrever_audio", bind=True, max_retries=0)
 def fluxo_transcrever_audio(self, pedido, mensagem_whatsapp):
@@ -156,16 +112,6 @@ def fluxo_transcrever_audio(self, pedido, mensagem_whatsapp):
         logger.info("=" * 120)
         raise self.retry(exc=exc, countdown=30)
 
-@shared_task(name="tasks.followup_pagamento", bind=True, max_retries=0)
-def fluxo_followup_pagamento(self):
-    from fluxos.fluxo_followup import executar
-    try:
-        executar()
-        logger.info(f"[TASK-FOLLOWUP] ✅ rotina executada com sucesso!")
-    except Exception as exc:
-        logger.error(f"[TASK-FOLLOWUP] ❌ Erro: {exc}")
-        import traceback
-        traceback.print_exc()
 
 @shared_task(name="tasks.followup_pagamento_dinamico", bind=True, max_retries=0)
 def fluxo_followup_pagamento_dinamico(self):

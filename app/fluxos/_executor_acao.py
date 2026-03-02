@@ -42,11 +42,11 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
         time.sleep(delay)
 
     if tipo == 'marcar_lida':
-        marcar_como_lida(message_id_original)
+        marcar_como_lida(message_id_original, pedido.get('phone_number_id'))
         logger.debug(f"[{tag}] 👁 Mensagem marcada como lida.")
 
     elif tipo == 'digitando':
-        enviar_mensagem_digitando(message_id_original)
+        enviar_mensagem_digitando(message_id_original, pedido.get('phone_number_id'))
         logger.debug(f"[{tag}] ⌨️ Status 'digitando' enviado.")
 
     elif tipo == 'enviar_audio':
