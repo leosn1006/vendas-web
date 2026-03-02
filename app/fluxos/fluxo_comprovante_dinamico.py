@@ -106,7 +106,10 @@ def executar(pedido, mensagem_whatsapp):
         pix_esperado = str(produto.get('pix_destinatario_esperado') or '').strip().lower()
         valor_minimo = _to_float(produto.get('valor_minimo_pagamento'), 0.0)
 
-        comprovante_valido = (pix_esperado in destinatario_extraido) # and (valor_pago >= valor_minimo)
+        tokens_esperados   = pix_esperado.split()
+        comprovante_valido = bool(tokens_esperados) and all(
+            token in destinatario_extraido for token in tokens_esperados
+        ) # and (valor_pago >= valor_minimo)
         condicao_ativa     = 'pagamento_valido' if comprovante_valido else 'pagamento_invalido'
 
         logger.debug(f"[{_TAG}] 🤖 Válido: {comprovante_valido} → condicao='{condicao_ativa}' "
