@@ -103,6 +103,32 @@
         font-size: 14px;
         padding: 40px 0;
     }
+
+    .send-tabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+    .tab-btn {
+        padding: 5px 14px;
+        font-size: 13px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: transparent;
+        cursor: pointer;
+        color: var(--muted);
+    }
+    .tab-btn.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+    }
+    .tab-panel { display: flex; flex-direction: column; gap: 8px; }
+    .tab-panel.hidden { display: none; }
+    .tab-panel input[type="url"],
+    .tab-panel input[type="text"] {
+        width: 100%;
+    }
 </style>
 {% endblock %}
 
@@ -185,7 +211,28 @@
     <div class="send-area">
         <form method="POST"
               action="{{ url_for('admin.conversa_enviar_mensagem', produto_id=produto.id, pedido_id=pedido.id) }}">
-            <textarea name="texto" placeholder="Digite uma mensagem para enviar ao cliente…"></textarea>
+            <input type="hidden" name="tipo" id="tipo-input" value="texto">
+
+            <div class="send-tabs">
+                <button type="button" class="tab-btn active" data-tab="texto">💬 Texto</button>
+                <button type="button" class="tab-btn" data-tab="audio">🎵 Áudio</button>
+                <button type="button" class="tab-btn" data-tab="arquivo">📎 Arquivo</button>
+            </div>
+
+            <div class="tab-panel" id="panel-texto">
+                <textarea name="texto" placeholder="Digite uma mensagem para enviar ao cliente…"></textarea>
+            </div>
+
+            <div class="tab-panel hidden" id="panel-audio">
+                <input type="url" name="url_audio" placeholder="URL do áudio (mp3, ogg, m4a…)">
+            </div>
+
+            <div class="tab-panel hidden" id="panel-arquivo">
+                <input type="url" name="url_arquivo" placeholder="URL do arquivo (PDF, etc.)">
+                <input type="text" name="nome_arquivo" placeholder="Nome do arquivo (ex: ebook.pdf)">
+                <input type="text" name="caption" placeholder="Legenda (opcional)">
+            </div>
+
             <div class="send-actions" style="margin-top: 10px;">
                 <button type="submit" class="btn btn-primary">Enviar</button>
             </div>
@@ -201,5 +248,17 @@
     // Scroll automático para o final do chat ao carregar
     const chat = document.querySelector('.chat-container');
     if (chat) chat.scrollTop = chat.scrollHeight;
+
+    // Alternância de abas no formulário de envio
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+            btn.classList.add('active');
+            document.getElementById('panel-' + tab).classList.remove('hidden');
+            document.getElementById('tipo-input').value = tab;
+        });
+    });
 </script>
 {% endblock %}

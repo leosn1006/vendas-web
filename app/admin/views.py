@@ -446,25 +446,45 @@ def conversa_pedido(produto_id, pedido_id):
 @admin_bp.route('/produto/<int:produto_id>/conversas/<int:pedido_id>/enviar', methods=['POST'])
 @requer_admin
 def conversa_enviar_mensagem(produto_id, pedido_id):
-    from whatsapp import enviar_mensagem as wpp_enviar
+    from whatsapp import enviar_mensagem as wpp_enviar, enviar_audio as wpp_audio, enviar_documento as wpp_doc
     pedido = get_pedido(pedido_id)
     if not pedido or pedido.get('produto_id') != produto_id:
         flash('Pedido não encontrado.', 'danger')
         return redirect(url_for('admin.conversas_produto', produto_id=produto_id))
 
-    texto = (request.form.get('texto') or '').strip()
-    if not texto:
-        flash('Mensagem não pode ser vazia.', 'danger')
-        return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
-
+    tipo = request.form.get('tipo', 'texto')
     try:
-        mid = wpp_enviar(pedido, texto)
-        salvar_mensagem_pedido(mid, pedido_id, texto, tipo_mensagem='enviada')
-        logger.info(f"[ADMIN] ✅ Mensagem manual enviada ao pedido #{pedido_id} por {current_user.email}")
+        if tipo == 'audio':
+            url_audio = (request.form.get('url_audio') or '').strip()
+            if not url_audio:
+                flash('URL do áudio não pode ser vazia.', 'danger')
+                return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
+            mid = wpp_audio(pedido, url_audio)
+            salvar_mensagem_pedido(mid, pedido_id, f'[Áudio: {url_audio}]', tipo_mensagem='enviada')
+
+        elif tipo == 'arquivo':
+            url_arquivo  = (request.form.get('url_arquivo') or '').strip()
+            caption      = (request.form.get('caption') or '').strip()
+            nome_arquivo = (request.form.get('nome_arquivo') or '').strip()
+            if not url_arquivo or not nome_arquivo:
+                flash('URL e nome do arquivo são obrigatórios.', 'danger')
+                return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
+            mid = wpp_doc(pedido, url_arquivo, caption, nome_arquivo)
+            salvar_mensagem_pedido(mid, pedido_id, f'[Arquivo: {nome_arquivo} — {caption}]', tipo_mensagem='enviada')
+
+        else:  # texto
+            texto = (request.form.get('texto') or '').strip()
+            if not texto:
+                flash('Mensagem não pode ser vazia.', 'danger')
+                return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
+            mid = wpp_enviar(pedido, texto)
+            salvar_mensagem_pedido(mid, pedido_id, texto, tipo_mensagem='enviada')
+
+        logger.info(f"[ADMIN] ✅ Mensagem ({tipo}) enviada ao pedido #{pedido_id} por {current_user.email}")
         flash('Mensagem enviada com sucesso!', 'success')
     except Exception as e:
-        logger.error(f"[ADMIN] ❌ Erro ao enviar mensagem manual: {e}")
-        flash(f'Erro ao enviar mensagem: {e}', 'danger')
+        logger.error(f"[ADMIN] ❌ Erro ao enviar mensagem ({tipo}): {e}")
+        flash(f'Erro ao enviar: {e}', 'danger')
 
     return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
 
