@@ -1,5 +1,6 @@
 import logging
 import json
+from datetime import datetime
 from database import (
     listar_acoes_fluxo, salvar_mensagem_pedido,
     atualizar_pedido_com_comprovante, atualizar_pedido_com_pagamento,
@@ -19,6 +20,48 @@ def _to_float(valor, default=0.0):
         return float(valor)
     except (TypeError, ValueError):
         return default
+
+
+def _resolver_data_pagamento(data_pagamento_raw, data_contato_site):
+    """
+    Garante que data_pagamento seja posterior a data_contato_site (exigência do Google Ads).
+    Fallback para datetime.now() se a data extraída for inválida ou anterior ao contato.
+    """
+    agora = datetime.now()
+
+    if not data_pagamento_raw:
+        return agora
+
+    try:
+        if isinstance(data_pagamento_raw, datetime):
+            dp = data_pagamento_raw
+        else:
+            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+                try:
+                    dp = datetime.strptime(str(data_pagamento_raw).strip(), fmt)
+                    break
+                except ValueError:
+                    continue
+            else:
+                return agora
+    except Exception:
+        return agora
+
+    try:
+        if isinstance(data_contato_site, datetime):
+            dc = data_contato_site
+        elif data_contato_site:
+            dc = datetime.fromisoformat(str(data_contato_site))
+        else:
+            return dp  # sem referência, usa o que a IA extraiu
+    except Exception:
+        return dp
+
+    if dp > dc:
+        return dp
+
+    logger.info(f"[{_TAG}] ⚠️ data_pagamento ({dp}) <= data_contato_site ({dc}) — usando datetime.now()")
+    return agora
 
 
 def executar(pedido, mensagem_whatsapp):
@@ -76,7 +119,10 @@ def executar(pedido, mensagem_whatsapp):
                 valor_pago=valor_pago,
                 nome_banco=resultado.get('nome_banco'),
                 nome_pagador=resultado.get('nome_pagador'),
-                data_pagamento=resultado.get('data_pagamento'),
+                data_pagamento=_resolver_data_pagamento(
+                    resultado.get('data_pagamento'),
+                    pedido.get('data_contato_site'),
+                ),
             )
             preco_produto = _to_float(produto.get('preco'), 0.0)
             if preco_produto > 0 and valor_pago > preco_produto * 3:
