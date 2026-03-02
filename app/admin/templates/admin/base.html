@@ -507,6 +507,10 @@
            class="nav-link {% if request.endpoint in ['admin.conversas_produto','admin.conversa_pedido'] %}active{% endif %}">
             <span class="icon">💬</span> Conversas
         </a>
+        <a href="{{ url_for('admin.acertar_valor_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint in ['admin.acertar_valor_produto','admin.acertar_valor_salvar'] %}active{% endif %}">
+            <span class="icon">💰</span> Acertar Valor
+        </a>
         {% endif %}
 
         {% if current_user.is_admin() %}

@@ -766,3 +766,20 @@ def buscar_todas_mensagens_pedido(pedido_id: int) -> list:
         (pedido_id,), fetch_all=True
     )
     return rows if rows else []
+
+
+def buscar_pedido_por_nome(contact_name: str, produto_id: int):
+    """Busca o pedido mais recente de um cliente pelo nome (contact_name)."""
+    return db.execute_query(
+        "SELECT * FROM pedidos WHERE contact_name LIKE %s AND produto_id = %s "
+        "ORDER BY data_pedido DESC LIMIT 1",
+        (f"%{contact_name}%", produto_id), fetch_one=True
+    )
+
+
+def acertar_valor_pedido(pedido_id: int, valor_pago: float):
+    """Marca um pedido como pago com o valor informado."""
+    db.execute_query(
+        "UPDATE pedidos SET valor_pago = %s, estado_id = 0 WHERE id = %s",
+        (valor_pago, pedido_id)
+    )

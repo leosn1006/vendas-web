@@ -9,7 +9,8 @@ from database import (db,
     listar_acoes_fluxo, get_acao_fluxo,
     adicionar_acao_fluxo, atualizar_acao_fluxo, remover_acao_fluxo,
     get_pedido, get_ultimo_pedido_by_phone, salvar_mensagem_pedido,
-    buscar_todas_mensagens_pedido)
+    buscar_todas_mensagens_pedido,
+    buscar_pedido_por_nome, acertar_valor_pedido)
 
 _FLUXOS = ['introducao', 'pedido', 'comprovante', 'responder', 'followup']
 _FLUXOS_READONLY = {'responder'}
@@ -464,6 +465,64 @@ def conversa_enviar_mensagem(produto_id, pedido_id):
         flash(f'Erro ao enviar mensagem: {e}', 'danger')
 
     return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
+
+
+# ============================================================
+# Acertar Valor — ajuste manual de pagamento
+# ============================================================
+@admin_bp.route('/produto/<int:produto_id>/acertar-valor', methods=['GET', 'POST'])
+@requer_admin
+def acertar_valor_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = db.execute_query("SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True)
+    if produto is None:
+        flash('Produto não encontrado.', 'danger')
+        return redirect(url_for('admin.listar_produtos'))
+
+    pedido = None
+    if request.method == 'POST':
+        q = (request.form.get('q') or '').strip()
+        try:
+            pedido = get_pedido(int(q))
+            if pedido and pedido.get('produto_id') != produto_id:
+                pedido = None
+        except (ValueError, TypeError):
+            pedido = get_ultimo_pedido_by_phone(q, produto_id)
+            if not pedido:
+                pedido = buscar_pedido_por_nome(q, produto_id)
+
+        if not pedido:
+            flash('Nenhum pedido encontrado para esse ID, telefone ou nome.', 'danger')
+
+    return render_template('admin/produto_acertar_valor.html', produto=produto, pedido=pedido)
+
+
+@admin_bp.route('/produto/<int:produto_id>/acertar-valor/<int:pedido_id>/salvar', methods=['POST'])
+@requer_admin
+def acertar_valor_salvar(produto_id, pedido_id):
+    pedido = get_pedido(pedido_id)
+    if not pedido or pedido.get('produto_id') != produto_id:
+        flash('Pedido não encontrado.', 'danger')
+        return redirect(url_for('admin.acertar_valor_produto', produto_id=produto_id))
+
+    try:
+        valor = float((request.form.get('valor_pago') or '0').replace(',', '.'))
+    except (ValueError, TypeError):
+        valor = 0.0
+
+    if valor <= 0.0:
+        flash('Valor inválido. Informe um valor maior que zero.', 'danger')
+        return redirect(url_for('admin.acertar_valor_produto', produto_id=produto_id))
+
+    try:
+        acertar_valor_pedido(pedido_id, valor)
+        logger.info(f"[ADMIN] ✅ Pedido #{pedido_id} marcado como pago (R$ {valor:.2f}) por {current_user.email}")
+        flash(f'Pedido #{pedido_id} atualizado: R$ {valor:.2f} — estado alterado para Pago.', 'success')
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao acertar valor do pedido #{pedido_id}: {e}")
+        flash(f'Erro ao salvar: {e}', 'danger')
+
+    return redirect(url_for('admin.acertar_valor_produto', produto_id=produto_id))
 
 
 # ============================================================

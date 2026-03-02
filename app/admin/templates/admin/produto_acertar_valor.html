@@ -1,0 +1,124 @@
+{% extends 'admin/base.html' %}
+{% block title %}Acertar Valor — {{ produto.nome }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    .search-row input {
+        flex: 1;
+    }
+
+    .pedido-info {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+        font-size: 14px;
+        color: var(--text);
+    }
+    .pedido-info span {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .pedido-info .label {
+        font-size: 11px;
+        font-family: var(--mono);
+        text-transform: uppercase;
+        color: var(--muted);
+    }
+
+    .valor-form {
+        margin-top: 24px;
+        border-top: 1px solid var(--border);
+        padding-top: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-width: 360px;
+    }
+    .valor-form label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+    }
+    .valor-form .hint {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: -6px;
+    }
+    .valor-form .send-actions {
+        display: flex;
+        justify-content: flex-end;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Acertar Valor</div>
+        <div class="page-subtitle">{{ produto.nome }}</div>
+    </div>
+</div>
+
+<!-- Busca -->
+<div class="card" style="margin-bottom: 20px;">
+    <form method="POST" action="{{ url_for('admin.acertar_valor_produto', produto_id=produto.id) }}">
+        <div class="search-row">
+            <input type="text" name="q"
+                   value="{{ request.form.get('q', '') }}"
+                   placeholder="Nº do pedido, telefone WhatsApp (ex: 5561…) ou nome do cliente"
+                   required>
+            <button type="submit" class="btn btn-primary">Buscar</button>
+        </div>
+    </form>
+</div>
+
+{% if pedido %}
+<!-- Info do pedido -->
+<div class="card">
+    <div class="pedido-info">
+        <span>
+            <span class="label">Pedido</span>
+            #{{ pedido.id }}
+        </span>
+        <span>
+            <span class="label">Cliente</span>
+            {{ pedido.contact_name or '—' }}
+        </span>
+        <span>
+            <span class="label">Telefone</span>
+            {{ pedido.contact_phone or '—' }}
+        </span>
+        <span>
+            <span class="label">Estado atual</span>
+            {{ pedido.estado_id }}
+        </span>
+        <span>
+            <span class="label">Valor pago atual</span>
+            {% if pedido.valor_pago and pedido.valor_pago > 0 %}R$ {{ "%.2f"|format(pedido.valor_pago) }}{% else %}—{% endif %}
+        </span>
+    </div>
+
+    <!-- Formulário de ajuste -->
+    <form method="POST"
+          action="{{ url_for('admin.acertar_valor_salvar', produto_id=produto.id, pedido_id=pedido.id) }}">
+        <div class="valor-form">
+            <label for="valor_pago">Novo valor pago (R$)</label>
+            <input type="number" id="valor_pago" name="valor_pago"
+                   step="0.01" min="0.01"
+                   placeholder="Ex: 97.00"
+                   required>
+            <p class="hint">O estado do pedido será alterado para <strong>Pago</strong> automaticamente.</p>
+            <div class="send-actions">
+                <button type="submit" class="btn btn-primary">Salvar pagamento</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
