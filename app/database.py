@@ -778,8 +778,8 @@ def buscar_pedido_por_nome(contact_name: str, produto_id: int):
 
 
 def acertar_valor_pedido(pedido_id: int, valor_pago: float):
-    """Marca um pedido como pago com o valor informado."""
+    """Marca um pedido como pago com o valor informado e registra data_pagamento."""
     db.execute_query(
-        "UPDATE pedidos SET valor_pago = %s, estado_id = 0 WHERE id = %s",
+        "UPDATE pedidos SET valor_pago = %s, estado_id = 0, data_pagamento = NOW() WHERE id = %s",
         (valor_pago, pedido_id)
     )
