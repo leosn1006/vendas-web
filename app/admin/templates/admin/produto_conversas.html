@@ -104,13 +104,6 @@
         padding: 40px 0;
     }
 
-    .bubble-time {
-        font-size: 10px;
-        color: var(--muted);
-        margin-top: 3px;
-        font-family: var(--mono);
-    }
-
     .send-tabs {
         display: flex;
         gap: 6px;
@@ -200,15 +193,13 @@
             {% for msg in mensagens %}
                 {% if msg.tipo_mensagem == 'recebida' %}
                 <div class="bubble-wrap left">
-                    <span class="bubble-label">{{ pedido.contact_name or 'Cliente' }}</span>
+                    <span class="bubble-label">{{ pedido.contact_name or 'Cliente' }}{% if msg.data_mensagem %} {{ msg.data_mensagem.strftime('%d/%m/%Y às %H:%M') }}{% endif %}</span>
                     <div class="bubble left">{{ msg.mensagem_json }}</div>
-                    {% if msg.data_mensagem %}<span class="bubble-time">{{ msg.data_mensagem.strftime('%d/%m/%Y %H:%M') }}</span>{% endif %}
                 </div>
                 {% else %}
                 <div class="bubble-wrap right">
-                    <span class="bubble-label">Sistema</span>
+                    <span class="bubble-label">Sistema{% if msg.data_mensagem %} {{ msg.data_mensagem.strftime('%d/%m/%Y às %H:%M') }}{% endif %}</span>
                     <div class="bubble right">{{ msg.mensagem_json }}</div>
-                    {% if msg.data_mensagem %}<span class="bubble-time">{{ msg.data_mensagem.strftime('%d/%m/%Y %H:%M') }}</span>{% endif %}
                 </div>
                 {% endif %}
             {% endfor %}
