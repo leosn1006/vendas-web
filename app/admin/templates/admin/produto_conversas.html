@@ -193,12 +193,12 @@
             {% for msg in mensagens %}
                 {% if msg.tipo_mensagem == 'recebida' %}
                 <div class="bubble-wrap left">
-                    <span class="bubble-label">{{ pedido.contact_name or 'Cliente' }}{% if msg.data_mensagem %} {{ msg.data_mensagem.strftime('%d/%m/%Y às %H:%M') }}{% endif %}</span>
+                    <span class="bubble-label">{{ pedido.contact_name or 'Cliente' }}{% if msg.data_mensagem %} {{ msg.data_mensagem.strftime('%d/%m/%Y às %H:%M:%S') }}{% endif %}</span>
                     <div class="bubble left">{{ msg.mensagem_json }}</div>
                 </div>
                 {% else %}
                 <div class="bubble-wrap right">
-                    <span class="bubble-label">Sistema{% if msg.data_mensagem %} {{ msg.data_mensagem.strftime('%d/%m/%Y às %H:%M') }}{% endif %}</span>
+                    <span class="bubble-label">Sistema{% if msg.data_mensagem %} {{ msg.data_mensagem.strftime('%d/%m/%Y às %H:%M:%S') }}{% endif %}</span>
                     <div class="bubble right">{{ msg.mensagem_json }}</div>
                 </div>
                 {% endif %}
