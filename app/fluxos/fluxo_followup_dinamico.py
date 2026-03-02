@@ -16,14 +16,10 @@ def executar():
     logger.info("=" * 120)
     logger.info(f"[{_TAG}] 🕐 Iniciando verificação de followup: {agora.strftime('%H:%M')}")
 
-    # Mock: processa apenas os telefones de teste enquanto o fluxo dinâmico está em validação
-    _MOCK_TELEFONES = {'556181163324', '556181477119'}
-
     pedidos = buscar_pedidos_followup(horas_sem_atualizacao=4)
-    pedidos = [p for p in pedidos if p.get('contact_phone') in _MOCK_TELEFONES]
 
     if not pedidos:
-        logger.info(f"[{_TAG}] ℹ️ Nenhum pedido pendente de followup para o telefone de teste.")
+        logger.info(f"[{_TAG}] ℹ️ Nenhum pedido pendente de followup.")
         logger.info("=" * 120)
         return
 

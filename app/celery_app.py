@@ -17,13 +17,9 @@ celery_app = Celery(
 )
 
 celery_app.conf.beat_schedule = {
-    'followup-pagamento': {
-        'task': 'tasks.followup_pagamento',
-        'schedule': crontab(minute=0, hour='8-20'),  # todo hora cheia das 8h às 20h
-    },
     'followup-pagamento-dinamico': {
         'task': 'tasks.followup_pagamento_dinamico',
-        'schedule': crontab(minute=0, hour='8-20'),  # mesmo horário, só processa telefone de teste
+        'schedule': crontab(minute=0, hour='8-20'),  # todo hora cheia das 8h às 20h
     },
     'upload-conversoes-google-ads': {
         'task': 'tasks.processar_uploads_google_ads',

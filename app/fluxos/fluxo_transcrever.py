@@ -40,18 +40,13 @@ def executar(pedido, mensagem_whatsapp):
         }
         logger.debug(f"[FLUXO-TRANSCREVER] ✅ Texto transcrito adicionado ao body da mensagem: {texto_transcricao[:50]}...")
 
-        _MOCK_TELEFONES = {'556181163324', '556181477119'}
-        _usar_dinamico = pedido.get('contact_phone') in _MOCK_TELEFONES
-
         tempo_espera = random.uniform(5, 10)
         if estado_pedido == 1:
-            task = "tasks.enviar_introducao_dinamico" if _usar_dinamico else "tasks.enviar_introducao"
-            celery_app.send_task(task, args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
-            logger.debug(f"[FLUXO-TRANSCREVER] ✅ Enviado ao fluxo de introdução ({'dinâmico' if _usar_dinamico else 'padrão'})!")
+            celery_app.send_task("tasks.enviar_introducao_dinamico", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+            logger.debug(f"[FLUXO-TRANSCREVER] ✅ Enviado ao fluxo de introdução dinâmico!")
         elif estado_pedido == 2:
-            task = "tasks.enviar_pedido_dinamico" if _usar_dinamico else "tasks.enviar_pedido"
-            celery_app.send_task(task, args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
-            logger.debug(f"[FLUXO-TRANSCREVER] ✅ Enviado ao fluxo de pedido ({'dinâmico' if _usar_dinamico else 'padrão'})!")
+            celery_app.send_task("tasks.enviar_pedido_dinamico", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+            logger.debug(f"[FLUXO-TRANSCREVER] ✅ Enviado ao fluxo de pedido dinâmico!")
         else:
             celery_app.send_task("tasks.responder_mensagem", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
             logger.debug("[FLUXO-TRANSCREVER] ✅ Mensagem processada com sucesso e enviada ao fluxo de responder mensagem!")

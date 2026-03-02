@@ -74,6 +74,41 @@ Principais campos usados hoje:
 - `fluxo_comprovante`: valida comprovante, confirma pagamento e entrega surpresa
 - `fluxo_responder`: respostas livres com contexto completo do produto
 
+## 🗄️ Migrations
+
+As migrations ficam em `migrations/` e seguem a numeração `NNN_descricao.sql`.
+
+### Executar uma migration
+
+```bash
+docker compose exec -T db mysql -u appuser -pu9p1s8a0 vendasdb < migrations/006_faq_produto.sql
+```
+
+> **Dica:** troque `006_faq_produto.sql` pelo arquivo desejado. A flag `-T` é necessária quando a execução não é interativa (terminal sem TTY).
+
+### Verificar se a coluna/tabela foi criada
+
+```bash
+# listar colunas de uma tabela
+docker compose exec db mysql -u appuser -pu9p1s8a0 vendasdb -e "DESCRIBE produtos;"
+
+# listar todas as tabelas
+docker compose exec db mysql -u appuser -pu9p1s8a0 vendasdb -e "SHOW TABLES;"
+```
+
+### Histórico de migrations aplicadas
+
+| Arquivo | Descrição |
+|---|---|
+| `001_script.sql` | Schema e seed inicial |
+| `002_*.sql` | ... |
+| `003_*.sql` | ... |
+| `004_*.sql` | ... |
+| `005_acoes_fluxo_produto.sql` | Tabela `acoes_fluxo_produto` (fluxos dinâmicos) |
+| `006_faq_produto.sql` | Coluna `faq` na tabela `produtos` |
+
+---
+
 ## 🧪 Comandos úteis
 
 ```bash
