@@ -417,10 +417,12 @@ def conversas_produto(produto_id):
                 pedido = None
         except (ValueError, TypeError):
             pedido = get_ultimo_pedido_by_phone(q, produto_id)
+            if not pedido:
+                pedido = buscar_pedido_por_nome(q, produto_id)
 
         if pedido:
             return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido['id']))
-        flash('Nenhuma conversa encontrada para esse pedido ou telefone.', 'danger')
+        flash('Nenhuma conversa encontrada para esse pedido, telefone ou nome.', 'danger')
 
     return render_template('admin/produto_conversas.html', produto=produto)
 
