@@ -503,6 +503,10 @@
            class="nav-link {% if request.endpoint in ['admin.fluxos_overview','admin.fluxo_acoes','admin.editar_acao_fluxo'] %}active{% endif %}">
             <span class="icon">⚙️</span> Fluxos
         </a>
+        <a href="{{ url_for('admin.conversas_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint in ['admin.conversas_produto','admin.conversa_pedido'] %}active{% endif %}">
+            <span class="icon">💬</span> Conversas
+        </a>
         {% endif %}
 
         {% if current_user.is_admin() %}

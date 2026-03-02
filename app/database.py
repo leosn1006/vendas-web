@@ -756,3 +756,13 @@ def atualizar_acao_fluxo(acao_id, ordem, condicao, acao,
 def remover_acao_fluxo(acao_id):
     """Remove uma ação de fluxo pelo ID."""
     db.execute_query("DELETE FROM acoes_fluxo_produto WHERE id = %s", (acao_id,))
+
+
+def buscar_todas_mensagens_pedido(pedido_id: int) -> list:
+    """Retorna todas as mensagens de um pedido em ordem cronológica."""
+    rows = db.execute_query(
+        "SELECT tipo_mensagem, mensagem_json, sequencial_mensagem "
+        "FROM mensagens_pedidos WHERE pedido_id = %s ORDER BY sequencial_mensagem ASC",
+        (pedido_id,), fetch_all=True
+    )
+    return rows if rows else []

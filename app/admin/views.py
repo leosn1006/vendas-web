@@ -7,7 +7,9 @@ from database import (db,
     listar_telefones_produto, adicionar_telefone_produto, remover_telefone_produto,
     listar_mensagens_sugeridas, adicionar_mensagem_sugerida, remover_mensagem_sugerida,
     listar_acoes_fluxo, get_acao_fluxo,
-    adicionar_acao_fluxo, atualizar_acao_fluxo, remover_acao_fluxo)
+    adicionar_acao_fluxo, atualizar_acao_fluxo, remover_acao_fluxo,
+    get_pedido, get_ultimo_pedido_by_phone, salvar_mensagem_pedido,
+    buscar_todas_mensagens_pedido)
 
 _FLUXOS = ['introducao', 'pedido', 'comprovante', 'responder', 'followup']
 _FLUXOS_READONLY = {'responder'}
@@ -391,6 +393,77 @@ def clonar_produto(produto_id):
         logger.error(f"[ADMIN] ❌ Erro ao clonar produto: {e}")
         flash(f'Erro ao clonar produto: {e}', 'danger')
         return redirect(url_for('admin.listar_produtos'))
+
+
+# ============================================================
+# Conversas — visualização e envio manual de mensagens
+# ============================================================
+@admin_bp.route('/produto/<int:produto_id>/conversas', methods=['GET', 'POST'])
+@requer_login
+def conversas_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = db.execute_query("SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True)
+    if produto is None:
+        flash('Produto não encontrado.', 'danger')
+        return redirect(url_for('admin.listar_produtos'))
+
+    if request.method == 'POST':
+        q = (request.form.get('q') or '').strip()
+        pedido = None
+        try:
+            pedido = get_pedido(int(q))
+            if pedido and pedido.get('produto_id') != produto_id:
+                pedido = None
+        except (ValueError, TypeError):
+            pedido = get_ultimo_pedido_by_phone(q, produto_id)
+
+        if pedido:
+            return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido['id']))
+        flash('Nenhuma conversa encontrada para esse pedido ou telefone.', 'danger')
+
+    return render_template('admin/produto_conversas.html', produto=produto)
+
+
+@admin_bp.route('/produto/<int:produto_id>/conversas/<int:pedido_id>')
+@requer_login
+def conversa_pedido(produto_id, pedido_id):
+    session['produto_ativo_id'] = produto_id
+    produto = db.execute_query("SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True)
+    pedido  = get_pedido(pedido_id)
+
+    if not produto or not pedido or pedido.get('produto_id') != produto_id:
+        flash('Conversa não encontrada.', 'danger')
+        return redirect(url_for('admin.conversas_produto', produto_id=produto_id))
+
+    mensagens = buscar_todas_mensagens_pedido(pedido_id)
+    return render_template('admin/produto_conversas.html',
+                           produto=produto, pedido=pedido, mensagens=mensagens)
+
+
+@admin_bp.route('/produto/<int:produto_id>/conversas/<int:pedido_id>/enviar', methods=['POST'])
+@requer_admin
+def conversa_enviar_mensagem(produto_id, pedido_id):
+    from whatsapp import enviar_mensagem as wpp_enviar
+    pedido = get_pedido(pedido_id)
+    if not pedido or pedido.get('produto_id') != produto_id:
+        flash('Pedido não encontrado.', 'danger')
+        return redirect(url_for('admin.conversas_produto', produto_id=produto_id))
+
+    texto = (request.form.get('texto') or '').strip()
+    if not texto:
+        flash('Mensagem não pode ser vazia.', 'danger')
+        return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
+
+    try:
+        mid = wpp_enviar(pedido, texto)
+        salvar_mensagem_pedido(mid, pedido_id, texto, tipo_mensagem='enviada')
+        logger.info(f"[ADMIN] ✅ Mensagem manual enviada ao pedido #{pedido_id} por {current_user.email}")
+        flash('Mensagem enviada com sucesso!', 'success')
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao enviar mensagem manual: {e}")
+        flash(f'Erro ao enviar mensagem: {e}', 'danger')
+
+    return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
 
 
 # ============================================================
