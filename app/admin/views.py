@@ -411,14 +411,14 @@ def conversas_produto(produto_id):
     if request.method == 'POST':
         q = (request.form.get('q') or '').strip()
         pedido = None
-        try:
+        if q.isdigit() and len(q) <= 7:
             pedido = get_pedido(int(q))
             if pedido and pedido.get('produto_id') != produto_id:
                 pedido = None
-        except (ValueError, TypeError):
+        if not pedido:
             pedido = get_ultimo_pedido_by_phone(q, produto_id)
-            if not pedido:
-                pedido = buscar_pedido_por_nome(q, produto_id)
+        if not pedido:
+            pedido = buscar_pedido_por_nome(q, produto_id)
 
         if pedido:
             return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido['id']))
@@ -484,14 +484,14 @@ def acertar_valor_produto(produto_id):
     pedido = None
     if request.method == 'POST':
         q = (request.form.get('q') or '').strip()
-        try:
+        if q.isdigit() and len(q) <= 7:
             pedido = get_pedido(int(q))
             if pedido and pedido.get('produto_id') != produto_id:
                 pedido = None
-        except (ValueError, TypeError):
+        if not pedido:
             pedido = get_ultimo_pedido_by_phone(q, produto_id)
-            if not pedido:
-                pedido = buscar_pedido_por_nome(q, produto_id)
+        if not pedido:
+            pedido = buscar_pedido_por_nome(q, produto_id)
 
         if not pedido:
             flash('Nenhum pedido encontrado para esse ID, telefone ou nome.', 'danger')
