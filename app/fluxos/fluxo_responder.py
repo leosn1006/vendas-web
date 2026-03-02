@@ -50,7 +50,7 @@ def executar(pedido, mensagem_whatsapp):
         # ============================================================================================
         # gera resposta com histórico e contexto completo do produto (prompt + FAQ + PDF)
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 🤖 Gerando resposta com contexto completo do produto...")
-        resposta_cliente = responder_cliente_com_historico_produto(mensagem_cliente, historico, produto)
+        resposta_cliente = responder_cliente_com_historico_produto(mensagem_cliente, historico, produto, pedido)
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 🤖 Resposta gerada: {resposta_cliente}")
         # ============================================================================================
         # envia digitando e delay humanizado

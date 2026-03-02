@@ -1,3 +1,4 @@
+import json
 import logging
 import fitz  # pymupdf
 from pathlib import Path
@@ -6,6 +7,40 @@ from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 client = OpenAI()
+
+_TOOL_NOTIFICAR_ADMIN = {
+    "type": "function",
+    "function": {
+        "name": "notificar_admin",
+        "description": (
+            "Use quando não conseguir resolver: pedido de estorno, reembolso, devolução de valor, "
+            "ou qualquer pergunta que não está coberta pelo FAQ e contexto do produto. "
+            "NÃO use para perguntas normais sobre o produto que você sabe responder."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "motivo": {
+                    "type": "string",
+                    "enum": ["estorno", "pergunta_sem_resposta"],
+                    "description": "Categoria do problema"
+                },
+                "resumo": {
+                    "type": "string",
+                    "description": "Resumo curto do que o cliente disse/pediu"
+                }
+            },
+            "required": ["motivo", "resumo"]
+        }
+    }
+}
+
+_INSTRUCOES_ESCALAMENTO = (
+    "\n\n## ESCALAMENTO\n"
+    "Se o cliente pedir estorno, reembolso ou devolução, use a ferramenta notificar_admin.\n"
+    "Se não souber responder com certeza, use a ferramenta notificar_admin.\n"
+    "Após acionar a ferramenta, responda: \"Vou verificar com nossa equipe e te retorno em breve 🙏\""
+)
 
 
 def _ler_pdf_fonte(fonte: str) -> str:
@@ -25,7 +60,9 @@ def _ler_pdf_fonte(fonte: str) -> str:
         doc.close()
 
 
-def responder_cliente_com_historico_produto(pergunta: str, historico: list, produto: dict) -> str:
+def responder_cliente_com_historico_produto(
+    pergunta: str, historico: list, produto: dict, pedido: dict = None
+) -> str:
     prompt_vendas = str(produto.get('prompt_vendas') or '').strip()
     faq          = str(produto.get('faq') or '').strip()
     fonte_pdf    = str(produto.get('url_arquivo_produto') or '').strip()
@@ -46,6 +83,7 @@ def responder_cliente_com_historico_produto(pergunta: str, historico: list, prod
         system_prompt += f"\n\n=== FAQ E INFORMAÇÕES DO PRODUTO ===\n{faq}\n=== FIM DO FAQ ==="
     if pdf:
         system_prompt += f"\n\n=== CONTEÚDO DO PRODUTO ===\n{pdf}\n=== FIM DO CONTEÚDO ==="
+    system_prompt += _INSTRUCOES_ESCALAMENTO
 
     logger.info("[AGENTE] 📋 Contexto montado — prompt: %d chars | faq: %d chars | pdf: %d chars",
                 len(prompt_vendas), len(faq), len(pdf))
@@ -63,10 +101,33 @@ def responder_cliente_com_historico_produto(pergunta: str, historico: list, prod
         model="gpt-4o-mini",
         messages=messages,
         temperature=0.3,
-        max_tokens=300
+        max_tokens=300,
+        tools=[_TOOL_NOTIFICAR_ADMIN],
+        tool_choice="auto",
     )
 
-    resposta = (response.choices[0].message.content or "").strip()
+    choice = response.choices[0]
+
+    if choice.finish_reason == 'tool_calls':
+        tool_call = choice.message.tool_calls[0]
+        args   = json.loads(tool_call.function.arguments)
+        motivo = args.get('motivo', 'pergunta_sem_resposta')
+        resumo = args.get('resumo', '')
+        logger.info(f"[AGENTE] 🔧 Tool chamada: notificar_admin | motivo={motivo} | resumo={resumo[:80]}")
+
+        if pedido:
+            from whatsapp import notificar_admin_pedido
+            notificar_admin_pedido(pedido, (
+                f"🤖 *Agente escalou* — Pedido #{pedido.get('id')}\n\n"
+                f"Cliente: #{pedido.get('id')} — {pedido.get('contact_name')} ({pedido.get('contact_phone')})\n"
+                f"Motivo: *{motivo}*\n"
+                f"Resumo: {resumo}"
+            ))
+            logger.info(f"[AGENTE] 📲 Admin notificado — motivo: {motivo}")
+
+        return "Vou verificar com nossa equipe e te retorno em breve 🙏"
+
+    resposta = (choice.message.content or "").strip()
     if not resposta:
         logger.warning("[AGENTE] Resposta vazia da OpenAI. Retornando mensagem de contingência.")
         return "Perfeito! Vou verificar direitinho e já te respondo 🙏"

@@ -73,6 +73,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - SECRET_KEY=${SECRET_KEY}
+      - ADMIN_WHATSAPP_NUMBER=${ADMIN_WHATSAPP_NUMBER:-}
 
     volumes:
       - ./storage:/app/storage
@@ -112,6 +113,7 @@ services:
       - GOOGLE_ADS_SUBACCOUNT_ID=${GOOGLE_ADS_SUBACCOUNT_ID:-}
       - GOOGLE_ADS_META_ID=${GOOGLE_ADS_META_ID:-}
       - REDIS_URL=redis://redis:6379/0
+      - ADMIN_WHATSAPP_NUMBER=${ADMIN_WHATSAPP_NUMBER:-}
     volumes:
       - ./storage:/app/storage
     networks:

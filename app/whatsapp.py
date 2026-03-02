@@ -289,3 +289,20 @@ def enviar_imagem(pedido: Pedido, url_imagem: str):
 
     except Exception as e:
         raise ValueError(f"[IMAGEM-ENVIAR] ❌ Erro ao enviar imagem: {response.json()}")
+
+
+def notificar_admin_pedido(pedido: dict, mensagem: str):
+    """Envia notificação ao admin pelo mesmo número WhatsApp do produto (phone_number_id do pedido)."""
+    admin_phone = os.getenv('ADMIN_WHATSAPP_NUMBER', '').replace('+', '')
+    if not admin_phone:
+        logger.warning("[NOTIF-ADMIN] ADMIN_WHATSAPP_NUMBER não configurado — notificação ignorada")
+        return
+    pedido_admin = {
+        'phone_number_id': pedido.get('phone_number_id'),
+        'contact_phone': admin_phone,
+    }
+    try:
+        enviar_mensagem(pedido_admin, mensagem)
+        logger.info(f"[NOTIF-ADMIN] ✅ Notificação enviada para {admin_phone}")
+    except Exception as e:
+        logger.error(f"[NOTIF-ADMIN] ❌ Falha ao notificar admin: {e}")

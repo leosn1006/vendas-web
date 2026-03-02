@@ -78,6 +78,17 @@ def executar(pedido, mensagem_whatsapp):
                 nome_pagador=resultado.get('nome_pagador'),
                 data_pagamento=resultado.get('data_pagamento'),
             )
+            preco_produto = _to_float(produto.get('preco'), 0.0)
+            if preco_produto > 0 and valor_pago > preco_produto * 3:
+                from whatsapp import notificar_admin_pedido
+                notificar_admin_pedido(pedido, (
+                    f"⚠️ *Pagamento alto* — Pedido #{pedido_id}\n\n"
+                    f"Cliente: #{pedido_id} — {pedido.get('contact_name')} ({pedido.get('contact_phone')})\n"
+                    f"Valor pago: *R$ {valor_pago:.2f}* | Preço produto: R$ {preco_produto:.2f}\n"
+                    f"Pagador: {resultado.get('nome_pagador') or '—'}\n"
+                    f"Banco: {resultado.get('nome_banco') or '—'}"
+                ))
+                logger.info(f"[{_TAG}] 📲 Admin notificado — pagamento alto (R$ {valor_pago:.2f})")
 
         # ── Executa ações dinâmicas ───────────────────────────────────────
         todas_acoes = listar_acoes_fluxo(produto_id, 'comprovante')
