@@ -98,6 +98,9 @@ def webhook_receive():
 
 @app.get("/")
 def index():
+    host = request.host.lower()
+    if 'lsnlivros.com.br' in host:
+        return render_template('lsnlivros.html')
     return render_template('portifolio.html')
 
 @app.get("/portifolio")
