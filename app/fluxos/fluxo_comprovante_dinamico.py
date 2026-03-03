@@ -110,26 +110,30 @@ def executar(pedido, mensagem_whatsapp):
         comprovante_valido = bool(tokens_esperados) and all(
             token in destinatario_extraido for token in tokens_esperados
         ) # and (valor_pago >= valor_minimo)
-        condicao_ativa     = 'pagamento_valido' if comprovante_valido else 'pagamento_invalido'
-
-        logger.debug(f"[{_TAG}] 🤖 Válido: {comprovante_valido} → condicao='{condicao_ativa}' "
+        logger.debug(f"[{_TAG}] 🤖 Válido: {comprovante_valido} "
                      f"(valor={valor_pago:.2f} mín={valor_minimo:.2f}, dest='{destinatario_extraido}')")
 
-        # ── Persistência de pagamento (só se válido) ───────────────────────
+        # ── Persistência de pagamento (sempre) ────────────────────────────
+        preco_produto = _to_float(produto.get('preco'), 0.0)
+        if not comprovante_valido and valor_pago == 0.0:
+            valor_pago = preco_produto
+            logger.info(f"[{_TAG}] ⚠️ Valor não extraído — usando preço do produto R$ {valor_pago:.2f}")
+
+        atualizar_pedido_com_pagamento(
+            pedido_id,
+            valor_pago=valor_pago,
+            nome_banco=resultado.get('nome_banco'),
+            nome_pagador=resultado.get('nome_pagador'),
+            data_pagamento=_resolver_data_pagamento(
+                resultado.get('data_pagamento'),
+                pedido.get('data_contato_site'),
+            ),
+        )
+
+        # ── Notificações ao admin ─────────────────────────────────────────
+        from whatsapp import notificar_admin_pedido
         if comprovante_valido:
-            atualizar_pedido_com_pagamento(
-                pedido_id,
-                valor_pago=valor_pago,
-                nome_banco=resultado.get('nome_banco'),
-                nome_pagador=resultado.get('nome_pagador'),
-                data_pagamento=_resolver_data_pagamento(
-                    resultado.get('data_pagamento'),
-                    pedido.get('data_contato_site'),
-                ),
-            )
-            preco_produto = _to_float(produto.get('preco'), 0.0)
             if preco_produto > 0 and valor_pago > preco_produto * 3:
-                from whatsapp import notificar_admin_pedido
                 notificar_admin_pedido(pedido, (
                     f"⚠️ *Pagamento alto* — Pedido #{pedido_id}\n\n"
                     f"Cliente: #{pedido_id} — {pedido.get('contact_name')} ({pedido.get('contact_phone')})\n"
@@ -138,10 +142,26 @@ def executar(pedido, mensagem_whatsapp):
                     f"Banco: {resultado.get('nome_banco') or '—'}"
                 ))
                 logger.info(f"[{_TAG}] 📲 Admin notificado — pagamento alto (R$ {valor_pago:.2f})")
+        else:
+            razoes = []
+            if not (bool(tokens_esperados) and all(t in destinatario_extraido for t in tokens_esperados)):
+                razoes.append(
+                    f"Destinatário esperado: *{pix_esperado or '—'}*\n"
+                    f"Destinatário extraído: *{destinatario_extraido or '—'}*"
+                )
+            if resultado.get('valor') in (None, '', 0, '0'):
+                razoes.append("Valor não identificado no comprovante")
+            notificar_admin_pedido(pedido, (
+                f"⚠️ *Comprovante não validado* — Pedido #{pedido_id}\n\n"
+                f"Cliente: #{pedido_id} — {pedido.get('contact_name')} ({pedido.get('contact_phone')})\n"
+                f"Valor pago (usado): *R$ {valor_pago:.2f}*\n\n"
+                + ("\n".join(razoes) if razoes else "Motivo não identificado")
+            ))
+            logger.info(f"[{_TAG}] 📲 Admin notificado — comprovante não validado")
 
-        # ── Executa ações dinâmicas ───────────────────────────────────────
+        # ── Executa ações dinâmicas (sempre fluxo feliz para o cliente) ───
         todas_acoes = listar_acoes_fluxo(produto_id, 'comprovante')
-        acoes       = filtrar_e_ordenar(todas_acoes, ('sempre', condicao_ativa))
+        acoes       = filtrar_e_ordenar(todas_acoes, ('sempre', 'pagamento_valido'))
 
         if not acoes:
             raise ValueError(
@@ -149,13 +169,14 @@ def executar(pedido, mensagem_whatsapp):
                 f"do produto {produto_id}. Configure no admin em Fluxos > Comprovante."
             )
 
-        logger.debug(f"[{_TAG}] 📋 {len(acoes)} ação(ões) na sequência ({condicao_ativa}).")
+        status_validacao = 'valido' if comprovante_valido else 'nao_validado'
+        logger.debug(f"[{_TAG}] 📋 {len(acoes)} ação(ões) na sequência ({status_validacao}).")
 
         for acao in acoes:
             logger.debug(f"[{_TAG}] ▶ #{acao['ordem']} [{acao['acao']}] ({acao['condicao']})")
             executar_acao(acao, pedido, message_id, pedido_id, tag=_TAG)
 
-        logger.info(f"[{_TAG}] ✅ Fluxo concluído para pedido #{pedido_id} — {condicao_ativa}.")
+        logger.info(f"[{_TAG}] ✅ Fluxo concluído para pedido #{pedido_id} — {status_validacao}.")
         logger.info("=" * 120)
 
     except Exception as exc:
