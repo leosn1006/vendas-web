@@ -74,9 +74,15 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - SECRET_KEY=${SECRET_KEY}
       - ADMIN_WHATSAPP_NUMBER=${ADMIN_WHATSAPP_NUMBER:-}
+      - BB_PAY_CLIENT_ID=${BB_PAY_CLIENT_ID:-}
+      - BB_PAY_CLIENT_SECRET_BASIC=${BB_PAY_CLIENT_SECRET_BASIC:-}
+      - BB_PAY_APP_KEY=${BB_PAY_APP_KEY:-}
+      - BB_PAY_API_URL=${BB_PAY_API_URL:-https://checkout.mtls.api.bb.com.br/v2/}
+      - BB_PAY_OUATH_URL=${BB_PAY_OUATH_URL:-https://oauth.bb.com.br/oauth/token}
 
     volumes:
       - ./storage:/app/storage
+      - ./infra/nginx/certs:/app/certs:ro
     networks:
       - webnet
     healthcheck:
@@ -114,8 +120,14 @@ services:
       - GOOGLE_ADS_META_ID=${GOOGLE_ADS_META_ID:-}
       - REDIS_URL=redis://redis:6379/0
       - ADMIN_WHATSAPP_NUMBER=${ADMIN_WHATSAPP_NUMBER:-}
+      - BB_PAY_CLIENT_ID=${BB_PAY_CLIENT_ID:-}
+      - BB_PAY_CLIENT_SECRET_BASIC=${BB_PAY_CLIENT_SECRET_BASIC:-}
+      - BB_PAY_APP_KEY=${BB_PAY_APP_KEY:-}
+      - BB_PAY_API_URL=${BB_PAY_API_URL:-https://checkout.mtls.api.bb.com.br/v2/}
+      - BB_PAY_OUATH_URL=${BB_PAY_OUATH_URL:-https://oauth.bb.com.br/oauth/token}
     volumes:
       - ./storage:/app/storage
+      - ./infra/nginx/certs:/app/certs:ro
     networks:
       - webnet
 

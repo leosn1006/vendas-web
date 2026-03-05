@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Páscoa Lucrativa — Ovos de Colher para Fazer e Vender</title>
+    <meta name="description" content="Aprenda a fazer ovos de colher irresistíveis e lucre na Páscoa. Receitas testadas, ingredientes simples, entrega imediata no WhatsApp por apenas R$10.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --chocolate:  #3d1c02;
+            --marrom:     #5c2d0e;
+            --dourado:    #c47a0a;
+            --dourado-cl: #f0a01a;
+            --rosa:       #d4497a;
+            --rosa-cl:    #f06292;
+            --creme:      #fef8ee;
+            --cinza:      #666;
+            --branco:     #ffffff;
+            --sombra:     0 4px 24px rgba(0,0,0,0.10);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--creme);
+            color: var(--chocolate);
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* ── HERO ── */
+        .hero { width: 100%; background: var(--creme); }
+
+        .hero-capa-wrap {
+            position: relative;
+            padding: 20px 32px 0;
+        }
+
+        .hero-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+        }
+
+        .hero-badge-preco {
+            position: absolute;
+            top: 32px; right: 44px;
+            background: var(--rosa);
+            color: #fff;
+            font-family: 'Lato', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 8px 14px;
+            border-radius: 24px;
+            box-shadow: 0 3px 12px rgba(212,73,122,0.5);
+            animation: pulse 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .hero-content {
+            padding: 20px 24px 32px;
+            text-align: center;
+        }
+
+        .hero-tag {
+            display: inline-block;
+            background: var(--dourado-cl);
+            color: var(--chocolate);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 5px 14px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+        }
+
+        .hero-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--chocolate);
+            line-height: 1.15;
+            margin-bottom: 10px;
+        }
+
+        .hero-title span { color: var(--rosa); }
+
+        .hero-sub {
+            font-size: 15px;
+            color: var(--cinza);
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+
+        .hero-sub strong { color: var(--dourado); }
+
+        /* ── BOTÃO CTA ── */
+        .btn-cta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 18px 24px;
+            background: linear-gradient(135deg, #25d366, #128c3e);
+            color: #fff;
+            font-family: 'Lato', sans-serif;
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 24px rgba(37,211,102,0.45);
+            transition: transform 0.15s, box-shadow 0.15s;
+            text-decoration: none;
+        }
+
+        .btn-cta:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(37,211,102,0.5); }
+        .btn-cta:active { transform: translateY(0); }
+        .btn-cta svg { flex-shrink: 0; }
+
+        .btn-wrap { padding: 0 24px 40px; }
+
+        /* ── DIVISOR ── */
+        .divisor {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 24px;
+            margin: 8px 0 32px;
+        }
+
+        .divisor hr { flex: 1; border: none; border-top: 1px solid #ddd; }
+        .divisor span { font-size: 12px; color: #aaa; white-space: nowrap; }
+
+        /* ── SEÇÕES ── */
+        section { padding: 32px 24px; }
+        section + section { padding-top: 0; }
+
+        .section-label {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--rosa);
+            margin-bottom: 8px;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--marrom);
+            line-height: 1.25;
+            margin-bottom: 20px;
+        }
+
+        /* ── BENEFÍCIOS ── */
+        .beneficios-lista { display: flex; flex-direction: column; gap: 14px; }
+
+        .beneficio-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            background: #fff;
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: var(--sombra);
+            animation: fadeUp 0.5s ease both;
+        }
+
+        .beneficio-item:nth-child(2) { animation-delay: 0.1s; }
+        .beneficio-item:nth-child(3) { animation-delay: 0.2s; }
+        .beneficio-item:nth-child(4) { animation-delay: 0.3s; }
+        .beneficio-item:nth-child(5) { animation-delay: 0.4s; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .beneficio-icone {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            background: var(--creme);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .beneficio-texto strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--marrom);
+            margin-bottom: 3px;
+        }
+
+        .beneficio-texto span {
+            font-size: 13px;
+            color: var(--cinza);
+            line-height: 1.4;
+        }
+
+        /* ── RECEITAS ── */
+        .receitas-grid { display: flex; flex-direction: column; gap: 12px; }
+
+        .receita-card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 18px 16px;
+            box-shadow: var(--sombra);
+            border-left: 4px solid var(--dourado-cl);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .receita-num {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--dourado-cl);
+            line-height: 1;
+            min-width: 36px;
+        }
+
+        .receita-info strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--marrom);
+            margin-bottom: 3px;
+        }
+
+        .receita-info span { font-size: 12px; color: var(--cinza); }
+
+        .receitas-mais {
+            text-align: center;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--marrom), var(--dourado));
+            border-radius: 14px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        /* ── IMAGEM APOIO ── */
+        .img-apoio {
+            width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+            margin-bottom: 24px;
+        }
+
+        /* ── DEPOIMENTOS ── */
+        .depoimentos-lista { display: flex; flex-direction: column; gap: 14px; }
+
+        .depoimento-card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: var(--sombra);
+        }
+
+        .depoimento-aspas {
+            font-family: 'Playfair Display', serif;
+            font-size: 52px;
+            color: var(--dourado-cl);
+            line-height: 0.8;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .depoimento-texto {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 14px;
+            font-style: italic;
+        }
+
+        .depoimento-autor { display: flex; align-items: center; gap: 10px; }
+
+        .depoimento-avatar {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--dourado-cl), var(--rosa));
+            display: flex; align-items: center; justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .depoimento-nome strong { display: block; font-size: 13px; font-weight: 700; color: var(--marrom); }
+        .depoimento-nome span { font-size: 12px; color: var(--cinza); }
+
+        .estrelas { color: var(--dourado-cl); font-size: 13px; letter-spacing: 1px; }
+
+        /* ── FAQ ── */
+        .faq-lista { display: flex; flex-direction: column; gap: 10px; }
+
+        .faq-item {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: var(--sombra);
+            overflow: hidden;
+        }
+
+        .faq-pergunta {
+            width: 100%; background: none; border: none;
+            padding: 18px 20px;
+            text-align: left;
+            font-family: 'Lato', sans-serif;
+            font-size: 14px; font-weight: 700;
+            color: var(--marrom);
+            cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
+        }
+
+        .faq-chevron { flex-shrink: 0; font-size: 18px; color: var(--dourado); transition: transform 0.25s; }
+        .faq-item.aberto .faq-chevron { transform: rotate(180deg); }
+
+        .faq-resposta {
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s;
+            padding: 0 20px;
+            font-size: 14px; color: var(--cinza); line-height: 1.6;
+        }
+
+        .faq-item.aberto .faq-resposta { max-height: 200px; padding: 0 20px 18px; }
+
+        /* ── STRIP ── */
+        .strip {
+            background: var(--branco);
+            border-top: 1px solid #e8ddd0;
+            border-bottom: 1px solid #e8ddd0;
+            padding: 28px 24px;
+            text-align: center;
+        }
+
+        .strip-num {
+            font-family: 'Playfair Display', serif;
+            font-size: 40px; font-weight: 900; line-height: 1;
+            color: var(--rosa);
+        }
+
+        .strip-label { font-size: 13px; color: var(--cinza); margin-top: 4px; }
+
+        .strip-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        /* ── FOOTER ── */
+        footer { padding: 24px; text-align: center; border-top: 1px solid #e0d5c5; }
+        footer p { color: #aaa; font-size: 11px; margin-bottom: 10px; }
+
+        .footer-links {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+        }
+
+        .footer-links a { color: #888; text-decoration: none; font-size: 11px; padding: 4px 8px; border-radius: 4px; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--rosa); }
+        .footer-links span { color: #ccc; font-size: 11px; }
+
+        /* ── LOADER ── */
+        .loader-overlay {
+            position: fixed; inset: 0;
+            background: rgba(255,255,255,0.92);
+            display: none; align-items: center; justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(4px);
+        }
+
+        .loader-overlay.active { display: flex; }
+
+        .loader-box { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+
+        .spinner {
+            width: 52px; height: 52px;
+            border: 4px solid #e5e5e5;
+            border-top-color: var(--rosa);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loader-text { color: var(--rosa); font-size: 14px; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+    <div class="hero-capa-wrap">
+        <img src="/static/images/ovo_colher.png"
+             alt="Ovo de Colher de Páscoa — Páscoa Lucrativa"
+             class="hero-img">
+        <div class="hero-badge-preco">Apenas R$ 10,00</div>
+    </div>
+    <div class="hero-content">
+        <span class="hero-tag">Páscoa 2025 🐣</span>
+        <h1 class="hero-title">Ovos de Colher<br><span>Lucrativos</span></h1>
+        <p class="hero-sub">Aprenda a fazer ovos de colher <strong>irresistíveis</strong> e lucre vendendo na Páscoa — mesmo sem experiência.</p>
+        <button class="btn-cta" id="btnHero">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.097.543 4.066 1.496 5.774L0 24l6.418-1.467A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.655-.522-5.17-1.43l-.37-.22-3.81.872.927-3.701-.242-.382A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+            </svg>
+            QUERO RECEBER AGORA
+        </button>
+    </div>
+</section>
+
+<!-- ══ STRIP SOCIAL PROOF ══ -->
+<div class="strip">
+    <div class="strip-grid">
+        <div>
+            <div class="strip-num">30+</div>
+            <div class="strip-label">Receitas exclusivas</div>
+        </div>
+        <div>
+            <div class="strip-num">★ 4.9</div>
+            <div class="strip-label">Avaliação média</div>
+        </div>
+        <div>
+            <div class="strip-num">1k+</div>
+            <div class="strip-label">Vendedores lucrativos</div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ BENEFÍCIOS ══ -->
+<section>
+    <span class="section-label">O que você vai receber</span>
+    <h2 class="section-title">Tudo para lucrar muito nessa Páscoa</h2>
+    <div class="beneficios-lista">
+        <div class="beneficio-item">
+            <div class="beneficio-icone">🍫</div>
+            <div class="beneficio-texto">
+                <strong>30+ receitas irresistíveis testadas</strong>
+                <span>Brownie, Oreo, Ninho, Ferrero, Nutella e muito mais — todos aprovados na cozinha real.</span>
+            </div>
+        </div>
+        <div class="beneficio-item">
+            <div class="beneficio-icone">💰</div>
+            <div class="beneficio-texto">
+                <strong>Custo baixo, lucro alto</strong>
+                <span>Cada ovo custa menos de R$15 para fazer e pode ser vendido por R$45 a R$80.</span>
+            </div>
+        </div>
+        <div class="beneficio-item">
+            <div class="beneficio-icone">🛒</div>
+            <div class="beneficio-texto">
+                <strong>Ingredientes simples de encontrar</strong>
+                <span>Tudo no mercado do seu bairro. Sem importados, sem equipamentos especiais.</span>
+            </div>
+        </div>
+        <div class="beneficio-item">
+            <div class="beneficio-icone">📱</div>
+            <div class="beneficio-texto">
+                <strong>Entrega imediata no WhatsApp</strong>
+                <span>Assim que confirmar, você recebe o e-book em PDF direto na conversa.</span>
+            </div>
+        </div>
+        <div class="beneficio-item">
+            <div class="beneficio-icone">🎁</div>
+            <div class="beneficio-texto">
+                <strong>E-book surpresa de presente</strong>
+                <span>Quem enviar o comprovante ganha um segundo e-book grátis!</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="btn-wrap">
+    <button class="btn-cta" id="btnBeneficios">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.097.543 4.066 1.496 5.774L0 24l6.418-1.467A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.655-.522-5.17-1.43l-.37-.22-3.81.872.927-3.701-.242-.382A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+        </svg>
+        QUERO RECEBER AGORA
+    </button>
+</div>
+
+<!-- ══ PARA QUEM É ══ -->
+<section>
+    <span class="section-label">Feito para você</span>
+    <h2 class="section-title">Este e-book é para você que...</h2>
+    <div class="beneficios-lista">
+        <div class="beneficio-item">
+            <div class="beneficio-icone">💼</div>
+            <div class="beneficio-texto">
+                <strong>Quer uma renda extra na Páscoa</strong>
+                <span>Aproveitar a data mais lucrativa do ano para confeiteiros — sem precisar de experiência anterior.</span>
+            </div>
+        </div>
+        <div class="beneficio-item">
+            <div class="beneficio-icone">👩‍🍳</div>
+            <div class="beneficio-texto">
+                <strong>Já faz doces mas quer ampliar o cardápio</strong>
+                <span>Adicione os ovos de colher ao seu portfólio e aumente o ticket médio dos seus pedidos.</span>
+            </div>
+        </div>
+        <div class="beneficio-item">
+            <div class="beneficio-icone">🐣</div>
+            <div class="beneficio-texto">
+                <strong>Quer presentear com algo especial e diferente</strong>
+                <span>Faça ovos únicos para a sua família e impressione todo mundo sem gastar muito.</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ══ ANTES E DEPOIS ══ -->
+<section style="padding-top: 0;">
+    <span class="section-label">Compare a diferença</span>
+    <h2 class="section-title">Antes e depois do e-book</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div style="background: #fff0f0; border-radius: 14px; padding: 18px; border-top: 4px solid #e05050;">
+            <div style="font-size: 13px; font-weight: 700; color: #c0392b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;">Sem o e-book</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #e05050; font-size: 15px; flex-shrink: 0;">✕</span>
+                    Receitas da internet que não funcionam
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #e05050; font-size: 15px; flex-shrink: 0;">✕</span>
+                    Chocolate que solta da casca
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #e05050; font-size: 15px; flex-shrink: 0;">✕</span>
+                    Preço mal calculado, prejuízo
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #e05050; font-size: 15px; flex-shrink: 0;">✕</span>
+                    Recheio que azeda rápido
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #e05050; font-size: 15px; flex-shrink: 0;">✕</span>
+                    Páscoa que passa sem lucrar
+                </div>
+            </div>
+        </div>
+        <div style="background: #f0fff4; border-radius: 14px; padding: 18px; border-top: 4px solid #c47a0a;">
+            <div style="font-size: 13px; font-weight: 700; color: #5c2d0e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;">Com o e-book</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #c47a0a; font-size: 15px; flex-shrink: 0;">✓</span>
+                    30+ receitas testadas e aprovadas
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #c47a0a; font-size: 15px; flex-shrink: 0;">✓</span>
+                    Casca firme e recheio perfeito
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #c47a0a; font-size: 15px; flex-shrink: 0;">✓</span>
+                    Custo e preço de venda calculados
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #c47a0a; font-size: 15px; flex-shrink: 0;">✓</span>
+                    Conservação de até 7 dias
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #c47a0a; font-size: 15px; flex-shrink: 0;">✓</span>
+                    Acesso imediato por apenas R$10
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="btn-wrap" style="padding-top: 0;">
+    <button class="btn-cta" id="btnComparacao">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.097.543 4.066 1.496 5.774L0 24l6.418-1.467A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.655-.522-5.17-1.43l-.37-.22-3.81.872.927-3.701-.242-.382A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+        </svg>
+        QUERO RECEBER AGORA
+    </button>
+</div>
+
+<div class="divisor"><hr><span>alguns sabores do e-book</span><hr></div>
+
+<!-- ══ RECEITAS ══ -->
+<section>
+    <span class="section-label">Prévia do conteúdo</span>
+    <h2 class="section-title">Sabores que vendem sozinhos</h2>
+
+    <img src="/static/images/ovo_colher2.png"
+         alt="Ovo de Colher Oreo"
+         class="img-apoio">
+
+    <div class="receitas-grid">
+        <div class="receita-card">
+            <div class="receita-num">01</div>
+            <div class="receita-info">
+                <strong>Brownie com Ganache</strong>
+                <span>Casca de chocolate ao leite, brownie fudge e ganache escorrendo</span>
+            </div>
+        </div>
+        <div class="receita-card">
+            <div class="receita-num">02</div>
+            <div class="receita-info">
+                <strong>Oreo com Creme de Baunilha</strong>
+                <span>Biscoitos crocantes mergulhados em chantilly de baunilha</span>
+            </div>
+        </div>
+        <div class="receita-card">
+            <div class="receita-num">03</div>
+            <div class="receita-info">
+                <strong>Ninho com Nutella</strong>
+                <span>Mousse de leite Ninho com veios de Nutella — favorito dos clientes</span>
+            </div>
+        </div>
+        <div class="receita-card">
+            <div class="receita-num">04</div>
+            <div class="receita-info">
+                <strong>Ferrero Rocher</strong>
+                <span>Crocante de avelã, chocolate belga e recheio cremoso</span>
+            </div>
+        </div>
+        <div class="receita-card">
+            <div class="receita-num">05</div>
+            <div class="receita-info">
+                <strong>Red Velvet com Cream Cheese</strong>
+                <span>Casca vermelha, recheio aveludado e frutas vermelhas</span>
+            </div>
+        </div>
+        <div class="receitas-mais">
+            + 25 sabores incríveis no e-book completo 🐣
+        </div>
+    </div>
+</section>
+
+<div class="btn-wrap">
+    <button class="btn-cta" id="btnReceitas">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.097.543 4.066 1.496 5.774L0 24l6.418-1.467A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.655-.522-5.17-1.43l-.37-.22-3.81.872.927-3.701-.242-.382A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+        </svg>
+        QUERO RECEBER AGORA
+    </button>
+</div>
+
+<div class="divisor"><hr><span>quem já lucrou</span><hr></div>
+
+<!-- ══ DEPOIMENTOS ══ -->
+<section>
+    <span class="section-label">Depoimentos</span>
+    <h2 class="section-title">O que estão dizendo</h2>
+    <div class="depoimentos-lista">
+        <div class="depoimento-card">
+            <span class="depoimento-aspas">"</span>
+            <p class="depoimento-texto">Fiz minha primeira Páscoa vendendo ovos de colher com esse e-book. Comecei uma semana antes e vendi 47 unidades. Tive que fechar as encomendas porque não dava conta! Valeu cada centavo dos R$10.</p>
+            <div class="depoimento-autor">
+                <div class="depoimento-avatar">A</div>
+                <div class="depoimento-nome">
+                    <strong>Ana Cláudia M.</strong>
+                    <span>Goiânia — GO <span class="estrelas">★★★★★</span></span>
+                </div>
+            </div>
+        </div>
+        <div class="depoimento-card">
+            <span class="depoimento-aspas">"</span>
+            <p class="depoimento-texto">O ovo de Oreo que aprendi aqui virou o carro-chefe do meu ateliê. Já vendi mais de 200 unidades esse ano. As instruções são super claras e o recheio fica firme até o dia da entrega.</p>
+            <div class="depoimento-autor">
+                <div class="depoimento-avatar">P</div>
+                <div class="depoimento-nome">
+                    <strong>Patrícia Souza</strong>
+                    <span>Brasília — DF <span class="estrelas">★★★★★</span></span>
+                </div>
+            </div>
+        </div>
+        <div class="depoimento-card">
+            <span class="depoimento-aspas">"</span>
+            <p class="depoimento-texto">Nunca tinha feito ovo de colher antes. Comprei na sexta, estudei no final de semana e já na segunda-feira fiz um teste que ficou perfeito. Na Páscoa lucrei R$1.800 em 10 dias. Incrível!</p>
+            <div class="depoimento-autor">
+                <div class="depoimento-avatar">J</div>
+                <div class="depoimento-nome">
+                    <strong>Juliana Ferreira</strong>
+                    <span>Belo Horizonte — MG <span class="estrelas">★★★★★</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="btn-wrap">
+    <button class="btn-cta" id="btnDepoimentos">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.097.543 4.066 1.496 5.774L0 24l6.418-1.467A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.655-.522-5.17-1.43l-.37-.22-3.81.872.927-3.701-.242-.382A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+        </svg>
+        QUERO RECEBER AGORA
+    </button>
+</div>
+
+<div class="divisor"><hr><span>dúvidas frequentes</span><hr></div>
+
+<!-- ══ FAQ ══ -->
+<section>
+    <span class="section-label">FAQ</span>
+    <h2 class="section-title">Perguntas frequentes</h2>
+    <div class="faq-lista">
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Como vou receber o e-book?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">Assim que você clicar no botão e enviar a mensagem no WhatsApp, nossa equipe vai te atender e enviar o PDF direto na conversa. É tudo pelo WhatsApp, sem cadastro ou site externo.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Quanto custa o e-book?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">O e-book custa R$10,00. Após enviar a mensagem no WhatsApp, nossa equipe envia as instruções de pagamento via PIX e, após a confirmação, o PDF é entregue direto na conversa.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Preciso ter experiência em confeitaria?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">Não! As receitas foram escritas passo a passo para quem nunca fez ovo de colher. Se você sabe derreter chocolate, você consegue fazer.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Quanto posso ganhar vendendo?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">Cada ovo custa em média R$12–15 para produzir e pode ser vendido por R$45 a R$80, dependendo do sabor e tamanho. Com 20 unidades você já recupera o investimento em ingredientes com bom lucro.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Os recheios duram quanto tempo?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">As receitas foram desenvolvidas para durar de 5 a 7 dias em geladeira sem perder sabor ou textura — ideal para encomendas antecipadas na Páscoa.</div>
+        </div>
+    </div>
+</section>
+
+<div class="btn-wrap">
+    <button class="btn-cta" id="btnFaq">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.097.543 4.066 1.496 5.774L0 24l6.418-1.467A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.655-.522-5.17-1.43l-.37-.22-3.81.872.927-3.701-.242-.382A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+        </svg>
+        QUERO RECEBER AGORA
+    </button>
+</div>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+    <p><strong style="color:#777;">LSN Livros Digitais</strong> &nbsp;·&nbsp; © 2025. Todos os direitos reservados.</p>
+    <p style="margin-top:6px; font-size:10px; color:#bbb;">Para suporte ou dúvidas, acesse nossa <a href="/contato" style="color:#999; text-decoration:underline;">página de contato</a>.</p>
+    <div class="footer-links">
+        <a href="/politica-privacidade">Política de Privacidade</a>
+        <span>|</span>
+        <a href="/termos-de-uso">Termos de Uso</a>
+        <span>|</span>
+        <a href="/contato">Contato</a>
+    </div>
+    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e0d5c5; text-align: left;">
+        <p style="font-size: 10px; color: #bbb; line-height: 1.6; margin-bottom: 0;">
+            <strong style="color: #aaa;">AVISO LEGAL:</strong> Os resultados apresentados nos depoimentos são individuais e podem variar de pessoa para pessoa. Este produto é um e-book digital vendido por R$10,00 e entregue via WhatsApp após confirmação do pagamento. As receitas foram testadas em ambiente doméstico. Os valores de lucro mencionados são estimativas baseadas em experiências reais e não constituem garantia de resultado.
+        </p>
+    </div>
+</footer>
+
+<!-- ══ LOADER ══ -->
+<div id="loader" class="loader-overlay" aria-hidden="true">
+    <div class="loader-box">
+        <div class="spinner"></div>
+        <div class="loader-text">Preparando seu acesso…</div>
+    </div>
+</div>
+
+<script>
+    // ── FAQ accordion ──
+    document.querySelectorAll('.faq-pergunta').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.parentElement;
+            const aberto = item.classList.contains('aberto');
+            document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('aberto'));
+            if (!aberto) item.classList.add('aberto');
+        });
+    });
+
+    // ── WhatsApp redirect ──
+    const loader = document.getElementById('loader');
+    let emProcessamento = false;
+
+    function mostrarLoader() {
+        loader.classList.add('active');
+        document.body.style.pointerEvents = 'none';
+    }
+
+    function esconderLoader() {
+        loader.classList.remove('active');
+        document.body.style.pointerEvents = '';
+    }
+
+    async function irParaWhatsApp() {
+        if (emProcessamento) return;
+        emProcessamento = true;
+        mostrarLoader();
+
+        let numeroWhatsapp = '5561982155687';
+        let mensagemBaseWA = '😊 Olá, tenho interesse em saber mais sobre os ovos de colher';
+
+        const urlDaPaginaAtual = window.location.href;
+        const urlParams = new URLSearchParams(window.location.search);
+        const gclidCode  = urlParams.get('gclid') || '';
+        const campaignid = urlParams.get('gad_campaignid') || '';
+        const adgroupid  = urlParams.get('adgroupid') || '';
+        const creative   = urlParams.get('creative') || '';
+        const matchtype  = urlParams.get('matchtype') || '';
+        const device     = urlParams.get('device') || '';
+        const placement  = urlParams.get('placement') || '';
+        const video_id   = urlParams.get('video_id') || '';
+
+        const API_URL = 'https://lsnlivros.com.br/api/v1/webhook/gravar-lide';
+        const dadosParaEnviar = { gclid: gclidCode, url: urlDaPaginaAtual, campaignid, adgroupid, creative, matchtype, device, placement, video_id };
+
+        try {
+            const resp = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dadosParaEnviar)
+            });
+            if (resp.ok) {
+                const contentType = resp.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const data = await resp.json();
+                    if (data.whatsapp_numero?.trim()) numeroWhatsapp = data.whatsapp_numero.trim();
+                    if (data.mensagemBaseWA?.trim()) mensagemBaseWA = data.mensagemBaseWA.trim();
+                }
+            }
+        } catch (e) {
+            console.error('Erro ao chamar API de LIDE:', e);
+        }
+
+        const urlWhatsapp = 'https://wa.me/' + numeroWhatsapp + '?text=' + encodeURIComponent(mensagemBaseWA);
+
+        try {
+            const popup = window.open(urlWhatsapp, '_blank', 'noopener,noreferrer');
+            if (!popup) window.location.href = urlWhatsapp;
+        } finally {
+            esconderLoader();
+            emProcessamento = false;
+        }
+    }
+
+    ['btnHero', 'btnBeneficios', 'btnComparacao', 'btnReceitas', 'btnDepoimentos', 'btnFaq'].forEach(id => {
+        document.getElementById(id)?.addEventListener('click', irParaWhatsApp);
+    });
+</script>
+
+</body>
+</html>

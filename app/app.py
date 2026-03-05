@@ -127,6 +127,10 @@ def lanche():
 def paes_sem_gluten():
     return render_template('paes-sem-gluten-2.html')
 
+@app.get("/pascoa-lucrativa")
+def pascoa_lucrativa():
+    return render_template('pascoa-lucrativa.html')
+
 @app.post("/api/v1/webhook/gravar-lide")
 def gravar_lide():
     try:
