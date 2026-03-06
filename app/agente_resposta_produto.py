@@ -39,7 +39,7 @@ _INSTRUCOES_ESCALAMENTO = (
     "\n\n## ESCALAMENTO\n"
     "Se o cliente pedir estorno, reembolso ou devolução, use a ferramenta notificar_admin.\n"
     "Se não souber responder com certeza, use a ferramenta notificar_admin.\n"
-    "Após acionar a ferramenta, responda: \"Vou verificar com nossa equipe e te retorno em breve 🙏\""
+#    "Após acionar a ferramenta, responda: \"Vou verificar com nossa equipe e te retorno em breve 🙏\""
 )
 
 
@@ -92,10 +92,10 @@ def responder_cliente_com_historico_produto(
     messages.extend(historico)
     messages.append({"role": "user", "content": pergunta})
 
-    print("=== MENSAGENS ENVIADAS AO MODELO ===")
-    for msg in messages:
-        print(f"{msg['role'].upper()}: {msg['content'][:500]}{'...' if len(msg['content']) > 500 else ''}")
-    print("=== FIM DAS MENSAGENS ===")
+#    print("=== MENSAGENS ENVIADAS AO MODELO ===")
+#    for msg in messages:
+#        print(f"{msg['role'].upper()}: {msg['content'][:500]}{'...' if len(msg['content']) > 500 else ''}")
+#    print("=== FIM DAS MENSAGENS ===")g
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
