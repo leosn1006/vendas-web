@@ -39,7 +39,7 @@ _INSTRUCOES_ESCALAMENTO = (
     "\n\n## ESCALAMENTO\n"
     "Se o cliente pedir estorno, reembolso ou devolução, use a ferramenta notificar_admin.\n"
     "Se não souber responder com certeza, use a ferramenta notificar_admin.\n"
-#    "Após acionar a ferramenta, responda: \"Vou verificar com nossa equipe e te retorno em breve 🙏\""
+    "Após acionar a ferramenta, responda: \"Vou verificar te retorno em breve 🙏\""
 )
 
 
