@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_file
 from whatsapp_seguranca import whatsapp_security, validar_assinatura_whatsapp
 from lide_incluir import persistir_lide
 from notificacoes import notificador, notificar_erro
@@ -130,6 +130,41 @@ def paes_sem_gluten():
 @app.get("/pascoa-lucrativa")
 def pascoa_lucrativa():
     return render_template('pascoa-lucrativa.html')
+
+@app.get("/guia-paes")
+def guia_paes():
+    return render_template('guia-paes-sem-gluten.html')
+
+
+@app.post("/api/v1/pix/gerar")
+def pix_gerar():
+    from web_checkout import gerar_pix
+    return jsonify(gerar_pix(request.get_json(force=True, silent=True) or {}))
+
+
+@app.get("/api/v1/pix/status/<txid>")
+def pix_status(txid):
+    from web_checkout import verificar_pagamento
+    return jsonify(verificar_pagamento(txid))
+
+
+@app.get("/api/v1/produto/pdf/<int:pedido_id>")
+def servir_pdf(pedido_id):
+    from web_checkout import entregar_pdf
+    caminho, arquivo = entregar_pdf(pedido_id)
+    if caminho is None:
+        return jsonify({'error': 'Pagamento não confirmado'}), arquivo
+    return send_file(caminho, as_attachment=True, download_name=arquivo)
+
+
+@app.get("/api/v1/produto/pdf/<int:pedido_id>/bonus")
+def servir_pdf_bonus(pedido_id):
+    from web_checkout import entregar_pdf
+    caminho, arquivo = entregar_pdf(pedido_id, bonus=True)
+    if caminho is None:
+        return jsonify({'error': 'Pagamento não confirmado ou bônus não disponível'}), arquivo
+    return send_file(caminho, as_attachment=True, download_name=arquivo)
+
 
 @app.post("/api/v1/webhook/gravar-lide")
 def gravar_lide():

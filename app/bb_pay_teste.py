@@ -26,13 +26,19 @@ CERT_PEM = str(ROOT / 'infra/nginx/certs/lsnlivros_chain.pem')
 CERT_KEY = str(ROOT / 'infra/nginx/certs/lsnlivros.key')
 
 # ── Payload de teste ──────────────────────────────────────────────────────────
+PAYLOAD_CONSULTA = {
+    "geral": {
+        "numeroConvenio": 275513
+    }
+}
+
 PAYLOAD = {
     "geral": {
         "numeroConvenio": 275513,
         "timestampLimiteSolicitacao": "2026-04-30T03:00:00Z",
         "pagamentoUnico": True,
-        "valorSolicitacao": 10.9,
-        "codigoConciliacaoSolicitacao": "12",
+        "valorSolicitacao": 10.5,
+        "codigoConciliacaoSolicitacao": "13",
         "descricaoSolicitacao": "Teste primeiro",
         "urlCallback": ""
     },
@@ -49,21 +55,9 @@ PAYLOAD = {
         "telefone": 983012211,
         "cpfRepresentanteEmpresa": 0
     },
-    "vencimento": {
-        "data": "2026-03-20",
-        "multaValorFixo": 0,
-        "jurosPercentual": 0.2,
-        "descontos": [
-            {
-                "dataLimite": "2026-03-10",
-                "valorFixo": 1,
-                "valorPercentual": 0
-            }
-        ]
-    },
     "formasPagamento": [
         {
-            "codigoTipoPagamento": "BLT",
+            "codigoTipoPagamento": "PIX",
             "quantidadeParcelas": 1
         }
     ]
@@ -80,7 +74,7 @@ def get_token() -> str:
     }
     resp = requests.post(
         OAUTH_URL,
-        data={'grant_type': 'client_credentials', 'scope': 'checkout.solicitacoes-requisicao'},
+        data={'grant_type': 'client_credentials', 'scope': 'checkout.solicitacoes-requisicao checkout.solicitacoes-info checkout.pagamentos-info'},
         headers=headers,
         cert=(CERT_PEM, CERT_KEY),
         timeout=10,
@@ -92,7 +86,7 @@ def get_token() -> str:
 
 
 def criar_cobranca(token: str) -> dict:
-    url = f'{API_URL}/checkouts'
+    url = f'{API_URL}/solicitacoes'
     headers = {
         'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json',
@@ -122,6 +116,40 @@ def criar_cobranca(token: str) -> dict:
 
     return body
 
+def consultar_pagamento(token: str, id_solicitacao: str) -> dict:
+
+    PAYLOAD_CONSULTA = {
+    "geral": {
+        "numeroConvenio": 275513,
+        "numeroSolicitacao": id_solicitacao
+    }
+}
+    url = f'{API_URL}/pagamentos?numeroConvenio=275513&numeroSolicitacao={id_solicitacao}'
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'x-developer-application-key': APP_KEY,
+    }
+
+    logger.info(f'[CONSULTA] GET {url}')
+    resp = requests.get(
+        url,
+        headers=headers,
+        cert=(CERT_PEM, CERT_KEY),
+        timeout=15,
+    )
+
+    logger.info(f'[CONSULTA] Status: {resp.status_code}')
+    logger.debug(f'[CONSULTA] Headers resposta: {dict(resp.headers)}')
+
+    try:
+        body = resp.json()
+        logger.info(f'[CONSULTA] Resposta:\n{json.dumps(body, indent=2, ensure_ascii=False)}')
+    except Exception:
+        logger.info(f'[CONSULTA] Resposta (texto): {resp.text}')
+        body = resp.text
+
+    return body
 
 if __name__ == '__main__':
     print('=' * 60)
@@ -135,5 +163,6 @@ if __name__ == '__main__':
     token = get_token()
     print(f'\nToken obtido: {token[:20]}...\n')
 
-    resultado = criar_cobranca(token)
+    # resultado = criar_cobranca(token)
+    resultado = consultar_pagamento(token, '70659190')
     print('\n✅ Concluído')

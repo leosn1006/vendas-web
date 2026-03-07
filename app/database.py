@@ -391,6 +391,22 @@ def get_pedido(id_pedido):
     """
     return db.execute_query(query, (id_pedido,), fetch_one=True)
 
+def atualizar_txid_pedido(pedido_id: int, txid: str) -> None:
+    """Salva o txid do BB Pay no pedido."""
+    db.execute_query(
+        "UPDATE pedidos SET txid = %s WHERE id = %s",
+        (txid, pedido_id)
+    )
+
+
+def get_pedido_by_txid(txid: str):
+    """Busca um pedido pelo txid do BB Pay."""
+    return db.execute_query(
+        "SELECT * FROM pedidos WHERE txid = %s",
+        (txid,), fetch_one=True
+    )
+
+
 def get_ultimo_pedido_by_phone(contact_phone, produto_id):
     """
     Busca o último pedido de um contato pelo telefone.
@@ -782,4 +798,89 @@ def acertar_valor_pedido(pedido_id: int, valor_pago: float):
     db.execute_query(
         "UPDATE pedidos SET valor_pago = %s, estado_id = 0, data_pagamento = NOW() WHERE id = %s",
         (valor_pago, pedido_id)
+    )
+
+
+# ============================================================
+# Funções do fluxo Web Checkout (tabelas produto_web / pedido_web / pagamento_web)
+# Independentes do fluxo WhatsApp — não tocam na tabela pedidos
+# ============================================================
+
+def get_produto_web(produto_web_id: int):
+    """Retorna produto_web por id ou None."""
+    return db.execute_query(
+        "SELECT * FROM produto_web WHERE id = %s AND ativo = 1",
+        (produto_web_id,), fetch_one=True
+    )
+
+
+def criar_pedido_web(remetente_id: str, valor: float, gclid: str = '',
+                     phone_contact: str = '', campaignid: str = '',
+                     adgroupid: str = '', creative: str = '',
+                     matchtype: str = '', device: str = '',
+                     placement: str = '', video_id: str = '') -> int:
+    """Cria um pedido_web com estado=1 (Pedido criado). Retorna o id gerado."""
+    return db.execute_query(
+        """INSERT INTO pedido_web
+             (estado, valor, remetente_id, gclid, phone_contact,
+              campaignid, adgroupid, creative, matchtype, device, placement, video_id)
+           VALUES (1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+        (valor, remetente_id, gclid or '', phone_contact or '',
+         campaignid or '', adgroupid or '', creative or '',
+         matchtype or '', device or '', placement or '', video_id or '')
+    )
+
+
+def get_pedido_web(pedido_web_id: int):
+    """Retorna pedido_web por id ou None."""
+    return db.execute_query(
+        "SELECT * FROM pedido_web WHERE id = %s",
+        (pedido_web_id,), fetch_one=True
+    )
+
+
+def get_pedido_web_by_numero_solicitacao(numero_solicitacao: str):
+    """Retorna pedido_web pelo txid BB Pay ou None."""
+    return db.execute_query(
+        "SELECT * FROM pedido_web WHERE numero_solicitacao = %s",
+        (numero_solicitacao,), fetch_one=True
+    )
+
+
+def atualizar_numero_solicitacao_pedido_web(pedido_web_id: int, txid: str):
+    """Salva o txid BB Pay e avança estado para 2 (Aguardando pagamento)."""
+    db.execute_query(
+        "UPDATE pedido_web SET numero_solicitacao = %s, estado = 2 WHERE id = %s",
+        (txid, pedido_web_id)
+    )
+
+
+def atualizar_estado_pedido_web(pedido_web_id: int, estado: int):
+    """Atualiza o estado de um pedido_web."""
+    db.execute_query(
+        "UPDATE pedido_web SET estado = %s WHERE id = %s",
+        (estado, pedido_web_id)
+    )
+
+
+def atualizar_phone_name_pedido_web(pedido_web_id: int, phone_name: str):
+    """Preenche o nome do cliente após entrega via WhatsApp."""
+    db.execute_query(
+        "UPDATE pedido_web SET phone_name = %s WHERE id = %s",
+        (phone_name, pedido_web_id)
+    )
+
+
+def criar_pagamento_web(pedido_web_id: int, valor: float,
+                        tipo_pagamento: str = 'Pix',
+                        nome_pagador: str = '', id_pagador: str = '',
+                        e2e_pix: str = '', valor_tarifa: float = None) -> int:
+    """Registra o pagamento confirmado em pagamento_web. Retorna o id gerado."""
+    return db.execute_query(
+        """INSERT INTO pagamento_web
+             (pedido_web_id, valor, valor_tarifa, data_pagamento,
+              tipo_pagamento, id_pagador, nome_pagador, e2e_pix)
+           VALUES (%s, %s, %s, NOW(), %s, %s, %s, %s)""",
+        (pedido_web_id, valor, valor_tarifa,
+         tipo_pagamento, id_pagador or '', nome_pagador or '', e2e_pix or '')
     )
