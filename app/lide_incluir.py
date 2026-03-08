@@ -1,8 +1,7 @@
 import logging
 from agente_gera_mensagem_inicial import gera_mensagem_inicial_randomicamente
-from config import WHATSAPP_NUMBER
 from flask import jsonify
-from database import Pedido, criar_pedido
+from database import Pedido, criar_pedido, listar_telefones_produto
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +50,10 @@ def persistir_lide(body):
         )
         criar_pedido(pedido)
         print(f"[LIDE] ✅ Lide gravado com gclid: {gclide}")
+        telefones = listar_telefones_produto(produto)
+        whatsapp_numero = telefones[0]['telefone'] if telefones else "5561982155687"  # número padrão caso não haja telefone específico para o produto
         resposta = {
-            "whatsapp_numero": WHATSAPP_NUMBER[0],
+            "whatsapp_numero": whatsapp_numero,
             "emojiEscolhido" : emoji,
             "mensagemBaseWA" : texto
         }
