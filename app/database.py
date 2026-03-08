@@ -815,17 +815,19 @@ def get_produto_web(produto_web_id: int):
 
 
 def criar_pedido_web(remetente_id: str, valor: float, gclid: str = '',
-                     phone_contact: str = '', campaignid: str = '',
+                     phone_contact: str = '', nome_cliente: str = '',
+                     email: str = '', campaignid: str = '',
                      adgroupid: str = '', creative: str = '',
                      matchtype: str = '', device: str = '',
                      placement: str = '', video_id: str = '') -> int:
     """Cria um pedido_web com estado=1 (Pedido criado). Retorna o id gerado."""
     return db.execute_query(
         """INSERT INTO pedido_web
-             (estado, valor, remetente_id, gclid, phone_contact,
+             (estado, valor, remetente_id, gclid, phone_contact, nome_cliente, email,
               campaignid, adgroupid, creative, matchtype, device, placement, video_id)
-           VALUES (1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+           VALUES (1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
         (valor, remetente_id, gclid or '', phone_contact or '',
+         nome_cliente or '', email or '',
          campaignid or '', adgroupid or '', creative or '',
          matchtype or '', device or '', placement or '', video_id or '')
     )

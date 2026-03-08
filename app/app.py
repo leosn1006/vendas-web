@@ -8,6 +8,7 @@ from logging_setup import setup_rotating_file_logging
 from flask_login import LoginManager
 from admin import admin_bp
 from admin.auth import init_login_manager
+from web import web_bp
 import os
 import logging
 
@@ -30,6 +31,9 @@ registrar_error_handlers(app)
 # Registra o Blueprint do admin
 app.register_blueprint(admin_bp)
 init_login_manager(app)
+
+# Registra o Blueprint de web checkout
+app.register_blueprint(web_bp)
 
 # ============ ROTAS DA APLICAÇÃO ============
 
@@ -130,40 +134,6 @@ def paes_sem_gluten():
 @app.get("/pascoa-lucrativa")
 def pascoa_lucrativa():
     return render_template('pascoa-lucrativa.html')
-
-@app.get("/guia-paes")
-def guia_paes():
-    return render_template('guia-paes-sem-gluten.html')
-
-
-@app.post("/api/v1/pix/gerar")
-def pix_gerar():
-    from web_checkout import gerar_pix
-    return jsonify(gerar_pix(request.get_json(force=True, silent=True) or {}))
-
-
-@app.get("/api/v1/pix/status/<txid>")
-def pix_status(txid):
-    from web_checkout import verificar_pagamento
-    return jsonify(verificar_pagamento(txid))
-
-
-@app.get("/api/v1/produto/pdf/<int:pedido_id>")
-def servir_pdf(pedido_id):
-    from web_checkout import entregar_pdf
-    caminho, arquivo = entregar_pdf(pedido_id)
-    if caminho is None:
-        return jsonify({'error': 'Pagamento não confirmado'}), arquivo
-    return send_file(caminho, as_attachment=True, download_name=arquivo)
-
-
-@app.get("/api/v1/produto/pdf/<int:pedido_id>/bonus")
-def servir_pdf_bonus(pedido_id):
-    from web_checkout import entregar_pdf
-    caminho, arquivo = entregar_pdf(pedido_id, bonus=True)
-    if caminho is None:
-        return jsonify({'error': 'Pagamento não confirmado ou bônus não disponível'}), arquivo
-    return send_file(caminho, as_attachment=True, download_name=arquivo)
 
 
 @app.post("/api/v1/webhook/gravar-lide")

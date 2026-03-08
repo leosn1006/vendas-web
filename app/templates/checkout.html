@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout — {{ produto.descricao }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --verde:    #4a7c59;
+            --azul-bb:  #465EFF;
+            --amarelo-bb: #FCFC30;
+            --cinza-bg: #f5f5f5;
+            --borda:    #ddd;
+            --texto:    #222;
+            --sub:      #666;
+            --erro:     #c0392b;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--cinza-bg);
+            color: var(--texto);
+            min-height: 100vh;
+        }
+
+        /* ── Barra de segurança ── */
+        .barra-seguranca {
+            background: #465EFF;
+            color: #fff;
+            text-align: center;
+            padding: 7px 16px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .barra-seguranca strong { font-weight: 900; }
+
+        /* ── Container ── */
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 20px 16px 40px;
+        }
+
+        /* ── Card genérico ── */
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--borda);
+        }
+
+        /* ── Resumo do produto ── */
+        .resumo-label { font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+        .resumo-nome  { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+        .resumo-preco { font-size: 22px; font-weight: 900; color: var(--verde); }
+
+        /* ── Títulos de seção ── */
+        .secao-titulo {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 17px; font-weight: 700; margin-bottom: 18px;
+        }
+        .secao-num {
+            background: #222; color: #fff;
+            width: 26px; height: 26px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 900; flex-shrink: 0;
+        }
+
+        /* ── Inputs ── */
+        .campo { margin-bottom: 14px; }
+        .campo label { display: block; font-size: 13px; color: var(--sub); margin-bottom: 5px; }
+        .campo input {
+            width: 100%; border: 1.5px solid var(--borda);
+            border-radius: 8px; padding: 12px 14px;
+            font-size: 15px; font-family: 'Lato', sans-serif;
+            outline: none; transition: border-color .15s;
+        }
+        .campo input:focus { border-color: var(--verde); }
+        .campo input.erro  { border-color: var(--erro); }
+
+        /* ── Opções de pagamento ── */
+        .pagamento-opcao {
+            border: 2px solid var(--borda);
+            border-radius: 10px; padding: 14px 16px;
+            margin-bottom: 10px; cursor: pointer;
+            display: flex; align-items: center; gap: 14px;
+            transition: border-color .15s, background .15s;
+        }
+        .pagamento-opcao:hover  { border-color: #aaa; }
+        .pagamento-opcao.ativo  { border-color: var(--verde); background: #f0f7f3; }
+        .pagamento-opcao input[type=radio] { width: 18px; height: 18px; cursor: pointer; }
+
+        .pagamento-info { flex: 1; }
+        .pagamento-nome { font-weight: 700; font-size: 15px; }
+        .pagamento-sub  { font-size: 12px; color: var(--sub); margin-top: 2px; }
+
+        .pix-icon {
+            width: 36px; height: 36px;
+            background: #32BCAD; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .pix-icon svg { width: 22px; height: 22px; fill: #fff; }
+
+        .bbpay-icon {
+            width: 36px; height: 36px;
+            background: var(--azul-bb); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; font-weight: 900; font-size: 12px;
+            color: var(--amarelo-bb); letter-spacing: -0.5px;
+        }
+
+        /* ── Erros ── */
+        .msg-erro {
+            background: #fff5f5; border: 1px solid #f5c6cb;
+            border-radius: 8px; padding: 12px 14px;
+            color: var(--erro); font-size: 13px; margin-bottom: 14px;
+            display: none;
+        }
+        .msg-erro ul { padding-left: 18px; margin-top: 4px; }
+
+        /* ── Botão principal ── */
+        .btn-finalizar {
+            display: block; width: 100%;
+            background: var(--verde); color: #fff;
+            border: none; border-radius: 50px;
+            padding: 17px; font-size: 16px; font-weight: 900;
+            font-family: 'Lato', sans-serif; cursor: pointer;
+            transition: background .15s; letter-spacing: 0.5px;
+        }
+        .btn-finalizar:hover    { background: #3a6347; }
+        .btn-finalizar:disabled { background: #aaa; cursor: not-allowed; }
+
+        /* ── Estado: PIX QR Code ── */
+        #estado-pix { display: none; }
+        .qr-titulo  { font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+        .qr-preco   { text-align: center; font-size: 20px; font-weight: 900; color: var(--verde); margin-bottom: 16px; }
+        .qr-img     { display: block; margin: 0 auto 16px; max-width: 220px; width: 100%; border-radius: 8px; }
+
+        .copiaecola-wrap {
+            display: flex; gap: 8px; align-items: stretch;
+            border: 1.5px solid var(--borda); border-radius: 8px;
+            overflow: hidden; margin-bottom: 14px;
+        }
+        .copiaecola-txt {
+            flex: 1; padding: 10px 12px; font-size: 11px;
+            color: var(--sub); word-break: break-all;
+            font-family: monospace; line-height: 1.4;
+        }
+        .btn-copiar {
+            background: #f0f0f0; border: none; padding: 0 14px;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            font-family: 'Lato', sans-serif; flex-shrink: 0;
+        }
+        .btn-copiar:hover { background: #e0e0e0; }
+
+        .bbpay-separator {
+            display: flex; align-items: center; gap: 10px;
+            margin: 14px 0; color: #aaa; font-size: 12px;
+        }
+        .bbpay-separator::before, .bbpay-separator::after {
+            content: ''; flex: 1; height: 1px; background: var(--borda);
+        }
+        .btn-bbpay-link {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            width: 100%; background: var(--azul-bb); color: #fff;
+            text-decoration: none; border-radius: 50px;
+            padding: 14px 20px; font-size: 15px; font-weight: 700;
+            font-family: 'Lato', sans-serif; transition: background .15s;
+        }
+        .btn-bbpay-link:hover { background: #3349dd; }
+        .bbpay-logo-badge {
+            background: var(--amarelo-bb); color: var(--azul-bb);
+            font-weight: 900; font-size: 12px;
+            padding: 2px 7px; border-radius: 4px; line-height: 1.4;
+        }
+
+        .spinner-wrap {
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; color: var(--sub); font-size: 13px; margin-top: 14px;
+        }
+        .spinner {
+            width: 18px; height: 18px; border: 2px solid #ddd;
+            border-top-color: var(--verde); border-radius: 50%;
+            animation: spin .8s linear infinite; flex-shrink: 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Estado: sucesso ── */
+        #estado-sucesso { display: none; text-align: center; }
+        .sucesso-icone  { font-size: 48px; display: block; margin-bottom: 8px; }
+        .sucesso-titulo { font-size: 20px; font-weight: 900; margin-bottom: 8px; }
+        .sucesso-sub    { font-size: 14px; color: var(--sub); margin-bottom: 20px; }
+
+        .btn-download {
+            display: block; width: 100%;
+            background: var(--verde); color: #fff; text-decoration: none;
+            border-radius: 50px; padding: 16px;
+            font-size: 15px; font-weight: 700; font-family: 'Lato', sans-serif;
+            margin-bottom: 12px; transition: background .15s;
+        }
+        .btn-download:hover { background: #3a6347; }
+
+        .btn-bonus {
+            display: block; width: 100%;
+            background: #fff8e1; color: #b45309;
+            border: 2px solid #f59e0b; text-decoration: none;
+            border-radius: 50px; padding: 15px;
+            font-size: 15px; font-weight: 700; font-family: 'Lato', sans-serif;
+            margin-bottom: 12px; transition: background .15s;
+        }
+        .btn-bonus:hover { background: #fef3c7; }
+        .badge-bonus {
+            display: inline-block; background: #f59e0b; color: #fff;
+            font-size: 11px; font-weight: 700;
+            padding: 2px 10px; border-radius: 20px;
+            margin-bottom: 8px; letter-spacing: 0.5px;
+        }
+
+        /* ── Estado: fallback ── */
+        #estado-fallback { display: none; text-align: center; }
+
+        /* ── Rodapé ── */
+        .rodape {
+            text-align: center; font-size: 12px; color: #aaa; margin-top: 24px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="barra-seguranca">
+    🔒 Ambiente <strong>100% seguro</strong>. Seus dados estão protegidos.
+</div>
+
+<div class="container">
+
+    <!-- Resumo do produto -->
+    <div class="card">
+        <div class="resumo-label">Detalhes da sua compra:</div>
+        <div class="resumo-nome">{{ produto.descricao }}</div>
+        <div class="resumo-preco">R$ {{ "%.2f"|format(produto.preco) }}</div>
+    </div>
+
+    <!-- Formulário de checkout -->
+    <div id="estado-form">
+
+        <!-- Identificação -->
+        <div class="card">
+            <div class="secao-titulo">
+                <span class="secao-num">1</span> Identificação
+            </div>
+
+            <div class="campo">
+                <label for="inputNome">Nome completo</label>
+                <input type="text" id="inputNome" placeholder="Seu nome completo" autocomplete="name">
+            </div>
+            <div class="campo">
+                <label for="inputEmail">E-mail</label>
+                <input type="email" id="inputEmail" placeholder="seu@email.com" autocomplete="email">
+            </div>
+            <div class="campo">
+                <label for="inputWhatsapp">WhatsApp com DDD</label>
+                <input type="tel" id="inputWhatsapp" placeholder="(61) 98765-4321" maxlength="15" autocomplete="tel">
+            </div>
+        </div>
+
+        <!-- Pagamento -->
+        <div class="card">
+            <div class="secao-titulo">
+                <span class="secao-num">2</span> Forma de pagamento
+            </div>
+
+            <label class="pagamento-opcao ativo" id="opcaoPix">
+                <input type="radio" name="metodo" value="pix" checked>
+                <div class="pix-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div class="pagamento-info">
+                    <div class="pagamento-nome">PIX</div>
+                    <div class="pagamento-sub">Aprovação imediata</div>
+                </div>
+            </label>
+
+            <label class="pagamento-opcao" id="opcaoBBPay">
+                <input type="radio" name="metodo" value="bbpay">
+                <div class="bbpay-icon">BB</div>
+                <div class="pagamento-info">
+                    <div class="pagamento-nome">BB Pay</div>
+                    <div class="pagamento-sub">Pague pelo app Banco do Brasil</div>
+                </div>
+            </label>
+        </div>
+
+        <!-- Erros de validação -->
+        <div class="msg-erro" id="msgErro">
+            <strong>Preencha os campos obrigatórios:</strong>
+            <ul id="listaErros"></ul>
+        </div>
+
+        <button class="btn-finalizar" id="btnFinalizar">FINALIZAR COMPRA</button>
+
+    </div><!-- /estado-form -->
+
+    <!-- Estado: PIX QR Code -->
+    <div id="estado-pix" class="card" style="text-align:center;">
+        <div class="qr-titulo">Pague com PIX</div>
+        <div class="qr-preco" id="pixPreco"></div>
+        <img id="qrImg" class="qr-img" src="" alt="QR Code PIX">
+        <div class="copiaecola-wrap">
+            <span class="copiaecola-txt" id="qrTexto">Carregando...</span>
+            <button class="btn-copiar" id="btnCopiar">Copiar</button>
+        </div>
+        <div class="bbpay-separator"><span>OU</span></div>
+        <a id="linkBBPay" href="#" target="_blank" class="btn-bbpay-link" style="display:none;">
+            <span class="bbpay-logo-badge">BB</span>
+            <span>Pagar com <strong>BB Pay</strong></span>
+        </a>
+        <div class="spinner-wrap">
+            <div class="spinner"></div>
+            Aguardando confirmação do pagamento…
+        </div>
+    </div>
+
+    <!-- Estado: sucesso / download -->
+    <div id="estado-sucesso" class="card">
+        <span class="sucesso-icone">🎉</span>
+        <div class="sucesso-titulo">Pagamento confirmado!</div>
+        <p class="sucesso-sub">Seus materiais estão prontos para download. Aproveite cada receita!</p>
+        <a id="btnDownload" href="#" class="btn-download">⬇ Baixar Guia de Pães Sem Glúten</a>
+        <span class="badge-bonus">🎁 BÔNUS EXCLUSIVO</span>
+        <a id="btnDownloadBonus" href="#" class="btn-bonus">⬇ Baixar Livro de Bolos Sem Glúten</a>
+    </div>
+
+    <!-- Estado: fallback -->
+    <div id="estado-fallback" class="card" style="text-align:center;">
+        <div class="sucesso-titulo" style="font-size:17px;">Ops, algo deu errado</div>
+        <p class="sucesso-sub" style="margin-bottom:16px;">
+            Nosso sistema de pagamento está temporariamente indisponível.<br>Tente novamente em alguns instantes.
+        </p>
+        <button class="btn-finalizar" onclick="mostrarEstado('form')" style="max-width:240px;margin:0 auto;">
+            Tentar novamente
+        </button>
+    </div>
+
+    <div class="rodape">
+        Pagamento processado com segurança via BB Pay<br>
+        <a href="/politica-privacidade" style="color:#aaa;">Política de privacidade</a> ·
+        <a href="/termos-de-uso" style="color:#aaa;">Termos de uso</a>
+    </div>
+
+</div><!-- /container -->
+
+<script>
+    const PRODUTO_ID = {{ produto.id }};
+    const PRECO_DISPLAY = 'R$ {{ "%.2f"|format(produto.preco) }}'.replace('.', ',');
+
+    let currentTxid     = null;
+    let currentPedidoId = null;
+    let pollingTimer    = null;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const utmData = {
+        gclid:      urlParams.get('gclid')          || '',
+        campaignid: urlParams.get('gad_campaignid') || '',
+        adgroupid:  urlParams.get('adgroupid')      || '',
+        creative:   urlParams.get('creative')       || '',
+        matchtype:  urlParams.get('matchtype')      || '',
+        device:     urlParams.get('device')         || '',
+        placement:  urlParams.get('placement')      || '',
+        video_id:   urlParams.get('video_id')       || '',
+    };
+
+    // ── Opções de pagamento ──
+    document.querySelectorAll('input[name=metodo]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            document.querySelectorAll('.pagamento-opcao').forEach(el => el.classList.remove('ativo'));
+            radio.closest('.pagamento-opcao').classList.add('ativo');
+        });
+    });
+
+    // ── Máscara WhatsApp ──
+    document.getElementById('inputWhatsapp').addEventListener('input', function () {
+        let v = this.value.replace(/\D/g, '').slice(0, 11);
+        if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+        else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
+        else if (v.length > 0) v = `(${v}`;
+        this.value = v;
+    });
+
+    // ── Mostrar/esconder estados ──
+    function mostrarEstado(estado) {
+        ['estado-form', 'estado-pix', 'estado-sucesso', 'estado-fallback'].forEach(id => {
+            document.getElementById(id).style.display = 'none';
+        });
+        if (estado === 'form') document.getElementById('estado-form').style.display = 'block';
+        else document.getElementById('estado-' + estado).style.display = 'block';
+    }
+
+    // ── Validação ──
+    function validar() {
+        const erros = [];
+        const nome  = document.getElementById('inputNome').value.trim();
+        const email = document.getElementById('inputEmail').value.trim();
+        const wa    = document.getElementById('inputWhatsapp').value.replace(/\D/g, '');
+        const metodo = document.querySelector('input[name=metodo]:checked')?.value;
+
+        if (!nome)              erros.push('Nome completo');
+        if (!email || !email.includes('@')) erros.push('E-mail válido');
+        if (wa.length < 10)     erros.push('WhatsApp com DDD');
+        if (!metodo)            erros.push('Forma de pagamento');
+
+        const divErro = document.getElementById('msgErro');
+        const lista   = document.getElementById('listaErros');
+        if (erros.length > 0) {
+            lista.innerHTML = erros.map(e => `<li>${e}</li>`).join('');
+            divErro.style.display = 'block';
+            return null;
+        }
+        divErro.style.display = 'none';
+        return { nome, email, whatsapp: wa, metodo };
+    }
+
+    // ── Copiar código PIX ──
+    document.getElementById('btnCopiar').addEventListener('click', () => {
+        const txt = document.getElementById('qrTexto').textContent;
+        navigator.clipboard.writeText(txt).then(() => {
+            const btn = document.getElementById('btnCopiar');
+            btn.textContent = '✓';
+            setTimeout(() => btn.textContent = 'Copiar', 2000);
+        });
+    });
+
+    // ── Polling de status ──
+    function iniciarPolling() {
+        if (!currentTxid) return;
+        pollingTimer = setInterval(async () => {
+            try {
+                const resp = await fetch(`/api/v1/pix/status/${currentTxid}`);
+                const data = await resp.json();
+                if (data.pago) {
+                    clearInterval(pollingTimer);
+                    pollingTimer = null;
+                    pagamentoConfirmado();
+                }
+            } catch (e) { /* continua tentando */ }
+        }, 3000);
+    }
+
+    // ── Pagamento confirmado ──
+    function pagamentoConfirmado() {
+        localStorage.setItem('pedido_pago_' + PRODUTO_ID, currentPedidoId);
+        document.getElementById('btnDownload').href      = `/api/v1/produto/pdf/${currentPedidoId}`;
+        document.getElementById('btnDownloadBonus').href = `/api/v1/produto/pdf/${currentPedidoId}/bonus`;
+        mostrarEstado('sucesso');
+    }
+
+    // ── Verificar localStorage (já pagou?) ── [DESABILITADO PARA TESTES]
+    // const savedId = localStorage.getItem('pedido_pago_' + PRODUTO_ID);
+    // if (savedId) {
+    //     currentPedidoId = parseInt(savedId);
+    //     document.getElementById('btnDownload').href      = `/api/v1/produto/pdf/${currentPedidoId}`;
+    //     document.getElementById('btnDownloadBonus').href = `/api/v1/produto/pdf/${currentPedidoId}/bonus`;
+    //     mostrarEstado('sucesso');
+    // }
+
+    // ── Retorno do BB Pay (urlRetorno com ?pedido=) ──
+    const retornoPedidoId = urlParams.get('pedido');
+    if (retornoPedidoId && !savedId) {
+        fetch(`/api/v1/pix/pedido/${retornoPedidoId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.estado === 0) {
+                    currentPedidoId = parseInt(retornoPedidoId);
+                    pagamentoConfirmado();
+                } else if (data.txid) {
+                    currentTxid     = data.txid;
+                    currentPedidoId = parseInt(retornoPedidoId);
+                    mostrarEstado('pix');
+                    iniciarPolling();
+                }
+            })
+            .catch(() => { /* mantém o formulário */ });
+    }
+
+    // ── Finalizar compra ──
+    document.getElementById('btnFinalizar').addEventListener('click', async function () {
+        const dados = validar();
+        if (!dados) return;
+
+        this.disabled = true;
+        this.textContent = 'Processando...';
+
+        try {
+            const resp = await fetch('/api/v1/pix/gerar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ produto_id: PRODUTO_ID, ...dados, ...utmData }),
+            });
+            const data = await resp.json();
+            currentPedidoId = data.pedido_id;
+
+            if (data.fallback) {
+                mostrarEstado('fallback');
+                this.disabled = false;
+                this.textContent = 'FINALIZAR COMPRA';
+                return;
+            }
+
+            currentTxid = data.txid;
+
+            if (dados.metodo === 'bbpay' && data.url_solicitacao) {
+                // BB Pay: redireciona para o app/site BB Pay
+                window.location.href = data.url_solicitacao;
+                return;
+            }
+
+            // PIX: mostra QR Code e inicia polling
+            document.getElementById('pixPreco').textContent = PRECO_DISPLAY;
+            const qrImg = document.getElementById('qrImg');
+            if (data.qrcode_base64) {
+                qrImg.src = 'data:image/png;base64,' + data.qrcode_base64;
+            } else {
+                qrImg.style.display = 'none';
+            }
+            document.getElementById('qrTexto').textContent = data.qrcode_texto || '';
+            if (data.url_solicitacao) {
+                const linkBB = document.getElementById('linkBBPay');
+                linkBB.href = data.url_solicitacao;
+                linkBB.style.display = 'flex';
+            }
+            mostrarEstado('pix');
+            iniciarPolling();
+
+        } catch (err) {
+            console.error('[CHECKOUT]', err);
+            mostrarEstado('fallback');
+            this.disabled = false;
+            this.textContent = 'FINALIZAR COMPRA';
+        }
+    });
+</script>
+
+</body>
+</html>

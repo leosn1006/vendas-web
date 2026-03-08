@@ -37,7 +37,8 @@ def _get_token() -> str:
 
 
 def criar_solicitacao(valor: float, pedido_web_id: int,
-                      numero_convenio: int, descricao: str = '') -> dict:
+                      numero_convenio: int, descricao: str = '',
+                      url_retorno: str = '') -> dict:
     """
     Cria uma solicitação de cobrança PIX no BB Pay.
 
@@ -61,6 +62,7 @@ def criar_solicitacao(valor: float, pedido_web_id: int,
             'codigoConciliacaoSolicitacao': str(pedido_web_id),
             'descricaoSolicitacao':         descricao or f'Pedido #{pedido_web_id}',
             'urlCallback':                  '',
+            'urlRetorno':                   url_retorno,
         },
         'formasPagamento': [
             {'codigoTipoPagamento': 'PIX', 'quantidadeParcelas': 1}
@@ -129,30 +131,3 @@ def consultar_pagamentos(numero_solicitacao: int, numero_convenio: int) -> dict:
         'pago':      pagamento is not None,
         'pagamento': pagamento,
     }
-
-
-if __name__ == '__main__':
-    import json
-    import pathlib
-    from dotenv import load_dotenv
-
-    logging.basicConfig(level=logging.DEBUG, format='%(levelname)s %(message)s')
-
-    ROOT = pathlib.Path(__file__).parent.parent
-    os.environ.setdefault('BB_PAY_CERT_PEM', str(ROOT / 'infra/nginx/certs/lsnlivros_chain.pem'))
-    os.environ.setdefault('BB_PAY_CERT_KEY', str(ROOT / 'infra/nginx/certs/lsnlivros.key'))
-    load_dotenv(ROOT / '.env')
-
-    globals().update({
-        '_CLIENT_SECRET': os.getenv('BB_PAY_CLIENT_SECRET_BASIC', ''),
-        '_APP_KEY':       os.getenv('BB_PAY_APP_KEY', ''),
-        '_API_URL':       os.getenv('BB_PAY_API_URL', 'https://checkout.mtls.api.bb.com.br/v2/').rstrip('/'),
-        '_OAUTH_URL':     os.getenv('BB_PAY_OUATH_URL', 'https://oauth.bb.com.br/oauth/token'),
-        '_CERT_PEM':      os.environ['BB_PAY_CERT_PEM'],
-        '_CERT_KEY':      os.environ['BB_PAY_CERT_KEY'],
-    })
-
-    _conv = int(os.getenv('BB_PAY_NUMERO_CONVENIO', '0'))
-    resultado = criar_solicitacao(valor=19.90, pedido_web_id=0,
-                                  numero_convenio=_conv, descricao='Teste BB Pay')
-    print(json.dumps(resultado, indent=2, ensure_ascii=False))

@@ -899,7 +899,9 @@
     });
 
     ['btnHero', 'btnBeneficios', 'btnOferta', 'btnFaq'].forEach(id => {
-        document.getElementById(id)?.addEventListener('click', abrirModal);
+        document.getElementById(id)?.addEventListener('click', () => {
+            window.location.href = '/pay/1';
+        });
     });
 
     // ── Máscara de telefone ──

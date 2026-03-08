@@ -1,6 +1,6 @@
 """
 Script de teste — BB Pay (Boleto)
-Execução: cd app && python bb_pay_teste.py
+Execução: cd app && python web/bb_pay_teste.py
 """
 import os
 import json
@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
 
 # ── Configuração ──────────────────────────────────────────────────────────────
-ROOT = pathlib.Path(__file__).parent.parent
+ROOT = pathlib.Path(__file__).parent.parent.parent
 load_dotenv(ROOT / '.env')
 
 CLIENT_ID     = os.getenv('BB_PAY_CLIENT_ID', '')
@@ -26,12 +26,6 @@ CERT_PEM = str(ROOT / 'infra/nginx/certs/lsnlivros_chain.pem')
 CERT_KEY = str(ROOT / 'infra/nginx/certs/lsnlivros.key')
 
 # ── Payload de teste ──────────────────────────────────────────────────────────
-PAYLOAD_CONSULTA = {
-    "geral": {
-        "numeroConvenio": 275513
-    }
-}
-
 PAYLOAD = {
     "geral": {
         "numeroConvenio": 275513,
@@ -66,8 +60,6 @@ PAYLOAD = {
 
 def get_token() -> str:
     logger.info(f'[TOKEN] POST {OAUTH_URL}')
-    # BB_PAY_CLIENT_SECRET_BASIC já é o base64(client_id:client_secret) pronto
-    # Enviamos diretamente no header em vez de deixar requests re-encodar
     headers = {
         'Authorization': f'Basic {CLIENT_SECRET}',
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -116,14 +108,8 @@ def criar_cobranca(token: str) -> dict:
 
     return body
 
-def consultar_pagamento(token: str, id_solicitacao: str) -> dict:
 
-    PAYLOAD_CONSULTA = {
-    "geral": {
-        "numeroConvenio": 275513,
-        "numeroSolicitacao": id_solicitacao
-    }
-}
+def consultar_pagamento(token: str, id_solicitacao: str) -> dict:
     url = f'{API_URL}/pagamentos?numeroConvenio=275513&numeroSolicitacao={id_solicitacao}'
     headers = {
         'Authorization': f'Bearer {token}',
@@ -150,6 +136,7 @@ def consultar_pagamento(token: str, id_solicitacao: str) -> dict:
         body = resp.text
 
     return body
+
 
 if __name__ == '__main__':
     print('=' * 60)

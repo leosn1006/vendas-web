@@ -20,7 +20,7 @@ def _gerar_qrcode_base64(texto: str) -> str:
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def gerar_pix(body: dict) -> dict:
+def gerar_pix(body: dict, url_base: str = '') -> dict:
     """
     Cria um pedido_web e gera uma solicitação PIX no BB Pay.
 
@@ -28,11 +28,11 @@ def gerar_pix(body: dict) -> dict:
       txid, qrcode_texto, url_solicitacao, valor, pedido_id
       (ou fallback=True com qrcode_texto = chave_pix_fallback)
     """
-    from bb_pay import criar_solicitacao
+    from web.bb_pay import criar_solicitacao
     from database import (get_produto_web, criar_pedido_web,
                           atualizar_numero_solicitacao_pedido_web)
 
-    produto_web_id = 1  # Guia Pães Sem Glúten
+    produto_web_id = int(body.get('produto_id', 1))
     produto = get_produto_web(produto_web_id)
     valor = float(os.getenv('CHECKOUT_VALOR_TESTE') or (produto.get('preco', 19.90) if produto else 19.90))
     numero_convenio = int(produto.get('numero_convenio', 0)) if produto else 0
@@ -42,6 +42,8 @@ def gerar_pix(body: dict) -> dict:
         valor=valor,
         gclid=body.get('gclid', ''),
         phone_contact=body.get('whatsapp', ''),
+        nome_cliente=body.get('nome', ''),
+        email=body.get('email', ''),
         campaignid=body.get('campaignid', ''),
         adgroupid=body.get('adgroupid', ''),
         creative=body.get('creative', ''),
@@ -52,8 +54,12 @@ def gerar_pix(body: dict) -> dict:
     )
 
     try:
+        if not url_base:
+            url_base = os.getenv('APP_BASE_URL', 'http://localhost').rstrip('/')
+        url_retorno = f'{url_base}/pay/{produto_web_id}?pedido={pedido_web_id}'
         qr = criar_solicitacao(valor=valor, pedido_web_id=pedido_web_id,
-                               numero_convenio=numero_convenio)
+                               numero_convenio=numero_convenio,
+                               url_retorno=url_retorno)
         atualizar_numero_solicitacao_pedido_web(pedido_web_id, str(qr['numero_solicitacao']))
         qrcode_b64 = _gerar_qrcode_base64(qr['qrcode_texto']) if qr['qrcode_texto'] else ''
         return {
@@ -80,7 +86,7 @@ def verificar_pagamento(txid: str) -> dict:
 
     Retorna {'pago': bool} (ou {'pago': False, 'erro': True} em caso de falha).
     """
-    from bb_pay import consultar_pagamentos
+    from web.bb_pay import consultar_pagamentos
     from database import (get_pedido_web_by_numero_solicitacao, get_produto_web,
                           atualizar_estado_pedido_web, criar_pagamento_web)
     try:
@@ -129,5 +135,5 @@ def entregar_pdf(pedido_id: int, bonus: bool = False):
             return None, 404
     else:
         arquivo = produto.get('url_pdf', 'paes-sem-gluten.pdf') if produto else 'paes-sem-gluten.pdf'
-    caminho = os.path.join(os.path.dirname(__file__), '..', 'static', 'arquivos', arquivo)
+    caminho = os.path.join(os.path.dirname(__file__), '..', '..', 'static', 'arquivos', arquivo)
     return caminho, arquivo
