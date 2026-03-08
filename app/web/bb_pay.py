@@ -49,7 +49,7 @@ def criar_solicitacao(valor: float, pedido_web_id: int,
       - valor              : float
     """
     token = _get_token()
-
+    logger.info(f'[BB-PAY] Criando solicitação — pedido #{pedido_web_id} valor={valor:.2f}, url_retorno="{url_retorno}"')
     # Limite de 24 h a partir de agora (UTC)
     limite = (datetime.now(timezone.utc) + timedelta(hours=24)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
