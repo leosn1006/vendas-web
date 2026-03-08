@@ -533,12 +533,9 @@
     <span class="hero-badge">Acesso imediato</span>
     <h1>Volte a sentir o prazer de comer pães <em>quentinhos</em> sem medo de inflamar o corpo</h1>
     <p class="hero-sub">Um método simples para fazer pães sem glúten em casa, que ficam fofinhos de verdade e custam pouco</p>
-    <div class="btn-wrap" style="padding: 0;">
-        <button class="btn-cta" id="btnHero">
-            QUERO MEU GUIA + BÔNUS AGORA
-        </button>
-        <p class="btn-sub" style="color: rgba(255,255,255,.7); margin-top: 10px;">🔒 Pagamento seguro via PIX &nbsp;·&nbsp; Acesso imediato</p>
-    </div>
+    <img src="/static/images/capa-paes-sem-gluten.webp"
+         alt="Capa do Guia Pães Sem Glúten"
+         style="width:100%;max-width:340px;display:block;margin:20px auto 0;border-radius:8px;">
 </section>
 
 <!-- ══ STRIP ══ -->
@@ -611,13 +608,6 @@
         </div>
     </div>
 </section>
-
-<div class="btn-wrap">
-    <button class="btn-cta" id="btnBeneficios">
-        QUERO MEU GUIA + BÔNUS AGORA
-    </button>
-    <p class="btn-sub">De <s>R$47</s> por apenas R$19,90 — acesso imediato</p>
-</div>
 
 <div class="divisor"><hr><span>quem já comprou</span><hr></div>
 
@@ -898,7 +888,7 @@
         if (e.target === document.getElementById('modalPix')) fecharModal();
     });
 
-    ['btnHero', 'btnBeneficios', 'btnOferta', 'btnFaq'].forEach(id => {
+    ['btnOferta', 'btnFaq'].forEach(id => {
         document.getElementById(id)?.addEventListener('click', () => {
             window.location.href = '/pay/1';
         });

@@ -21,8 +21,11 @@ def persistir_lide(body):
         video_id = body.get('video_id', "")
         if "paes-sem-gluten" in url:
             produto = 1
+        elif "pascoa-lucrativa" in url:
+            produto = 6
         else:
-            produto = 1 # produto padrão para campanhas desconhecidas, pode ser ajustado para criar regras específicas por URL ou campanha
+            produto = 1  # produto padrão para campanhas desconhecidas, pode ser ajustado para criar regras específicas por URL ou campanha
+
         texto, emoji = gera_mensagem_inicial_randomicamente(produto)
 
         # preeche o dict Pedido com os dados necessários
