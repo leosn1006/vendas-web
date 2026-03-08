@@ -471,22 +471,22 @@
     // }
 
     // ── Retorno do BB Pay (urlRetorno com ?pedido=) ──
+    // ?pedido= tem prioridade: sempre verifica no backend, ignora localStorage
     const retornoPedidoId = urlParams.get('pedido');
-    if (retornoPedidoId && !savedId) {
+    if (retornoPedidoId) {
+        mostrarEstado('pix');
         fetch(`/api/v1/pix/pedido/${retornoPedidoId}`)
             .then(r => r.json())
             .then(data => {
-                if (data.estado === 0) {
-                    currentPedidoId = parseInt(retornoPedidoId);
-                    pagamentoConfirmado();
-                } else if (data.txid) {
-                    currentTxid     = data.txid;
-                    currentPedidoId = parseInt(retornoPedidoId);
-                    mostrarEstado('pix');
+                currentPedidoId = parseInt(retornoPedidoId);
+                if (data.txid) {
+                    currentTxid = data.txid;
                     iniciarPolling();
+                } else {
+                    mostrarEstado('form');
                 }
             })
-            .catch(() => { /* mantém o formulário */ });
+            .catch(() => mostrarEstado('form'));
     }
 
     // ── Finalizar compra ──
