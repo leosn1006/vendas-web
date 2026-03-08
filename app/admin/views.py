@@ -335,10 +335,10 @@ def clonar_produto(produto_id):
             flash('Produto não encontrado.', 'danger')
             return redirect(url_for('admin.listar_produtos'))
 
-        # Insere uma cópia com nome diferente
-        db.execute_query("""
+        # Insere uma cópia com nome diferente; execute_query retorna lastrowid
+        novo_id = db.execute_query("""
             INSERT INTO produtos (
-                nome, preco, descricao, prompt_vendas,
+                nome, preco, descricao, prompt_vendas, faq,
                 url_faq_produto, url_audio_introducao, url_audio_explicativo,
                 url_audio_pedido_entregue, url_imagem_complementar,
                 url_arquivo_produto, caption_arquivo_produto, nome_arquivo_produto,
@@ -349,13 +349,14 @@ def clonar_produto(produto_id):
                 caption_arquivo_surpresa, nome_arquivo_surpresa, ativo
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
         """, (
             f"Cópia de {produto['nome']}",  # nome diferente para identificar
             produto['preco'],
             produto['descricao'],
             produto['prompt_vendas'],
+            produto['faq'],
             produto['url_faq_produto'],
             produto['url_audio_introducao'],
             produto['url_audio_explicativo'],
@@ -377,18 +378,40 @@ def clonar_produto(produto_id):
             produto['nome_arquivo_surpresa'],
             0  # inativo por padrão — força o admin a revisar antes de ativar
         ))
+        contador_acoes = 0
+        contador_mensagens = 0
 
-        # Busca o ID do produto recém criado
-        novo = db.execute_query(
-            "SELECT id FROM produtos WHERE nome = %s ORDER BY created_at DESC LIMIT 1",
-            (f"Cópia de {produto['nome']}",), fetch_one=True
-        )
+        # Clonar mensagens sugeridas
+        mensagens_originais = listar_mensagens_sugeridas(produto_id)
+        for msg in mensagens_originais:
+            adicionar_mensagem_sugerida(novo_id, msg['mensagem'])
+            contador_mensagens += 1
 
-        flash(f'Produto clonado com sucesso! Revise e ative quando estiver pronto.', 'success')
-        logger.info(f"[ADMIN] ✅ Produto #{produto_id} clonado por {current_user.email}")
+        # Clonar ações de fluxo para todos os 5 fluxos
+        for fluxo in _FLUXOS:
+            acoes_originais = listar_acoes_fluxo(produto_id, fluxo)
+            for acao in acoes_originais:
+                adicionar_acao_fluxo(
+                    produto_id=novo_id,
+                    fluxo=acao['fluxo'],
+                    ordem=acao['ordem'],
+                    condicao=acao['condicao'],
+                    acao=acao['acao'],
+                    url=acao['url'],
+                    mensagem=acao['mensagem'],
+                    caption=acao['caption'],
+                    nome_arquivo=acao['nome_arquivo'],
+                    delay_inicial=acao['delay_inicial'],
+                    delay_final=acao['delay_final']
+                )
+                contador_acoes += 1
 
-        # Redireciona direto para edição do clone
-        return redirect(url_for('admin.editar_produto', produto_id=novo['id']))
+        flash(f'Produto clonado com sucesso! {contador_acoes} ações e {contador_mensagens} mensagens copiadas. Revise e ative quando estiver pronto.', 'success')
+        logger.info(f"[ADMIN] ✅ Produto #{produto_id} clonado (#{novo_id}) por {current_user.email} - {contador_acoes} ações, {contador_mensagens} mensagens")
+
+        # Seleciona o clone como produto ativo e vai para os submenus
+        session['produto_ativo_id'] = novo_id
+        return redirect(url_for('admin.dados_basicos_produto', produto_id=novo_id))
 
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro ao clonar produto: {e}")
