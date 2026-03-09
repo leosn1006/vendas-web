@@ -922,9 +922,10 @@ def listar_arquivos():
     aba = request.args.get('aba', 'pdf')
     if aba not in _UPLOAD_CONFIG:
         aba = 'pdf'
-    pdfs   = _listar_arquivos('arquivos')
-    audios = _listar_arquivos('audios')
-    return render_template('admin/arquivos.html', aba=aba, pdfs=pdfs, audios=audios)
+    pdfs     = _listar_arquivos('arquivos')
+    audios   = _listar_arquivos('audios')
+    base_url = os.getenv('APP_BASE_URL', request.host_url.rstrip('/')).rstrip('/')
+    return render_template('admin/arquivos.html', aba=aba, pdfs=pdfs, audios=audios, base_url=base_url)
 
 
 @admin_bp.route('/arquivos/upload', methods=['POST'])
