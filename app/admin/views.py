@@ -1,6 +1,8 @@
 import logging
 import os
 import datetime
+import subprocess
+import tempfile
 from flask import render_template, redirect, url_for, request, flash, session, current_app
 from flask_login import current_user
 from werkzeug.utils import secure_filename
@@ -831,8 +833,63 @@ def remover_acao_fluxo_view(produto_id, fluxo, acao_id):
 
 _UPLOAD_CONFIG = {
     'pdf':   {'ext': '.pdf', 'magic': b'%PDF', 'max_mb': 10, 'subdir': 'arquivos'},
-    'audio': {'ext': '.ogg', 'magic': b'OggS', 'max_mb': 5,  'subdir': 'audios'},
+    'audio': {'subdir': 'audios'},
 }
+
+_AUDIO_EXTS = {'.ogg', '.mp3', '.wav', '.m4a'}
+
+
+def _e_ogg_opus(caminho):
+    """Retorna True se o arquivo já for OGG com codec Opus."""
+    with open(caminho, 'rb') as f:
+        cabecalho = f.read(64)
+    return cabecalho[:4] == b'OggS' and b'OpusHead' in cabecalho
+
+
+def _converter_para_opus(caminho_entrada):
+    """Converte qualquer áudio para ogg/opus com bitrate ajustado para ficar ≤ 490KB.
+    Retorna (caminho_saida, erro). caminho_saida é None em caso de erro."""
+    # Descobrir duração
+    try:
+        result = subprocess.run([
+            'ffprobe', '-v', 'error',
+            '-show_entries', 'format=duration',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            caminho_entrada
+        ], capture_output=True, text=True, timeout=30, check=True)
+        duracao = float(result.stdout.strip() or '0')
+    except Exception:
+        duracao = 0
+
+    # Bitrate dinâmico: manter resultado ≤ 490KB (com margem de 10KB)
+    if duracao > 0:
+        bitrate = max(12, min(32, int(480 * 8 / duracao)))
+    else:
+        bitrate = 32
+
+    fd, caminho_saida = tempfile.mkstemp(suffix='_opus.ogg')
+    os.close(fd)
+
+    try:
+        subprocess.run([
+            'ffmpeg', '-y', '-i', caminho_entrada,
+            '-c:a', 'libopus', '-b:a', f'{bitrate}k',
+            '-vn', caminho_saida
+        ], capture_output=True, timeout=120, check=True)
+    except subprocess.CalledProcessError:
+        if os.path.exists(caminho_saida):
+            os.remove(caminho_saida)
+        return None, 'Erro na conversão. Verifique se o arquivo é um áudio válido.'
+    except subprocess.TimeoutExpired:
+        if os.path.exists(caminho_saida):
+            os.remove(caminho_saida)
+        return None, 'Conversão demorou demais. Tente um arquivo menor.'
+
+    if os.path.getsize(caminho_saida) > 500 * 1024:
+        os.remove(caminho_saida)
+        return None, 'Áudio muito longo. Máximo suportado: aproximadamente 4 minutos.'
+
+    return caminho_saida, None
 
 
 def _listar_arquivos(subdir):
@@ -885,35 +942,79 @@ def upload_arquivo():
         flash('Nenhum arquivo selecionado.', 'warning')
         return redirect(url_for('admin.listar_arquivos', aba=tipo))
 
-    nome = secure_filename(arquivo.filename)
-    ext  = os.path.splitext(nome)[1].lower()
-
-    if ext != cfg['ext']:
-        flash(f'Extensão inválida. Use apenas {cfg["ext"]}.', 'danger')
-        return redirect(url_for('admin.listar_arquivos', aba=tipo))
-
-    # Verificar magic bytes (conteúdo real)
-    cabecalho = arquivo.read(4)
-    arquivo.seek(0)
-    if cabecalho[:len(cfg['magic'])] != cfg['magic']:
-        flash(f'Arquivo inválido. O conteúdo não corresponde ao formato {cfg["ext"]}.', 'danger')
-        return redirect(url_for('admin.listar_arquivos', aba=tipo))
-
-    # Verificar tamanho
-    arquivo.seek(0, 2)
-    tamanho_mb = arquivo.tell() / (1024 * 1024)
-    arquivo.seek(0)
-    if tamanho_mb > cfg['max_mb']:
-        flash(f'Arquivo muito grande. Máximo permitido: {cfg["max_mb"]}MB.', 'danger')
-        return redirect(url_for('admin.listar_arquivos', aba=tipo))
-
-    pasta   = os.path.join(current_app.static_folder, cfg['subdir'])
+    nome_original = secure_filename(arquivo.filename)
+    ext           = os.path.splitext(nome_original)[1].lower()
+    pasta         = os.path.join(current_app.static_folder, cfg['subdir'])
     os.makedirs(pasta, exist_ok=True)
-    caminho = os.path.join(pasta, nome)
-    arquivo.save(caminho)
 
-    logger.info(f"[ADMIN] ✅ Arquivo '{nome}' ({tipo}) enviado por {current_user.email}")
-    flash(f'Arquivo "{nome}" enviado com sucesso!', 'success')
+    # ── PDF ────────────────────────────────────────────────────
+    if tipo == 'pdf':
+        if ext != cfg['ext']:
+            flash('Extensão inválida. Use apenas .pdf.', 'danger')
+            return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+        cabecalho = arquivo.read(4)
+        arquivo.seek(0)
+        if cabecalho[:4] != cfg['magic']:
+            flash('Arquivo inválido. O conteúdo não corresponde a um PDF.', 'danger')
+            return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+        arquivo.seek(0, 2)
+        tamanho_mb = arquivo.tell() / (1024 * 1024)
+        arquivo.seek(0)
+        if tamanho_mb > cfg['max_mb']:
+            flash(f'PDF muito grande. Máximo permitido: {cfg["max_mb"]}MB.', 'danger')
+            return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+        caminho = os.path.join(pasta, nome_original)
+        arquivo.save(caminho)
+        logger.info(f"[ADMIN] ✅ PDF '{nome_original}' enviado por {current_user.email}")
+        flash(f'PDF "{nome_original}" enviado com sucesso!', 'success')
+
+    # ── Áudio (converte para OGG/Opus ≤ 500KB) ──────────────────
+    elif tipo == 'audio':
+        if ext not in _AUDIO_EXTS:
+            flash(f'Formato não suportado. Use: {", ".join(sorted(_AUDIO_EXTS))}.', 'danger')
+            return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+        # Salvar arquivo de entrada em temp
+        fd_in, caminho_temp = tempfile.mkstemp(suffix=ext)
+        os.close(fd_in)
+        nome_base  = os.path.splitext(nome_original)[0]
+        nome_final = nome_base + '.ogg'
+        destino    = os.path.join(pasta, nome_final)
+
+        try:
+            arquivo.save(caminho_temp)
+
+            # Verificar se já é OGG/Opus válido — pula a conversão
+            if _e_ogg_opus(caminho_temp):
+                tamanho_kb = os.path.getsize(caminho_temp) / 1024
+                if tamanho_kb > 500:
+                    flash(f'Áudio muito grande ({tamanho_kb:.0f} KB). Máximo permitido: 500 KB.', 'danger')
+                    return redirect(url_for('admin.listar_arquivos', aba=tipo))
+                import shutil
+                shutil.copy2(caminho_temp, destino)
+                msg = f'Áudio "{nome_final}" salvo ({tamanho_kb:.0f} KB) — já estava em OGG/Opus.'
+            else:
+                caminho_opus, erro = _converter_para_opus(caminho_temp)
+                if erro:
+                    flash(erro, 'danger')
+                    return redirect(url_for('admin.listar_arquivos', aba=tipo))
+                try:
+                    os.replace(caminho_opus, destino)
+                except Exception:
+                    import shutil
+                    shutil.move(caminho_opus, destino)
+                tamanho_kb = os.path.getsize(destino) / 1024
+                msg = f'Áudio "{nome_final}" convertido para OGG/Opus ({tamanho_kb:.0f} KB) e salvo com sucesso!'
+        finally:
+            if os.path.exists(caminho_temp):
+                os.remove(caminho_temp)
+
+        logger.info(f"[ADMIN] ✅ Áudio '{nome_final}' ({tamanho_kb:.0f}KB) enviado por {current_user.email}")
+        flash(msg, 'success')
+
     return redirect(url_for('admin.listar_arquivos', aba=tipo))
 
 

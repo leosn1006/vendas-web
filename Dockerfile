@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     curl \
     poppler-utils \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

@@ -77,7 +77,7 @@
             <div class="form-group" style="flex:1; min-width:220px;">
                 <label>Selecionar arquivo</label>
                 <input type="file" name="arquivo"
-                       accept="{% if aba == 'pdf' %}.pdf{% else %}.ogg{% endif %}"
+                       accept="{% if aba == 'pdf' %}.pdf{% else %}.ogg,.mp3,.wav,.m4a{% endif %}"
                        required
                        style="padding: 8px; cursor: pointer;">
             </div>
@@ -89,7 +89,7 @@
             {% if aba == 'pdf' %}
                 Somente arquivos <strong>.pdf</strong> — máximo 10 MB
             {% else %}
-                Somente arquivos <strong>.ogg</strong> — máximo 5 MB
+                Aceita <strong>.ogg, .mp3, .wav, .m4a</strong> — convertido automaticamente para OGG/Opus &le; 500 KB (máximo ~4 minutos)
             {% endif %}
         </p>
     </form>
