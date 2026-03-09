@@ -507,6 +507,10 @@
            class="nav-link {% if request.endpoint in ['admin.fluxos_overview','admin.fluxo_acoes','admin.editar_acao_fluxo'] %}active{% endif %}">
             <span class="icon">⚙️</span> Fluxos
         </a>
+        <a href="{{ url_for('admin.analytics_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.analytics_produto' %}active{% endif %}">
+            <span class="icon">📊</span> Analytics
+        </a>
         <a href="{{ url_for('admin.conversas_produto', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint in ['admin.conversas_produto','admin.conversa_pedido'] %}active{% endif %}">
             <span class="icon">💬</span> Conversas

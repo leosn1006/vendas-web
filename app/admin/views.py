@@ -1044,3 +1044,103 @@ def remover_arquivo():
     logger.info(f"[ADMIN] ✅ Arquivo '{nome_seguro}' removido por {current_user.email}")
     flash(f'Arquivo "{nome_seguro}" removido.', 'success')
     return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+
+# ============================================================
+# Analytics por produto
+# ============================================================
+
+_SQL_FUNIL = """
+    SELECT
+        COUNT(*)                                               AS total_leads,
+        COUNT(CASE WHEN estado_id = 1 THEN 1 END)             AS clicou_sem_wpp,
+        COUNT(CASE WHEN estado_id = 2 THEN 1 END)             AS recebeu_intro,
+        COUNT(CASE WHEN interesse_produto = 1 THEN 1 END)     AS interesse_sim,
+        COUNT(CASE WHEN interesse_produto = 0 THEN 1 END)     AS interesse_nao,
+        COUNT(CASE WHEN interesse_produto IS NULL THEN 1 END)  AS interesse_pendente,
+        COUNT(CASE WHEN estado_id = 3 THEN 1 END)             AS pedido_sem_pagamento
+    FROM pedidos
+    WHERE produto_id = %s
+      AND data_contato_site BETWEEN %s AND %s
+"""
+
+_SQL_RECEITA = """
+    SELECT
+        COUNT(*)                                                      AS total_pagamentos,
+        COALESCE(SUM(valor_pago), 0)                                  AS total_receita,
+        COUNT(CASE WHEN data_followup IS NOT NULL THEN 1 END)         AS com_followup,
+        COALESCE(SUM(CASE WHEN data_followup IS NOT NULL THEN valor_pago END), 0) AS receita_com_followup,
+        COUNT(CASE WHEN data_followup IS NULL THEN 1 END)             AS sem_followup,
+        COALESCE(SUM(CASE WHEN data_followup IS NULL THEN valor_pago END), 0)     AS receita_sem_followup
+    FROM pedidos
+    WHERE produto_id = %s
+      AND estado_id = 0
+      AND data_pagamento BETWEEN %s AND %s
+"""
+
+_SQL_CAMPANHAS = """
+    SELECT
+        COALESCE(NULLIF(campaignid, ''), 'Campanha não informada') AS campanha,
+        COUNT(*)                AS quantidade,
+        COALESCE(SUM(valor_pago), 0) AS total
+    FROM pedidos
+    WHERE produto_id = %s
+      AND estado_id = 0
+      AND data_pagamento BETWEEN %s AND %s
+    GROUP BY campaignid
+    ORDER BY total DESC
+"""
+
+
+@admin_bp.route('/produto/<int:produto_id>/analytics')
+@requer_login
+def analytics_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    hoje = datetime.date.today()
+    data_ini_str = request.args.get('data_ini', hoje.isoformat())
+    data_fim_str = request.args.get('data_fim', hoje.isoformat())
+
+    try:
+        data_ini = datetime.datetime.fromisoformat(data_ini_str)
+        data_fim = datetime.datetime.fromisoformat(data_fim_str) + datetime.timedelta(days=1, seconds=-1)
+    except ValueError:
+        data_ini = datetime.datetime.combine(hoje, datetime.time.min)
+        data_fim  = datetime.datetime.combine(hoje, datetime.time.max)
+        data_ini_str = data_fim_str = hoje.isoformat()
+
+    try:
+        funil     = db.execute_query(_SQL_FUNIL,     (produto_id, data_ini, data_fim), fetch_one=True)
+        receita   = db.execute_query(_SQL_RECEITA,   (produto_id, data_ini, data_fim), fetch_one=True)
+        campanhas = db.execute_query(_SQL_CAMPANHAS, (produto_id, data_ini, data_fim), fetch_all=True)
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro no analytics produto #{produto_id}: {e}")
+        flash('Erro ao carregar analytics.', 'danger')
+        funil = receita = None
+        campanhas = []
+
+    # Calcular taxas no Python (zero custo extra de query)
+    conv_intro  = 0.0
+    conv_pagamento = 0.0
+    ticket_medio   = 0.0
+    if funil and funil['recebeu_intro']:
+        conv_intro = round(funil['total_leads'] / funil['recebeu_intro'] * 100, 1) if funil['recebeu_intro'] else 0
+    if receita and receita['total_pagamentos']:
+        ticket_medio = float(receita['total_receita']) / receita['total_pagamentos']
+    if funil and receita and funil['recebeu_intro']:
+        conv_pagamento = round(receita['total_pagamentos'] / funil['recebeu_intro'] * 100, 1)
+
+    return render_template('admin/produto_analytics.html',
+        produto        = produto,
+        funil          = funil,
+        receita        = receita,
+        campanhas      = campanhas,
+        data_ini       = data_ini_str,
+        data_fim       = data_fim_str,
+        ticket_medio   = ticket_medio,
+        conv_pagamento = conv_pagamento,
+        conv_intro     = conv_intro,
+    )
