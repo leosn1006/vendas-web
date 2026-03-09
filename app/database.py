@@ -562,6 +562,7 @@ def buscar_pedidos_followup( horas_sem_atualizacao: int) -> list:
         WHERE estado_id = 3 -- estado 'produto enviado, aguardando pagamento'
         AND data_envio_pedido < NOW() - INTERVAL %s HOUR
         AND contact_phone IS NOT NULL
+        AND interesse_produto = 1
     """
     return db.execute_query(query, (horas_sem_atualizacao,), fetch_all=True)
 

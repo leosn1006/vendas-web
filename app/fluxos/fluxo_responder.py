@@ -38,7 +38,10 @@ def executar(pedido, mensagem_whatsapp):
         # ============================================================================================
         # marcar mensagem como lida
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 📥 Marcando mensagem como lida...")
-        marcar_como_lida(message_id, pedido.get('phone_number_id'))
+        try:
+            marcar_como_lida(message_id, pedido.get('phone_number_id'))
+        except Exception as exc_lida:
+            logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] ⚠️ Falha ao marcar como lida (não crítico): {exc_lida}")
         # ============================================================================================
         # busca histórico ANTES de salvar a mensagem atual para evitar duplicação no contexto do agente
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 📚 Buscando histórico do pedido #{pedido_id}...")
@@ -54,7 +57,10 @@ def executar(pedido, mensagem_whatsapp):
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 🤖 Resposta gerada: {resposta_cliente}")
         # ============================================================================================
         # envia digitando e delay humanizado
-        enviar_mensagem_digitando(message_id, pedido.get('phone_number_id'))
+        try:
+            enviar_mensagem_digitando(message_id, pedido.get('phone_number_id'))
+        except Exception as exc_digitando:
+            logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] ⚠️ Falha ao enviar digitando (não crítico): {exc_digitando}")
         delay = random.uniform(5.0, 8.0)
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] ⏳ Aguardando {delay:.1f}s...")
         time.sleep(delay)
