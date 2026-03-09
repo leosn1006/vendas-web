@@ -113,7 +113,7 @@
 </div>
 
 <!-- Filtro de período -->
-<form method="GET" action="" class="period-form">
+<form method="GET" action="{{ request.path }}" class="period-form">
     <div class="form-group">
         <label>Data inicial</label>
         <input type="date" name="data_ini" value="{{ data_ini }}" style="width:160px;">
@@ -273,7 +273,7 @@ function setDias(dias) {
     const fmt = d => d.toISOString().split('T')[0];
     document.querySelector('[name=data_ini]').value = fmt(ini);
     document.querySelector('[name=data_fim]').value = fmt(fim);
-    document.querySelector('form').submit();
+    document.querySelector('.period-form').submit();
 }
 </script>
 {% endblock %}
