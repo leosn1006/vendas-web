@@ -72,7 +72,7 @@ def enviar_audio(pedido: Pedido, url_audio: str):
             "type": "audio",
             "audio": {
              "link": url_audio,
-             "voice": "true"
+             "voice": True
             }
         }
 
