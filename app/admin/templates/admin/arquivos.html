@@ -1,0 +1,185 @@
+{% extends "admin/base.html" %}
+{% block title %}Arquivos{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 2px solid var(--border);
+        margin-bottom: 24px;
+    }
+    .tab-link {
+        padding: 10px 24px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--muted);
+        text-decoration: none;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-link:hover { color: var(--text); }
+    .tab-link.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .upload-area {
+        border: 2px dashed var(--border);
+        border-radius: 10px;
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .upload-area:focus-within { border-color: var(--accent); }
+
+    .file-url {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        word-break: break-all;
+        max-width: 320px;
+    }
+
+    .actions-cell { white-space: nowrap; display: flex; gap: 6px; align-items: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">📁 Arquivos</h1>
+        <p class="page-subtitle">PDFs e áudios disponíveis para uso nos fluxos</p>
+    </div>
+</div>
+
+<!-- Abas -->
+<div class="tabs">
+    <a href="{{ url_for('admin.listar_arquivos', aba='pdf') }}"
+       class="tab-link {% if aba == 'pdf' %}active{% endif %}">
+        📄 PDFs
+    </a>
+    <a href="{{ url_for('admin.listar_arquivos', aba='audio') }}"
+       class="tab-link {% if aba == 'audio' %}active{% endif %}">
+        🔊 Áudios
+    </a>
+</div>
+
+{% if current_user.is_admin() %}
+<!-- Formulário de upload (somente admin) -->
+<div class="card" style="margin-bottom: 24px;">
+    <h3 style="font-size:15px; font-weight:600; margin-bottom:16px;">
+        {% if aba == 'pdf' %}Enviar novo PDF{% else %}Enviar novo Áudio (.ogg){% endif %}
+    </h3>
+    <form method="POST" action="{{ url_for('admin.upload_arquivo') }}" enctype="multipart/form-data">
+        <input type="hidden" name="tipo" value="{{ aba }}">
+        <div class="upload-area">
+            <div class="form-group" style="flex:1; min-width:220px;">
+                <label>Selecionar arquivo</label>
+                <input type="file" name="arquivo"
+                       accept="{% if aba == 'pdf' %}.pdf{% else %}.ogg{% endif %}"
+                       required
+                       style="padding: 8px; cursor: pointer;">
+            </div>
+            <button type="submit" class="btn btn-primary" style="align-self:flex-end;">
+                ⬆ Enviar
+            </button>
+        </div>
+        <p style="font-size:12px; color:var(--muted); margin-top:10px;">
+            {% if aba == 'pdf' %}
+                Somente arquivos <strong>.pdf</strong> — máximo 10 MB
+            {% else %}
+                Somente arquivos <strong>.ogg</strong> — máximo 5 MB
+            {% endif %}
+        </p>
+    </form>
+</div>
+{% endif %}
+
+<!-- Listagem de arquivos -->
+<div class="card">
+    {% set lista = pdfs if aba == 'pdf' else audios %}
+    {% set subdir = 'arquivos' if aba == 'pdf' else 'audios' %}
+
+    {% if lista %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Tamanho</th>
+                    <th>Modificado</th>
+                    <th>URL</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for arq in lista %}
+                {% set url_arq = request.host_url.rstrip('/') + url_for('static', filename=subdir + '/' + arq.nome) %}
+                <tr>
+                    <td style="font-family:var(--mono); font-size:13px;">{{ arq.nome }}</td>
+                    <td style="color:var(--muted); font-size:13px;">{{ arq.tamanho_fmt }}</td>
+                    <td style="color:var(--muted); font-size:13px;">{{ arq.modificado_fmt }}</td>
+                    <td><span class="file-url">{{ url_arq }}</span></td>
+                    <td>
+                        <div class="actions-cell">
+                            <button class="btn btn-ghost btn-sm"
+                                    onclick="copiarUrl('{{ url_arq }}', this)"
+                                    title="Copiar URL">
+                                📋 Copiar
+                            </button>
+                            <a href="{{ url_arq }}" target="_blank" rel="noopener"
+                               class="btn btn-ghost btn-sm" title="Abrir em nova aba">
+                                🔗 Testar
+                            </a>
+                            {% if current_user.is_admin() %}
+                            <form method="POST" action="{{ url_for('admin.remover_arquivo') }}"
+                                  style="display:inline;"
+                                  onsubmit="return confirm('Remover o arquivo \'{{ arq.nome }}\'?\nEsta ação não pode ser desfeita.');">
+                                <input type="hidden" name="tipo" value="{{ aba }}">
+                                <input type="hidden" name="nome" value="{{ arq.nome }}">
+                                <button type="submit" class="btn btn-danger btn-sm">✕ Remover</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="text-align:center; color:var(--muted); padding:40px 0;">
+        Nenhum arquivo encontrado.
+        {% if current_user.is_admin() %}Use o formulário acima para enviar o primeiro arquivo.{% endif %}
+    </p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copiarUrl(url, btn) {
+    navigator.clipboard.writeText(url).then(() => {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✓ Copiado!';
+        btn.style.color = 'var(--accent2)';
+        setTimeout(() => {
+            btn.innerHTML = orig;
+            btn.style.color = '';
+        }, 2000);
+    }).catch(() => {
+        // fallback para browsers sem clipboard API
+        const tmp = document.createElement('textarea');
+        tmp.value = url;
+        document.body.appendChild(tmp);
+        tmp.select();
+        document.execCommand('copy');
+        document.body.removeChild(tmp);
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✓ Copiado!';
+        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+    });
+}
+</script>
+{% endblock %}

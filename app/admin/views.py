@@ -1,6 +1,9 @@
 import logging
-from flask import render_template, redirect, url_for, request, flash, session
+import os
+import datetime
+from flask import render_template, redirect, url_for, request, flash, session, current_app
 from flask_login import current_user
+from werkzeug.utils import secure_filename
 from admin import admin_bp
 from admin.auth import requer_login, requer_admin
 from database import (db,
@@ -820,3 +823,123 @@ def remover_acao_fluxo_view(produto_id, fluxo, acao_id):
         logger.error(f"[ADMIN] ❌ Erro ao remover ação: {e}")
         flash(f'Erro ao remover ação: {e}', 'danger')
     return redirect(url_for('admin.fluxo_acoes', produto_id=produto_id, fluxo=fluxo))
+
+
+# ============================================================
+# Arquivos (PDF e Áudio OGG)
+# ============================================================
+
+_UPLOAD_CONFIG = {
+    'pdf':   {'ext': '.pdf', 'magic': b'%PDF', 'max_mb': 10, 'subdir': 'arquivos'},
+    'audio': {'ext': '.ogg', 'magic': b'OggS', 'max_mb': 5,  'subdir': 'audios'},
+}
+
+
+def _listar_arquivos(subdir):
+    pasta = os.path.join(current_app.static_folder, subdir)
+    os.makedirs(pasta, exist_ok=True)
+    resultado = []
+    for nome in sorted(os.listdir(pasta)):
+        caminho = os.path.join(pasta, nome)
+        if not os.path.isfile(caminho):
+            continue
+        stat = os.stat(caminho)
+        size = stat.st_size
+        if size < 1024:
+            tamanho_fmt = f'{size} B'
+        elif size < 1024 * 1024:
+            tamanho_fmt = f'{size / 1024:.1f} KB'
+        else:
+            tamanho_fmt = f'{size / (1024 * 1024):.1f} MB'
+        resultado.append({
+            'nome': nome,
+            'tamanho_fmt': tamanho_fmt,
+            'modificado_fmt': datetime.datetime.fromtimestamp(stat.st_mtime).strftime('%d/%m/%Y %H:%M'),
+        })
+    return resultado
+
+
+@admin_bp.route('/arquivos')
+@requer_login
+def listar_arquivos():
+    aba = request.args.get('aba', 'pdf')
+    if aba not in _UPLOAD_CONFIG:
+        aba = 'pdf'
+    pdfs   = _listar_arquivos('arquivos')
+    audios = _listar_arquivos('audios')
+    return render_template('admin/arquivos.html', aba=aba, pdfs=pdfs, audios=audios)
+
+
+@admin_bp.route('/arquivos/upload', methods=['POST'])
+@requer_admin
+def upload_arquivo():
+    tipo = request.form.get('tipo')
+    if tipo not in _UPLOAD_CONFIG:
+        flash('Tipo de arquivo inválido.', 'danger')
+        return redirect(url_for('admin.listar_arquivos'))
+
+    cfg     = _UPLOAD_CONFIG[tipo]
+    arquivo = request.files.get('arquivo')
+
+    if not arquivo or arquivo.filename == '':
+        flash('Nenhum arquivo selecionado.', 'warning')
+        return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+    nome = secure_filename(arquivo.filename)
+    ext  = os.path.splitext(nome)[1].lower()
+
+    if ext != cfg['ext']:
+        flash(f'Extensão inválida. Use apenas {cfg["ext"]}.', 'danger')
+        return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+    # Verificar magic bytes (conteúdo real)
+    cabecalho = arquivo.read(4)
+    arquivo.seek(0)
+    if cabecalho[:len(cfg['magic'])] != cfg['magic']:
+        flash(f'Arquivo inválido. O conteúdo não corresponde ao formato {cfg["ext"]}.', 'danger')
+        return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+    # Verificar tamanho
+    arquivo.seek(0, 2)
+    tamanho_mb = arquivo.tell() / (1024 * 1024)
+    arquivo.seek(0)
+    if tamanho_mb > cfg['max_mb']:
+        flash(f'Arquivo muito grande. Máximo permitido: {cfg["max_mb"]}MB.', 'danger')
+        return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+    pasta   = os.path.join(current_app.static_folder, cfg['subdir'])
+    os.makedirs(pasta, exist_ok=True)
+    caminho = os.path.join(pasta, nome)
+    arquivo.save(caminho)
+
+    logger.info(f"[ADMIN] ✅ Arquivo '{nome}' ({tipo}) enviado por {current_user.email}")
+    flash(f'Arquivo "{nome}" enviado com sucesso!', 'success')
+    return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+
+@admin_bp.route('/arquivos/remover', methods=['POST'])
+@requer_admin
+def remover_arquivo():
+    tipo = request.form.get('tipo')
+    nome = request.form.get('nome', '')
+
+    if tipo not in _UPLOAD_CONFIG or not nome:
+        flash('Parâmetros inválidos.', 'danger')
+        return redirect(url_for('admin.listar_arquivos'))
+
+    nome_seguro = secure_filename(nome)
+    if nome_seguro != nome:
+        flash('Nome de arquivo inválido.', 'danger')
+        return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+    cfg     = _UPLOAD_CONFIG[tipo]
+    caminho = os.path.join(current_app.static_folder, cfg['subdir'], nome_seguro)
+
+    if not os.path.isfile(caminho):
+        flash('Arquivo não encontrado.', 'danger')
+        return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+    os.remove(caminho)
+    logger.info(f"[ADMIN] ✅ Arquivo '{nome_seguro}' removido por {current_user.email}")
+    flash(f'Arquivo "{nome_seguro}" removido.', 'success')
+    return redirect(url_for('admin.listar_arquivos', aba=tipo))

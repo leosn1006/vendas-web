@@ -479,6 +479,10 @@
            class="nav-link {% if request.endpoint in ['admin.listar_produtos','admin.novo_produto','admin.editar_produto','admin.clonar_produto'] %}active{% endif %}">
             <span class="icon">◉</span> Produtos
         </a>
+        <a href="{{ url_for('admin.listar_arquivos') }}"
+           class="nav-link {% if request.endpoint in ['admin.listar_arquivos','admin.upload_arquivo','admin.remover_arquivo'] %}active{% endif %}">
+            <span class="icon">📁</span> Arquivos
+        </a>
 
         <!-- Sub-menu do produto ativo -->
         {% if produto_ativo %}
