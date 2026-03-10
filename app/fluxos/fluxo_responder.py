@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def _campos_produto_faltando(produto: dict | None) -> list[str]:
-    campos_obrigatorios = ['prompt_vendas', 'url_faq_produto', 'url_arquivo_produto']
+    campos_obrigatorios = ['prompt_vendas', 'faq', 'url_arquivo_produto']
 
     if not produto:
         return campos_obrigatorios
