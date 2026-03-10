@@ -834,7 +834,7 @@ def remover_acao_fluxo_view(produto_id, fluxo, acao_id):
 _UPLOAD_CONFIG = {
     'pdf':    {'ext': '.pdf', 'magic': b'%PDF', 'max_mb': 10, 'subdir': 'arquivos'},
     'audio':  {'subdir': 'audios'},
-    'imagem': {'subdir': 'imagens', 'max_mb': 5},
+    'imagem': {'subdir': 'images', 'max_mb': 5},
 }
 
 _AUDIO_EXTS = {'.ogg', '.mp3', '.wav', '.m4a'}
@@ -926,7 +926,7 @@ def listar_arquivos():
         aba = 'pdf'
     pdfs     = _listar_arquivos('arquivos')
     audios   = _listar_arquivos('audios')
-    imagens  = _listar_arquivos('imagens')
+    imagens  = _listar_arquivos('images')
     base_url = os.getenv('APP_BASE_URL', request.host_url.rstrip('/')).rstrip('/')
     return render_template('admin/arquivos.html', aba=aba, pdfs=pdfs, audios=audios, imagens=imagens, base_url=base_url)
 

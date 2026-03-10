@@ -106,7 +106,7 @@
 <div class="card">
     {% if aba == 'pdf' %}{% set lista = pdfs %}{% set subdir = 'arquivos' %}
     {% elif aba == 'audio' %}{% set lista = audios %}{% set subdir = 'audios' %}
-    {% else %}{% set lista = imagens %}{% set subdir = 'imagens' %}{% endif %}
+    {% else %}{% set lista = imagens %}{% set subdir = 'images' %}{% endif %}
 
     {% if lista %}
     <div class="table-wrap">
