@@ -832,11 +832,13 @@ def remover_acao_fluxo_view(produto_id, fluxo, acao_id):
 # ============================================================
 
 _UPLOAD_CONFIG = {
-    'pdf':   {'ext': '.pdf', 'magic': b'%PDF', 'max_mb': 10, 'subdir': 'arquivos'},
-    'audio': {'subdir': 'audios'},
+    'pdf':    {'ext': '.pdf', 'magic': b'%PDF', 'max_mb': 10, 'subdir': 'arquivos'},
+    'audio':  {'subdir': 'audios'},
+    'imagem': {'subdir': 'imagens', 'max_mb': 5},
 }
 
 _AUDIO_EXTS = {'.ogg', '.mp3', '.wav', '.m4a'}
+_IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.svg', '.webp'}
 
 
 def _e_ogg_opus(caminho):
@@ -924,8 +926,9 @@ def listar_arquivos():
         aba = 'pdf'
     pdfs     = _listar_arquivos('arquivos')
     audios   = _listar_arquivos('audios')
+    imagens  = _listar_arquivos('imagens')
     base_url = os.getenv('APP_BASE_URL', request.host_url.rstrip('/')).rstrip('/')
-    return render_template('admin/arquivos.html', aba=aba, pdfs=pdfs, audios=audios, base_url=base_url)
+    return render_template('admin/arquivos.html', aba=aba, pdfs=pdfs, audios=audios, imagens=imagens, base_url=base_url)
 
 
 @admin_bp.route('/arquivos/upload', methods=['POST'])
@@ -969,6 +972,7 @@ def upload_arquivo():
 
         caminho = os.path.join(pasta, nome_original)
         arquivo.save(caminho)
+        os.chmod(caminho, 0o644)
         logger.info(f"[ADMIN] ✅ PDF '{nome_original}' enviado por {current_user.email}")
         flash(f'PDF "{nome_original}" enviado com sucesso!', 'success')
 
@@ -996,6 +1000,7 @@ def upload_arquivo():
                     return redirect(url_for('admin.listar_arquivos', aba=tipo))
                 import shutil
                 shutil.copy2(caminho_temp, destino)
+                os.chmod(destino, 0o644)
                 msg = f'Áudio "{nome_final}" salvo ({tamanho_kb:.0f} KB) — já estava em OGG/Opus.'
             else:
                 caminho_opus, erro = _converter_para_opus(caminho_temp)
@@ -1007,6 +1012,7 @@ def upload_arquivo():
                 except Exception:
                     import shutil
                     shutil.move(caminho_opus, destino)
+                os.chmod(destino, 0o644)
                 tamanho_kb = os.path.getsize(destino) / 1024
                 msg = f'Áudio "{nome_final}" convertido para OGG/Opus ({tamanho_kb:.0f} KB) e salvo com sucesso!'
         finally:
@@ -1015,6 +1021,37 @@ def upload_arquivo():
 
         logger.info(f"[ADMIN] ✅ Áudio '{nome_final}' ({tamanho_kb:.0f}KB) enviado por {current_user.email}")
         flash(msg, 'success')
+
+    # ── Imagem ───────────────────────────────────────────────────
+    elif tipo == 'imagem':
+        if ext not in _IMAGE_EXTS:
+            flash(f'Formato não suportado. Use: {", ".join(sorted(_IMAGE_EXTS))}.', 'danger')
+            return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+        cabecalho = arquivo.read(256)
+        arquivo.seek(0)
+        valido = (
+            cabecalho[:3] == b'\xff\xd8\xff'                                             or  # JPG
+            cabecalho[:4] == b'\x89PNG'                                                  or  # PNG
+            (cabecalho[:4] == b'RIFF' and cabecalho[8:12] == b'WEBP')                   or  # WEBP
+            (ext == '.svg' and (b'<svg' in cabecalho.lower() or b'<?xml' in cabecalho.lower()))  # SVG
+        )
+        if not valido:
+            flash('Arquivo inválido. O conteúdo não corresponde ao formato de imagem esperado.', 'danger')
+            return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+        arquivo.seek(0, 2)
+        tamanho_mb = arquivo.tell() / (1024 * 1024)
+        arquivo.seek(0)
+        if tamanho_mb > cfg['max_mb']:
+            flash(f'Imagem muito grande. Máximo permitido: {cfg["max_mb"]}MB.', 'danger')
+            return redirect(url_for('admin.listar_arquivos', aba=tipo))
+
+        caminho = os.path.join(pasta, nome_original)
+        arquivo.save(caminho)
+        os.chmod(caminho, 0o644)
+        logger.info(f"[ADMIN] ✅ Imagem '{nome_original}' enviada por {current_user.email}")
+        flash(f'Imagem "{nome_original}" enviada com sucesso!', 'success')
 
     return redirect(url_for('admin.listar_arquivos', aba=tipo))
 

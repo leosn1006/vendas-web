@@ -49,7 +49,7 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">📁 Arquivos</h1>
-        <p class="page-subtitle">PDFs e áudios disponíveis para uso nos fluxos</p>
+        <p class="page-subtitle">PDFs, áudios e imagens disponíveis para uso nos fluxos</p>
     </div>
 </div>
 
@@ -63,13 +63,17 @@
        class="tab-link {% if aba == 'audio' %}active{% endif %}">
         🔊 Áudios
     </a>
+    <a href="{{ url_for('admin.listar_arquivos', aba='imagem') }}"
+       class="tab-link {% if aba == 'imagem' %}active{% endif %}">
+        🖼 Imagens
+    </a>
 </div>
 
 {% if current_user.is_admin() %}
 <!-- Formulário de upload (somente admin) -->
 <div class="card" style="margin-bottom: 24px;">
     <h3 style="font-size:15px; font-weight:600; margin-bottom:16px;">
-        {% if aba == 'pdf' %}Enviar novo PDF{% else %}Enviar novo Áudio (.ogg){% endif %}
+        {% if aba == 'pdf' %}Enviar novo PDF{% elif aba == 'audio' %}Enviar novo Áudio{% else %}Enviar nova Imagem{% endif %}
     </h3>
     <form method="POST" action="{{ url_for('admin.upload_arquivo') }}" enctype="multipart/form-data">
         <input type="hidden" name="tipo" value="{{ aba }}">
@@ -77,7 +81,7 @@
             <div class="form-group" style="flex:1; min-width:220px;">
                 <label>Selecionar arquivo</label>
                 <input type="file" name="arquivo"
-                       accept="{% if aba == 'pdf' %}.pdf{% else %}.ogg,.mp3,.wav,.m4a{% endif %}"
+                       accept="{% if aba == 'pdf' %}.pdf{% elif aba == 'audio' %}.ogg,.mp3,.wav,.m4a{% else %}.jpg,.jpeg,.png,.svg,.webp{% endif %}"
                        required
                        style="padding: 8px; cursor: pointer;">
             </div>
@@ -88,8 +92,10 @@
         <p style="font-size:12px; color:var(--muted); margin-top:10px;">
             {% if aba == 'pdf' %}
                 Somente arquivos <strong>.pdf</strong> — máximo 10 MB
-            {% else %}
+            {% elif aba == 'audio' %}
                 Aceita <strong>.ogg, .mp3, .wav, .m4a</strong> — convertido automaticamente para OGG/Opus &le; 500 KB (máximo ~4 minutos)
+            {% else %}
+                Aceita <strong>.jpg, .jpeg, .png, .svg, .webp</strong> — máximo 5 MB
             {% endif %}
         </p>
     </form>
@@ -98,8 +104,9 @@
 
 <!-- Listagem de arquivos -->
 <div class="card">
-    {% set lista = pdfs if aba == 'pdf' else audios %}
-    {% set subdir = 'arquivos' if aba == 'pdf' else 'audios' %}
+    {% if aba == 'pdf' %}{% set lista = pdfs %}{% set subdir = 'arquivos' %}
+    {% elif aba == 'audio' %}{% set lista = audios %}{% set subdir = 'audios' %}
+    {% else %}{% set lista = imagens %}{% set subdir = 'imagens' %}{% endif %}
 
     {% if lista %}
     <div class="table-wrap">
