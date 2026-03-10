@@ -37,9 +37,10 @@ _TOOL_NOTIFICAR_ADMIN = {
 
 _INSTRUCOES_ESCALAMENTO = (
     "\n\n## ESCALAMENTO\n"
-    "Se o cliente pedir estorno, reembolso ou devolução, use a ferramenta notificar_admin.\n"
-    "Se não souber responder com certeza, use a ferramenta notificar_admin.\n"
-    "Após acionar a ferramenta, responda: \"Vou verificar te retorno em breve 🙏\""
+    "Use a ferramenta notificar_admin APENAS se o cliente pedir estorno, reembolso ou devolução.\n"
+    "Para qualquer dúvida sobre o produto, conteúdo ou receitas, responda com base no contexto fornecido.\n"
+    "Se o conteúdo não estiver no material, diga claramente que não está incluso.\n"
+    "Após acionar a ferramenta, responda: \"Vou verificar e te retorno em breve 🙏\""
 )
 
 
@@ -135,20 +136,3 @@ def responder_cliente_com_historico_produto(
     return resposta
 
 
-def responder_cliente(pergunta: str) -> str:
-    """Mantida para compatibilidade com outros fluxos que ainda a usam."""
-    return responder_cliente_com_historico(pergunta, historico=[])
-
-
-def responder_cliente_com_historico(pergunta: str, historico: list) -> str:
-    """Mantida para compatibilidade legado (produto padrão)."""
-    produto_padrao = {
-        'prompt_vendas': (
-            "Você é a Luiza, uma vendedora atenciosa e cordial de e-books de receitas sem glúten. "
-            "Responda de forma sucinta no estilo WhatsApp. Use emojis moderadamente. "
-            "Nunca invente informações. Se não souber, diga que vai verificar e retornar em breve."
-        ),
-        'faq': '',
-        'url_arquivo_produto': '/static/arquivos/paes-sem-gluten.pdf',
-    }
-    return responder_cliente_com_historico_produto(pergunta, historico, produto_padrao)

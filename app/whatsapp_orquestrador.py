@@ -5,7 +5,6 @@ from datetime import datetime
 from database import (get_ultimo_pedido_by_phone, get_ultimo_pedido_por_mensagem_sugerida,
                       vincula_pedido_com_contato, Pedido, criar_pedido, get_pedido,
                       get_produto_by_phone_number_id)
-from agente_resposta_produto import responder_cliente
 
 logger = logging.getLogger(__name__)
 
