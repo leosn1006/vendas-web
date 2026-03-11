@@ -40,6 +40,17 @@
             </div>
 
             <div class="form-group">
+                <label for="url_arquivo_produto">URL do arquivo do produto (PDF)</label>
+                <input type="text" id="url_arquivo_produto" name="url_arquivo_produto"
+                       value="{{ produto.url_arquivo_produto or '' }}"
+                       placeholder="https://... ou caminho local para o PDF">
+                <p class="prompt-hint">
+                    URL ou caminho para o PDF do produto. O agente de resposta usa esse arquivo
+                    como base de conhecimento para responder os clientes.
+                </p>
+            </div>
+
+            <div class="form-group">
                 <label for="faq">FAQ do produto</label>
                 <textarea id="faq" name="faq" class="mono">{{ produto.faq or '' }}</textarea>
                 <p class="prompt-hint">
