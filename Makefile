@@ -1,8 +1,9 @@
-.PHONY: help upload-google-ads-now logs-worker logs-files restart-worker restart-nginx atualizar-senha criar-usuario
+.PHONY: help upload-google-ads-now upload-google-sheets-now logs-worker logs-files restart-worker restart-nginx atualizar-senha criar-usuario
 
 help:
 	@echo "Comandos disponíveis:"
 	@echo "  make upload-google-ads-now        # Dispara agora o upload de conversões Google Ads"
+	@echo "  make upload-google-sheets-now     # Dispara agora a exportação de GCLIDs para Google Sheets"
 	@echo "  make logs-worker                  # Acompanha logs do worker"
 	@echo "  make logs-files                   # Lista arquivos de logs rotacionados"
 	@echo "  make restart-worker               # Reinicia apenas o container worker"
@@ -13,6 +14,10 @@ help:
 upload-google-ads-now:
 	@echo "Disparando task tasks.processar_uploads_google_ads..."
 	docker compose exec worker celery -A celery_app call tasks.processar_uploads_google_ads
+
+upload-google-sheets-now:
+	@echo "Disparando task tasks.processar_uploads_google_sheets..."
+	docker compose exec worker celery -A celery_app call tasks.processar_uploads_google_sheets
 
 logs-worker:
 	docker compose logs -f worker
