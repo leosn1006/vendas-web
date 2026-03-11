@@ -150,4 +150,5 @@ def exportar_para_google_sheets():
             logger.info(f"[FLUXO-GOOGLE-SHEETS] ✅ {len(rows)} GCLIDs exportados — produto {produto_id} / aba '{sheet_name}'")
 
         except Exception as e:
-            logger.error(f"[FLUXO-GOOGLE-SHEETS] ❌ Erro produto {produto_id} / planilha {spreadsheet_id}: {e}")
+            import traceback
+            logger.error(f"[FLUXO-GOOGLE-SHEETS] ❌ Erro produto {produto_id} / planilha {spreadsheet_id}: {e}\n{traceback.format_exc()}")
