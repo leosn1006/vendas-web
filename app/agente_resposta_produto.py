@@ -86,12 +86,12 @@ def responder_cliente_com_historico_produto(
         system_prompt += f"\n\n=== CONTEÚDO DO PRODUTO ===\n{pdf}\n=== FIM DO CONTEÚDO ==="
     system_prompt += _INSTRUCOES_ESCALAMENTO
 
-    logger.info("[AGENTE] 📋 Contexto montado — prompt: %d chars | faq: %d chars | pdf: %d chars",
-                len(prompt_vendas), len(faq), len(pdf))
-    logger.info("[AGENTE] 🔍 PROMPT_VENDAS:\n%s", prompt_vendas[:500])
-    logger.info("[AGENTE] 🔍 FAQ (%d chars):\n%s", len(faq), faq[:500] if faq else '(vazio)')
-    logger.info("[AGENTE] 🔍 PDF fonte: '%s' | %d chars carregados", fonte_pdf or '(não configurado)', len(pdf))
-    logger.info("[AGENTE] 🔍 PDF preview:\n%s", pdf[:500] if pdf else '(vazio)')
+    #logger.info("[AGENTE] 📋 Contexto montado — prompt: %d chars | faq: %d chars | pdf: %d chars",
+    #            len(prompt_vendas), len(faq), len(pdf))
+    #logger.info("[AGENTE] 🔍 PROMPT_VENDAS:\n%s", prompt_vendas[:500])
+    #logger.info("[AGENTE] 🔍 FAQ (%d chars):\n%s", len(faq), faq[:500] if faq else '(vazio)')
+    #logger.info("[AGENTE] 🔍 PDF fonte: '%s' | %d chars carregados", fonte_pdf or '(não configurado)', len(pdf))
+    #logger.info("[AGENTE] 🔍 PDF preview:\n%s", pdf[:500] if pdf else '(vazio)')
 
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(historico)
@@ -138,5 +138,3 @@ def responder_cliente_com_historico_produto(
         return "Perfeito! Vou verificar direitinho e já te respondo 🙏"
 
     return resposta
-
-
