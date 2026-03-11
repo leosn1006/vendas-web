@@ -88,3 +88,66 @@ def enviar_gclid_ads(client, customer_id, conversion_action_id, gclid, conversio
     except Exception as e:
         logger.error(f"💥 Erro crítico na chamada da API: {e}")
         return False
+
+
+def exportar_para_google_sheets():
+    import gspread
+    import json as _json
+    from google.oauth2.service_account import Credentials
+    from collections import defaultdict
+
+    logger.info("=" * 120)
+    logger.info("[FLUXO-GOOGLE-SHEETS] 🎬 Iniciando exportação de GCLIDs para Google Sheets")
+
+    HEADER = ["Google Click ID", "Conversion Name", "Conversion Time", "Conversion Value", "Conversion Currency"]
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+
+    vendas = busca_vendas_pendentes_google()
+    if not vendas:
+        logger.info("[FLUXO-GOOGLE-SHEETS] ✅ Nenhuma venda pendente.")
+        return
+
+    # Agrupar por (produto_id, spreadsheet_id, sheet_name, conversion_name)
+    grupos = defaultdict(list)
+    for venda in vendas:
+        if isinstance(venda, dict):
+            venda = SimpleNamespace(**venda)
+        key = (venda.produto_id, venda.google_sheets_spreadsheet_id,
+               venda.google_sheets_sheet_name, venda.google_ads_conversion_name)
+        grupos[key].append(venda)
+
+    for (produto_id, spreadsheet_id, sheet_name, conversion_name), grupo_vendas in grupos.items():
+        sa_json = os.getenv(f"GOOGLE_SA_JSON_P{produto_id}")
+        if not sa_json:
+            logger.error(f"[FLUXO-GOOGLE-SHEETS] ❌ GOOGLE_SA_JSON_P{produto_id} não encontrada — produto {produto_id} ignorado")
+            continue
+        try:
+            creds = Credentials.from_service_account_info(_json.loads(sa_json), scopes=scopes)
+            gc = gspread.authorize(creds)
+            ws = gc.open_by_key(spreadsheet_id).worksheet(sheet_name)
+
+            if ws.row_values(1) != HEADER:
+                ws.insert_row(HEADER, index=1)
+
+            rows = []
+            ids = []
+            for venda in grupo_vendas:
+                if isinstance(venda.data_pagamento, str):
+                    try:
+                        venda.data_pagamento = datetime.fromisoformat(venda.data_pagamento)
+                    except ValueError:
+                        venda.data_pagamento = datetime.strptime(venda.data_pagamento, "%Y-%m-%d %H:%M:%S")
+
+                conversion_time = venda.data_pagamento.strftime("%Y-%m-%d %H:%M:%S") + " America/Sao_Paulo"
+                rows.append([venda.gclid, conversion_name, conversion_time, "10.00", "BRL"])
+                ids.append(venda.id)
+
+            ws.append_rows(rows, value_input_option="USER_ENTERED")
+
+            for venda_id in ids:
+                marcar_venda_como_enviada_ao_google_ads(venda_id)
+
+            logger.info(f"[FLUXO-GOOGLE-SHEETS] ✅ {len(rows)} GCLIDs exportados — produto {produto_id} / aba '{sheet_name}'")
+
+        except Exception as e:
+            logger.error(f"[FLUXO-GOOGLE-SHEETS] ❌ Erro produto {produto_id} / planilha {spreadsheet_id}: {e}")

@@ -595,16 +595,21 @@ def buscar_historico_conversa(pedido_id: int, limite: int = 10) -> list:
 def busca_vendas_pendentes_google()-> list:
     """
     Busca vendas que converteram e possuem GCLID, mas ainda não foram enviadas para o Google Ads.
+    Retorna também as configurações do Google Sheets do produto (para exportação offline).
     """
     query = """
-        SELECT *
-        FROM pedidos
-        WHERE gclid IS NOT NULL
-          AND estado_id = 0 -- estado 'pago'
-          AND data_contato_site >= NOW() - INTERVAL 7 HOUR
-          AND data_envio_google_ads IS NULL
-          AND gclid != ''
-          AND gclid IS NOT NULL
+        SELECT p.*,
+               pr.id AS produto_id,
+               pr.google_sheets_spreadsheet_id,
+               pr.google_sheets_sheet_name,
+               pr.google_ads_conversion_name
+        FROM pedidos p
+        JOIN produtos pr ON pr.id = p.produto_id
+        WHERE p.gclid IS NOT NULL
+          AND p.gclid != ''
+          AND p.estado_id = 0 -- estado Pago
+          AND p.data_envio_google_ads IS NULL
+          AND pr.google_sheets_spreadsheet_id IS NOT NULL
     """
     vendas = db.execute_query(query, fetch_all=True)
     #proteção defensiva caso o banco retorne None

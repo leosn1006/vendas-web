@@ -271,11 +271,14 @@ def dados_basicos_produto(produto_id):
         try:
             db.execute_query("""
                 UPDATE produtos SET
-                    nome                    = %s,
-                    descricao               = %s,
-                    preco                   = %s,
-                    valor_minimo_pagamento  = %s,
-                    pix_destinatario_esperado = %s
+                    nome                          = %s,
+                    descricao                     = %s,
+                    preco                         = %s,
+                    valor_minimo_pagamento        = %s,
+                    pix_destinatario_esperado     = %s,
+                    google_sheets_spreadsheet_id  = %s,
+                    google_sheets_sheet_name      = %s,
+                    google_ads_conversion_name    = %s
                 WHERE id = %s
             """, (
                 request.form.get('nome'),
@@ -283,6 +286,9 @@ def dados_basicos_produto(produto_id):
                 request.form.get('preco'),
                 request.form.get('valor_minimo_pagamento'),
                 request.form.get('pix_destinatario_esperado'),
+                request.form.get('google_sheets_spreadsheet_id') or None,
+                request.form.get('google_sheets_sheet_name') or 'Página1',
+                request.form.get('google_ads_conversion_name') or None,
                 produto_id
             ))
             flash('Dados básicos atualizados com sucesso!', 'success')

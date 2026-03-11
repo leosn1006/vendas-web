@@ -42,6 +42,27 @@
                        placeholder="CPF, CNPJ, e-mail ou chave aleatória">
             </div>
 
+            <div class="form-group span-2">
+                <label for="google_sheets_spreadsheet_id">Google Sheets — ID da planilha</label>
+                <input type="text" id="google_sheets_spreadsheet_id" name="google_sheets_spreadsheet_id"
+                       value="{{ produto.google_sheets_spreadsheet_id or '' }}"
+                       placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
+            </div>
+
+            <div class="form-group">
+                <label for="google_sheets_sheet_name">Google Sheets — Nome da aba</label>
+                <input type="text" id="google_sheets_sheet_name" name="google_sheets_sheet_name"
+                       value="{{ produto.google_sheets_sheet_name or 'Página1' }}"
+                       placeholder="Página1">
+            </div>
+
+            <div class="form-group">
+                <label for="google_ads_conversion_name">Google Ads — Nome da conversão</label>
+                <input type="text" id="google_ads_conversion_name" name="google_ads_conversion_name"
+                       value="{{ produto.google_ads_conversion_name or '' }}"
+                       placeholder="Ex: Venda WhatsApp">
+            </div>
+
         </div>
 
         <div class="form-actions">

@@ -28,3 +28,7 @@ flower==2.0.1
 
 # Google Ads
 google-ads==29.1.0
+
+# Google Sheets (export de GCLIDs via upload offline)
+gspread==6.1.2
+google-auth==2.29.0

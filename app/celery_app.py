@@ -26,6 +26,10 @@ celery_app.conf.beat_schedule = {
 #        'task': 'tasks.processar_uploads_google_ads',
 #        'schedule': crontab(minute=0),  # todo hora cheia
 #    },
+    'upload-gclids-google-sheets': {
+        'task': 'tasks.processar_uploads_google_sheets',
+        'schedule': crontab(minute=30, hour='22,0'),  # 22h30 e 00h30 (antes do upload do Google Ads às 01h-02h)
+    },
 }
 
 celery_app.conf.update(

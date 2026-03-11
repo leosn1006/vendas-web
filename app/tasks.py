@@ -140,3 +140,16 @@ def processar_uploads_google_ads(self):
         logger.info("=" * 120)
         # Se a API cair ou houver erro de rede, tenta novamente em 10 min
         raise self.retry(exc=exc, countdown=600)
+
+@shared_task(bind=True, max_retries=1)
+def processar_uploads_google_sheets(self):
+    try:
+        logger.info("[TASK-GOOGLE-SHEETS] 📦 Iniciando exportação para Google Sheets...")
+        from fluxos.fluxo_upload_google_ads import exportar_para_google_sheets
+        exportar_para_google_sheets()
+        logger.info("[TASK-GOOGLE-SHEETS] ✅ Rotina executada com sucesso!")
+    except Exception as exc:
+        logger.error(f"[TASK-GOOGLE-SHEETS] ❌ Erro: {exc}")
+        import traceback
+        traceback.print_exc()
+        raise self.retry(exc=exc, countdown=600)
