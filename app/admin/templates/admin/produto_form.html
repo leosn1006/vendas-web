@@ -155,6 +155,24 @@
             </div>
             {% endif %}
 
+            <hr style="margin: 1.5rem 0;">
+            <h3 style="font-size:1rem; color:#555; margin-bottom:1rem;">🌐 Venda Web (BB Pay)</h3>
+
+            <div class="form-group">
+                <label>Número do Convênio BB Pay</label>
+                <input type="number" name="numero_convenio_bb"
+                       value="{{ produto.numero_convenio_bb if produto and produto.numero_convenio_bb else '' }}"
+                       placeholder="Ex: 275513">
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="disponivel_web" value="1"
+                           {% if produto and produto.disponivel_web %}checked{% endif %}>
+                    Disponível para venda no site (checkout web)
+                </label>
+            </div>
+
         </div>
 
         {% if current_user.is_admin() %}

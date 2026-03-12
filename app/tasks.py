@@ -124,6 +124,23 @@ def fluxo_followup_pagamento_dinamico(self):
         import traceback
         traceback.print_exc()
 
+@shared_task(name="tasks.enviar_confirmacao_web", bind=True, max_retries=2)
+def fluxo_enviar_confirmacao_web(self, pedido_id: int):
+    logger.info("=" * 120)
+    logger.info(f"[TASK-CONFIRMACAO-WEB] 🛒 Iniciando entrega web para pedido #{pedido_id}")
+    from fluxos.fluxo_confirmacao_web_dinamico import executar
+    try:
+        executar(pedido_id)
+        logger.info(f"[TASK-CONFIRMACAO-WEB] ✅ Entrega concluída para pedido #{pedido_id}")
+        logger.info("=" * 120)
+    except Exception as exc:
+        logger.error(f"[TASK-CONFIRMACAO-WEB] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        import traceback
+        traceback.print_exc()
+        logger.info("=" * 120)
+        raise self.retry(exc=exc, countdown=60)
+
+
 @shared_task(bind=True, max_retries=1)
 def processar_uploads_google_ads(self):
     from google.ads.googleads.client import GoogleAdsClient

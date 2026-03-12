@@ -10,9 +10,9 @@ def guia_paes():
 
 @web_bp.get('/pay/<int:produto_id>')
 def checkout(produto_id):
-    from database import get_produto_web
-    produto = get_produto_web(produto_id)
-    if not produto or not produto.get('ativo'):
+    from database import get_produto_disponivel_web
+    produto = get_produto_disponivel_web(produto_id)
+    if not produto:
         return 'Produto não encontrado', 404
     return render_template('checkout.html', produto=produto)
 
@@ -29,11 +29,11 @@ def pix_gerar():
 
 @web_bp.get('/api/v1/pix/pedido/<int:pedido_id>')
 def pix_pedido(pedido_id):
-    from database import get_pedido_web
-    pedido = get_pedido_web(pedido_id)
+    from database import get_pedido
+    pedido = get_pedido(pedido_id)
     if not pedido:
         return jsonify({'error': 'não encontrado'}), 404
-    return jsonify({'txid': pedido.get('numero_solicitacao'), 'estado': pedido.get('estado')})
+    return jsonify({'txid': pedido.get('numero_solicitacao_bb'), 'estado': pedido.get('estado_id')})
 
 
 @web_bp.get('/api/v1/pix/status/<txid>')

@@ -17,14 +17,15 @@ from database import (db,
     buscar_todas_mensagens_pedido,
     buscar_pedido_por_nome, acertar_valor_pedido)
 
-_FLUXOS = ['introducao', 'pedido', 'comprovante', 'responder', 'followup']
+_FLUXOS = ['introducao', 'pedido', 'comprovante', 'responder', 'followup', 'confirmacao_web']
 _FLUXOS_READONLY = {'responder'}
 _FLUXOS_LABELS = {
-    'introducao':  '👋 Introdução',
-    'pedido':      '📦 Pedido',
-    'comprovante': '🧾 Comprovante',
-    'responder':   '💬 Responder',
-    'followup':    '🔔 Follow-up',
+    'introducao':      '👋 Introdução',
+    'pedido':          '📦 Pedido',
+    'comprovante':     '🧾 Comprovante',
+    'responder':       '💬 Responder',
+    'followup':        '🔔 Follow-up',
+    'confirmacao_web': '🌐 Confirmação Web',
 }
 
 logger = logging.getLogger(__name__)
@@ -186,7 +187,9 @@ def editar_produto(produto_id):
                     url_arquivo_surpresa                = %s,
                     caption_arquivo_surpresa            = %s,
                     nome_arquivo_surpresa               = %s,
-                    ativo                               = %s
+                    ativo                               = %s,
+                    numero_convenio_bb                  = %s,
+                    disponivel_web                      = %s
                 WHERE id = %s
             """, (
                 request.form.get('nome'),
@@ -213,6 +216,8 @@ def editar_produto(produto_id):
                 request.form.get('caption_arquivo_surpresa'),
                 request.form.get('nome_arquivo_surpresa'),
                 1 if request.form.get('ativo') else 0,
+                request.form.get('numero_convenio_bb') or None,
+                1 if request.form.get('disponivel_web') else 0,
                 produto_id
             ))
             flash('Produto atualizado com sucesso!', 'success')

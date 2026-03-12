@@ -328,14 +328,17 @@
         </div>
     </div>
 
-    <!-- Estado: sucesso / download -->
+    <!-- Estado: sucesso / entrega WhatsApp -->
     <div id="estado-sucesso" class="card">
         <span class="sucesso-icone">🎉</span>
         <div class="sucesso-titulo">Pagamento confirmado!</div>
-        <p class="sucesso-sub">Seus materiais estão prontos para download. Aproveite cada receita!</p>
-        <a id="btnDownload" href="#" class="btn-download">⬇ Baixar Guia de Pães Sem Glúten</a>
-        <span class="badge-bonus">🎁 BÔNUS EXCLUSIVO</span>
-        <a id="btnDownloadBonus" href="#" class="btn-bonus">⬇ Baixar Livro de Bolos Sem Glúten</a>
+        <p class="sucesso-sub">
+            Seu ebook está a caminho!<br>
+            Enviamos agora para o WhatsApp <strong id="sucesso-whatsapp"></strong> — verifique suas mensagens em instantes.
+        </p>
+        <p style="font-size:13px; color:#888; margin-top:8px;">
+            Não recebeu? Verifique se o número está correto ou entre em contato conosco.
+        </p>
     </div>
 
     <!-- Estado: fallback -->
@@ -455,20 +458,11 @@
 
     // ── Pagamento confirmado ──
     function pagamentoConfirmado() {
-        localStorage.setItem('pedido_pago_' + PRODUTO_ID, currentPedidoId);
-        document.getElementById('btnDownload').href      = `/api/v1/produto/pdf/${currentPedidoId}`;
-        document.getElementById('btnDownloadBonus').href = `/api/v1/produto/pdf/${currentPedidoId}/bonus`;
+        const wa = document.getElementById('inputWhatsapp') ? document.getElementById('inputWhatsapp').value : '';
+        document.getElementById('sucesso-whatsapp').textContent = wa || 'informado';
         mostrarEstado('sucesso');
     }
 
-    // ── Verificar localStorage (já pagou?) ── [DESABILITADO PARA TESTES]
-    // const savedId = localStorage.getItem('pedido_pago_' + PRODUTO_ID);
-    // if (savedId) {
-    //     currentPedidoId = parseInt(savedId);
-    //     document.getElementById('btnDownload').href      = `/api/v1/produto/pdf/${currentPedidoId}`;
-    //     document.getElementById('btnDownloadBonus').href = `/api/v1/produto/pdf/${currentPedidoId}/bonus`;
-    //     mostrarEstado('sucesso');
-    // }
 
     // ── Retorno do BB Pay (urlRetorno com ?pedido=) ──
     // ?pedido= tem prioridade: sempre verifica no backend, ignora localStorage

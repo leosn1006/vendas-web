@@ -892,3 +892,101 @@ def criar_pagamento_web(pedido_web_id: int, valor: float,
         (pedido_web_id, valor, valor_tarifa,
          tipo_pagamento, id_pagador or '', nome_pagador or '', e2e_pix or '')
     )
+
+
+# ============================================================
+# Funções do fluxo Web Checkout Unificado (tabela pedidos)
+# Usam estados 1001/1002/1003 para não conflitar com o fluxo WhatsApp (0-4).
+# ============================================================
+
+def get_produto_disponivel_web(produto_id: int):
+    """Retorna produto de `produtos` habilitado para venda web ou None."""
+    return db.execute_query(
+        "SELECT * FROM produtos WHERE id = %s AND disponivel_web = TRUE AND ativo = TRUE",
+        (produto_id,), fetch_one=True
+    )
+
+
+def get_phone_number_id_produto(produto_id: int):
+    """Retorna o phone_number_id WhatsApp Business associado ao produto ou None."""
+    row = db.execute_query(
+        "SELECT telefone FROM telefones_produto WHERE produto_id = %s LIMIT 1",
+        (produto_id,), fetch_one=True
+    )
+    return row['telefone'] if row else None
+
+
+def criar_pedido_web_unificado(produto_id: int, phone_number_id: str,
+                               contact_phone: str, contact_name: str,
+                               email: str = '', gclid: str = '',
+                               campaignid: str = '', adgroupid: str = '',
+                               creative: str = '', matchtype: str = '',
+                               device: str = '', placement: str = '',
+                               video_id: str = '') -> int:
+    """Cria pedido em `pedidos` com estado 1001 (Pedido web criado). Retorna o id."""
+    return db.execute_query(
+        """INSERT INTO pedidos
+             (produto_id, valor_pago, estado_id, gclid,
+              data_ultima_atualizacao, data_contato_site, data_pedido,
+              phone_number_id, contact_phone, contact_name, email,
+              campaignid, adgroupid, creative, matchtype, device, placement, video_id)
+           VALUES (%s, 0.0, 1001, %s,
+                   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
+                   %s, %s, %s, %s,
+                   %s, %s, %s, %s, %s, %s, %s)""",
+        (produto_id, gclid or '',
+         phone_number_id or '', contact_phone or '', contact_name or '', email or '',
+         campaignid or '', adgroupid or '', creative or '',
+         matchtype or '', device or '', placement or '', video_id or '')
+    )
+
+
+def atualizar_pedido_solicitacao_bb(pedido_id: int, numero_solicitacao_bb: str,
+                                    url_bbpay: str = '', qr_code_pix: str = '',
+                                    expiracao: str = '') -> None:
+    """Salva dados da solicitação BB Pay e avança estado para 1002 (Aguardando pagamento)."""
+    db.execute_query(
+        """UPDATE pedidos
+           SET estado_id = 1002,
+               numero_solicitacao_bb = %s,
+               url_bbpay = %s,
+               qr_code_pix = %s,
+               expiracao_solicitacao_bb = %s,
+               data_ultima_atualizacao = CURRENT_TIMESTAMP
+           WHERE id = %s""",
+        (numero_solicitacao_bb, url_bbpay or '', qr_code_pix or '',
+         expiracao or None, pedido_id)
+    )
+
+
+def get_pedido_by_solicitacao_bb(numero_solicitacao_bb: str):
+    """Retorna pedido pelo txid BB Pay ou None."""
+    return db.execute_query(
+        "SELECT * FROM pedidos WHERE numero_solicitacao_bb = %s",
+        (numero_solicitacao_bb,), fetch_one=True
+    )
+
+
+def confirmar_pagamento_web(pedido_id: int, valor: float, nome_pagador: str = '') -> None:
+    """Confirma pagamento web: avança para estado 1000 e registra dados do pagador."""
+    db.execute_query(
+        """UPDATE pedidos
+           SET estado_id = 1000,
+               valor_pago = %s,
+               nome_pagador = %s,
+               data_pagamento = CURRENT_TIMESTAMP,
+               data_ultima_atualizacao = CURRENT_TIMESTAMP
+           WHERE id = %s""",
+        (valor, nome_pagador or '', pedido_id)
+    )
+
+
+def marcar_ebook_enviado(pedido_id: int) -> None:
+    """Registra o momento em que o ebook foi enviado via WhatsApp."""
+    db.execute_query(
+        """UPDATE pedidos
+           SET data_envio_ebook = CURRENT_TIMESTAMP,
+               data_ultima_atualizacao = CURRENT_TIMESTAMP
+           WHERE id = %s""",
+        (pedido_id,)
+    )
