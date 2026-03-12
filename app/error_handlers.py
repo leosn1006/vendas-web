@@ -83,4 +83,13 @@ def registrar_error_handlers(app):
         }), 404
     
     
+    @app.errorhandler(405)
+    def handle_405(e):
+        """
+        Tratamento para MethodNotAllowed - NÃO notifica via WhatsApp.
+        Evita spam de bots testando métodos HTTP incorretos nas rotas.
+        """
+        return '', 405
+
+
     logger.info("✅ Error handlers registrados com sucesso")
