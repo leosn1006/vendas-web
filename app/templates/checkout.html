@@ -233,12 +233,29 @@
             animation: spin .8s linear infinite; flex-shrink: 0;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .countdown-txt { font-size: 12px; color: #aaa; margin-left: 6px; }
+        .btn-tentar-novamente {
+            background: none; border: 1.5px solid var(--verde); color: var(--verde);
+            border-radius: 50px; padding: 8px 20px; font-size: 14px; font-weight: 700;
+            font-family: inherit; cursor: pointer; margin-top: 4px;
+        }
+        .btn-tentar-novamente:hover { background: #f0f7f3; }
 
         /* ── Estado: sucesso ── */
         #estado-sucesso { display: none; text-align: center; }
         .sucesso-icone  { font-size: 48px; display: block; margin-bottom: 8px; }
         .sucesso-titulo { font-size: 20px; font-weight: 900; margin-bottom: 8px; }
-        .sucesso-sub    { font-size: 14px; color: var(--sub); margin-bottom: 20px; }
+        .sucesso-sub    { font-size: 14px; color: var(--sub); margin-bottom: 12px; }
+        .sucesso-pedido {
+            font-size: 13px; color: var(--sub);
+            margin: 10px auto 14px;
+            padding: 6px 16px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            display: inline-block;
+        }
+        .link-suporte { color: var(--verde); font-weight: 700; text-decoration: none; }
+        .link-suporte:hover { text-decoration: underline; }
 
         .btn-download {
             display: block; width: 100%;
@@ -373,9 +390,16 @@
             <span class="bbpay-logo-badge">BB</span>
             <span>Pagar com <strong>BB Pay</strong></span>
         </a>
-        <div class="spinner-wrap">
+        <div class="spinner-wrap" id="spinnerWrap">
             <div class="spinner"></div>
-            Aguardando confirmação do pagamento…
+            <span>Aguardando confirmação do pagamento…<span id="countdownDisplay" class="countdown-txt"></span></span>
+        </div>
+        <div id="pixExpirado" style="display:none; font-size:13px; color:#888; margin-top:16px; text-align:center;">
+            Tempo de verificação encerrado.<br>
+            Se você já pagou, aguarde alguns minutos e verifique seu WhatsApp.<br>
+            Caso precise de ajuda: <a href="mailto:admin@lsnlivros.com.br" class="link-suporte">admin@lsnlivros.com.br</a>
+            <br><br>
+            <button onclick="location.reload()" class="btn-tentar-novamente">Tentar novamente</button>
         </div>
     </div>
 
@@ -387,8 +411,12 @@
             Seu ebook está a caminho!<br>
             Enviamos agora para o WhatsApp <strong id="sucesso-whatsapp"></strong> — verifique suas mensagens em instantes.
         </p>
-        <p style="font-size:13px; color:#888; margin-top:8px;">
-            Não recebeu? Verifique se o número está correto ou entre em contato conosco.
+        <p class="sucesso-pedido">
+            Pedido <strong id="sucesso-pedido-id"></strong>
+        </p>
+        <p style="font-size:13px; color:#888; margin-top:4px;">
+            Não recebeu? Verifique se o número está correto ou entre em contato:<br>
+            <a href="mailto:admin@lsnlivros.com.br" class="link-suporte">admin@lsnlivros.com.br</a>
         </p>
     </div>
 
@@ -418,6 +446,7 @@
     let currentTxid     = null;
     let currentPedidoId = null;
     let pollingTimer    = null;
+    let countdownTimer  = null;
 
     const urlParams = new URLSearchParams(window.location.search);
     const utmData = {
@@ -557,25 +586,56 @@
     });
 
     // ── Polling de status ──
+    const POLLING_INTERVAL_MS = 5000;
+    const POLLING_TIMEOUT_MS  = 8 * 60 * 1000; // 8 minutos
+
+    function pararPolling() {
+        clearInterval(pollingTimer);
+        clearInterval(countdownTimer);
+        pollingTimer  = null;
+        countdownTimer = null;
+    }
+
     function iniciarPolling() {
         if (!currentTxid) return;
+
+        const expiracao = Date.now() + POLLING_TIMEOUT_MS;
+
+        // Countdown visual a cada segundo
+        countdownTimer = setInterval(() => {
+            const restante = expiracao - Date.now();
+            const el = document.getElementById('countdownDisplay');
+            if (!el) return;
+            if (restante <= 0) { el.textContent = ''; return; }
+            const min = String(Math.floor(restante / 60000)).padStart(2, '0');
+            const seg = String(Math.floor((restante % 60000) / 1000)).padStart(2, '0');
+            el.textContent = ` · ${min}:${seg}`;
+        }, 1000);
+
+        // Consulta o backend a cada 5s
         pollingTimer = setInterval(async () => {
+            if (Date.now() >= expiracao) {
+                pararPolling();
+                document.getElementById('spinnerWrap').style.display = 'none';
+                document.getElementById('pixExpirado').style.display = 'block';
+                return;
+            }
             try {
                 const resp = await fetch(`/api/v1/pix/status/${currentTxid}`);
                 const data = await resp.json();
                 if (data.pago) {
-                    clearInterval(pollingTimer);
-                    pollingTimer = null;
+                    pararPolling();
                     pagamentoConfirmado();
                 }
             } catch (e) { /* continua tentando */ }
-        }, 3000);
+        }, POLLING_INTERVAL_MS);
     }
 
     // ── Pagamento confirmado ──
     function pagamentoConfirmado() {
         const wa = document.getElementById('inputWhatsapp') ? document.getElementById('inputWhatsapp').value : '';
         document.getElementById('sucesso-whatsapp').textContent = wa || 'informado';
+        document.getElementById('sucesso-pedido-id').textContent = `#${currentPedidoId}`;
         mostrarEstado('sucesso');
     }
 
