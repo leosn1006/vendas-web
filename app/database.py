@@ -610,6 +610,7 @@ def busca_vendas_pendentes_google()-> list:
           AND p.estado_id = 0 -- estado Pago
           AND p.data_envio_google_ads IS NULL
           AND pr.google_sheets_spreadsheet_id IS NOT NULL
+        ORDER BY p.data_pagamento ASC
     """
     vendas = db.execute_query(query, fetch_all=True)
     #proteção defensiva caso o banco retorne None
