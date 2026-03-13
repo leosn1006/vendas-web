@@ -99,7 +99,7 @@ def exportar_para_google_sheets():
     logger.info("=" * 120)
     logger.info("[FLUXO-GOOGLE-SHEETS] 🎬 Iniciando exportação de GCLIDs para Google Sheets")
 
-    HEADER = ["Google Click ID", "Conversion Name", "Conversion Time", "Conversion Value", "Conversion Currency"]
+    HEADER = ["Google Click ID", "Conversion Name", "Conversion Time", "Conversion Value", "Currency Code"]
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
 
     vendas = busca_vendas_pendentes_google()
@@ -126,7 +126,7 @@ def exportar_para_google_sheets():
             gc = gspread.authorize(creds)
             ws = gc.open_by_key(spreadsheet_id).worksheet(sheet_name)
 
-            if ws.row_values(1) != HEADER:
+            if not ws.row_values(1):
                 ws.insert_row(HEADER, index=1)
 
             rows = []
