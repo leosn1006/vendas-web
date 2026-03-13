@@ -99,8 +99,9 @@
             border: none;
             background: transparent;
             flex: 1;
+            width: auto;
             padding: 12px 14px;
-            font-size: 16px;
+            font-size: 15px;
             font-family: inherit;
             color: var(--texto);
             outline: none;
@@ -326,7 +327,7 @@
             <div class="campo">
                 <label for="inputWhatsapp">WhatsApp com DDD</label>
                 <div class="input-com-prefixo" id="wrapperWhatsapp">
-                    <span class="prefixo-ddi">
+                    <span class="prefixo-ddi" data-ddi="55">
                         <span class="bandeira">🇧🇷</span> +55
                     </span>
                     <input type="tel" id="inputWhatsapp" placeholder="(61) 98765-4321" maxlength="15" autocomplete="tel">
@@ -411,7 +412,7 @@
         <div class="sucesso-titulo">Pagamento confirmado!</div>
         <p class="sucesso-sub">
             Estamos preparando seu pedido! 🚀<br>
-            Em breve você receberá seu ebook no WhatsApp <strong id="sucesso-whatsapp"></strong>.<br>
+            Em breve você receberá seu ebook no WhatsApp <strong id="sucesso-whatsapp" style="white-space:nowrap"></strong>.<br>
             Fique de olho nas suas mensagens.
         </p>
         <p class="sucesso-pedido">
@@ -575,7 +576,8 @@
             return null;
         }
         divErro.style.display = 'none';
-        return { nome, email, whatsapp: wa, metodo };
+        const ddi = document.querySelector('.prefixo-ddi')?.dataset.ddi || '55';
+        return { nome, email, ddi, whatsapp: wa, metodo };
     }
 
     // ── Copiar código PIX ──

@@ -7,6 +7,7 @@ import base64
 import io
 import logging
 import os
+import re
 from datetime import datetime, timedelta
 
 import qrcode as qrcode_lib
@@ -39,10 +40,16 @@ def gerar_pix(body: dict, url_base: str = '') -> dict:
     numero_convenio = int(produto.get('numero_convenio_bb', 0)) if produto else 0
     phone_number_id = get_phone_number_id_produto(produto_id) or ''
 
+    # Normaliza telefone para formato WhatsApp: DDI vem do frontend, fallback 55
+    _ddi   = re.sub(r'\D', '', body.get('ddi', '55')) or '55'
+    _phone = re.sub(r'\D', '', body.get('whatsapp', ''))
+    if _phone and not _phone.startswith(_ddi):
+        _phone = _ddi + _phone
+
     pedido_id = criar_pedido_web_unificado(
         produto_id=produto_id,
         phone_number_id=phone_number_id,
-        contact_phone=body.get('whatsapp', ''),
+        contact_phone=_phone,
         contact_name=body.get('nome', ''),
         email=body.get('email', ''),
         gclid=body.get('gclid', ''),
