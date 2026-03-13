@@ -127,6 +127,9 @@ def consultar_pagamentos(numero_solicitacao: int, numero_convenio: int) -> dict:
     lista = data.get('listaPagamentos', [])
     pagamento = next((p for p in lista if p.get('codigoEstadoPagamento') == 200), None)
 
+    if pagamento:
+        logger.debug(f'[BB-PAY] Pagamento confirmado — dados completos: {pagamento}')
+
     return {
         'pago':      pagamento is not None,
         'pagamento': pagamento,
