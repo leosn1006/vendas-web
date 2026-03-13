@@ -975,17 +975,24 @@ def get_pedido_by_solicitacao_bb(numero_solicitacao_bb: str):
     )
 
 
-def confirmar_pagamento_web(pedido_id: int, valor: float, nome_pagador: str = '') -> None:
+def confirmar_pagamento_web(pedido_id: int, valor: float, nome_pagador: str = '',
+                            cpf_cnpj_pagador: str = '', valor_liquido: float = None,
+                            data_repasse: str = None, e2e_id: str = '') -> None:
     """Confirma pagamento web: avança para estado 1000 e registra dados do pagador."""
     db.execute_query(
         """UPDATE pedidos
            SET estado_id = 1000,
                valor_pago = %s,
                nome_pagador = %s,
+               cpf_cnpj_pagador = %s,
+               valor_liquido_pagamento = %s,
+               data_repasse = %s,
+               e2e_id = %s,
                data_pagamento = CURRENT_TIMESTAMP,
                data_ultima_atualizacao = CURRENT_TIMESTAMP
            WHERE id = %s""",
-        (valor, nome_pagador or '', pedido_id)
+        (valor, nome_pagador or '', cpf_cnpj_pagador or '',
+         valor_liquido, data_repasse, e2e_id or '', pedido_id)
     )
 
 

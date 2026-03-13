@@ -15,6 +15,16 @@ import qrcode as qrcode_lib
 logger = logging.getLogger(__name__)
 
 
+def _formatar_documento(numero: str, tipo: int) -> str:
+    """Formata CPF ou CNPJ. Suporta CNPJ alfanumérico (Receita Federal jun/2026)."""
+    d = re.sub(r'[^A-Za-z0-9]', '', str(numero))
+    if tipo == 1 and len(d) == 11:   # CPF
+        return f'{d[:3]}.{d[3:6]}.{d[6:9]}-{d[9:]}'
+    if tipo == 2 and len(d) == 14:   # CNPJ
+        return f'{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:]}'
+    return d
+
+
 def _gerar_qrcode_base64(texto: str) -> str:
     img = qrcode_lib.make(texto)
     buf = io.BytesIO()
@@ -122,9 +132,16 @@ def verificar_pagamento(txid: str) -> dict:
                 pedido_id=pedido['id'],
                 valor=pag.get('valorOriginalPagamento', pedido.get('valor_pago', 0)),
                 nome_pagador=pag.get('nomePagador', ''),
+                cpf_cnpj_pagador=_formatar_documento(
+                    pag.get('numeroDocumentoPagador', ''),
+                    pag.get('tipoDocumentoPagador', 0),
+                ),
+                valor_liquido=pag.get('valorLiquidoRecebedor'),
+                data_repasse=pag.get('dataRepassePagamento'),
+                e2e_id=pag.get('e2eId', ''),
             )
             import tasks
-            tasks.enviar_confirmacao_web.delay(pedido['id'])
+            tasks.fluxo_enviar_confirmacao_web.delay(pedido['id'])
         return {'pago': pago}
     except Exception as e:
         logger.error(f'[WEB-CHECKOUT] Erro ao verificar pagamento {txid}: {e}')
