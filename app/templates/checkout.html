@@ -83,6 +83,49 @@
         .campo input:focus { border-color: var(--verde); }
         .campo input.erro  { border-color: var(--erro); }
 
+        /* ── Campo WhatsApp com prefixo DDI ── */
+        .input-com-prefixo {
+            display: flex;
+            align-items: center;
+            border: 1.5px solid var(--borda);
+            border-radius: 8px;
+            background: #fafde7;
+            transition: border-color .15s;
+            overflow: hidden;
+        }
+        .input-com-prefixo:focus-within { border-color: var(--verde); }
+        .input-com-prefixo.invalido     { border-color: var(--erro); }
+        .input-com-prefixo input {
+            border: none;
+            background: transparent;
+            flex: 1;
+            padding: 12px 14px;
+            font-size: 16px;
+            font-family: inherit;
+            color: var(--texto);
+            outline: none;
+            min-width: 0;
+        }
+        .prefixo-ddi {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0 10px 0 14px;
+            color: var(--sub);
+            font-size: 14px;
+            white-space: nowrap;
+            user-select: none;
+            border-right: 1.5px solid var(--borda);
+            height: 100%;
+            min-height: 44px;
+        }
+        .prefixo-ddi .bandeira { font-size: 18px; line-height: 1; }
+        .erro-campo {
+            color: var(--erro);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
         /* ── Opções de pagamento ── */
         .pagamento-opcao {
             border: 2px solid var(--borda);
@@ -265,7 +308,15 @@
             </div>
             <div class="campo">
                 <label for="inputWhatsapp">WhatsApp com DDD</label>
-                <input type="tel" id="inputWhatsapp" placeholder="(61) 98765-4321" maxlength="15" autocomplete="tel">
+                <div class="input-com-prefixo" id="wrapperWhatsapp">
+                    <span class="prefixo-ddi">
+                        <span class="bandeira">🇧🇷</span> +55
+                    </span>
+                    <input type="tel" id="inputWhatsapp" placeholder="(61) 98765-4321" maxlength="15" autocomplete="tel">
+                </div>
+                <span class="erro-campo" id="erroWhatsapp" style="display:none">
+                    Número incompleto — informe com DDD (ex: 61 98765-4321)
+                </span>
             </div>
         </div>
 
@@ -389,13 +440,71 @@
     });
 
     // ── Máscara WhatsApp ──
-    document.getElementById('inputWhatsapp').addEventListener('input', function () {
-        let v = this.value.replace(/\D/g, '').slice(0, 11);
-        if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
-        else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
-        else if (v.length > 0) v = `(${v}`;
-        this.value = v;
-    });
+    (function () {
+        const inp     = document.getElementById('inputWhatsapp');
+        const erro    = document.getElementById('erroWhatsapp');
+        const wrapper = document.getElementById('wrapperWhatsapp');
+        let jaInteragiu = false;
+
+        function formatar(raw) {
+            let v = raw.replace(/\D/g, '');
+            // Remove DDI 55 se colado com ele (ex: 556181163324)
+            if (v.length > 11 && v.startsWith('55')) v = v.slice(2);
+            v = v.slice(0, 11);
+            if (v.length > 7) return `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+            if (v.length > 2) return `(${v.slice(0,2)}) ${v.slice(2)}`;
+            if (v.length > 0) return `(${v}`;
+            return '';
+        }
+
+        function validarCampo(forcar) {
+            const digits = inp.value.replace(/\D/g, '');
+            const invalido = digits.length > 0 && digits.length < 10;
+            if (forcar || jaInteragiu) {
+                erro.style.display = invalido ? 'block' : 'none';
+                wrapper.classList.toggle('invalido', invalido);
+            }
+        }
+
+        inp.addEventListener('input', function () {
+            jaInteragiu = true;
+            const cursor = this.selectionStart;
+            const oldVal = this.value;
+            const newVal = formatar(oldVal);
+            if (newVal === oldVal) { validarCampo(false); return; }
+
+            // Restaura cursor rastreando quantos dígitos havia antes dele
+            const digitsAntes = oldVal.slice(0, cursor).replace(/\D/g, '').length;
+            this.value = newVal;
+            let novoCursor = newVal.length;
+            let cnt = 0;
+            for (let i = 0; i < newVal.length; i++) {
+                if (/\d/.test(newVal[i])) cnt++;
+                if (cnt === digitsAntes) { novoCursor = i + 1; break; }
+            }
+            this.setSelectionRange(novoCursor, novoCursor);
+            validarCampo(false);
+        });
+
+        // Backspace sobre caractere de formatação: pula e apaga o dígito anterior
+        inp.addEventListener('keydown', function (e) {
+            if (e.key !== 'Backspace') return;
+            const pos = this.selectionStart;
+            if (pos !== this.selectionEnd || pos === 0) return;
+            if (/\D/.test(this.value[pos - 1])) {
+                e.preventDefault();
+                this.value = this.value.slice(0, pos - 1) + this.value.slice(pos);
+                this.setSelectionRange(pos - 1, pos - 1);
+                this.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+
+        // Valida ao sair do campo
+        inp.addEventListener('blur', function () {
+            jaInteragiu = true;
+            validarCampo(true);
+        });
+    })();
 
     // ── Mostrar/esconder estados ──
     function mostrarEstado(estado) {
@@ -416,7 +525,14 @@
 
         if (!nome)              erros.push('Nome completo');
         if (!email || !email.includes('@')) erros.push('E-mail válido');
-        if (wa.length < 10)     erros.push('WhatsApp com DDD');
+        if (wa.length < 10) {
+            erros.push('WhatsApp com DDD');
+            document.getElementById('erroWhatsapp').style.display = 'block';
+            document.getElementById('wrapperWhatsapp').classList.add('invalido');
+        } else {
+            document.getElementById('erroWhatsapp').style.display = 'none';
+            document.getElementById('wrapperWhatsapp').classList.remove('invalido');
+        }
         if (!metodo)            erros.push('Forma de pagamento');
 
         const divErro = document.getElementById('msgErro');
