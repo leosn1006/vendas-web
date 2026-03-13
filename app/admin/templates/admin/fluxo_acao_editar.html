@@ -56,12 +56,13 @@
                 <label>Ação</label>
                 <select name="acao" id="acao-select" onchange="toggleContentFields()">
                     {% for val, lbl in [
-                        ('marcar_lida',    '👁 Marcar lida'),
-                        ('digitando',      '⌨️ Digitando'),
-                        ('enviar_audio',   '🎵 Enviar áudio'),
-                        ('enviar_imagem',  '🖼 Enviar imagem'),
-                        ('enviar_arquivo', '📄 Enviar arquivo'),
-                        ('enviar_mensagem','💬 Enviar mensagem'),
+                        ('marcar_lida',              '👁 Marcar lida'),
+                        ('digitando',                '⌨️ Digitando'),
+                        ('enviar_audio',             '🎵 Enviar áudio'),
+                        ('enviar_imagem',            '🖼 Enviar imagem'),
+                        ('enviar_arquivo',           '📄 Enviar arquivo'),
+                        ('enviar_mensagem',          '💬 Enviar mensagem'),
+                        ('enviar_produto_whatsapp',  '📦 Enviar produto WhatsApp'),
                     ] %}
                     <option value="{{ val }}" {% if acao.acao == val %}selected{% endif %}>{{ lbl }}</option>
                     {% endfor %}
@@ -108,6 +109,18 @@
                        value="{{ acao.nome_arquivo or '' }}" placeholder="receitas.pdf">
             </div>
 
+            <div class="form-group" id="field-param1" style="display:none;">
+                <label>Nome do produto</label>
+                <input type="text" name="param1"
+                       value="{{ acao.param1 or '' }}" placeholder="Nome comercial do produto">
+            </div>
+
+            <div class="form-group" id="field-param2" style="display:none;">
+                <label>Nome do brinde</label>
+                <input type="text" name="param2"
+                       value="{{ acao.param2 or '' }}" placeholder="Nome comercial do brinde">
+            </div>
+
         </div>
 
         <div class="form-actions">
@@ -127,11 +140,26 @@ function toggleContentFields() {
     const mensagem  = document.getElementById('field-mensagem');
     const caption   = document.getElementById('field-caption');
     const nomearq   = document.getElementById('field-nome_arquivo');
+    const param1    = document.getElementById('field-param1');
+    const param2    = document.getElementById('field-param2');
 
-    url.style.display      = (acao === 'enviar_audio' || acao === 'enviar_imagem' || acao === 'enviar_arquivo') ? '' : 'none';
-    mensagem.style.display = (acao === 'enviar_mensagem') ? '' : 'none';
-    caption.style.display  = (acao === 'enviar_arquivo') ? '' : 'none';
-    nomearq.style.display  = (acao === 'enviar_arquivo') ? '' : 'none';
+    const isTemplate = (acao === 'enviar_produto_whatsapp');
+
+    url.style.display      = (acao === 'enviar_audio' || acao === 'enviar_imagem' || acao === 'enviar_arquivo' || isTemplate) ? '' : 'none';
+    mensagem.style.display = (acao === 'enviar_mensagem' || isTemplate) ? '' : 'none';
+    caption.style.display  = (acao === 'enviar_arquivo' || isTemplate) ? '' : 'none';
+    nomearq.style.display  = (acao === 'enviar_arquivo' || isTemplate) ? '' : 'none';
+    param1.style.display   = isTemplate ? '' : 'none';
+    param2.style.display   = isTemplate ? '' : 'none';
+
+    // Ajusta labels para o contexto do template
+    if (isTemplate) {
+        mensagem.querySelector('label').textContent = 'Nome do template';
+        caption.querySelector('label').textContent  = 'Idioma (ex: pt_BR)';
+    } else {
+        mensagem.querySelector('label').textContent = 'Mensagem';
+        caption.querySelector('label').textContent  = 'Caption';
+    }
 }
 // init on page load
 toggleContentFields();

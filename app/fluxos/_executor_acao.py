@@ -14,6 +14,7 @@ import time
 from whatsapp import (
     marcar_como_lida, enviar_mensagem_digitando,
     enviar_audio, enviar_imagem, enviar_mensagem, enviar_documento,
+    enviar_produto_whatsapp,
 )
 from database import salvar_mensagem_pedido
 
@@ -77,6 +78,26 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
         mid = enviar_mensagem(pedido, acao['mensagem'])
         salvar_mensagem_pedido(mid, pedido_id, acao['mensagem'], tipo_mensagem='enviada')
         logger.debug(f"[{tag}] 💬 Mensagem enviada: {str(acao['mensagem'])[:60]}...")
+
+    elif tipo == 'enviar_produto_whatsapp':
+        _exige_campo(acao, 'mensagem', tag)      # nome do template
+        _exige_campo(acao, 'url', tag)           # URL do documento (header)
+        _exige_campo(acao, 'nome_arquivo', tag)  # filename do documento
+        body_params = [
+            pedido.get('contact_name', ''),
+            acao.get('param1') or '',
+            acao.get('param2') or '',
+        ]
+        mid = enviar_produto_whatsapp(
+            pedido,
+            template_name=acao['mensagem'],
+            language=acao.get('caption') or 'pt_BR',
+            doc_url=acao['url'],
+            doc_filename=acao['nome_arquivo'],
+            body_params=body_params,
+        )
+        salvar_mensagem_pedido(mid, pedido_id, f"[template] {acao['mensagem']}", tipo_mensagem='enviada')
+        logger.debug(f"[{tag}] 📦 Template '{acao['mensagem']}' enviado para {pedido.get('contact_phone')}")
 
     else:
         logger.warning(f"[{tag}] ⚠️ Tipo de ação desconhecido ignorado: '{tipo}'")

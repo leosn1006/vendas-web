@@ -291,6 +291,65 @@ def enviar_imagem(pedido: Pedido, url_imagem: str):
         raise ValueError(f"[IMAGEM-ENVIAR] ❌ Erro ao enviar imagem: {response.json()}")
 
 
+def enviar_produto_whatsapp(pedido: dict, template_name: str, language: str,
+                            doc_url: str, doc_filename: str, body_params: list) -> str:
+    """
+    Envia uma WhatsApp Template Message com documento no header e parâmetros de texto no body.
+    Usado para iniciar conversas pelo sistema (ex: entrega de ebook após compra web),
+    onde a API exige templates pré-aprovados pois não há janela de 24h ativa.
+    """
+    phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
+    url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+    token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+
+    headers_reais = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json; charset=utf-8",
+        "Accept": "application/json"
+    }
+
+    numero_remetente = pedido.get("contact_phone")
+
+    dados = {
+        "messaging_product": "whatsapp",
+        "to": numero_remetente,
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {"code": language or "pt_BR"},
+            "components": [
+                {
+                    "type": "header",
+                    "parameters": [
+                        {"type": "document", "document": {
+                            "link": doc_url,
+                            "filename": doc_filename
+                        }}
+                    ]
+                },
+                {
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": p} for p in body_params
+                    ]
+                }
+            ]
+        }
+    }
+
+    logger.info(f"[TEMPLATE-ENVIAR] Enviando template '{template_name}' para {numero_remetente}")
+    logger.info(f"[TEMPLATE-ENVIAR] dados: {dados}")
+
+    response = requests.post(url, headers=headers_reais, json=dados)
+
+    if response.status_code == 200:
+        id_message = response.json().get('messages', [{}])[0].get('id')
+        logger.info(f"[TEMPLATE-ENVIAR] Template enviado com sucesso! ID: {id_message}")
+        return id_message
+
+    raise ValueError(f"[TEMPLATE-ENVIAR] ❌ Erro ao enviar template: {response.json()}")
+
+
 def notificar_admin_pedido(pedido: dict, mensagem: str):
     """Envia notificação ao admin pelo mesmo número WhatsApp do produto (phone_number_id do pedido)."""
     admin_phone = os.getenv('ADMIN_WHATSAPP_NUMBER', '').replace('+', '')

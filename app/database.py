@@ -746,32 +746,39 @@ def get_acao_fluxo(acao_id):
 
 def adicionar_acao_fluxo(produto_id, fluxo, ordem, condicao, acao,
                           url, mensagem, caption, nome_arquivo,
-                          delay_inicial, delay_final):
+                          delay_inicial, delay_final,
+                          param1=None, param2=None):
     """Insere uma nova ação de fluxo. Retorna o ID criado."""
     return db.execute_query(
         """INSERT INTO acoes_fluxo_produto
                (produto_id, fluxo, ordem, condicao, acao,
-                url, mensagem, caption, nome_arquivo, delay_inicial, delay_final)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                url, mensagem, caption, nome_arquivo, delay_inicial, delay_final,
+                param1, param2)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
         (produto_id, fluxo, ordem, condicao, acao,
          url or None, mensagem or None, caption or None, nome_arquivo or None,
-         delay_inicial, delay_final)
+         delay_inicial, delay_final,
+         param1 or None, param2 or None)
     )
 
 
 def atualizar_acao_fluxo(acao_id, ordem, condicao, acao,
                           url, mensagem, caption, nome_arquivo,
-                          delay_inicial, delay_final):
+                          delay_inicial, delay_final,
+                          param1=None, param2=None):
     """Atualiza uma ação existente pelo ID."""
     db.execute_query(
         """UPDATE acoes_fluxo_produto SET
                ordem=%s, condicao=%s, acao=%s,
                url=%s, mensagem=%s, caption=%s, nome_arquivo=%s,
-               delay_inicial=%s, delay_final=%s
+               delay_inicial=%s, delay_final=%s,
+               param1=%s, param2=%s
            WHERE id=%s""",
         (ordem, condicao, acao,
          url or None, mensagem or None, caption or None, nome_arquivo or None,
-         delay_inicial, delay_final, acao_id)
+         delay_inicial, delay_final,
+         param1 or None, param2 or None,
+         acao_id)
     )
 
 

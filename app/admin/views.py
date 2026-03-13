@@ -770,6 +770,8 @@ def adicionar_acao_fluxo_view(produto_id, fluxo):
             nome_arquivo=request.form.get('nome_arquivo'),
             delay_inicial=float(request.form.get('delay_inicial') or 0),
             delay_final=float(request.form.get('delay_final') or 0),
+            param1=request.form.get('param1'),
+            param2=request.form.get('param2'),
         )
         flash('Ação adicionada com sucesso!', 'success')
         logger.info(f"[ADMIN] ✅ Ação adicionada ao fluxo '{fluxo}' produto #{produto_id} por {current_user.email}")
@@ -808,6 +810,8 @@ def editar_acao_fluxo(produto_id, fluxo, acao_id):
                 nome_arquivo=request.form.get('nome_arquivo'),
                 delay_inicial=float(request.form.get('delay_inicial') or 0),
                 delay_final=float(request.form.get('delay_final') or 0),
+                param1=request.form.get('param1'),
+                param2=request.form.get('param2'),
             )
             flash('Ação atualizada com sucesso!', 'success')
             logger.info(f"[ADMIN] ✅ Ação #{acao_id} do fluxo '{fluxo}' atualizada por {current_user.email}")
