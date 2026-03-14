@@ -3,18 +3,16 @@ Entrega do e-book por e-mail com PDFs em anexo.
 
 Fluxo:
   1. Busca pedido (email, contact_name, produto_id)
-  2. Busca produto_web (url_pdf, url_pdf_bonus, email_remetente, descricao)
+  2. Busca produto (url_pdf, url_pdf_bonus, email_remetente, descricao) — tabela produtos
   3. Monta e-mail com PDFs como anexos (não como link)
-  4. Envia via SMTP Google Workspace
+  4. Envia via Brevo API (HTTP/443 — sem dependência de porta SMTP)
   5. Marca data_envio_ebook no pedido
 """
 
 import os
-import smtplib
+import base64
 import logging
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.application import MIMEApplication
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +23,7 @@ def executar(pedido_id: int) -> None:
     import database as db
 
     pedido  = db.get_pedido(pedido_id)
-    produto = db.get_produto_web(pedido['produto_id'])
+    produto = db.get_produto_disponivel_web(pedido['produto_id'])
 
     if not pedido.get('email'):
         logger.warning(f'[EMAIL] Pedido #{pedido_id} sem e-mail — entrega ignorada')
@@ -33,45 +31,54 @@ def executar(pedido_id: int) -> None:
 
     destinatario = pedido['email']
     nome_cliente = (pedido.get('contact_name') or '').split()[0] or 'cliente'
-    remetente    = (produto or {}).get('email_remetente') or os.getenv('SMTP_USER', '')
+    remetente    = (produto or {}).get('email_remetente') or os.getenv('EMAIL_FROM', '')
     nome_produto = (produto or {}).get('descricao', 'Guia Digital')
     pedido_num   = f'#{pedido_id:04d}'
+    subject      = f'Pedido {pedido_num} - ✅ ACESSO LIBERADO: Seu {nome_produto} está em anexo!'
 
-    msg = MIMEMultipart()
-    msg['From']    = f'Luiza — Guia Pães Saudáveis <{remetente}>'
-    msg['To']      = destinatario
-    msg['Subject'] = f'Pedido {pedido_num} - ✅ ACESSO LIBERADO: Seu {nome_produto} está em anexo!'
-
-    msg.attach(MIMEText(_corpo_html(nome_cliente, nome_produto), 'html', 'utf-8'))
-
+    anexos = []
     if produto and produto.get('url_pdf'):
-        _anexar(msg, produto['url_pdf'])
+        anexos.append(_ler_anexo(produto['url_pdf']))
     if produto and produto.get('url_pdf_bonus'):
-        _anexar(msg, produto['url_pdf_bonus'])
+        anexos.append(_ler_anexo(produto['url_pdf_bonus']))
 
-    _enviar(msg)
+    _enviar(
+        destinatario=destinatario,
+        remetente=remetente,
+        subject=subject,
+        html=_corpo_html(nome_cliente, nome_produto),
+        anexos=anexos,
+    )
     db.marcar_ebook_enviado(pedido_id)
     logger.info(f'[EMAIL] ✅ Pedido #{pedido_id} entregue para {destinatario}')
 
 
-def _anexar(msg: MIMEMultipart, nome_arquivo: str) -> None:
+def _ler_anexo(nome_arquivo: str) -> dict:
     caminho = os.path.join(_BASE_DIR, nome_arquivo)
     with open(caminho, 'rb') as f:
-        parte = MIMEApplication(f.read(), Name=nome_arquivo)
-    parte['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
-    msg.attach(parte)
+        conteudo = base64.b64encode(f.read()).decode()
+    return {'name': nome_arquivo, 'content': conteudo}
 
 
-def _enviar(msg: MIMEMultipart) -> None:
-    host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
-    port = int(os.getenv('SMTP_PORT', 587))
-    user = os.getenv('SMTP_USER', '')
-    pwd  = os.getenv('SMTP_PASSWORD', '')
-    with smtplib.SMTP(host, port) as s:
-        s.ehlo()
-        s.starttls()
-        s.login(user, pwd)
-        s.send_message(msg)
+def _enviar(destinatario: str, remetente: str, subject: str,
+            html: str, anexos: list) -> None:
+    payload = {
+        'sender':      {'name': 'Luiza — Guia Pães Saudáveis', 'email': remetente},
+        'to':          [{'email': destinatario}],
+        'subject':     subject,
+        'htmlContent': html,
+        'attachment':  anexos,
+    }
+    resp = requests.post(
+        'https://api.brevo.com/v3/smtp/email',
+        json=payload,
+        headers={
+            'api-key':      os.getenv('BREVO_API_KEY', ''),
+            'Content-Type': 'application/json',
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
 
 
 def _corpo_html(nome: str, nome_produto: str) -> str:

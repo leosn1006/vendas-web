@@ -325,7 +325,7 @@
                 <input type="email" id="inputEmail" placeholder="seu@email.com" autocomplete="email">
             </div>
             <div class="campo">
-                <label for="inputWhatsapp">WhatsApp com DDD</label>
+                <label for="inputWhatsapp">WhatsApp com DDD <span style="font-weight:400;color:#888;">(opcional)</span></label>
                 <div class="input-com-prefixo" id="wrapperWhatsapp">
                     <span class="prefixo-ddi" data-ddi="55">
                         <span class="bandeira">🇧🇷</span> +55
@@ -406,14 +406,15 @@
         </div>
     </div>
 
-    <!-- Estado: sucesso / entrega WhatsApp -->
+    <!-- Estado: sucesso / entrega e-mail -->
     <div id="estado-sucesso" class="card">
         <span class="sucesso-icone">🎉</span>
         <div class="sucesso-titulo">Pagamento confirmado!</div>
         <p class="sucesso-sub">
-            Estamos preparando seu pedido! 🚀<br>
-            Em breve você receberá seu ebook no WhatsApp <strong id="sucesso-whatsapp" style="white-space:nowrap"></strong>.<br>
-            Fique de olho nas suas mensagens.
+            Seu guia está sendo enviado para<br>
+            <strong id="sucesso-email"></strong><br><br>
+            Verifique sua caixa de entrada — e a pasta de <strong>spam</strong>, por garantia.<br>
+            O arquivo chega como anexo no e-mail.
         </p>
         <p class="sucesso-pedido">
             Pedido <strong id="sucesso-pedido-id"></strong>
@@ -558,7 +559,7 @@
 
         if (!nome)              erros.push('Nome completo');
         if (!email || !email.includes('@')) erros.push('E-mail válido');
-        if (wa.length < 10) {
+        if (wa.length > 0 && wa.length < 10) {
             erros.push('WhatsApp com DDD');
             document.getElementById('erroWhatsapp').style.display = 'block';
             document.getElementById('wrapperWhatsapp').classList.add('invalido');
@@ -638,8 +639,8 @@
 
     // ── Pagamento confirmado ──
     function pagamentoConfirmado() {
-        const wa = document.getElementById('inputWhatsapp') ? document.getElementById('inputWhatsapp').value : '';
-        document.getElementById('sucesso-whatsapp').textContent = wa || 'informado';
+        const email = document.getElementById('inputEmail') ? document.getElementById('inputEmail').value.trim() : '';
+        document.getElementById('sucesso-email').textContent = email || 'seu e-mail';
         document.getElementById('sucesso-pedido-id').textContent = `#${currentPedidoId}`;
         mostrarEstado('sucesso');
     }

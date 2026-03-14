@@ -7,4 +7,4 @@ ALTER TABLE produto_web
     COMMENT 'Endereço De: usado no envio do e-book. Ex: paes@lsnlivros.com.br';
 
 -- Seed: preencher o produto 1 com o e-mail padrão
-UPDATE produto_web SET email_remetente = 'paes@lsnlivros.com.br' WHERE id = 1;
+UPDATE produto_web SET email_remetente = 'admin@lsnlivros.com.br' WHERE id = 1;

@@ -172,7 +172,7 @@ def processar_uploads_google_sheets(self):
         raise self.retry(exc=exc, countdown=600)
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=2)
 def enviar_email_entrega(self, pedido_id: int):
     logger.info("=" * 120)
     logger.info(f"[TASK-EMAIL] 📧 Iniciando entrega por e-mail para pedido #{pedido_id}")
