@@ -986,11 +986,16 @@
     <div class="modal-box">
         <button class="modal-close" id="modalFechar">✕</button>
 
-        <!-- Estado 1: formulário WhatsApp -->
+        <!-- Estado 1: formulário -->
         <div id="estado-form">
             <div class="modal-titulo">Quase lá! 🎉</div>
-            <p class="modal-sub">Informe seu WhatsApp para receber o download caso a página feche.</p>
-            <label class="input-label" for="inputWhatsapp">WhatsApp com DDD:</label>
+            <p class="modal-sub">Seu e-book chega no seu e-mail assim que o pagamento for confirmado.</p>
+            <label class="input-label" for="inputNome">Seu nome:</label>
+            <input type="text" id="inputNome" class="input-wa" placeholder="Maria Silva" maxlength="80">
+            <label class="input-label" for="inputEmail" style="margin-top:10px;">Seu melhor e-mail:</label>
+            <input type="email" id="inputEmail" class="input-wa" placeholder="seu@email.com" maxlength="120">
+            <p style="font-size:12px;color:#2d6a1f;margin:6px 0 10px;line-height:1.5;">✅ O guia será enviado para este e-mail após o PIX. 🔒 Seus dados estão 100% protegidos.</p>
+            <label class="input-label" for="inputWhatsapp">WhatsApp (opcional):</label>
             <input type="tel" id="inputWhatsapp" class="input-wa" placeholder="(61) 98765-4321" maxlength="15">
             <button class="btn-gerar" id="btnGerarQr">Gerar meu QR Code PIX →</button>
             <p class="form-nota">🔒 Seus dados ficam protegidos e não são compartilhados.</p>
@@ -1029,14 +1034,12 @@
         <div id="estado-sucesso">
             <span class="sucesso-icone">🎉</span>
             <div class="sucesso-titulo">Pagamento confirmado!</div>
-            <p class="sucesso-sub">Seus materiais estão prontos para download. Aproveite cada receita!</p>
-            <a id="btnDownload" href="#" class="btn-download">
-                ⬇ Baixar Guia de Pães Sem Glúten
-            </a>
-            <span class="badge-bonus">🎁 BÔNUS</span>
-            <a id="btnDownloadBonus" href="#" class="btn-bonus">
-                ⬇ Baixar Livro de Bolos Sem Glúten e Sem Lactose
-            </a>
+            <p class="sucesso-sub">
+                Seu guia está sendo enviado para:<br>
+                <strong id="sucesso-email" style="color:#2d6a1f;font-size:15px;"></strong><br><br>
+                Verifique sua caixa de entrada — e a pasta de <strong>spam</strong>, por garantia.<br>
+                <span style="font-size:13px;opacity:.8;">O arquivo chega como anexo no e-mail. No Gmail pelo celular, procure o ícone de 📎 clipe no final da mensagem.</span>
+            </p>
             <button id="btnCompartilhar" class="btn-compartilhar">
                 💬 Compartilhar com amigas
             </button>
@@ -1085,15 +1088,13 @@
         const savedId = localStorage.getItem('pedido_pago');
         if (savedId) {
             currentPedidoId = parseInt(savedId);
-            document.getElementById('btnDownload').href = `/api/v1/produto/pdf/${currentPedidoId}`;
-            document.getElementById('btnDownloadBonus').href = `/api/v1/produto/pdf/${currentPedidoId}/bonus`;
             mostrarEstado('estado-sucesso');
         } else {
             const btn = document.getElementById('btnGerarQr');
             btn.disabled = false;
             btn.textContent = 'Gerar meu QR Code PIX →';
             mostrarEstado('estado-form');
-            document.getElementById('inputWhatsapp').focus();
+            document.getElementById('inputNome').focus();
         }
     }
 
@@ -1159,12 +1160,21 @@
 
     // ── Botão "Gerar QR Code" ──
     document.getElementById('btnGerarQr').addEventListener('click', async function () {
+        const nome = document.getElementById('inputNome').value.trim();
+        const email = document.getElementById('inputEmail').value.trim();
         const wa = document.getElementById('inputWhatsapp').value.replace(/\D/g, '');
-        if (wa.length < 10) {
-            document.getElementById('inputWhatsapp').style.borderColor = '#e05050';
-            document.getElementById('inputWhatsapp').focus();
+
+        if (!nome) {
+            document.getElementById('inputNome').style.borderColor = '#e05050';
+            document.getElementById('inputNome').focus();
             return;
         }
+        if (!email || !email.includes('@')) {
+            document.getElementById('inputEmail').style.borderColor = '#e05050';
+            document.getElementById('inputEmail').focus();
+            return;
+        }
+
         this.disabled = true;
         this.textContent = 'Gerando...';
 
@@ -1173,7 +1183,7 @@
             const resp = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ whatsapp: wa, ...utmData }),
+                body: JSON.stringify({ nome, email, whatsapp: wa, ...utmData }),
             });
             const data = await resp.json();
             currentPedidoId = data.pedido_id;
@@ -1237,9 +1247,10 @@
     function pagamentoConfirmado() {
         // Persiste pedido pago para recuperar após fechar/recarregar
         localStorage.setItem('pedido_pago', currentPedidoId);
-        // Configura botões de download
-        document.getElementById('btnDownload').href = `/api/v1/produto/pdf/${currentPedidoId}`;
-        document.getElementById('btnDownloadBonus').href = `/api/v1/produto/pdf/${currentPedidoId}/bonus`;
+
+        // Mostra o e-mail usado na compra
+        const emailUsado = document.getElementById('inputEmail')?.value || '';
+        document.getElementById('sucesso-email').textContent = emailUsado;
 
         // Compartilhar no WhatsApp
         document.getElementById('btnCompartilhar').addEventListener('click', () => {

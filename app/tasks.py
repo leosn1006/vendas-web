@@ -170,3 +170,20 @@ def processar_uploads_google_sheets(self):
         import traceback
         traceback.print_exc()
         raise self.retry(exc=exc, countdown=600)
+
+
+@shared_task(bind=True, max_retries=3)
+def enviar_email_entrega(self, pedido_id: int):
+    logger.info("=" * 120)
+    logger.info(f"[TASK-EMAIL] 📧 Iniciando entrega por e-mail para pedido #{pedido_id}")
+    from fluxos.entrega_pedido_email import executar
+    try:
+        executar(pedido_id)
+        logger.info(f"[TASK-EMAIL] ✅ E-mail entregue para pedido #{pedido_id}")
+        logger.info("=" * 120)
+    except Exception as exc:
+        logger.error(f"[TASK-EMAIL] ❌ Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        import traceback
+        traceback.print_exc()
+        logger.info("=" * 120)
+        raise self.retry(exc=exc, countdown=60)

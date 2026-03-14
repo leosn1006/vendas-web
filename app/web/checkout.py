@@ -77,8 +77,11 @@ def gerar_pix(body: dict, url_base: str = '') -> dict:
         if not url_base:
             url_base = os.getenv('APP_BASE_URL', 'http://localhost').rstrip('/')
         url_retorno = f'{url_base}/pay/{produto_id}?pedido={pedido_id}'
+        _email = body.get('email', '')
+        _descricao = f'Pedido #{pedido_id} | {_email}' if _email else f'Pedido #{pedido_id}'
         qr = criar_solicitacao(valor=valor, pedido_web_id=pedido_id,
                                numero_convenio=numero_convenio,
+                               descricao=_descricao,
                                url_retorno=url_retorno)
         expiracao = (datetime.now() + timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
         atualizar_pedido_solicitacao_bb(
@@ -142,7 +145,9 @@ def verificar_pagamento(txid: str) -> dict:
                 e2e_id=pag.get('e2eId', ''),
             )
             import tasks
-            tasks.fluxo_enviar_confirmacao_web.delay(pedido['id'])
+            tasks.enviar_email_entrega.delay(pedido['id'])
+            if pedido.get('contact_phone'):
+                tasks.fluxo_enviar_confirmacao_web.delay(pedido['id'])
         return {'pago': pago}
     except Exception as e:
         logger.error(f'[WEB-CHECKOUT] Erro ao verificar pagamento {txid}: {e}')
