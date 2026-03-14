@@ -283,7 +283,10 @@ def dados_basicos_produto(produto_id):
                     pix_destinatario_esperado     = %s,
                     google_sheets_spreadsheet_id  = %s,
                     google_sheets_sheet_name      = %s,
-                    google_ads_conversion_name    = %s
+                    google_ads_conversion_name    = %s,
+                    url_pdf                       = %s,
+                    url_pdf_bonus                 = %s,
+                    email_remetente               = %s
                 WHERE id = %s
             """, (
                 request.form.get('nome'),
@@ -294,6 +297,9 @@ def dados_basicos_produto(produto_id):
                 request.form.get('google_sheets_spreadsheet_id') or None,
                 request.form.get('google_sheets_sheet_name') or 'Página1',
                 request.form.get('google_ads_conversion_name') or None,
+                request.form.get('url_pdf') or None,
+                request.form.get('url_pdf_bonus') or None,
+                request.form.get('email_remetente') or None,
                 produto_id
             ))
             flash('Dados básicos atualizados com sucesso!', 'success')

@@ -78,6 +78,8 @@ def _enviar(destinatario: str, remetente: str, subject: str,
         },
         timeout=30,
     )
+    if not resp.ok:
+        logger.error(f'[EMAIL] Brevo {resp.status_code}: {resp.text}')
     resp.raise_for_status()
 
 
