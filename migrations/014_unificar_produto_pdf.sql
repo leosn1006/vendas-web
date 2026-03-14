@@ -17,5 +17,7 @@ SET
 WHERE p.id = 1;
 
 -- Remove tabelas legadas (ambiente de testes — sem dados de produção)
+-- Ordem importa: pagamento_web tem FK para pedido_web
+DROP TABLE IF EXISTS pagamento_web;
 DROP TABLE IF EXISTS pedido_web;
 DROP TABLE IF EXISTS produto_web;
