@@ -66,9 +66,9 @@
         }
         .secao-num {
             background: #222; color: #fff;
-            width: 26px; height: 26px; border-radius: 50%;
+            width: 20px; height: 20px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 13px; font-weight: 900; flex-shrink: 0;
+            font-size: 11px; font-weight: 900; flex-shrink: 0;
         }
 
         /* ── Inputs ── */
@@ -386,7 +386,7 @@
             <span class="copiaecola-txt" id="qrTexto">Carregando...</span>
             <button class="btn-copiar" id="btnCopiar">Copiar</button>
         </div>
-        <div class="bbpay-separator"><span>OU</span></div>
+        <div id="bbpaySeparator" class="bbpay-separator" style="display:none;"><span>OU</span></div>
         <a id="linkBBPay" href="#" target="_blank" class="btn-bbpay-link" style="display:none;">
             <span class="bbpay-logo-badge">BB</span>
             <span>Pagar com <strong>BB Pay</strong></span>
@@ -722,6 +722,7 @@
                 const linkBB = document.getElementById('linkBBPay');
                 linkBB.href = data.url_bbpay;
                 linkBB.style.display = 'flex';
+                document.getElementById('bbpaySeparator').style.display = 'flex';
             }
             mostrarEstado('pix');
             iniciarPolling();

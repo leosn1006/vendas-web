@@ -124,8 +124,8 @@ def _corpo_html(nome: str, nome_produto: str,
 
         <!-- Cabeçalho verde -->
         <tr>
-          <td style="background:linear-gradient(135deg,#1a4012,#2d6a1f); padding:28px 32px; text-align:center;">
-            <h1 style="color:#ffffff; font-size:22px; margin:0; font-family:Georgia,serif;">
+          <td style="background:linear-gradient(135deg,#2d6a1f,#4a9e30); padding:28px 32px; text-align:center;">
+            <h1 style="color:#ffffff; font-size:24px; font-weight:bold; margin:0; font-family:Georgia,serif;">
               ✅ Seu {nome_produto} chegou, {nome}!
             </h1>
           </td>

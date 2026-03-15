@@ -616,6 +616,7 @@
             color: #fff; font-family: 'Lato', sans-serif;
             font-size: 15px; font-weight: 700;
             cursor: pointer; letter-spacing: .3px;
+            flex: 1; text-align: center;
         }
         .sticky-cta .sticky-preco {
             font-size: 13px;
@@ -721,7 +722,7 @@
     <span class="section-label">Você se identifica?</span>
     <h2 class="section-title">O pãozinho de cada dia está te fazendo mal?</h2>
     <p class="dor-text">
-        Você sente que o pãozinho de cada dia está te deixando <strong>cansada, com barriga estufada depois das refeições</strong> — ou com aquela culpa de querer comer algo que te faz mal?
+        Você sente que o pão de cada dia está te deixando <strong>cansada, com barriga estufada depois das refeições</strong> — ou com aquela culpa de querer comer algo que te faz mal?
         A partir dos 35 anos, muitas de nós começamos a perceber que o glúten e a lactose juntos podem ser os culpados.
         <br><br>
         Mas a alternativa do mercado é ruim: pães de forma sem glúten que parecem isopor, têm gosto de nada e custam uma fortuna.
@@ -752,7 +753,7 @@
             </div>
         </div>
         <div class="autora-historia">
-            <p>Por muito tempo, toda vez que eu sentia aquele cheirinho de pãozinho fresquinho na padaria, eu morria de vontade — mas sabia que o preço seria um dia inteiro de <strong>dores abdominais, inchaço, gases e enjoo</strong>. Era muito desconfortável.</p>
+            <p>Por muito tempo, toda vez que eu sentia aquele cheirinho de pão fresquinho na padaria, eu morria de vontade — mas sabia que o preço seria um dia inteiro de <strong>dores abdominais, inchaço, gases e enjoo</strong>. Era muito desconfortável.</p>
             <p>Foi aí que decidi que não ia mais passar vontade. Comecei a me arriscar na cozinha, testando e ajustando receita por receita até trazer de volta <strong>aquele mesmo sabor e cheirinho de pão fresquinho</strong> — só que sem glúten e sem lactose.</p>
             <p>Organizei tudo num livrinho digital e o resultado foi tão bom que hoje, nos encontros de família aos domingos, <strong>todo mundo espera ansioso pelo pãozinho do dia</strong>.</p>
         </div>
@@ -963,10 +964,10 @@
 <!-- ══ FOOTER ══ -->
 <footer>
     <p><strong style="color:#777;">Receitas Digitais e Saúde</strong> &nbsp;·&nbsp; © 2025. Todos os direitos reservados.</p>
-    <p style="margin-top:6px; font-size:10px; color:#bbb;">Para suporte ou dúvidas, acesse nossa <a href="/contato">página de contato</a>.</p>
+    <p style="margin-top:6px; font-size:10px; color:#bbb;">Para suporte ou dúvidas, acesse nossa <a href="/contato" target="_blank" rel="noopener">página de contato</a>.</p>
     <div class="footer-links">
-        <a href="/politica-privacidade">Política de Privacidade</a>
-        <a href="/termos-de-uso">Termos de Uso</a>
+        <a href="/politica-privacidade" target="_blank" rel="noopener">Política de Privacidade</a>
+        <a href="/termos-de-uso" target="_blank" rel="noopener">Termos de Uso</a>
     </div>
     <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid #3a3a3a; text-align: left;">
         <p style="font-size: 10px; color: #777; line-height: 1.6;">
@@ -1168,7 +1169,7 @@
             document.getElementById('inputNome').focus();
             return;
         }
-        if (!email || !email.includes('@')) {
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
             document.getElementById('inputEmail').style.borderColor = '#e05050';
             document.getElementById('inputEmail').focus();
             return;
