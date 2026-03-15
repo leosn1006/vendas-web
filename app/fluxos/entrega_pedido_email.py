@@ -50,22 +50,23 @@ def executar(pedido_id: int) -> None:
         remetente=remetente,
         subject=subject,
         html=_corpo_html(nome_cliente, nome_produto, url_download, url_download_bonus),
-        produto_id=pedido['produto_id'],
     )
     db.marcar_ebook_enviado(pedido_id)
     logger.info(f'[EMAIL] ✅ Pedido #{pedido_id} entregue para {destinatario}')
 
 
-def _enviar(destinatario: str, remetente: str, subject: str,
-            html: str, produto_id: int) -> None:
-    sa_json = os.getenv(f'GOOGLE_SA_JSON_P{produto_id}')
+def _enviar(destinatario: str, remetente: str, subject: str, html: str) -> None:
+    # Usa sempre a SA do produto 6 (conta empresarial com Google Workspace)
+    # TODO: migrar produto 1 para Workspace e usar GOOGLE_SA_JSON_P{produto_id}
+    sa_json = os.getenv('GOOGLE_SA_JSON_P6')
     if not sa_json:
-        raise RuntimeError(f'[EMAIL] GOOGLE_SA_JSON_P{produto_id} não configurada')
+        raise RuntimeError('[EMAIL] GOOGLE_SA_JSON_P6 não configurada')
 
     creds = Credentials.from_service_account_info(
         _json.loads(sa_json),
         scopes=_GMAIL_SCOPES,
-        subject=remetente,  # impersonação: envia como o e-mail do produto
+        subject='admin@lsnlivros.com.br',  # TODO: usar remetente quando produto 1 migrar para Workspace
+        # subject=remetente,
     )
     service = build('gmail', 'v1', credentials=creds)
 
