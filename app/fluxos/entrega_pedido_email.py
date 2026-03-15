@@ -15,6 +15,7 @@ import logging
 import base64
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formataddr
 
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -48,6 +49,7 @@ def executar(pedido_id: int) -> None:
     _enviar(
         destinatario=destinatario,
         remetente=remetente,
+        nome_remetente=f'Luiza — {nome_produto}',
         subject=subject,
         html=_corpo_html(nome_cliente, nome_produto, url_download, url_download_bonus),
     )
@@ -55,7 +57,8 @@ def executar(pedido_id: int) -> None:
     logger.info(f'[EMAIL] ✅ Pedido #{pedido_id} entregue para {destinatario}')
 
 
-def _enviar(destinatario: str, remetente: str, subject: str, html: str) -> None:
+def _enviar(destinatario: str, remetente: str, nome_remetente: str,
+            subject: str, html: str) -> None:
     # Usa sempre a SA do produto 6 (conta empresarial com Google Workspace)
     # TODO: migrar produto 1 para Workspace e usar GOOGLE_SA_JSON_P{produto_id}
     sa_json = os.getenv('GOOGLE_SA_JSON_P6')
@@ -72,7 +75,7 @@ def _enviar(destinatario: str, remetente: str, subject: str, html: str) -> None:
 
     msg = MIMEMultipart('alternative')
     msg['to']      = destinatario
-    msg['from']    = remetente
+    msg['from']    = formataddr((nome_remetente, remetente))
     msg['subject'] = subject
     msg.attach(MIMEText(html, 'html'))
 
@@ -86,7 +89,7 @@ def _corpo_html(nome: str, nome_produto: str,
 
     btn_principal = f'''
       <a href="{url_download}"
-         style="display:inline-block; background:#2d6a1f; color:#ffffff;
+         style="display:inline-block; background:#b45309; color:#ffffff;
                 font-size:17px; font-weight:bold; text-decoration:none;
                 padding:16px 32px; border-radius:12px; margin:8px 0;">
         📥 Baixar meu {nome_produto}
@@ -137,7 +140,7 @@ def _corpo_html(nome: str, nome_produto: str,
             </p>
 
             <!-- Botões de download -->
-            <table width="100%" style="background:#f0f7eb; border-radius:12px;
+            <table width="100%" style="background:#fff8e1; border-radius:12px;
                                         margin:0 0 28px; text-align:center;">
               <tr>
                 <td style="padding:24px 20px;">
