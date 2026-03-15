@@ -913,7 +913,7 @@
                 Como vou receber o e-book?
                 <span class="faq-chevron">⌄</span>
             </button>
-            <div class="faq-resposta">Assim que o pagamento PIX for confirmado, o botão de download aparece na tela na hora. Você também recebe um link de acesso no seu WhatsApp para poder baixar de novo quando quiser.</div>
+            <div class="faq-resposta">Assim que o pagamento PIX for confirmado, o link de download é enviado automaticamente para o seu e-mail. Se você informou seu número de WhatsApp, enviaremos por lá também.</div>
         </div>
         <div class="faq-item">
             <button class="faq-pergunta">
@@ -1037,8 +1037,7 @@
             <p class="sucesso-sub">
                 Seu guia está sendo enviado para:<br>
                 <strong id="sucesso-email" style="color:#2d6a1f;font-size:15px;"></strong><br><br>
-                Verifique sua caixa de entrada — e a pasta de <strong>spam</strong>, por garantia.<br>
-                <span style="font-size:13px;opacity:.8;">O arquivo chega como anexo no e-mail. No Gmail pelo celular, procure o ícone de 📎 clipe no final da mensagem.</span>
+                Verifique sua caixa de entrada — e a pasta de <strong>spam</strong>, por garantia.
             </p>
             <button id="btnCompartilhar" class="btn-compartilhar">
                 💬 Compartilhar com amigas
@@ -1202,9 +1201,9 @@
                 }
                 document.getElementById('qrTexto').textContent = data.qrcode_texto || '';
                 // Exibe botão BB Pay
-                if (data.url_solicitacao) {
+                if (data.url_bbpay) {
                     const linkBB = document.getElementById('linkBBPay');
-                    linkBB.href = data.url_solicitacao;
+                    linkBB.href = data.url_bbpay;
                     linkBB.style.display = 'flex';
                     document.getElementById('bbpaySep').style.display = 'flex';
                 }
