@@ -172,6 +172,19 @@ def processar_uploads_google_sheets(self):
         raise self.retry(exc=exc, countdown=600)
 
 
+@shared_task(bind=True, max_retries=0)
+def verificar_pagamentos_pendentes(self):
+    try:
+        logger.info('[TASK-RESILIENCIA-PGTO] Iniciando sweep de pagamentos BB Pay pendentes')
+        from fluxos.fluxo_verificar_pagamentos_pendentes import executar
+        executar()
+        logger.info('[TASK-RESILIENCIA-PGTO] ✅ Sweep concluído')
+    except Exception as exc:
+        logger.error(f'[TASK-RESILIENCIA-PGTO] ❌ Erro: {exc}')
+        import traceback
+        traceback.print_exc()
+
+
 @shared_task(bind=True, max_retries=2)
 def enviar_email_entrega(self, pedido_id: int):
     logger.info("=" * 120)

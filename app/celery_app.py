@@ -30,6 +30,10 @@ celery_app.conf.beat_schedule = {
         'task': 'tasks.processar_uploads_google_sheets',
         'schedule': crontab(minute=30, hour='22,0'),  # 22h30 e 00h30 (antes do upload do Google Ads às 01h-02h)
     },
+    'verificar-pagamentos-bb-pay': {
+        'task': 'tasks.verificar_pagamentos_pendentes',
+        'schedule': crontab(minute='*/10'),  # a cada 10 minutos
+    },
 }
 
 celery_app.conf.update(

@@ -566,6 +566,21 @@ def buscar_pedidos_followup( horas_sem_atualizacao: int) -> list:
     """
     return db.execute_query(query, (horas_sem_atualizacao,), fetch_all=True)
 
+def buscar_pedidos_aguardando_bb_pay() -> list:
+    """
+    Retorna pedidos em estado 1002 (Aguardando BB Pay) com solicitação ainda não expirada.
+    A expiração é definida como NOW() + 24h em gerar_pix(), portanto a varredura
+    nunca acumula pedidos antigos não pagos.
+    """
+    query = """
+        SELECT id, numero_solicitacao_bb
+        FROM pedidos
+        WHERE estado_id = 1002
+          AND numero_solicitacao_bb IS NOT NULL
+          AND expiracao_solicitacao_bb > NOW()
+    """
+    return db.execute_query(query, fetch_all=True)
+
 def buscar_historico_conversa(pedido_id: int, limite: int = 10) -> list:
     """Busca as últimas mensagens do pedido formatadas para a OpenAI."""
     query = """
