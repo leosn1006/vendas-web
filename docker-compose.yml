@@ -132,8 +132,6 @@ services:
       - BB_PAY_OUATH_URL=${BB_PAY_OUATH_URL:-https://oauth.bb.com.br/oauth/token}
       - GOOGLE_SA_JSON_P1=${GOOGLE_SA_JSON_P1:-}
       - GOOGLE_SA_JSON_P6=${GOOGLE_SA_JSON_P6:-}
-      - BREVO_API_KEY=${BREVO_API_KEY:-}
-      - EMAIL_FROM=${EMAIL_FROM:-}
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost}
     volumes:
       - ./storage:/app/storage

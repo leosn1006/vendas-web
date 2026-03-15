@@ -5,15 +5,23 @@ Fluxo:
   1. Busca pedido (email, contact_name, produto_id)
   2. Busca produto (url_pdf, url_pdf_bonus, email_remetente, descricao) — tabela produtos
   3. Monta e-mail com botões de download (sem anexo)
-  4. Envia via Brevo API (HTTP/443 — sem dependência de porta SMTP)
+  4. Envia via Gmail API (Service Account + Domain-Wide Delegation)
   5. Marca data_envio_ebook no pedido
 """
 
 import os
+import json as _json
 import logging
-import requests
+import base64
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
 
 logger = logging.getLogger(__name__)
+
+_GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 
 def executar(pedido_id: int) -> None:
@@ -42,30 +50,33 @@ def executar(pedido_id: int) -> None:
         remetente=remetente,
         subject=subject,
         html=_corpo_html(nome_cliente, nome_produto, url_download, url_download_bonus),
+        produto_id=pedido['produto_id'],
     )
     db.marcar_ebook_enviado(pedido_id)
     logger.info(f'[EMAIL] ✅ Pedido #{pedido_id} entregue para {destinatario}')
 
 
-def _enviar(destinatario: str, remetente: str, subject: str, html: str) -> None:
-    payload = {
-        'sender':      {'name': 'Luiza — Guia Pães Saudáveis', 'email': remetente},
-        'to':          [{'email': destinatario}],
-        'subject':     subject,
-        'htmlContent': html,
-    }
-    resp = requests.post(
-        'https://api.brevo.com/v3/smtp/email',
-        json=payload,
-        headers={
-            'api-key':      os.getenv('BREVO_API_KEY', ''),
-            'Content-Type': 'application/json',
-        },
-        timeout=30,
+def _enviar(destinatario: str, remetente: str, subject: str,
+            html: str, produto_id: int) -> None:
+    sa_json = os.getenv(f'GOOGLE_SA_JSON_P{produto_id}')
+    if not sa_json:
+        raise RuntimeError(f'[EMAIL] GOOGLE_SA_JSON_P{produto_id} não configurada')
+
+    creds = Credentials.from_service_account_info(
+        _json.loads(sa_json),
+        scopes=_GMAIL_SCOPES,
+        subject=remetente,  # impersonação: envia como o e-mail do produto
     )
-    if not resp.ok:
-        logger.error(f'[EMAIL] Brevo {resp.status_code}: {resp.text}')
-    resp.raise_for_status()
+    service = build('gmail', 'v1', credentials=creds)
+
+    msg = MIMEMultipart('alternative')
+    msg['to']      = destinatario
+    msg['from']    = remetente
+    msg['subject'] = subject
+    msg.attach(MIMEText(html, 'html'))
+
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+    service.users().messages().send(userId='me', body={'raw': raw}).execute()
 
 
 def _corpo_html(nome: str, nome_produto: str,
@@ -89,7 +100,6 @@ def _corpo_html(nome: str, nome_produto: str,
       </a>''' if url_download_bonus else ''
 
     secao_bonus = f'''
-            <!-- Bônus -->
             <p style="font-size:14px; color:#555; margin:0 0 8px;">
               Você também ganhou um bônus especial:
             </p>
