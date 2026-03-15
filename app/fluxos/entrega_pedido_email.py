@@ -1,22 +1,19 @@
 """
-Entrega do e-book por e-mail com PDFs em anexo.
+Entrega do e-book por e-mail com link de download.
 
 Fluxo:
   1. Busca pedido (email, contact_name, produto_id)
   2. Busca produto (url_pdf, url_pdf_bonus, email_remetente, descricao) — tabela produtos
-  3. Monta e-mail com PDFs como anexos (não como link)
+  3. Monta e-mail com botões de download (sem anexo)
   4. Envia via Brevo API (HTTP/443 — sem dependência de porta SMTP)
   5. Marca data_envio_ebook no pedido
 """
 
 import os
-import base64
 import logging
 import requests
 
 logger = logging.getLogger(__name__)
-
-_BASE_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'static', 'arquivos')
 
 
 def executar(pedido_id: int) -> None:
@@ -34,40 +31,28 @@ def executar(pedido_id: int) -> None:
     remetente    = (produto or {}).get('email_remetente') or os.getenv('EMAIL_FROM', '')
     nome_produto = (produto or {}).get('descricao', 'Guia Digital')
     pedido_num   = f'#{pedido_id:04d}'
-    subject      = f'Pedido {pedido_num} - ✅ ACESSO LIBERADO: Seu {nome_produto} está em anexo!'
+    subject      = f'Pedido {pedido_num} ✅ Seu {nome_produto} está pronto para baixar!'
 
-    anexos = []
-    if produto and produto.get('url_pdf'):
-        anexos.append(_ler_anexo(produto['url_pdf']))
-    if produto and produto.get('url_pdf_bonus'):
-        anexos.append(_ler_anexo(produto['url_pdf_bonus']))
+    base_url = os.getenv('APP_BASE_URL', '').rstrip('/')
+    url_download       = f"{base_url}/static/arquivos/{produto['url_pdf']}"       if produto and produto.get('url_pdf')       else None
+    url_download_bonus = f"{base_url}/static/arquivos/{produto['url_pdf_bonus']}" if produto and produto.get('url_pdf_bonus') else None
 
     _enviar(
         destinatario=destinatario,
         remetente=remetente,
         subject=subject,
-        html=_corpo_html(nome_cliente, nome_produto),
-        anexos=anexos,
+        html=_corpo_html(nome_cliente, nome_produto, url_download, url_download_bonus),
     )
     db.marcar_ebook_enviado(pedido_id)
     logger.info(f'[EMAIL] ✅ Pedido #{pedido_id} entregue para {destinatario}')
 
 
-def _ler_anexo(nome_arquivo: str) -> dict:
-    caminho = os.path.join(_BASE_DIR, nome_arquivo)
-    with open(caminho, 'rb') as f:
-        conteudo = base64.b64encode(f.read()).decode()
-    return {'name': nome_arquivo, 'content': conteudo}
-
-
-def _enviar(destinatario: str, remetente: str, subject: str,
-            html: str, anexos: list) -> None:
+def _enviar(destinatario: str, remetente: str, subject: str, html: str) -> None:
     payload = {
         'sender':      {'name': 'Luiza — Guia Pães Saudáveis', 'email': remetente},
         'to':          [{'email': destinatario}],
         'subject':     subject,
         'htmlContent': html,
-        'attachment':  anexos,
     }
     resp = requests.post(
         'https://api.brevo.com/v3/smtp/email',
@@ -83,7 +68,34 @@ def _enviar(destinatario: str, remetente: str, subject: str,
     resp.raise_for_status()
 
 
-def _corpo_html(nome: str, nome_produto: str) -> str:
+def _corpo_html(nome: str, nome_produto: str,
+                url_download: str | None,
+                url_download_bonus: str | None) -> str:
+
+    btn_principal = f'''
+      <a href="{url_download}"
+         style="display:inline-block; background:#2d6a1f; color:#ffffff;
+                font-size:17px; font-weight:bold; text-decoration:none;
+                padding:16px 32px; border-radius:12px; margin:8px 0;">
+        📥 Baixar meu {nome_produto}
+      </a>''' if url_download else ''
+
+    btn_bonus = f'''
+      <a href="{url_download_bonus}"
+         style="display:inline-block; background:#b45309; color:#ffffff;
+                font-size:15px; font-weight:bold; text-decoration:none;
+                padding:12px 24px; border-radius:12px; margin:8px 0;">
+        🎁 Baixar meu Bônus
+      </a>''' if url_download_bonus else ''
+
+    secao_bonus = f'''
+            <!-- Bônus -->
+            <p style="font-size:14px; color:#555; margin:0 0 8px;">
+              Você também ganhou um bônus especial:
+            </p>
+            {btn_bonus}
+    ''' if url_download_bonus else ''
+
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -100,7 +112,7 @@ def _corpo_html(nome: str, nome_produto: str) -> str:
         <tr>
           <td style="background:linear-gradient(135deg,#1a4012,#2d6a1f); padding:28px 32px; text-align:center;">
             <h1 style="color:#ffffff; font-size:22px; margin:0; font-family:Georgia,serif;">
-              ✅ Seu {nome_produto} chegou!
+              ✅ Seu {nome_produto} chegou, {nome}!
             </h1>
           </td>
         </tr>
@@ -108,62 +120,80 @@ def _corpo_html(nome: str, nome_produto: str) -> str:
         <!-- Corpo -->
         <tr>
           <td style="padding:32px;">
+
             <p style="font-size:16px; color:#333; margin:0 0 16px;">
-              Olá, <strong>{nome}</strong>! Tudo bem?
-            </p>
-            <p style="font-size:15px; color:#444; line-height:1.7; margin:0 0 16px;">
-              Aqui é a <strong>Luiza</strong>. Passando para confirmar que o seu pagamento
-              foi recebido com sucesso. Parabéns pela decisão de transformar o seu café da manhã! 🎉
+              Aqui é a <strong>Luiza</strong>. Seu pagamento foi confirmado — parabéns pela decisão! 🎉
             </p>
 
-            <!-- Destaque anexo -->
-            <table width="100%" style="background:#f0f7eb; border-left:4px solid #2d6a1f;
-                                        border-radius:0 12px 12px 0; margin:20px 0;">
+            <!-- Botões de download -->
+            <table width="100%" style="background:#f0f7eb; border-radius:12px;
+                                        margin:0 0 28px; text-align:center;">
+              <tr>
+                <td style="padding:24px 20px;">
+                  <p style="font-size:15px; font-weight:bold; color:#1a4012; margin:0 0 16px;">
+                    Toque no botão abaixo para baixar:
+                  </p>
+                  {btn_principal}
+                  {secao_bonus}
+                </td>
+              </tr>
+            </table>
+
+            <!-- iPhone -->
+            <table width="100%" style="background:#f8f8f8; border-left:4px solid #555;
+                                        border-radius:0 12px 12px 0; margin:0 0 16px;">
               <tr>
                 <td style="padding:16px 20px;">
-                  <p style="font-size:15px; font-weight:bold; color:#1a4012; margin:0 0 8px;">
-                    📥 ONDE ESTÁ O SEU GUIA?
+                  <p style="font-size:15px; font-weight:bold; color:#333; margin:0 0 10px;">
+                    📱 Usando iPhone?
                   </p>
-                  <p style="font-size:14px; color:#444; line-height:1.6; margin:0;">
-                    Para garantir que você nunca perca o acesso, eu anexei o Guia Digital
-                    <strong>diretamente neste e-mail</strong>.<br><br>
-                    Procure pelo ícone de <strong>clipe 📎</strong> ou pelo nome do arquivo
-                    logo abaixo da mensagem — no Gmail pelo celular, os anexos aparecem
-                    <em>bem no finalzinho</em>, depois da assinatura.
+                  <ol style="font-size:14px; color:#444; line-height:1.9; margin:0; padding-left:20px;">
+                    <li>Toque no botão verde acima.</li>
+                    <li>O arquivo abre — toque nos <strong>3 pontinhos ⋯</strong> no canto superior direito.</li>
+                    <li>Toque em <strong>"Salvar em Arquivos"</strong> → escolha <strong>"No meu iPhone"</strong>.</li>
+                  </ol>
+                  <p style="font-size:13px; color:#2d6a1f; font-weight:bold; margin:10px 0 0;">
+                    ✅ Pronto! Fica salvo para sempre, mesmo sem internet.
                   </p>
                 </td>
               </tr>
             </table>
 
-            <p style="font-size:15px; font-weight:bold; color:#333; margin:20px 0 8px;">
-              O que fazer agora:
-            </p>
-            <ol style="font-size:14px; color:#444; line-height:1.8; margin:0 0 20px; padding-left:20px;">
-              <li>Toque no arquivo em anexo para abrir.</li>
-              <li>Salve no seu celular (app <em>Arquivos</em> ou <em>Downloads</em>) para acessar
-                  sempre que quiser, mesmo sem internet.</li>
-              <li>Se preferir, imprima as receitas para ter sempre à mão na cozinha!</li>
-            </ol>
+            <!-- Android -->
+            <table width="100%" style="background:#f8f8f8; border-left:4px solid #555;
+                                        border-radius:0 12px 12px 0; margin:0 0 24px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="font-size:15px; font-weight:bold; color:#333; margin:0 0 10px;">
+                    🤖 Usando Android?
+                  </p>
+                  <ol style="font-size:14px; color:#444; line-height:1.9; margin:0; padding-left:20px;">
+                    <li>Toque no botão verde acima.</li>
+                    <li>O arquivo baixa automaticamente.</li>
+                    <li>Abra o app <strong>"Arquivos"</strong> (ou <strong>"Meus Arquivos"</strong>) → pasta <strong>Downloads</strong>.</li>
+                  </ol>
+                  <p style="font-size:13px; color:#2d6a1f; font-weight:bold; margin:10px 0 0;">
+                    ✅ Pronto! Ele fica salvo no seu celular.
+                  </p>
+                </td>
+              </tr>
+            </table>
 
-            <!-- Caixa de bônus -->
+            <!-- Dica WhatsApp -->
             <table width="100%" style="background:#fff8e1; border:1px dashed #f59e0b;
                                         border-radius:12px; margin:0 0 24px;">
               <tr>
-                <td style="padding:16px 20px;">
-                  <p style="font-size:14px; font-weight:bold; color:#b45309; margin:0 0 8px;">
-                    🎁 O QUE VOCÊ VAI ENCONTRAR LÁ DENTRO:
+                <td style="padding:14px 20px;">
+                  <p style="font-size:14px; color:#b45309; margin:0;">
+                    💡 <strong>Dica rápida:</strong> encaminhe este e-mail para você mesma no
+                    <strong>WhatsApp</strong> — assim você nunca perde o link!
                   </p>
-                  <ul style="font-size:14px; color:#444; line-height:1.8; margin:0; padding-left:18px;">
-                    <li>As <strong>50 receitas de pães</strong> sem glúten e sem lactose.</li>
-                    <li>Seu <strong>Bônus Especial</strong>: Livro de Bolos Fofinhos — incluído no mesmo e-mail.</li>
-                    <li>O passo a passo para <strong>nunca mais errar o ponto da massa</strong>.</li>
-                  </ul>
                 </td>
               </tr>
             </table>
 
-            <p style="font-size:15px; color:#333; line-height:1.7; margin:0 0 24px;">
-              Prepare o forno — o cheirinho de pão quentinho vai invadir a sua casa logo logo! 🍞
+            <p style="font-size:14px; color:#555; margin:0 0 24px;">
+              Qualquer dúvida é só responder este e-mail. Estou aqui para ajudar! 😊
             </p>
 
             <p style="font-size:14px; color:#666; margin:0;">
@@ -178,7 +208,7 @@ def _corpo_html(nome: str, nome_produto: str) -> str:
           <td style="background:#f0f0f0; padding:16px 32px; text-align:center;">
             <p style="font-size:11px; color:#999; margin:0;">
               Você recebeu este e-mail porque realizou uma compra em lsnlivros.com.br.<br>
-              Guarde este e-mail para ter sempre acesso aos seus arquivos.
+              Guarde este e-mail para ter sempre acesso ao seu link de download.
             </p>
           </td>
         </tr>
