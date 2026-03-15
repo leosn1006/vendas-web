@@ -704,9 +704,9 @@
 
             currentTxid = data.txid;
 
-            if (dados.metodo === 'bbpay' && data.url_solicitacao) {
+            if (dados.metodo === 'bbpay' && data.url_bbpay) {
                 // BB Pay: redireciona para o app/site BB Pay
-                window.location.href = data.url_solicitacao;
+                window.location.href = data.url_bbpay;
                 return;
             }
 
@@ -719,9 +719,9 @@
                 qrImg.style.display = 'none';
             }
             document.getElementById('qrTexto').textContent = data.qrcode_texto || '';
-            if (data.url_solicitacao) {
+            if (data.url_bbpay) {
                 const linkBB = document.getElementById('linkBBPay');
-                linkBB.href = data.url_solicitacao;
+                linkBB.href = data.url_bbpay;
                 linkBB.style.display = 'flex';
             }
             mostrarEstado('pix');
