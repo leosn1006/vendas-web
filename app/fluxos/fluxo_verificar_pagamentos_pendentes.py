@@ -13,12 +13,16 @@ def executar() -> None:
     from web.checkout import verificar_pagamento
 
     pedidos = db.buscar_pedidos_aguardando_bb_pay()
-    logger.info(f'[RESILIENCIA_PGTO] {len(pedidos)} pedido(s) aguardando BB Pay')
+    total = len(pedidos)
+    confirmados = 0
+    logger.info(f'[RESILIENCIA_PGTO] {total} pedido(s) aguardando BB Pay')
     for pedido in pedidos:
         txid = str(pedido['numero_solicitacao_bb'])
         try:
             resultado = verificar_pagamento(txid)
             if resultado.get('pago'):
+                confirmados += 1
                 logger.info(f'[RESILIENCIA_PGTO] ✅ Pedido #{pedido["id"]} confirmado via sweep')
         except Exception as e:
             logger.error(f'[RESILIENCIA_PGTO] ❌ Erro no pedido #{pedido["id"]}: {e}')
+    logger.info(f'[RESILIENCIA_PGTO] Resumo: {total} processado(s), {confirmados} confirmado(s)')
