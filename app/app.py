@@ -137,7 +137,7 @@ def pascoa_lucrativa():
 
 @app.get("/dicas-quimio")
 def dicas_quimio():
-    return render_template('dica-quimio.html')
+    return render_template('dicas-quimio.html')
 
 
 @app.post("/api/v1/webhook/gravar-lide")
