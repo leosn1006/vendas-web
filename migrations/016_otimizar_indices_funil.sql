@@ -5,8 +5,9 @@ USE vendasdb;
 SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Remove índice antigo que não é totalmente otimizado
--- Usa ALTER TABLE para compatibilidade com todas as versões do MySQL
-ALTER TABLE pedidos DROP INDEX IF EXISTS idx_analytics_site;
+-- Nota: Se der erro 1091 (Can't DROP 'idx_analytics_site'; check that column/key exists)
+-- significa que o índice já foi removido anteriormente. Pode ignorar o erro.
+ALTER TABLE pedidos DROP INDEX idx_analytics_site;
 
 -- Cria índice otimizado para o funil de conversão
 -- Este índice cobre TODAS as colunas usadas na query do funil:
