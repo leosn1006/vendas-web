@@ -42,14 +42,14 @@ def gerar_pix(body: dict, url_base: str = '') -> dict:
     """
     from web.bb_pay import criar_solicitacao
     from database import (get_produto_disponivel_web,
-                          criar_pedido_web_unificado, atualizar_pedido_solicitacao_bb)
+                          criar_pedido_web_unificado, atualizar_pedido_solicitacao_bb,
+                          get_phone_number_id_produto)
 
     produto_id = int(body.get('produto_id', 1))
     produto = get_produto_disponivel_web(produto_id)
     valor = float(os.getenv('CHECKOUT_VALOR_TESTE') or (produto.get('preco', 19.90) if produto else 19.90))
     numero_convenio = int(produto.get('numero_convenio_bb', 0)) if produto else 0
-    # TODO: usar get_phone_number_id_produto(produto_id) quando dado em telefones_produto estiver correto
-    phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '')
+    phone_number_id = get_phone_number_id_produto(produto_id) or os.getenv('WHATSAPP_PHONE_NUMBER_ID', '')
 
     # Normaliza telefone para formato WhatsApp: DDI vem do frontend, fallback 55
     _ddi   = re.sub(r'\D', '', body.get('ddi', '55')) or '55'

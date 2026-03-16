@@ -677,7 +677,7 @@ def listar_telefones_produto(produto_id):
         list: Lista de dicts com id, telefone, created_at
     """
     query = """
-        SELECT id, telefone, created_at
+        SELECT id, telefone, api_phone_number_id, created_at
         FROM telefones_produto
         WHERE produto_id = %s
         ORDER BY created_at ASC
@@ -685,19 +685,20 @@ def listar_telefones_produto(produto_id):
     return db.execute_query(query, (produto_id,), fetch_all=True) or []
 
 
-def adicionar_telefone_produto(telefone, produto_id):
+def adicionar_telefone_produto(telefone, produto_id, api_phone_number_id=None):
     """
     Adiciona um mapeamento telefone → produto.
 
     Args:
-        telefone: phone_number_id do WhatsApp Business
+        telefone: display phone do WhatsApp (ex: 5561982155687), usado para lookup de produto
         produto_id: ID do produto
+        api_phone_number_id: ID da API Meta (ex: 492584860944948), usado para enviar mensagens
 
     Returns:
         int: ID do registro criado
     """
-    query = "INSERT INTO telefones_produto (telefone, produto_id) VALUES (%s, %s)"
-    return db.execute_query(query, (telefone, produto_id))
+    query = "INSERT INTO telefones_produto (telefone, produto_id, api_phone_number_id) VALUES (%s, %s, %s)"
+    return db.execute_query(query, (telefone, produto_id, api_phone_number_id))
 
 
 def remover_telefone_produto(telefone_id):
@@ -844,12 +845,12 @@ def get_produto_disponivel_web(produto_id: int):
 
 
 def get_phone_number_id_produto(produto_id: int):
-    """Retorna o phone_number_id WhatsApp Business associado ao produto ou None."""
+    """Retorna o api_phone_number_id (ID da API Meta) associado ao produto ou None."""
     row = db.execute_query(
-        "SELECT telefone FROM telefones_produto WHERE produto_id = %s LIMIT 1",
+        "SELECT api_phone_number_id FROM telefones_produto WHERE produto_id = %s AND api_phone_number_id IS NOT NULL LIMIT 1",
         (produto_id,), fetch_one=True
     )
-    return row['telefone'] if row else None
+    return row['api_phone_number_id'] if row else None
 
 
 def criar_pedido_web_unificado(produto_id: int, phone_number_id: str,

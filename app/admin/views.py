@@ -631,8 +631,9 @@ def adicionar_numero_whatsapp(produto_id):
     if not telefone:
         flash('Informe o número.', 'warning')
         return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+    api_phone_number_id = request.form.get('api_phone_number_id', '').strip() or None
     try:
-        adicionar_telefone_produto(telefone, produto_id)
+        adicionar_telefone_produto(telefone, produto_id, api_phone_number_id)
         flash(f'Número {telefone} adicionado com sucesso!', 'success')
         logger.info(f"[ADMIN] ✅ Telefone '{telefone}' associado ao produto #{produto_id} por {current_user.email}")
     except Exception as e:
