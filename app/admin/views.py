@@ -424,7 +424,6 @@ def clonar_produto(produto_id):
         ))
         contador_acoes = 0
         contador_mensagens = 0
-        contador_telefones = 0
 
         # Clonar mensagens sugeridas
         mensagens_originais = listar_mensagens_sugeridas(produto_id)
@@ -451,14 +450,12 @@ def clonar_produto(produto_id):
                 )
                 contador_acoes += 1
 
-        # Clonar telefones do produto
-        telefones_originais = listar_telefones_produto(produto_id)
-        for tel in telefones_originais:
-            adicionar_telefone_produto(tel['telefone'], novo_id, tel.get('api_phone_number_id'))
-            contador_telefones += 1
+        # NOTA: Telefones NÃO são clonados porque cada número WhatsApp só pode pertencer a um produto
+        # (constraint uk_telefone na tabela telefones_produto).
+        # O usuário deve configurar telefones manualmente para o novo produto.
 
-        flash(f'Produto clonado com sucesso! {contador_acoes} ações, {contador_mensagens} mensagens e {contador_telefones} telefones copiados. Revise e ative quando estiver pronto.', 'success')
-        logger.info(f"[ADMIN] ✅ Produto #{produto_id} clonado (#{novo_id}) por {current_user.email} - {contador_acoes} ações, {contador_mensagens} mensagens, {contador_telefones} telefones")
+        flash(f'Produto clonado com sucesso! {contador_acoes} ações e {contador_mensagens} mensagens copiadas. ⚠️ Configure os números WhatsApp manualmente. Revise e ative quando estiver pronto.', 'success')
+        logger.info(f"[ADMIN] ✅ Produto #{produto_id} clonado (#{novo_id}) por {current_user.email} - {contador_acoes} ações, {contador_mensagens} mensagens (telefones não clonados)")
 
         # Seleciona o clone como produto ativo e vai para os submenus
         session['produto_ativo_id'] = novo_id
