@@ -40,7 +40,7 @@ def executar(pedido_id: int) -> None:
     remetente    = (produto or {}).get('email_remetente') or os.getenv('EMAIL_FROM', '')
     nome_produto = (produto or {}).get('descricao', 'Guia Digital')
     pedido_num   = f'#{pedido_id:04d}'
-    subject      = f'Pedido {pedido_num} ✅ Seu {nome_produto} está pronto para baixar!'
+    subject      = f'Pedido {pedido_num} ✅ Pronto para baixar: {nome_produto}!'
 
     base_url = os.getenv('APP_BASE_URL', '').rstrip('/')
     url_download       = f"{base_url}/static/arquivos/{produto['url_pdf']}"       if produto and produto.get('url_pdf')       else None
