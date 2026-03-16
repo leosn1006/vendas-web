@@ -1,7 +1,7 @@
 import logging
 import os
 from agente_gera_mensagem_inicial import gera_mensagem_inicial_randomicamente
-from flask import jsonify
+from flask import jsonify, request
 from database import Pedido, criar_pedido, listar_telefones_produto
 
 logger = logging.getLogger(__name__)
@@ -11,9 +11,8 @@ def persistir_lide(body):
         logger.info(f"[LIDE] 📦 Dados recebidos para criar lide: {body}")
         # Por exemplo, extrair os dados do body e usar uma função do database.py para salvar
         gclide = body.get('gclid', "")
-        url = body.get('url', "")
+        url = body.get('url', "") or request.referrer or ""
         campaignid = body.get('campaignid', "")
-
         adgroupid = body.get('adgroupid', "")
         creative = body.get('creative', "")
         matchtype = body.get('matchtype', "")
