@@ -135,6 +135,10 @@ def paes_sem_gluten():
 def pascoa_lucrativa():
     return render_template('pascoa-lucrativa.html')
 
+@app.get("/dicas-quimio")
+def dicas_quimio():
+    return render_template('diario.html')
+
 
 @app.post("/api/v1/webhook/gravar-lide")
 def gravar_lide():
