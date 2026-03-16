@@ -13,6 +13,7 @@ def persistir_lide(body):
         gclide = body.get('gclid', "")
         url = body.get('url', "")
         campaignid = body.get('campaignid', "")
+
         adgroupid = body.get('adgroupid', "")
         creative = body.get('creative', "")
         matchtype = body.get('matchtype', "")
@@ -25,6 +26,8 @@ def persistir_lide(body):
             produto = 6
         else:
             produto = 1  # produto padrão para campanhas desconhecidas, pode ser ajustado para criar regras específicas por URL ou campanha
+
+        logger.info(f"[LIDE] 🔍 URL recebida: '{url}' → produto determinado: {produto}")
 
         texto, emoji = gera_mensagem_inicial_randomicamente(produto)
 
