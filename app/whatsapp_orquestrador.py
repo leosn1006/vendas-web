@@ -58,9 +58,13 @@ def recebe_webhook(mensagem_whatsapp):
         tempo_espera = random.uniform(20, 40)
         # se for um audio, manda direto para o fluxo de transcrever, independente do estado do pedido, para evitar erros de transcrição de outros tipos de mídia e lá será redirecionado para o fluxo correto
         if mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'audio':
-            logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de transcrever áudio: {mensagem_whatsapp}" )
-            celery_app.send_task("tasks.transcrever_audio", args=[pedido, mensagem_whatsapp],countdown=tempo_espera)
-            return "Mensagem de áudio recebida e enviada para transcrição"
+            if pedido.get('estado_id') == 1000:
+                logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 áudio de cliente web (estado 1000) → responder_mensagem")
+                celery_app.send_task("tasks.responder_mensagem", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+            else:
+                logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de transcrever áudio: {mensagem_whatsapp}")
+                celery_app.send_task("tasks.transcrever_audio", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+            return "Mensagem de áudio recebida"
 
         match pedido.get('estado_id'):
             case 1: # Cliente acessou a página de vendas e clicou para enviar mensagem ou veio direto pelo whatsapp sem passar pela página de vendas, ou seja, estado inicial do pedido'
@@ -69,6 +73,9 @@ def recebe_webhook(mensagem_whatsapp):
             case 2: # cliente respondendo a introdução, se quer ou não receber o produto
                 logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de pedido dinâmico")
                 celery_app.send_task("tasks.enviar_pedido_dinamico", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+            case 1000: # cliente pagou via web (e-book entregue por email)
+                logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 cliente web (estado 1000) → responder_mensagem")
+                celery_app.send_task("tasks.responder_mensagem", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
             case _:
                 tipo_msg = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type']
                 if tipo_msg == 'text':

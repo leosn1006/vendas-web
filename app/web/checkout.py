@@ -56,6 +56,9 @@ def gerar_pix(body: dict, url_base: str = '') -> dict:
     _phone = re.sub(r'\D', '', body.get('whatsapp', ''))
     if _phone and not _phone.startswith(_ddi):
         _phone = _ddi + _phone
+    # Remove o 9º dígito de celular BR para compatibilidade com formato do webhook WhatsApp
+    if len(_phone) == 13 and _phone[4] == '9':  # ex: 5561981163324 → 556181163324
+        _phone = _phone[:4] + _phone[5:]
 
     pedido_id = criar_pedido_web_unificado(
         produto_id=produto_id,

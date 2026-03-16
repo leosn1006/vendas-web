@@ -162,7 +162,7 @@ def _corpo_html(nome: str, nome_produto: str,
                     📱 Usando iPhone?
                   </p>
                   <ol style="font-size:14px; color:#444; line-height:1.9; margin:0; padding-left:20px;">
-                    <li>Toque no botão verde acima.</li>
+                    <li>Toque no botão marrom acima.</li>
                     <li>O arquivo abre — toque nos <strong>3 pontinhos ⋯</strong> no canto superior direito.</li>
                     <li>Toque em <strong>"Salvar em Arquivos"</strong> → escolha <strong>"No meu iPhone"</strong>.</li>
                   </ol>
@@ -182,7 +182,7 @@ def _corpo_html(nome: str, nome_produto: str,
                     🤖 Usando Android?
                   </p>
                   <ol style="font-size:14px; color:#444; line-height:1.9; margin:0; padding-left:20px;">
-                    <li>Toque no botão verde acima.</li>
+                    <li>Toque no botão marrom acima.</li>
                     <li>O arquivo baixa automaticamente.</li>
                     <li>Abra o app <strong>"Arquivos"</strong> (ou <strong>"Meus Arquivos"</strong>) → pasta <strong>Downloads</strong>.</li>
                   </ol>
