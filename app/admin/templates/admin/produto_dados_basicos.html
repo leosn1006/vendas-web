@@ -93,7 +93,7 @@
     <form method="POST">
         <div class="tabs-container">
             <!-- Radio inputs (escondidos) -->
-            <input type="radio" name="tab" id="tab1" class="tabs-radio" checked>
+            <input type="radio" name="tab" id="tab1" class="tabs-radio">
             <input type="radio" name="tab" id="tab2" class="tabs-radio">
             <input type="radio" name="tab" id="tab3" class="tabs-radio">
             <input type="radio" name="tab" id="tab4" class="tabs-radio">
@@ -263,4 +263,56 @@
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Deep linking: ativa aba baseada no hash da URL (#basico, #pagamento, #entrega, #integracoes)
+(function() {
+    const hashToTab = {
+        '#basico': 'tab1',
+        '#pagamento': 'tab2',
+        '#entrega': 'tab3',
+        '#integracoes': 'tab4'
+    };
+
+    const tabToHash = {
+        'tab1': '#basico',
+        'tab2': '#pagamento',
+        'tab3': '#entrega',
+        'tab4': '#integracoes'
+    };
+
+    // Ativa aba baseada no hash ao carregar a página
+    function activateTabFromHash() {
+        const hash = window.location.hash || '#basico';
+        const tabId = hashToTab[hash] || 'tab1';
+        const radio = document.getElementById(tabId);
+        if (radio) {
+            radio.checked = true;
+        }
+    }
+
+    // Atualiza hash quando usuário clica em uma aba
+    function setupTabClickHandlers() {
+        const labels = document.querySelectorAll('.tab-label');
+        labels.forEach((label, index) => {
+            label.addEventListener('click', function() {
+                const tabId = 'tab' + (index + 1);
+                const hash = tabToHash[tabId];
+                if (hash) {
+                    history.replaceState(null, null, hash);
+                }
+            });
+        });
+    }
+
+    // Executa ao carregar
+    activateTabFromHash();
+    setupTabClickHandlers();
+
+    // Escuta mudanças no hash (botão voltar do navegador)
+    window.addEventListener('hashchange', activateTabFromHash);
+})();
+</script>
 {% endblock %}

@@ -630,7 +630,7 @@ def selecionar_produto():
     produto_id = request.form.get('produto_id', type=int)
     if produto_id:
         session['produto_ativo_id'] = produto_id
-        return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+        return redirect(url_for('admin.analytics_produto', produto_id=produto_id))
     session.pop('produto_ativo_id', None)
     return redirect(url_for('admin.dashboard'))
 
