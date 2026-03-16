@@ -280,26 +280,34 @@ def dados_basicos_produto(produto_id):
                     descricao                     = %s,
                     preco                         = %s,
                     valor_minimo_pagamento        = %s,
+                    chave_pix                     = %s,
                     pix_destinatario_esperado     = %s,
+                    numero_convenio_bb            = %s,
+                    disponivel_web                = %s,
+                    email_remetente               = %s,
+                    url_pdf                       = %s,
+                    url_pdf_bonus                 = %s,
                     google_sheets_spreadsheet_id  = %s,
                     google_sheets_sheet_name      = %s,
                     google_ads_conversion_name    = %s,
-                    url_pdf                       = %s,
-                    url_pdf_bonus                 = %s,
-                    email_remetente               = %s
+                    ativo                         = %s
                 WHERE id = %s
             """, (
                 request.form.get('nome'),
                 request.form.get('descricao'),
                 request.form.get('preco'),
                 request.form.get('valor_minimo_pagamento'),
-                request.form.get('pix_destinatario_esperado'),
+                request.form.get('chave_pix') or None,
+                request.form.get('pix_destinatario_esperado') or None,
+                request.form.get('numero_convenio_bb') or None,
+                1 if request.form.get('disponivel_web') else 0,
+                request.form.get('email_remetente') or None,
+                request.form.get('url_pdf') or None,
+                request.form.get('url_pdf_bonus') or None,
                 request.form.get('google_sheets_spreadsheet_id') or None,
                 request.form.get('google_sheets_sheet_name') or 'Página1',
                 request.form.get('google_ads_conversion_name') or None,
-                request.form.get('url_pdf') or None,
-                request.form.get('url_pdf_bonus') or None,
-                request.form.get('email_remetente') or None,
+                int(request.form.get('ativo', 1)),
                 produto_id
             ))
             flash('Dados básicos atualizados com sucesso!', 'success')
@@ -361,7 +369,7 @@ def clonar_produto(produto_id):
         # Insere uma cópia com nome diferente; execute_query retorna lastrowid
         novo_id = db.execute_query("""
             INSERT INTO produtos (
-                nome, preco, descricao, prompt_vendas, faq,
+                nome, preco, descricao, prompt_vendas, faq, prompt_followup,
                 url_faq_produto, url_audio_introducao, url_audio_explicativo,
                 url_audio_pedido_entregue, url_imagem_complementar,
                 url_arquivo_produto, caption_arquivo_produto, nome_arquivo_produto,
@@ -369,10 +377,14 @@ def clonar_produto(produto_id):
                 mensagem_para_pagamento, chave_pix, pix_destinatario_esperado,
                 valor_minimo_pagamento, mensagem_pagamento_confirmado,
                 mensagem_comprovante_invalido, url_arquivo_surpresa,
-                caption_arquivo_surpresa, nome_arquivo_surpresa, ativo
+                caption_arquivo_surpresa, nome_arquivo_surpresa,
+                google_sheets_spreadsheet_id, google_sheets_sheet_name,
+                google_ads_conversion_name, numero_convenio_bb, disponivel_web,
+                url_pdf, url_pdf_bonus, email_remetente, ativo
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
         """, (
             f"Cópia de {produto['nome']}",  # nome diferente para identificar
@@ -380,6 +392,7 @@ def clonar_produto(produto_id):
             produto['descricao'],
             produto['prompt_vendas'],
             produto['faq'],
+            produto['prompt_followup'],
             produto['url_faq_produto'],
             produto['url_audio_introducao'],
             produto['url_audio_explicativo'],
@@ -399,10 +412,19 @@ def clonar_produto(produto_id):
             produto['url_arquivo_surpresa'],
             produto['caption_arquivo_surpresa'],
             produto['nome_arquivo_surpresa'],
+            produto['google_sheets_spreadsheet_id'],
+            produto['google_sheets_sheet_name'],
+            produto['google_ads_conversion_name'],
+            produto['numero_convenio_bb'],
+            0,  # disponivel_web = FALSE por padrão
+            produto['url_pdf'],
+            produto['url_pdf_bonus'],
+            produto['email_remetente'],
             0  # inativo por padrão — força o admin a revisar antes de ativar
         ))
         contador_acoes = 0
         contador_mensagens = 0
+        contador_telefones = 0
 
         # Clonar mensagens sugeridas
         mensagens_originais = listar_mensagens_sugeridas(produto_id)
@@ -429,8 +451,14 @@ def clonar_produto(produto_id):
                 )
                 contador_acoes += 1
 
-        flash(f'Produto clonado com sucesso! {contador_acoes} ações e {contador_mensagens} mensagens copiadas. Revise e ative quando estiver pronto.', 'success')
-        logger.info(f"[ADMIN] ✅ Produto #{produto_id} clonado (#{novo_id}) por {current_user.email} - {contador_acoes} ações, {contador_mensagens} mensagens")
+        # Clonar telefones do produto
+        telefones_originais = listar_telefones_produto(produto_id)
+        for tel in telefones_originais:
+            adicionar_telefone_produto(tel['telefone'], novo_id, tel.get('api_phone_number_id'))
+            contador_telefones += 1
+
+        flash(f'Produto clonado com sucesso! {contador_acoes} ações, {contador_mensagens} mensagens e {contador_telefones} telefones copiados. Revise e ative quando estiver pronto.', 'success')
+        logger.info(f"[ADMIN] ✅ Produto #{produto_id} clonado (#{novo_id}) por {current_user.email} - {contador_acoes} ações, {contador_mensagens} mensagens, {contador_telefones} telefones")
 
         # Seleciona o clone como produto ativo e vai para os submenus
         session['produto_ativo_id'] = novo_id

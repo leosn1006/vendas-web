@@ -1,6 +1,86 @@
 {% extends 'admin/base.html' %}
 {% block title %}Dados Básicos — {{ produto.nome }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Tab system usando radio inputs */
+    .tabs-container {
+        width: 100%;
+    }
+    
+    .tabs-radio {
+        display: none;
+    }
+    
+    .tabs-nav {
+        display: flex;
+        gap: 0;
+        border-bottom: 2px solid var(--border);
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .tab-label {
+        padding: 0.875rem 1.5rem;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        user-select: none;
+    }
+    
+    .tab-label:hover {
+        color: var(--text);
+        background: rgba(0, 0, 0, 0.02);
+    }
+    
+    .tabs-radio:checked + .tab-label {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+    }
+    
+    .tab-panel {
+        display: none;
+        animation: fadeIn 0.2s ease;
+    }
+    
+    #tab1:checked ~ .tabs-content #panel1,
+    #tab2:checked ~ .tabs-content #panel2,
+    #tab3:checked ~ .tabs-content #panel3,
+    #tab4:checked ~ .tabs-content #panel4 {
+        display: block;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .field-hint {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+        line-height: 1.5;
+    }
+    
+    .form-grid.tab-grid {
+        gap: 1.5rem;
+    }
+    
+    @media (max-width: 768px) {
+        .tab-label {
+            padding: 0.75rem 1rem;
+            font-size: 13px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <div>
@@ -11,79 +91,171 @@
 
 <div class="card">
     <form method="POST">
-        <div class="form-grid">
+        <div class="tabs-container">
+            <!-- Radio inputs (escondidos) -->
+            <input type="radio" name="tab" id="tab1" class="tabs-radio" checked>
+            <input type="radio" name="tab" id="tab2" class="tabs-radio">
+            <input type="radio" name="tab" id="tab3" class="tabs-radio">
+            <input type="radio" name="tab" id="tab4" class="tabs-radio">
+            
+            <!-- Navegação das abas -->
+            <nav class="tabs-nav">
+                <label for="tab1" class="tab-label">📋 Informações Básicas</label>
+                <label for="tab2" class="tab-label">💳 Pagamento</label>
+                <label for="tab3" class="tab-label">📧 Entrega Digital</label>
+                <label for="tab4" class="tab-label">📊 Integrações</label>
+            </nav>
+            
+            <!-- Conteúdo das abas -->
+            <div class="tabs-content">
+                
+                <!-- Aba 1: Informações Básicas -->
+                <div id="panel1" class="tab-panel">
+                    <div class="form-grid tab-grid">
+                        <div class="form-group span-2">
+                            <label for="nome">Nome do produto</label>
+                            <input type="text" id="nome" name="nome" 
+                                   value="{{ produto.nome or '' }}" required>
+                        </div>
 
-            <div class="form-group span-2">
-                <label for="nome">Nome do produto</label>
-                <input type="text" id="nome" name="nome" value="{{ produto.nome or '' }}" required>
+                        <div class="form-group span-2">
+                            <label for="descricao">Descrição</label>
+                            <textarea id="descricao" name="descricao" rows="4">{{ produto.descricao or '' }}</textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="preco">Preço (R$)</label>
+                            <input type="number" id="preco" name="preco" step="0.01" min="0"
+                                   value="{{ produto.preco or '' }}" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="valor_minimo_pagamento">Valor mínimo de pagamento (R$)</label>
+                            <input type="number" id="valor_minimo_pagamento" name="valor_minimo_pagamento"
+                                   step="0.01" min="0" value="{{ produto.valor_minimo_pagamento or '' }}">
+                            <p class="field-hint">Valor mínimo aceito para confirmar o pagamento</p>
+                        </div>
+
+                        {% if current_user.is_admin() %}
+                        <div class="form-group span-2">
+                            <label for="ativo">Status do produto</label>
+                            <select id="ativo" name="ativo">
+                                <option value="1" {% if produto.ativo %}selected{% endif %}>✅ Ativo</option>
+                                <option value="0" {% if not produto.ativo %}selected{% endif %}>❌ Inativo</option>
+                            </select>
+                            <p class="field-hint">Apenas produtos ativos aparecem no sistema de vendas</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Aba 2: Pagamento -->
+                <div id="panel2" class="tab-panel">
+                    <div class="form-grid tab-grid">
+                        <div class="form-group span-2">
+                            <label for="chave_pix">Chave PIX</label>
+                            <input type="text" id="chave_pix" name="chave_pix"
+                                   value="{{ produto.chave_pix or '' }}"
+                                   placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória">
+                            <p class="field-hint">Chave PIX que será enviada ao cliente para pagamento</p>
+                        </div>
+
+                        <div class="form-group span-2">
+                            <label for="pix_destinatario_esperado">PIX destinatário esperado (validação)</label>
+                            <input type="text" id="pix_destinatario_esperado" name="pix_destinatario_esperado"
+                                   value="{{ produto.pix_destinatario_esperado or '' }}"
+                                   placeholder="Nome completo que deve aparecer no comprovante">
+                            <p class="field-hint">Nome do destinatário usado para validar comprovantes automaticamente</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="numero_convenio_bb">Número do Convênio BB Pay</label>
+                            <input type="number" id="numero_convenio_bb" name="numero_convenio_bb"
+                                   value="{{ produto.numero_convenio_bb or '' }}"
+                                   placeholder="Ex: 275513">
+                            <p class="field-hint">Necessário apenas para checkout web com BB Pay</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="disponivel_web" name="disponivel_web" value="1"
+                                       {% if produto.disponivel_web %}checked{% endif %}>
+                                Disponível para venda no site (checkout web)
+                            </label>
+                            <p class="field-hint">Ative para permitir compras diretas pelo site</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Aba 3: Entrega Digital -->
+                <div id="panel3" class="tab-panel">
+                    <div class="form-grid tab-grid">
+                        <div class="form-group span-2">
+                            <label for="email_remetente">E-mail remetente (De:)</label>
+                            <input type="email" id="email_remetente" name="email_remetente"
+                                   value="{{ produto.email_remetente or '' }}"
+                                   placeholder="Ex: paes@lsnlivros.com.br">
+                            <p class="field-hint">Endereço de e-mail usado como remetente no envio do produto</p>
+                        </div>
+
+                        <div class="form-group span-2">
+                            <label for="url_pdf">Arquivo PDF principal (nome do arquivo)</label>
+                            <input type="text" id="url_pdf" name="url_pdf"
+                                   value="{{ produto.url_pdf or '' }}"
+                                   placeholder="Ex: guia-paes-saudaveis.pdf">
+                            <p class="field-hint">Nome do arquivo PDF em /static/arquivos/ que será enviado ao cliente</p>
+                        </div>
+
+                        <div class="form-group span-2">
+                            <label for="url_pdf_bonus">Arquivo PDF bônus (nome do arquivo)</label>
+                            <input type="text" id="url_pdf_bonus" name="url_pdf_bonus"
+                                   value="{{ produto.url_pdf_bonus or '' }}"
+                                   placeholder="Ex: bolos-fofinhos.pdf (opcional)">
+                            <p class="field-hint">Arquivo extra enviado como bônus após o pagamento (opcional)</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Aba 4: Integrações -->
+                <div id="panel4" class="tab-panel">
+                    <div class="form-grid tab-grid">
+                        <div class="form-group span-2">
+                            <label for="google_sheets_spreadsheet_id">Google Sheets — ID da planilha</label>
+                            <input type="text" id="google_sheets_spreadsheet_id" name="google_sheets_spreadsheet_id"
+                                   value="{{ produto.google_sheets_spreadsheet_id or '' }}"
+                                   placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
+                            <p class="field-hint">
+                                ID extraído da URL da planilha no Google Drive. 
+                                Configure a credencial (Service Account) no .env: GOOGLE_SA_JSON_P{{ produto.id }}
+                            </p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="google_sheets_sheet_name">Google Sheets — Nome da aba</label>
+                            <input type="text" id="google_sheets_sheet_name" name="google_sheets_sheet_name"
+                                   value="{{ produto.google_sheets_sheet_name or 'Página1' }}"
+                                   placeholder="Página1">
+                            <p class="field-hint">Nome da aba onde os dados serão salvos</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="google_ads_conversion_name">Google Ads — Nome da conversão</label>
+                            <input type="text" id="google_ads_conversion_name" name="google_ads_conversion_name"
+                                   value="{{ produto.google_ads_conversion_name or '' }}"
+                                   placeholder="Ex: Venda WhatsApp">
+                            <p class="field-hint">Nome da ação de conversão configurada no Google Ads</p>
+                        </div>
+
+                        <div class="form-group span-2" style="background: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 3px solid var(--accent);">
+                            <p style="margin: 0; font-size: 13px; color: #555; line-height: 1.6;">
+                                <strong>💡 Dica:</strong> Para enviar conversões ao Google Ads, configure as credenciais no arquivo .env:
+                                <code style="background: white; padding: 2px 6px; border-radius: 4px; font-size: 12px;">GOOGLE_SA_JSON_P{{ produto.id }}</code>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
             </div>
-
-            <div class="form-group span-2">
-                <label for="descricao">Descrição</label>
-                <textarea id="descricao" name="descricao" rows="4">{{ produto.descricao or '' }}</textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="preco">Preço (R$)</label>
-                <input type="number" id="preco" name="preco" step="0.01" min="0"
-                       value="{{ produto.preco or '' }}">
-            </div>
-
-            <div class="form-group">
-                <label for="valor_minimo_pagamento">Valor mínimo de pagamento (R$)</label>
-                <input type="number" id="valor_minimo_pagamento" name="valor_minimo_pagamento"
-                       step="0.01" min="0" value="{{ produto.valor_minimo_pagamento or '' }}">
-            </div>
-
-            <div class="form-group span-2">
-                <label for="pix_destinatario_esperado">PIX destinatário esperado</label>
-                <input type="text" id="pix_destinatario_esperado" name="pix_destinatario_esperado"
-                       value="{{ produto.pix_destinatario_esperado or '' }}"
-                       placeholder="CPF, CNPJ, e-mail ou chave aleatória">
-            </div>
-
-            <div class="form-group span-2">
-                <label for="google_sheets_spreadsheet_id">Google Sheets — ID da planilha</label>
-                <input type="text" id="google_sheets_spreadsheet_id" name="google_sheets_spreadsheet_id"
-                       value="{{ produto.google_sheets_spreadsheet_id or '' }}"
-                       placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
-            </div>
-
-            <div class="form-group">
-                <label for="google_sheets_sheet_name">Google Sheets — Nome da aba</label>
-                <input type="text" id="google_sheets_sheet_name" name="google_sheets_sheet_name"
-                       value="{{ produto.google_sheets_sheet_name or 'Página1' }}"
-                       placeholder="Página1">
-            </div>
-
-            <div class="form-group">
-                <label for="google_ads_conversion_name">Google Ads — Nome da conversão</label>
-                <input type="text" id="google_ads_conversion_name" name="google_ads_conversion_name"
-                       value="{{ produto.google_ads_conversion_name or '' }}"
-                       placeholder="Ex: Venda WhatsApp">
-            </div>
-
-            <div class="form-group span-2">
-                <label for="url_pdf">Arquivo PDF principal (nome do arquivo)</label>
-                <input type="text" id="url_pdf" name="url_pdf"
-                       value="{{ produto.url_pdf or '' }}"
-                       placeholder="Ex: guia-paes-saudaveis.pdf">
-            </div>
-
-            <div class="form-group span-2">
-                <label for="url_pdf_bonus">Arquivo PDF bônus (nome do arquivo)</label>
-                <input type="text" id="url_pdf_bonus" name="url_pdf_bonus"
-                       value="{{ produto.url_pdf_bonus or '' }}"
-                       placeholder="Ex: bolos-fofinhos.pdf (opcional)">
-            </div>
-
-            <div class="form-group span-2">
-                <label for="email_remetente">E-mail remetente (De:)</label>
-                <input type="email" id="email_remetente" name="email_remetente"
-                       value="{{ produto.email_remetente or '' }}"
-                       placeholder="Ex: paes@lsnlivros.com.br">
-            </div>
-
         </div>
 
         <div class="form-actions">
