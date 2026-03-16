@@ -27,6 +27,169 @@
         margin: 28px 0 12px;
     }
 
+    /* Funil visual */
+    .funil-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        margin-bottom: 32px;
+    }
+
+    .funil-step {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px 28px;
+        position: relative;
+        margin-bottom: 8px;
+    }
+
+    .funil-step::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 4px;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .funil-step.step-1::before { background: linear-gradient(90deg, #4a90d9, #5ba3ed); }
+    .funil-step.step-2::before { background: linear-gradient(90deg, #3b7abd, #4a90d9); }
+    .funil-step.step-3::before { background: linear-gradient(90deg, #e07b2a, #f5a623); }
+    .funil-step.step-4::before { background: linear-gradient(90deg, #4a9632, #5fb83e); }
+
+    .funil-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .funil-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        letter-spacing: 0.3px;
+    }
+
+    .funil-number {
+        font-size: 32px;
+        font-weight: 700;
+        font-family: var(--mono);
+        color: #3d2510;
+    }
+
+    .funil-subtitle {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 4px;
+    }
+
+    .funil-arrow {
+        text-align: center;
+        padding: 8px 0;
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 14px;
+        font-family: var(--mono);
+    }
+
+    .funil-split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .funil-split-item {
+        background: rgba(0,0,0,0.02);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        position: relative;
+    }
+
+    .funil-split-item.com-interesse::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: #4a9632;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .funil-split-item.sem-interesse::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: #888;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .funil-split-item.sem-followup::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: #4a90d9;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .funil-split-item.com-followup::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: var(--accent);
+        border-radius: 8px 8px 0 0;
+    }
+
+    .split-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+        margin-bottom: 6px;
+    }
+
+    .split-number {
+        font-size: 24px;
+        font-weight: 700;
+        font-family: var(--mono);
+        color: #3d2510;
+    }
+
+    .split-percent {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 2px;
+    }
+
+    .insight-box {
+        background: #fffbf5;
+        border: 1px solid #f5e6d3;
+        border-left: 4px solid var(--accent);
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-top: 12px;
+    }
+
+    .insight-box .insight-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--accent);
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .insight-box .insight-text {
+        font-size: 14px;
+        color: #3d2510;
+        line-height: 1.5;
+    }
+
     .metrics-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -101,6 +264,12 @@
         transition: all 0.15s;
     }
     .shortcut-btn:hover { background: var(--bg); color: var(--text); }
+
+    @media (max-width: 768px) {
+        .funil-split {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -133,62 +302,117 @@
 
 {% if funil %}
 
-<!-- ── Funil de contato ────────────────────────── -->
-<div class="section-title">Funil de Contato — por data_contato_site</div>
-<div class="metrics-grid">
-    <div class="metric-card accent">
-        <div class="metric-label">Total de Leads</div>
-        <div class="metric-value">{{ funil.total_leads }}</div>
-        <div class="metric-sub">acessaram no período</div>
-    </div>
-    <div class="metric-card yellow">
-        <div class="metric-label">Clicaram / Não enviaram WPP</div>
-        <div class="metric-value">{{ funil.clicou_sem_wpp }}</div>
-        <div class="metric-sub">estado 1 — perdidos no topo</div>
-    </div>
-    <div class="metric-card blue">
-        <div class="metric-label">Receberam Introdução</div>
-        <div class="metric-value">{{ funil.recebeu_intro }}</div>
-        <div class="metric-sub">estado 2</div>
-    </div>
-    <div class="metric-card green">
-        <div class="metric-label">Interesse SIM</div>
-        <div class="metric-value">{{ funil.interesse_sim }}</div>
-        <div class="metric-sub">responderam positivo</div>
-    </div>
-    <div class="metric-card red">
-        <div class="metric-label">Interesse NÃO</div>
-        <div class="metric-value">{{ funil.interesse_nao }}</div>
-        <div class="metric-sub">responderam negativo</div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-label">Sem Resposta</div>
-        <div class="metric-value">{{ funil.interesse_pendente }}</div>
-        <div class="metric-sub">interesse não registrado</div>
-    </div>
-    <div class="metric-card yellow">
-        <div class="metric-label">Pedido / Não Pagou</div>
-        <div class="metric-value">{{ funil.pedido_sem_pagamento }}</div>
-        <div class="metric-sub">estado 3 — sem conversão</div>
-    </div>
-</div>
+<!-- ── Funil de Conversão Visual ────────────────────────── -->
+<div class="section-title">Funil de Conversão — por data_contato_site</div>
 
-{% if funil.recebeu_intro and receita %}
-<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px; margin-top:12px;">
-    <div class="metric-card" style="flex:0 0 auto; min-width:200px;">
-        <div class="metric-label">Taxa Intro → Pagamento</div>
-        <div class="metric-value" style="font-size:22px;">{{ conv_pagamento }}%</div>
-        <div class="metric-sub">{{ receita.total_pagamentos }} de {{ funil.recebeu_intro }} que receberam intro</div>
+<div class="funil-container">
+
+    <!-- Etapa 1: Saber mais no site -->
+    <div class="funil-step step-1">
+        <div class="funil-header">
+            <div class="funil-title">🌐 Saber mais no site</div>
+        </div>
+        <div class="funil-number">{{ funil.total_leads }}</div>
+        <div class="funil-subtitle">visitantes que clicaram para saber mais</div>
     </div>
-    {% if receita.total_pagamentos %}
-    <div class="metric-card" style="flex:0 0 auto; min-width:200px;">
-        <div class="metric-label">Ticket Médio</div>
-        <div class="metric-value" style="font-size:22px;">R$ {{ '%.2f'|format(ticket_medio) }}</div>
-        <div class="metric-sub">por pagamento</div>
-    </div>
+
+    {% if funil.total_leads > 0 %}
+    <div class="funil-arrow">↓ {{ conv_1_2 }}% converteram</div>
     {% endif %}
+
+    <!-- Etapa 2: Mandaram mensagem -->
+    <div class="funil-step step-2">
+        <div class="funil-header">
+            <div class="funil-title">💬 Mandaram mensagem no WhatsApp</div>
+        </div>
+        <div class="funil-number">{{ funil.mandaram_msg }}</div>
+        <div class="funil-subtitle">{{ conv_1_2 }}% dos visitantes iniciaram contato</div>
+    </div>
+
+    <!-- Etapa 3: Responderam (split em interesse) -->
+    <div class="funil-step step-3">
+        <div class="funil-header">
+            <div class="funil-title">✅ Responderam</div>
+        </div>
+        <div class="funil-number">{{ funil.responderam }}</div>
+        <div class="funil-subtitle">clientes que receberam a mensagem de introdução</div>
+
+        <div class="funil-split">
+            <!-- Com interesse -->
+            <div class="funil-split-item com-interesse">
+                <div class="split-label">✅ COM INTERESSE</div>
+                <div class="split-number">{{ funil.responderam_com_interesse }}</div>
+                <div class="split-percent">{{ conv_3_com }}% dos que responderam</div>
+                {% if funil.responderam_com_interesse > 0 %}
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                    <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Conversão para pagamento:</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #4a9632; font-family: var(--mono);">
+                        {{ conv_interesse_sim_paga }}%
+                    </div>
+                    <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">
+                        {{ funil.pagaram_vindo_interesse_sim }} converteram
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Sem interesse -->
+            <div class="funil-split-item sem-interesse">
+                <div class="split-label">🎁 SEM INTERESSE (Presente)</div>
+                <div class="split-number">{{ funil.responderam_sem_interesse }}</div>
+                <div class="split-percent">{{ conv_3_sem }}% dos que responderam</div>
+                {% if funil.responderam_sem_interesse > 0 %}
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                    <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Conversão para pagamento:</div>
+                    <div style="font-size: 20px; font-weight: 700; color: var(--accent); font-family: var(--mono);">
+                        {{ conv_interesse_nao_paga }}%
+                    </div>
+                    <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">
+                        {{ funil.pagaram_vindo_interesse_nao }} converteram 🎯
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Etapa 4: Pagaram -->
+    <div class="funil-step step-4">
+        <div class="funil-header">
+            <div class="funil-title">💰 Pagaram</div>
+        </div>
+        <div class="funil-number">{{ funil.pagaram }}</div>
+        <div class="funil-subtitle">clientes que efetuaram o pagamento</div>
+
+        {% if funil.pagaram > 0 %}
+        <!-- Insight sobre origem dos pagamentos -->
+        <div class="insight-box">
+            <div class="insight-title">💡 Origem dos Pagamentos</div>
+            <div class="insight-text">
+                <strong>{{ pct_pagaram_interesse_sim }}%</strong> ({{ funil.pagaram_vindo_interesse_sim }}) vieram de clientes COM interesse<br>
+                <strong>{{ pct_pagaram_interesse_nao }}%</strong> ({{ funil.pagaram_vindo_interesse_nao }}) vieram de clientes SEM interesse (estratégia de presente) 🎯
+            </div>
+        </div>
+
+        <div class="funil-split">
+            <!-- Sem followup -->
+            <div class="funil-split-item sem-followup">
+                <div class="split-label">📊 SEM FOLLOWUP</div>
+                <div class="split-number">{{ funil.pagaram_sem_followup }}</div>
+                <div class="split-percent">{{ conv_4_sem_followup }}% dos pagamentos</div>
+            </div>
+
+            <!-- Com followup -->
+            <div class="funil-split-item com-followup">
+                <div class="split-label">🎯 COM FOLLOWUP</div>
+                <div class="split-number">{{ funil.pagaram_com_followup }}</div>
+                <div class="split-percent">{{ conv_4_com_followup }}% dos pagamentos</div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
 </div>
-{% endif %}
 
 <!-- ── Receita ─────────────────────────────────── -->
 {% if receita %}
@@ -204,6 +428,13 @@
         <div class="metric-value" style="font-size:22px;">R$ {{ '%.2f'|format(receita.total_receita) }}</div>
         <div class="metric-sub">no período</div>
     </div>
+    {% if receita.total_pagamentos %}
+    <div class="metric-card accent">
+        <div class="metric-label">Ticket Médio</div>
+        <div class="metric-value" style="font-size:22px;">R$ {{ '%.2f'|format(ticket_medio) }}</div>
+        <div class="metric-sub">por pagamento</div>
+    </div>
+    {% endif %}
     <div class="metric-card accent">
         <div class="metric-label">Com Follow-up</div>
         <div class="metric-value">{{ receita.com_followup }}</div>

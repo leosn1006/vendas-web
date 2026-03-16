@@ -1141,13 +1141,16 @@ def remover_arquivo():
 
 _SQL_FUNIL = """
     SELECT
-        COUNT(*)                                               AS total_leads,
-        COUNT(CASE WHEN estado_id = 1 THEN 1 END)             AS clicou_sem_wpp,
-        COUNT(CASE WHEN estado_id = 2 THEN 1 END)             AS recebeu_intro,
-        COUNT(CASE WHEN interesse_produto = 1 THEN 1 END)     AS interesse_sim,
-        COUNT(CASE WHEN interesse_produto = 0 THEN 1 END)     AS interesse_nao,
-        COUNT(CASE WHEN interesse_produto IS NULL THEN 1 END)  AS interesse_pendente,
-        COUNT(CASE WHEN estado_id = 3 THEN 1 END)             AS pedido_sem_pagamento
+        COUNT(*) AS total_leads,
+        COUNT(CASE WHEN estado_id != 1 THEN 1 END) AS mandaram_msg,
+        COUNT(CASE WHEN estado_id != 1 THEN 1 END) AS responderam,
+        COUNT(CASE WHEN interesse_produto = 1 THEN 1 END) AS responderam_com_interesse,
+        COUNT(CASE WHEN interesse_produto = 0 THEN 1 END) AS responderam_sem_interesse,
+        COUNT(CASE WHEN estado_id = 0 THEN 1 END) AS pagaram,
+        COUNT(CASE WHEN estado_id = 0 AND interesse_produto = 1 THEN 1 END) AS pagaram_vindo_interesse_sim,
+        COUNT(CASE WHEN estado_id = 0 AND interesse_produto = 0 THEN 1 END) AS pagaram_vindo_interesse_nao,
+        COUNT(CASE WHEN estado_id = 0 AND data_followup IS NULL THEN 1 END) AS pagaram_sem_followup,
+        COUNT(CASE WHEN estado_id = 0 AND data_followup IS NOT NULL THEN 1 END) AS pagaram_com_followup
     FROM pedidos
     WHERE produto_id = %s
       AND data_contato_site BETWEEN %s AND %s
@@ -1211,16 +1214,42 @@ def analytics_produto(produto_id):
         funil = receita = None
         campanhas = []
 
-    # Calcular taxas no Python (zero custo extra de query)
-    conv_intro  = 0.0
-    conv_pagamento = 0.0
-    ticket_medio   = 0.0
-    if funil and funil['recebeu_intro']:
-        conv_intro = round(funil['total_leads'] / funil['recebeu_intro'] * 100, 1) if funil['recebeu_intro'] else 0
+    # Calcular percentuais de conversão do funil
+    conv_1_2 = 0.0  # Saber mais → Mandaram msg
+    conv_3_com = 0.0  # % Com interesse
+    conv_3_sem = 0.0  # % Sem interesse
+    conv_interesse_sim_paga = 0.0  # COM interesse → Pagaram
+    conv_interesse_nao_paga = 0.0  # SEM interesse → Pagaram (estratégia de presente)
+    pct_pagaram_interesse_sim = 0.0  # % dos pagamentos que vieram de COM interesse
+    pct_pagaram_interesse_nao = 0.0  # % dos pagamentos que vieram de SEM interesse
+    conv_4_sem_followup = 0.0  # % Sem followup
+    conv_4_com_followup = 0.0  # % Com followup
+    ticket_medio = 0.0
+
+    if funil:
+        if funil['total_leads'] > 0:
+            conv_1_2 = round((funil['mandaram_msg'] / funil['total_leads']) * 100, 1)
+
+        if funil['responderam'] > 0:
+            conv_3_com = round((funil['responderam_com_interesse'] / funil['responderam']) * 100, 1)
+            conv_3_sem = round((funil['responderam_sem_interesse'] / funil['responderam']) * 100, 1)
+
+        # Conversão de cada grupo para pagamento
+        if funil['responderam_com_interesse'] > 0:
+            conv_interesse_sim_paga = round((funil['pagaram_vindo_interesse_sim'] / funil['responderam_com_interesse']) * 100, 1)
+
+        if funil['responderam_sem_interesse'] > 0:
+            conv_interesse_nao_paga = round((funil['pagaram_vindo_interesse_nao'] / funil['responderam_sem_interesse']) * 100, 1)
+
+        # Distribuição de origem dos pagamentos
+        if funil['pagaram'] > 0:
+            pct_pagaram_interesse_sim = round((funil['pagaram_vindo_interesse_sim'] / funil['pagaram']) * 100, 1)
+            pct_pagaram_interesse_nao = round((funil['pagaram_vindo_interesse_nao'] / funil['pagaram']) * 100, 1)
+            conv_4_sem_followup = round((funil['pagaram_sem_followup'] / funil['pagaram']) * 100, 1)
+            conv_4_com_followup = round((funil['pagaram_com_followup'] / funil['pagaram']) * 100, 1)
+
     if receita and receita['total_pagamentos']:
         ticket_medio = float(receita['total_receita']) / receita['total_pagamentos']
-    if funil and receita and funil['recebeu_intro']:
-        conv_pagamento = round(receita['total_pagamentos'] / funil['recebeu_intro'] * 100, 1)
 
     return render_template('admin/produto_analytics.html',
         produto        = produto,
@@ -1230,6 +1259,14 @@ def analytics_produto(produto_id):
         data_ini       = data_ini_str,
         data_fim       = data_fim_str,
         ticket_medio   = ticket_medio,
-        conv_pagamento = conv_pagamento,
-        conv_intro     = conv_intro,
+        # Percentuais do funil
+        conv_1_2       = conv_1_2,
+        conv_3_com     = conv_3_com,
+        conv_3_sem     = conv_3_sem,
+        conv_interesse_sim_paga = conv_interesse_sim_paga,
+        conv_interesse_nao_paga = conv_interesse_nao_paga,
+        pct_pagaram_interesse_sim = pct_pagaram_interesse_sim,
+        pct_pagaram_interesse_nao = pct_pagaram_interesse_nao,
+        conv_4_sem_followup = conv_4_sem_followup,
+        conv_4_com_followup = conv_4_com_followup,
     )
