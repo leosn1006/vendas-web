@@ -7,11 +7,11 @@
     .tabs-container {
         width: 100%;
     }
-    
+
     .tabs-radio {
         display: none;
     }
-    
+
     .tabs-nav {
         display: flex;
         gap: 0;
@@ -19,7 +19,7 @@
         margin-bottom: 2rem;
         flex-wrap: wrap;
     }
-    
+
     .tab-label {
         padding: 0.875rem 1.5rem;
         cursor: pointer;
@@ -33,45 +33,45 @@
         white-space: nowrap;
         user-select: none;
     }
-    
+
     .tab-label:hover {
         color: var(--text);
         background: rgba(0, 0, 0, 0.02);
     }
-    
+
     .tabs-radio:checked + .tab-label {
         color: var(--accent);
         border-bottom-color: var(--accent);
     }
-    
+
     .tab-panel {
         display: none;
         animation: fadeIn 0.2s ease;
     }
-    
+
     #tab1:checked ~ .tabs-content #panel1,
     #tab2:checked ~ .tabs-content #panel2,
     #tab3:checked ~ .tabs-content #panel3,
     #tab4:checked ~ .tabs-content #panel4 {
         display: block;
     }
-    
+
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(4px); }
         to { opacity: 1; transform: translateY(0); }
     }
-    
+
     .field-hint {
         font-size: 12px;
         color: var(--muted);
         margin-top: 6px;
         line-height: 1.5;
     }
-    
+
     .form-grid.tab-grid {
         gap: 1.5rem;
     }
-    
+
     @media (max-width: 768px) {
         .tab-label {
             padding: 0.75rem 1rem;
@@ -97,7 +97,7 @@
             <input type="radio" name="tab" id="tab2" class="tabs-radio">
             <input type="radio" name="tab" id="tab3" class="tabs-radio">
             <input type="radio" name="tab" id="tab4" class="tabs-radio">
-            
+
             <!-- Navegação das abas -->
             <nav class="tabs-nav">
                 <label for="tab1" class="tab-label">📋 Informações Básicas</label>
@@ -105,16 +105,16 @@
                 <label for="tab3" class="tab-label">📧 Entrega Digital</label>
                 <label for="tab4" class="tab-label">📊 Integrações</label>
             </nav>
-            
+
             <!-- Conteúdo das abas -->
             <div class="tabs-content">
-                
+
                 <!-- Aba 1: Informações Básicas -->
                 <div id="panel1" class="tab-panel">
                     <div class="form-grid tab-grid">
                         <div class="form-group span-2">
                             <label for="nome">Nome do produto</label>
-                            <input type="text" id="nome" name="nome" 
+                            <input type="text" id="nome" name="nome"
                                    value="{{ produto.nome or '' }}" required>
                         </div>
 
@@ -148,7 +148,7 @@
                         {% endif %}
                     </div>
                 </div>
-                
+
                 <!-- Aba 2: Pagamento -->
                 <div id="panel2" class="tab-panel">
                     <div class="form-grid tab-grid">
@@ -186,7 +186,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Aba 3: Entrega Digital -->
                 <div id="panel3" class="tab-panel">
                     <div class="form-grid tab-grid">
@@ -215,7 +215,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Aba 4: Integrações -->
                 <div id="panel4" class="tab-panel">
                     <div class="form-grid tab-grid">
@@ -225,7 +225,7 @@
                                    value="{{ produto.google_sheets_spreadsheet_id or '' }}"
                                    placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
                             <p class="field-hint">
-                                ID extraído da URL da planilha no Google Drive. 
+                                ID extraído da URL da planilha no Google Drive.
                                 Configure a credencial (Service Account) no .env: GOOGLE_SA_JSON_P{{ produto.id }}
                             </p>
                         </div>
@@ -254,7 +254,7 @@
                         </div>
                     </div>
                 </div>
-                
+
             </div>
         </div>
 
