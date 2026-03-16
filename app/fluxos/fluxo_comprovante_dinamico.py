@@ -143,21 +143,7 @@ def executar(pedido, mensagem_whatsapp):
                 ))
                 logger.info(f"[{_TAG}] 📲 Admin notificado — pagamento alto (R$ {valor_pago:.2f})")
         else:
-            razoes = []
-            if not (bool(tokens_esperados) and all(t in destinatario_extraido for t in tokens_esperados)):
-                razoes.append(
-                    f"Destinatário esperado: *{pix_esperado or '—'}*\n"
-                    f"Destinatário extraído: *{destinatario_extraido or '—'}*"
-                )
-            if resultado.get('valor') in (None, '', 0, '0'):
-                razoes.append("Valor não identificado no comprovante")
-            notificar_admin_pedido(pedido, (
-                f"⚠️ *Comprovante não validado* — Pedido #{pedido_id}\n\n"
-                f"Cliente: #{pedido_id} — {pedido.get('contact_name')} ({pedido.get('contact_phone')})\n"
-                f"Valor pago (usado): *R$ {valor_pago:.2f}*\n\n"
-                + ("\n".join(razoes) if razoes else "Motivo não identificado")
-            ))
-            logger.info(f"[{_TAG}] 📲 Admin notificado — comprovante não validado")
+            logger.info(f"[{_TAG}] ℹ️ Comprovante não validado — pedido #{pedido_id} — admin não notificado (notificação desligada)")
 
         # ── Executa ações dinâmicas (sempre fluxo feliz para o cliente) ───
         todas_acoes = listar_acoes_fluxo(produto_id, 'comprovante')
