@@ -1220,6 +1220,7 @@ def analytics_produto(produto_id):
     conv_3_sem = 0.0  # % Sem interesse
     conv_interesse_sim_paga = 0.0  # COM interesse → Pagaram
     conv_interesse_nao_paga = 0.0  # SEM interesse → Pagaram (estratégia de presente)
+    conv_responderam_pagaram = 0.0  # Responderam (total) → Pagaram (conversão geral)
     pct_pagaram_interesse_sim = 0.0  # % dos pagamentos que vieram de COM interesse
     pct_pagaram_interesse_nao = 0.0  # % dos pagamentos que vieram de SEM interesse
     conv_4_sem_followup = 0.0  # % Sem followup
@@ -1233,6 +1234,9 @@ def analytics_produto(produto_id):
         if funil['responderam'] > 0:
             conv_3_com = round((funil['responderam_com_interesse'] / funil['responderam']) * 100, 1)
             conv_3_sem = round((funil['responderam_sem_interesse'] / funil['responderam']) * 100, 1)
+
+            # Conversão geral: responderam → pagaram
+            conv_responderam_pagaram = round((funil['pagaram'] / funil['responderam']) * 100, 1)
 
         # Conversão de cada grupo para pagamento
         if funil['responderam_com_interesse'] > 0:
@@ -1265,6 +1269,7 @@ def analytics_produto(produto_id):
         conv_3_sem     = conv_3_sem,
         conv_interesse_sim_paga = conv_interesse_sim_paga,
         conv_interesse_nao_paga = conv_interesse_nao_paga,
+        conv_responderam_pagaram = conv_responderam_pagaram,
         pct_pagaram_interesse_sim = pct_pagaram_interesse_sim,
         pct_pagaram_interesse_nao = pct_pagaram_interesse_nao,
         conv_4_sem_followup = conv_4_sem_followup,

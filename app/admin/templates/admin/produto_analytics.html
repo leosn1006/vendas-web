@@ -376,6 +376,10 @@
         </div>
     </div>
 
+    {% if funil.responderam > 0 %}
+    <div class="funil-arrow">↓ {{ conv_responderam_pagaram }}% converteram ({{ funil.pagaram }} de {{ funil.responderam }})</div>
+    {% endif %}
+
     <!-- Etapa 4: Pagaram -->
     <div class="funil-step step-4">
         <div class="funil-header">
