@@ -30,16 +30,20 @@ def persistir_lide(body):
 
         texto, emoji = gera_mensagem_inicial_randomicamente(produto)
 
+        telefones = listar_telefones_produto(produto)
+        whatsapp_numero = telefones[0]['telefone'] if telefones else "5561982155687"
+        api_phone_id = telefones[0].get('api_phone_number_id') if telefones else None
+
         # preeche o dict Pedido com os dados necessários
         pedido = Pedido(
-            produto_id= produto,
+            produto_id=produto,
             valor_pago=0.00,
             estado_id=1,  # Estado Iniciado
             gclid=gclide,
             data_ultima_atualizacao=None,
             mensagem_sugerida=texto,
             emoji_sugerida=emoji,
-            phone_number_id=None,
+            phone_number_id=api_phone_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID', ''),
             contact_phone=None,
             contact_name=None,
             data_pedido=None,
@@ -51,10 +55,6 @@ def persistir_lide(body):
             placement=placement,
             video_id=video_id
         )
-        telefones = listar_telefones_produto(produto)
-        whatsapp_numero = telefones[0]['telefone'] if telefones else "5561982155687"
-        api_phone_id = telefones[0].get('api_phone_number_id') if telefones else None
-        pedido.phone_number_id = api_phone_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID', '')
         criar_pedido(pedido)
         print(f"[LIDE] ✅ Lide gravado com gclid: {gclide}")
         resposta = {
