@@ -42,6 +42,11 @@ def executar(pedido_id: int) -> None:
     pedido_num   = f'#{pedido_id:04d}'
     subject      = f'Pedido {pedido_num} ✅ Pronto para baixar: {nome_produto}!'
 
+    # Personalização por produto (com fallback para valores padrão)
+    nome_remetente_email = (produto or {}).get('email_nome_remetente') or 'LSN Livros'
+    cor_primaria         = (produto or {}).get('email_cor_primaria') or '#2d6a1f'
+    cor_secundaria       = (produto or {}).get('email_cor_secundaria') or '#b45309'
+
     base_url = os.getenv('APP_BASE_URL', '').rstrip('/')
     url_download       = f"{base_url}/static/arquivos/{produto['url_pdf']}"       if produto and produto.get('url_pdf')       else None
     url_download_bonus = f"{base_url}/static/arquivos/{produto['url_pdf_bonus']}" if produto and produto.get('url_pdf_bonus') else None
@@ -49,9 +54,10 @@ def executar(pedido_id: int) -> None:
     _enviar(
         destinatario=destinatario,
         remetente=remetente,
-        nome_remetente=f'Luiza — {nome_produto}',
+        nome_remetente=f'{nome_remetente_email} — {nome_produto}',
         subject=subject,
-        html=_corpo_html(nome_cliente, nome_produto, url_download, url_download_bonus),
+        html=_corpo_html(nome_cliente, nome_produto, url_download, url_download_bonus,
+                        nome_remetente_email, cor_primaria, cor_secundaria),
     )
     db.marcar_ebook_enviado(pedido_id)
     logger.info(f'[EMAIL] ✅ Pedido #{pedido_id} entregue para {destinatario}')
@@ -83,13 +89,58 @@ def _enviar(destinatario: str, remetente: str, nome_remetente: str,
     service.users().messages().send(userId='me', body={'raw': raw}).execute()
 
 
+def _lighten_hex(hex_color: str, amount: float = 0.3) -> str:
+    """
+    Clareia uma cor hexadecimal.
+
+    Args:
+        hex_color: Cor em formato hex (#RRGGBB)
+        amount: Quantidade para clarear (0.0 a 1.0), padrão 0.3 = 30% mais claro
+
+    Returns:
+        Cor clareada em formato hex
+    """
+    # Remove '#' se presente
+    hex_color = hex_color.lstrip('#')
+
+    # Converte hex para RGB
+    r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+
+    # Clareia cada componente (move em direção ao branco 255)
+    r = int(r + (255 - r) * amount)
+    g = int(g + (255 - g) * amount)
+    b = int(b + (255 - b) * amount)
+
+    # Garante que não ultrapasse 255
+    r, g, b = min(255, r), min(255, g), min(255, b)
+
+    return f'#{r:02x}{g:02x}{b:02x}'
+
+
 def _corpo_html(nome: str, nome_produto: str,
                 url_download: str | None,
-                url_download_bonus: str | None) -> str:
+                url_download_bonus: str | None,
+                nome_remetente: str,
+                cor_primaria: str,
+                cor_secundaria: str) -> str:
+    """
+    Gera HTML do e-mail de entrega com personalização por produto.
+
+    Args:
+        nome: Primeiro nome do cliente
+        nome_produto: Descrição do produto
+        url_download: URL do PDF principal
+        url_download_bonus: URL do PDF bônus (opcional)
+        nome_remetente: Nome usado no corpo e assinatura (ex: 'Luiza', 'Luiza Carolina')
+        cor_primaria: Cor do header em hex (ex: '#2d6a1f')
+        cor_secundaria: Cor dos botões em hex (ex: '#b45309')
+    """
+    # Calcula versão mais clara da cor primária para gradient (+30% lightness)
+    cor_primaria_clara = _lighten_hex(cor_primaria, 0.3)
 
     btn_principal = f'''
       <a href="{url_download}"
-         style="display:inline-block; background:#b45309; color:#ffffff;
+         style="display:inline-block; background:{cor_secundaria}; color:#ffffff;
                 font-size:17px; font-weight:bold; text-decoration:none;
                 padding:16px 32px; border-radius:12px; margin:8px 0;">
         📥 Baixar meu {nome_produto}
@@ -97,7 +148,7 @@ def _corpo_html(nome: str, nome_produto: str,
 
     btn_bonus = f'''
       <a href="{url_download_bonus}"
-         style="display:inline-block; background:#b45309; color:#ffffff;
+         style="display:inline-block; background:{cor_secundaria}; color:#ffffff;
                 font-size:15px; font-weight:bold; text-decoration:none;
                 padding:12px 24px; border-radius:12px; margin:8px 0;">
         🎁 Baixar meu Bônus
@@ -122,9 +173,9 @@ def _corpo_html(nome: str, nome_produto: str,
       <table width="100%" style="max-width:560px; background:#ffffff; border-radius:16px;
                                   overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.08);">
 
-        <!-- Cabeçalho verde -->
+        <!-- Cabeçalho -->
         <tr>
-          <td style="background:linear-gradient(135deg,#2d6a1f,#4a9e30); padding:28px 32px; text-align:center;">
+          <td style="background:linear-gradient(135deg,{cor_primaria},{cor_primaria_clara}); padding:28px 32px; text-align:center;">
             <h1 style="color:#ffffff; font-size:24px; font-weight:bold; margin:0; font-family:Georgia,serif;">
               ✅ Seu {nome_produto} chegou, {nome}!
             </h1>
@@ -136,7 +187,7 @@ def _corpo_html(nome: str, nome_produto: str,
           <td style="padding:32px;">
 
             <p style="font-size:16px; color:#333; margin:0 0 16px;">
-              Aqui é a <strong>Luiza</strong>. Seu pagamento foi confirmado — parabéns pela decisão! 🎉
+              Aqui é a <strong>{nome_remetente}</strong>. Seu pagamento foi confirmado — parabéns pela decisão! 🎉
             </p>
 
             <!-- Botões de download -->
@@ -166,7 +217,7 @@ def _corpo_html(nome: str, nome_produto: str,
                     <li>O arquivo abre — toque nos <strong>3 pontinhos ⋯</strong> no canto superior direito.</li>
                     <li>Toque em <strong>"Salvar em Arquivos"</strong> → escolha <strong>"No meu iPhone"</strong>.</li>
                   </ol>
-                  <p style="font-size:13px; color:#2d6a1f; font-weight:bold; margin:10px 0 0;">
+                  <p style="font-size:13px; color:{cor_primaria}; font-weight:bold; margin:10px 0 0;">
                     ✅ Pronto! Fica salvo para sempre, mesmo sem internet.
                   </p>
                 </td>
@@ -182,11 +233,11 @@ def _corpo_html(nome: str, nome_produto: str,
                     🤖 Usando Android?
                   </p>
                   <ol style="font-size:14px; color:#444; line-height:1.9; margin:0; padding-left:20px;">
-                    <li>Toque no botão marrom acima.</li>
+                    <li>Toque no botão acima.</li>
                     <li>O arquivo baixa automaticamente.</li>
                     <li>Abra o app <strong>"Arquivos"</strong> (ou <strong>"Meus Arquivos"</strong>) → pasta <strong>Downloads</strong>.</li>
                   </ol>
-                  <p style="font-size:13px; color:#2d6a1f; font-weight:bold; margin:10px 0 0;">
+                  <p style="font-size:13px; color:{cor_primaria}; font-weight:bold; margin:10px 0 0;">
                     ✅ Pronto! Ele fica salvo no seu celular.
                   </p>
                 </td>
@@ -198,7 +249,7 @@ def _corpo_html(nome: str, nome_produto: str,
                                         border-radius:12px; margin:0 0 24px;">
               <tr>
                 <td style="padding:14px 20px;">
-                  <p style="font-size:14px; color:#b45309; margin:0;">
+                  <p style="font-size:14px; color:{cor_secundaria}; margin:0;">
                     💡 <strong>Dica rápida:</strong> encaminhe este e-mail para você mesma no
                     <strong>WhatsApp</strong> — assim você nunca perde o link!
                   </p>
@@ -212,7 +263,7 @@ def _corpo_html(nome: str, nome_produto: str,
 
             <p style="font-size:14px; color:#666; margin:0;">
               Com carinho,<br>
-              <strong style="color:#1a4012;">Luiza — Guia Pães Saudáveis</strong>
+              <strong style="color:{cor_primaria};">{nome_remetente}</strong>
             </p>
           </td>
         </tr>

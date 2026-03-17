@@ -285,6 +285,9 @@ def dados_basicos_produto(produto_id):
                     numero_convenio_bb            = %s,
                     disponivel_web                = %s,
                     email_remetente               = %s,
+                    email_nome_remetente          = %s,
+                    email_cor_primaria            = %s,
+                    email_cor_secundaria          = %s,
                     url_pdf                       = %s,
                     url_pdf_bonus                 = %s,
                     google_sheets_spreadsheet_id  = %s,
@@ -302,6 +305,9 @@ def dados_basicos_produto(produto_id):
                 request.form.get('numero_convenio_bb') or None,
                 1 if request.form.get('disponivel_web') else 0,
                 request.form.get('email_remetente') or None,
+                request.form.get('email_nome_remetente') or None,
+                request.form.get('email_cor_primaria') or None,
+                request.form.get('email_cor_secundaria') or None,
                 request.form.get('url_pdf') or None,
                 request.form.get('url_pdf_bonus') or None,
                 request.form.get('google_sheets_spreadsheet_id') or None,
@@ -380,11 +386,13 @@ def clonar_produto(produto_id):
                 caption_arquivo_surpresa, nome_arquivo_surpresa,
                 google_sheets_spreadsheet_id, google_sheets_sheet_name,
                 google_ads_conversion_name, numero_convenio_bb, disponivel_web,
-                url_pdf, url_pdf_bonus, email_remetente, ativo
+                url_pdf, url_pdf_bonus, email_remetente,
+                email_nome_remetente, email_cor_primaria, email_cor_secundaria,
+                ativo
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
         """, (
             f"Cópia de {produto['nome']}",  # nome diferente para identificar
@@ -420,6 +428,9 @@ def clonar_produto(produto_id):
             produto['url_pdf'],
             produto['url_pdf_bonus'],
             produto['email_remetente'],
+            produto['email_nome_remetente'],
+            produto['email_cor_primaria'],
+            produto['email_cor_secundaria'],
             0  # inativo por padrão — força o admin a revisar antes de ativar
         ))
         contador_acoes = 0

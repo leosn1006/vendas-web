@@ -199,6 +199,34 @@
                         </div>
 
                         <div class="form-group span-2">
+                            <label for="email_nome_remetente">Nome do remetente (aparece no e-mail)</label>
+                            <input type="text" id="email_nome_remetente" name="email_nome_remetente"
+                                   value="{{ produto.email_nome_remetente or '' }}"
+                                   placeholder="Ex: Luiza, Luiza Carolina, LSN Livros">
+                            <p class="field-hint">Nome usado no corpo do e-mail ("Aqui é a...") e na assinatura</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email_cor_primaria">Cor primária do e-mail (hex)</label>
+                            <input type="text" id="email_cor_primaria" name="email_cor_primaria"
+                                   value="{{ produto.email_cor_primaria or '' }}"
+                                   placeholder="Ex: #2d6a1f (verde), #ec4899 (rosa)"
+                                   pattern="^#[0-9A-Fa-f]{6}$"
+                                   maxlength="7">
+                            <p class="field-hint">Cor do cabeçalho em hexadecimal. Deixe vazio para usar o padrão verde</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email_cor_secundaria">Cor secundária do e-mail (hex)</label>
+                            <input type="text" id="email_cor_secundaria" name="email_cor_secundaria"
+                                   value="{{ produto.email_cor_secundaria or '' }}"
+                                   placeholder="Ex: #b45309 (marrom), #3b82f6 (azul)"
+                                   pattern="^#[0-9A-Fa-f]{6}$"
+                                   maxlength="7">
+                            <p class="field-hint">Cor dos botões de download em hexadecimal. Deixe vazio para padrão marrom</p>
+                        </div>
+
+                        <div class="form-group span-2">
                             <label for="url_pdf">Arquivo PDF principal (nome do arquivo)</label>
                             <input type="text" id="url_pdf" name="url_pdf"
                                    value="{{ produto.url_pdf or '' }}"
