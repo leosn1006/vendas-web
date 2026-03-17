@@ -670,6 +670,43 @@
             font-weight: 700;
             margin-top: 14px;
         }
+
+        /* ── GALERIA JORNADA (3 fotos) ── */
+        .fotos-jornada {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x mandatory;
+            padding-bottom: 8px;
+            margin: 20px -20px 20px;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+        .fotos-jornada::-webkit-scrollbar { display: none; }
+        .foto-jornada-card {
+            flex: 0 0 160px;
+            scroll-snap-align: start;
+            text-align: center;
+        }
+        .foto-jornada-card img {
+            width: 160px;
+            height: 160px;
+            border-radius: 16px;
+            object-fit: cover;
+            object-position: center;
+            border: 3px solid var(--roxo-claro);
+            box-shadow: var(--sombra);
+            display: block;
+            margin: 0 auto;
+        }
+        .foto-jornada-legenda {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--roxo);
+            margin-top: 8px;
+            line-height: 1.3;
+        }
     </style>
 </head>
 <body>
@@ -678,7 +715,7 @@
 <section class="hero">
     <span class="hero-badge">Relato real · E-book digital · Acesso imediato</span>
     <h1>O que ninguém me contou sobre <em>a quimio</em></h1>
-    <p class="hero-sub">Dicas verdadeiras de quem está passando pela quimioterapia — <strong style="color:#fff;">sintomas, soluções práticas e apoio emocional</strong> que a Luiza foi descobrindo na marra.</p>
+    <p class="hero-sub">Dicas verdadeiras de quem está passando pela quimioterapia — <strong style="color:#fff;">sintomas, soluções práticas e apoio emocional</strong> que eu fui descobrindo na marra.</p>
     <img src="/static/images/capa-diario-superacao.png"
          alt="Capa do e-book O Que Ninguém Me Contou Sobre a Quimio"
          style="width:100%;max-width:280px;display:block;margin:20px auto 0;border-radius:8px;"
@@ -716,7 +753,7 @@
     <p class="dor-text">
         O diagnóstico chegou. O tratamento começou. E aí vem a quimioterapia — e com ela, uma lista de sintomas que ninguém te prepara direito para enfrentar.<br><br>
         Náusea, fadiga, queda de cabelo, alteração de paladar, ardência, inchaço… Você pergunta para as médicas e recebe a resposta padrão. Você busca na internet e encontra texto genérico. <strong>O que falta é alguém que passou por cada um desses sintomas e te diz o que funcionou de verdade.</strong><br><br>
-        Foi exatamente isso que a Luiza quis escrever.
+        Foi exatamente isso que eu quis escrever.
     </p>
 </section>
 
@@ -752,24 +789,35 @@
 <!-- ══ SOLUÇÃO ══ -->
 <section style="padding-top: 0;">
     <span class="section-label">A solução</span>
-    <h2 class="section-title">As dicas que a Luiza foi descobrindo na marra</h2>
+    <h2 class="section-title">As dicas que eu fui descobrindo na marra</h2>
     <div class="solucao-box">
-        <strong>"O Que Ninguém Me Contou Sobre a Quimio"</strong> é um e-book escrito por Luiza Negreiros, 34 anos, diagnosticada com câncer de mama em maio de 2025 e ainda em tratamento. Ela foi testando, errando e encontrando soluções reais para cada sintoma — e reuniu tudo aqui. Não é teoria. É o que funcionou de verdade para ela, sintoma por sintoma.
+        <strong>"O Que Ninguém Me Contou Sobre a Quimio"</strong> é o e-book que eu, Luiza Negreiros, 34 anos, diagnosticada com câncer de mama em maio de 2025, escrevi ainda em tratamento. Fui testando, errando e encontrando soluções reais para cada sintoma — e reuni tudo aqui. Não é teoria. É o que funcionou de verdade para mim, sintoma por sintoma.
     </div>
 </section>
 
 <!-- ══ AUTORA ══ -->
 <section style="padding-top: 0;">
-    <span class="section-label">Quem escreveu</span>
-    <h2 class="section-title">A história da Luiza</h2>
+    <span class="section-label">Quem sou eu</span>
+    <h2 class="section-title">A minha história</h2>
     <div class="autora-card">
-        <div class="autora-topo">
-            <img src="/static/images/luiza-carolina.jpg" alt="Luiza Negreiros" class="autora-foto"
-                 onerror="this.src='/static/images/luiza.jpg'">
-            <div class="autora-nome">
-                <strong>Luiza Negreiros</strong>
-                <span>34 anos. Diagnóstico: maio de 2025.<br>Câncer de mama. Em tratamento.</span>
+        <!-- Galeria de 3 fotos da jornada -->
+        <div class="fotos-jornada">
+            <div class="foto-jornada-card">
+                <img src="/static/images/luiza-carolina-antes.jpg" alt="Luiza antes do diagnóstico">
+                <p class="foto-jornada-legenda">Antes do diagnóstico</p>
             </div>
+            <div class="foto-jornada-card">
+                <img src="/static/images/luiza-carolina-durante.jpg" alt="Luiza durante o tratamento">
+                <p class="foto-jornada-legenda">Último dia de quimio</p>
+            </div>
+            <div class="foto-jornada-card">
+                <img src="/static/images/luiza-carolina.jpg" alt="Luiza hoje">
+                <p class="foto-jornada-legenda">Hoje, superando</p>
+            </div>
+        </div>
+        <div style="text-align:center; margin-bottom:16px;">
+            <strong style="font-family:'Playfair Display',serif; font-size:18px; color:var(--marrom);">Luiza Negreiros</strong><br>
+            <span style="font-size:13px; color:var(--cinza);">34 anos. Diagnóstico: maio de 2025. Câncer de mama. Em tratamento.</span>
         </div>
         <div class="autora-historia">
             <p>Em maio de 2025, aos 34 anos, recebi o diagnóstico de câncer de mama localmente avançado. Fiz 18 sessões de quimioterapia, implantei um cateter port-a-cath, passei por indução à menopausa química — e sofri muito no caminho.</p>
@@ -788,13 +836,13 @@
 <!-- ══ CAPÍTULOS ══ -->
 <section style="padding-top: 0;">
     <span class="section-label">O que você vai encontrar</span>
-    <h2 class="section-title">Conteúdo real, baseado na experiência da Luiza</h2>
+    <h2 class="section-title">Conteúdo real, baseado na minha experiência</h2>
     <div class="capitulos-grid">
         <div class="capitulo-card">
             <div class="capitulo-num">1</div>
             <div class="capitulo-info">
-                <strong>O Caso da Luiza</strong>
-                <span>Diagnóstico, tipo de CA, protocolo de quimioterapia e como foi cada fase do tratamento.</span>
+                <strong>O Meu Caso</strong>
+                <span>Diagnóstico, tipo de CA, protocolo de quimioterapia e como foi cada fase do meu tratamento.</span>
             </div>
         </div>
         <div class="capitulo-card">
@@ -822,7 +870,7 @@
             <div class="capitulo-num">5</div>
             <div class="capitulo-info">
                 <strong>12 Sintomas com Soluções Reais</strong>
-                <span>Náusea, queda de cabelo, fadiga, ardência, inchaço e muito mais — o que a Luiza testou e o que funcionou.</span>
+                <span>Náusea, queda de cabelo, fadiga, ardência, inchaço e muito mais — o que eu testei e o que funcionou.</span>
             </div>
         </div>
     </div>
@@ -865,34 +913,34 @@
     <div class="depoimentos-lista">
         <div class="depoimento-card">
             <span class="depoimento-aspas">"</span>
-            <p class="depoimento-texto">Comprei para minha mãe que acabou de receber o diagnóstico. Ela leu em dois dias e disse que parecia que alguém finalmente entendia o que ela estava sentindo. Simples, honesto e cheio de carinho.</p>
+            <p class="depoimento-texto">Estava com ardência e urgência para urinar há semanas, fiz mil exames e nada resolvia. A dica do óleo de coco que a Luiza menciona mudou minha vida — em 2 dias melhorei 70%. Parece brincadeira, mas não é. Esse e-book tem ouro puro.</p>
             <div class="depoimento-autor">
-                <div class="depoimento-avatar">A</div>
+                <div class="depoimento-avatar">M</div>
                 <div class="depoimento-nome">
-                    <strong>Ana Paula T.</strong>
-                    <span>Goiânia — GO <span class="estrelas">★★★★★</span></span>
+                    <strong>Mariana Costa</strong>
+                    <span>Brasília — DF <span class="estrelas">★★★★★</span></span>
                 </div>
             </div>
         </div>
         <div class="depoimento-card">
             <span class="depoimento-aspas">"</span>
-            <p class="depoimento-texto">A parte sobre organizar as consultas me salvou. Eu não conseguia mais pensar, estava perdida. As dicas da Luiza são muito concretas, sem enrolação. Recomendo para qualquer pessoa no processo.</p>
+            <p class="depoimento-texto">Minha filha está fazendo quimio e conseguimos sacar o FGTS dela seguindo o passo a passo do capítulo 3. Além disso, as balas de gengibre para náusea e a dica das torradas salvaram ela em vários momentos. Vale cada centavo.</p>
             <div class="depoimento-autor">
-                <div class="depoimento-avatar">C</div>
+                <div class="depoimento-avatar">R</div>
                 <div class="depoimento-nome">
-                    <strong>Carla Moreira</strong>
+                    <strong>Regina Santos</strong>
                     <span>São Paulo — SP <span class="estrelas">★★★★★</span></span>
                 </div>
             </div>
         </div>
         <div class="depoimento-card">
             <span class="depoimento-aspas">"</span>
-            <p class="depoimento-texto">Eu sou marido de uma guerreira que está no tratamento. Esse e-book me ensinou como apoiar sem sufocar. Aprendi a escutar melhor e a estar presente de um jeito que ela realmente precisava.</p>
+            <p class="depoimento-texto">Estou na 8ª sessão e estava desesperada com a queda de cabelo. A parte sobre o capacete criogênico e os produtos específicos que a Luiza testou (Vichy Dercos, tônico Principia) me deram esperança. Consegui reduzir muito a queda seguindo as orientações dela!</p>
             <div class="depoimento-autor">
-                <div class="depoimento-avatar">R</div>
+                <div class="depoimento-avatar">J</div>
                 <div class="depoimento-nome">
-                    <strong>Ricardo Alves</strong>
-                    <span>Brasília — DF <span class="estrelas">★★★★★</span></span>
+                    <strong>Juliana Ferreira</strong>
+                    <span>Rio de Janeiro — RJ <span class="estrelas">★★★★★</span></span>
                 </div>
             </div>
         </div>
@@ -907,7 +955,7 @@
     <h2 class="section-title">Tudo que você recebe hoje</h2>
     <div class="oferta-box">
         <div class="oferta-titulo">O Que Ninguém Me Contou Sobre a Quimio</div>
-        <div class="oferta-subtitulo">Por Luiza Negreiros · Relato real · Dicas que funcionam</div>
+        <div class="oferta-subtitulo">Escrito por mim, Luiza Negreiros · Relato real · O que funcionou comigo</div>
         <div class="oferta-produto">
             💜 5 capítulos: diagnóstico, mente, direitos legais, quimio e 12 sintomas<br>
             ✅ Dicas testadas pela própria autora durante o tratamento<br>
