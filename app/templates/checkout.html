@@ -125,6 +125,11 @@
             color: var(--erro);
             font-size: 12px;
             margin-top: 4px;
+            min-height: 18px;
+            visibility: visible;
+        }
+        .erro-campo.oculto {
+            visibility: hidden;
         }
 
         /* ── Opções de pagamento ── */
@@ -332,7 +337,7 @@
                     </span>
                     <input type="tel" id="inputWhatsapp" placeholder="(61) 98765-4321" maxlength="15" autocomplete="tel">
                 </div>
-                <span class="erro-campo" id="erroWhatsapp" style="display:none">
+                <span class="erro-campo oculto" id="erroWhatsapp">
                     Número incompleto — informe com DDD (ex: 61 98765-4321)
                 </span>
             </div>
@@ -517,7 +522,7 @@
             const digits = inp.value.replace(/\D/g, '');
             const invalido = digits.length > 0 && digits.length < 10;
             if (forcar || jaInteragiu) {
-                erro.style.display = invalido ? 'block' : 'none';
+                erro.classList.toggle('oculto', !invalido);
                 wrapper.classList.toggle('invalido', invalido);
             }
         }
@@ -583,10 +588,10 @@
         if (!email || !email.includes('@')) erros.push('E-mail válido');
         if (wa.length > 0 && wa.length < 10) {
             erros.push('WhatsApp com DDD');
-            document.getElementById('erroWhatsapp').style.display = 'block';
+            document.getElementById('erroWhatsapp').classList.remove('oculto');
             document.getElementById('wrapperWhatsapp').classList.add('invalido');
         } else {
-            document.getElementById('erroWhatsapp').style.display = 'none';
+            document.getElementById('erroWhatsapp').classList.add('oculto');
             document.getElementById('wrapperWhatsapp').classList.remove('invalido');
         }
         if (!metodo)            erros.push('Forma de pagamento');
@@ -740,22 +745,40 @@
                     txid: currentTxid
                 }));
 
-                // Mostra tela aguardando ANTES de abrir BB Pay
+                // Mostra tela de aguardando sem polling
                 document.getElementById('pixPreco').textContent = PRECO_DISPLAY;
-                document.getElementById('qrImg').style.display = 'none';  // Esconde QR Code
-                document.getElementById('qrTexto').parentElement.style.display = 'none';  // Esconde copia-e-cola
+                document.getElementById('qrImg').style.display = 'none';
+                document.getElementById('qrTexto').parentElement.style.display = 'none';
+                document.getElementById('bbpaySeparator').style.display = 'none';
+                document.getElementById('spinnerWrap').style.display = 'none';
 
-                // Mantém só o botão BB Pay visível
+                // Mostra botão BB Pay + mensagem para voltar após pagar
                 const linkBB = document.getElementById('linkBBPay');
                 linkBB.href = data.url_bbpay;
                 linkBB.style.display = 'flex';
-                document.getElementById('bbpaySeparator').style.display = 'none';
 
-                mostrarEstado('pix');  // Mostra a tela de aguardando
-                iniciarPolling();      // INICIA POLLING IMEDIATAMENTE
+                const pixExpirado = document.getElementById('pixExpirado');
+                pixExpirado.innerHTML = `
+                    Complete o pagamento no BB Pay e volte aqui.<br>
+                    Após pagar, clique no botão abaixo para confirmar.<br>
+                    Caso precise de ajuda: <a href="mailto:admin@lsnlivros.com.br" class="link-suporte">admin@lsnlivros.com.br</a>
+                    <br><br>
+                    <button onclick="reiniciarPolling()" class="btn-tentar-novamente">✅ Já paguei — verificar agora</button>
+                    <br><br>
+                    <button onclick="voltarFormulario()" class="btn-tentar-novamente" style="border-color:#aaa; color:#666;">✏️ Corrigir meus dados</button>
+                `;
+                pixExpirado.style.display = 'block';
 
-                // Abre BB Pay em nova aba (não redireciona a página atual)
-                window.open(data.url_bbpay, '_blank');
+                mostrarEstado('pix');
+
+                // Tenta abrir em nova aba, se bloqueado redireciona
+                const popup = window.open(data.url_bbpay, '_blank');
+                if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+                    // Popup bloqueado - redireciona na mesma aba
+                    setTimeout(() => {
+                        window.location.href = data.url_bbpay;
+                    }, 500);
+                }
                 return;
             }
 
