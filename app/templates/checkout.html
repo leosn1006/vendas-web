@@ -469,29 +469,6 @@
         video_id:   urlParams.get('video_id')       || '',
     };
 
-    // ── Recovery automático: verifica se há pedido BB Pay pendente ──
-    window.addEventListener('DOMContentLoaded', () => {
-        const pedidoPendente = localStorage.getItem('pedido_bbpay_pendente');
-        if (pedidoPendente) {
-            try {
-                const { pedidoId, txid } = JSON.parse(pedidoPendente);
-                currentPedidoId = pedidoId;
-                currentTxid = txid;
-
-                // Mostra tela aguardando e retoma polling
-                document.getElementById('pixPreco').textContent = PRECO_DISPLAY;
-                document.getElementById('qrImg').style.display = 'none';
-                document.getElementById('qrTexto').parentElement.style.display = 'none';
-                document.getElementById('linkBBPay').style.display = 'flex';
-                document.getElementById('bbpaySeparator').style.display = 'none';
-                mostrarEstado('pix');
-                iniciarPolling();
-            } catch (e) {
-                localStorage.removeItem('pedido_bbpay_pendente');
-            }
-        }
-    });
-
     // ── Opções de pagamento ──
     document.querySelectorAll('input[name=metodo]').forEach(radio => {
         radio.addEventListener('change', () => {
@@ -670,9 +647,6 @@
 
     // ── Pagamento confirmado ──
     function pagamentoConfirmado() {
-        // Limpa recovery localStorage ao confirmar pagamento
-        localStorage.removeItem('pedido_bbpay_pendente');
-
         const email = document.getElementById('inputEmail') ? document.getElementById('inputEmail').value.trim() : '';
         document.getElementById('sucesso-email').textContent = email || 'seu e-mail';
         document.getElementById('sucesso-pedido-id').textContent = `#${currentPedidoId}`;
@@ -739,12 +713,6 @@
             currentTxid = data.txid;
 
             if (dados.metodo === 'bbpay' && data.url_bbpay) {
-                // BB Pay: salva no localStorage para recovery
-                localStorage.setItem('pedido_bbpay_pendente', JSON.stringify({
-                    pedidoId: currentPedidoId,
-                    txid: currentTxid
-                }));
-
                 // Mostra tela de aguardando sem polling
                 document.getElementById('pixPreco').textContent = PRECO_DISPLAY;
                 document.getElementById('qrImg').style.display = 'none';

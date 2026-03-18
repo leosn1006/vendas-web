@@ -1170,30 +1170,6 @@
     let currentTxid  = null;
     let currentPedidoId = null;
 
-    // ── Recovery automático: verifica se há pedido BB Pay pendente ──
-    window.addEventListener('DOMContentLoaded', () => {
-        const pedidoPendente = localStorage.getItem('pedido_bbpay_pendente_7');
-        if (pedidoPendente) {
-            try {
-                const { pedidoId, txid } = JSON.parse(pedidoPendente);
-                currentPedidoId = pedidoId;
-                currentTxid = txid;
-
-                // Abre modal e inicia polling
-                abrirModal();
-                document.getElementById('qrImg').style.display = 'none';
-                document.getElementById('qrTexto').parentElement.style.display = 'none';
-                const linkBB = document.getElementById('linkBBPay');
-                linkBB.style.display = 'flex';
-                document.getElementById('bbpaySep').style.display = 'none';
-                mostrarEstado('estado-qr');
-                iniciarPolling();
-            } catch (e) {
-                localStorage.removeItem('pedido_bbpay_pendente_7');
-            }
-        }
-    });
-
     function mostrarEstado(id) {
         ['estado-form', 'estado-qr', 'estado-fallback', 'estado-sucesso'].forEach(e => {
             document.getElementById(e).style.display = (e === id) ? 'block' : 'none';
@@ -1311,12 +1287,6 @@
                 }
                 document.getElementById('qrTexto').textContent = data.qrcode_texto || '';
                 if (data.url_bbpay) {
-                    // Salva no localStorage para recovery caso user use BB Pay
-                    localStorage.setItem('pedido_bbpay_pendente_7', JSON.stringify({
-                        pedidoId: currentPedidoId,
-                        txid: currentTxid
-                    }));
-
                     const linkBB = document.getElementById('linkBBPay');
                     linkBB.href = data.url_bbpay;
                     linkBB.style.display = 'flex';
@@ -1364,8 +1334,6 @@
     }
 
     function pagamentoConfirmado() {
-        // Limpa recovery localStorage ao confirmar pagamento
-        localStorage.removeItem('pedido_bbpay_pendente_7');
         localStorage.setItem('pedido_pago_7', currentPedidoId);
 
         const emailUsado = document.getElementById('inputEmail')?.value || '';
