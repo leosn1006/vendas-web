@@ -110,15 +110,17 @@
             </div>
 
             <div class="form-group" id="field-param1" style="display:none;">
-                <label>Nome do produto</label>
+                <label>Parâmetro 1 do template (2º parâmetro)</label>
                 <input type="text" name="param1"
-                       value="{{ acao.param1 or '' }}" placeholder="Nome comercial do produto">
+                       value="{{ acao.param1 or '' }}" placeholder="Ex: Nome do produto">
+                <small class="form-text text-muted">Usado como 2º parâmetro do body do template WhatsApp. O 1º é o nome do cliente e o 3º é o número do pedido (#0001, #0123, etc).</small>
             </div>
 
             <div class="form-group" id="field-param2" style="display:none;">
-                <label>Nome do brinde</label>
+                <label>Parâmetro 2 (não usado em templates)</label>
                 <input type="text" name="param2"
-                       value="{{ acao.param2 or '' }}" placeholder="Nome comercial do brinde">
+                       value="{{ acao.param2 or '' }}" placeholder="Reservado para uso futuro">
+                <small class="form-text text-muted">Este campo não é usado para templates WhatsApp. Reservado para outras ações futuras.</small>
             </div>
 
         </div>

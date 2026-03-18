@@ -83,10 +83,14 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
         _exige_campo(acao, 'mensagem', tag)      # nome do template
         _exige_campo(acao, 'url', tag)           # URL do documento (header)
         _exige_campo(acao, 'nome_arquivo', tag)  # filename do documento
+        # Monta parâmetros do body do template:
+        # 1º: nome do cliente
+        # 2º: param1 configurado (ex: nome do produto)
+        # 3º: número do pedido formatado como #0001, #0123, #1234
         body_params = [
             pedido.get('contact_name', ''),
             acao.get('param1') or '',
-            acao.get('param2') or '',
+            f"#{pedido_id:04d}",
         ]
         mid = enviar_produto_whatsapp(
             pedido,
