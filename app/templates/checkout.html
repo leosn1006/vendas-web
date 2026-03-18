@@ -663,6 +663,11 @@
 
     // Volta ao formulário sem recarregar (cliente quer corrigir os dados)
     function voltarFormulario() {
+        // Reseta o botão para o estado inicial
+        const btnFinalizar = document.getElementById('btnFinalizar');
+        btnFinalizar.disabled = false;
+        btnFinalizar.textContent = 'FINALIZAR COMPRA';
+
         mostrarEstado('form');
     }
 
