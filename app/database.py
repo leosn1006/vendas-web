@@ -622,7 +622,7 @@ def busca_vendas_pendentes_google()-> list:
         JOIN produtos pr ON pr.id = p.produto_id
         WHERE p.gclid IS NOT NULL
           AND p.gclid != ''
-          AND p.estado_id = 0 -- estado Pago
+          AND p.estado_id IN (0, 1000) -- Pago via WhatsApp (0) ou Pago via web (1000)
           AND p.data_envio_google_ads IS NULL
           AND pr.google_sheets_spreadsheet_id IS NOT NULL
         ORDER BY p.data_pagamento ASC
