@@ -79,7 +79,7 @@ services:
       - BB_PAY_APP_KEY=${BB_PAY_APP_KEY:-}
       - BB_PAY_API_URL=${BB_PAY_API_URL:-https://checkout.mtls.api.bb.com.br/v2/}
       - BB_PAY_OUATH_URL=${BB_PAY_OUATH_URL:-https://oauth.bb.com.br/oauth/token}
-      - CHECKOUT_VALOR_TESTE=${CHECKOUT_VALOR_TESTE:-}
+      - CHECKOUT_VALOR_TESTE_PRODUTO_7=${CHECKOUT_VALOR_TESTE_PRODUTO_7:-}
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost}
       - GOOGLE_SA_JSON_P1=${GOOGLE_SA_JSON_P1:-}
       - GOOGLE_SA_JSON_P6=${GOOGLE_SA_JSON_P6:-}
