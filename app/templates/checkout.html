@@ -448,9 +448,15 @@
 
 </div><!-- /container -->
 
+<script
+    data-produto-id="{{ produto.id }}"
+    data-preco="{{ '%.2f'|format(produto.preco) }}"
+    id="checkout-config">
+</script>
 <script>
-    const PRODUTO_ID = {{ produto.id }};
-    const PRECO_DISPLAY = 'R$ {{ "%.2f"|format(produto.preco) }}'.replace('.', ',');
+    const _cfg = document.getElementById('checkout-config').dataset;
+    const PRODUTO_ID = parseInt(_cfg.produtoId);
+    const PRECO_DISPLAY = 'R$ ' + _cfg.preco.replace('.', ',');
 
     let currentTxid     = null;
     let currentPedidoId = null;
