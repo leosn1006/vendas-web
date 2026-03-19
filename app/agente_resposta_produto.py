@@ -100,7 +100,7 @@ def responder_cliente_com_historico_produto(
 #    print("=== MENSAGENS ENVIADAS AO MODELO ===")
 #    for msg in messages:
 #        print(f"{msg['role'].upper()}: {msg['content'][:500]}{'...' if len(msg['content']) > 500 else ''}")
-#    print("=== FIM DAS MENSAGENS ===")g
+#    print("=== FIM DAS MENSAGENS ===")
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",

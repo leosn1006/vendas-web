@@ -185,7 +185,7 @@ def verificar_pagamentos_pendentes(self):
         traceback.print_exc()
 
 
-@shared_task(bind=True, max_retries=2)
+@shared_task(bind=True, max_retries=1)
 def enviar_email_entrega(self, pedido_id: int):
     logger.info("=" * 120)
     logger.info(f"[TASK-EMAIL] 📧 Iniciando entrega por e-mail para pedido #{pedido_id}")
