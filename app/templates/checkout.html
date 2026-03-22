@@ -568,7 +568,7 @@
         const metodo = document.querySelector('input[name=metodo]:checked')?.value;
 
         if (!nome)              erros.push('Nome completo');
-        if (!email || !email.includes('@')) erros.push('E-mail válido');
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) erros.push('E-mail válido');
         if (wa.length > 0 && wa.length < 10) {
             erros.push('WhatsApp com DDD');
             document.getElementById('erroWhatsapp').classList.remove('oculto');
