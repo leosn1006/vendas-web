@@ -135,7 +135,7 @@ def paes_sem_gluten():
 def pascoa_lucrativa():
     return render_template('pascoa-lucrativa.html')
 
-@app.get("/dicas-quimio")
+@app.get("/viver-bem")
 def dicas_quimio():
     return render_template('dicas-quimio.html')
 

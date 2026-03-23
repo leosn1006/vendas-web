@@ -65,7 +65,8 @@ def enviar_mensagem_template(numero_destino: str, template_name: str, language_c
 
 if __name__ == '__main__':
     # Exemplo de uso
-    numero = "1012710858592627"
+    # numero = "1012710858592627"
+    numero = '1026973267170405'
     sucesso = ativa_whatsapp(numero)
     if sucesso:
         print(f"WhatsApp ativado com sucesso")
