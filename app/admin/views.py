@@ -1149,15 +1149,15 @@ def remover_arquivo():
 
 _SQL_FUNIL = """
     SELECT
-        COUNT(*) AS total_leads,
-        COUNT(CASE WHEN estado_id != 1 THEN 1 END) AS mandaram_msg,
-        COUNT(CASE WHEN estado_id != 1 THEN 1 END) AS responderam,
-        COUNT(CASE WHEN interesse_produto = 1 THEN 1 END) AS responderam_com_interesse,
-        COUNT(CASE WHEN interesse_produto = 0 THEN 1 END) AS responderam_sem_interesse,
-        COUNT(CASE WHEN estado_id = 0 THEN 1 END) AS pagaram,
+        COUNT(CASE WHEN estado_id IN (0,1,2,3,4) THEN 1 END) AS total_leads,
+        COUNT(CASE WHEN estado_id IN (0,2,3,4) THEN 1 END)   AS mandaram_msg,
+        COUNT(CASE WHEN estado_id IN (0,2,3,4) THEN 1 END)   AS responderam,
+        COUNT(CASE WHEN estado_id IN (0,2,3,4) AND interesse_produto = 1 THEN 1 END) AS responderam_com_interesse,
+        COUNT(CASE WHEN estado_id IN (0,2,3,4) AND interesse_produto = 0 THEN 1 END) AS responderam_sem_interesse,
+        COUNT(CASE WHEN estado_id = 0 THEN 1 END)             AS pagaram,
         COUNT(CASE WHEN estado_id = 0 AND interesse_produto = 1 THEN 1 END) AS pagaram_vindo_interesse_sim,
         COUNT(CASE WHEN estado_id = 0 AND interesse_produto = 0 THEN 1 END) AS pagaram_vindo_interesse_nao,
-        COUNT(CASE WHEN estado_id = 0 AND data_followup IS NULL THEN 1 END) AS pagaram_sem_followup,
+        COUNT(CASE WHEN estado_id = 0 AND data_followup IS NULL THEN 1 END)     AS pagaram_sem_followup,
         COUNT(CASE WHEN estado_id = 0 AND data_followup IS NOT NULL THEN 1 END) AS pagaram_com_followup
     FROM pedidos
     WHERE produto_id = %s
