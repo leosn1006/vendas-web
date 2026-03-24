@@ -491,6 +491,10 @@
            class="nav-link {% if request.endpoint == 'admin.analytics_produto' %}active{% endif %}">
             <span class="icon">📊</span> Analytics
         </a>
+        <a href="{{ url_for('admin.analytics_web_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.analytics_web_produto' %}active{% endif %}">
+            <span class="icon">🌐</span> Analytics Web
+        </a>
         <a href="{{ url_for('admin.dados_basicos_produto', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint == 'admin.dados_basicos_produto' %}active{% endif %}">
             <span class="icon">📋</span> Dados Básicos

@@ -1191,6 +1191,38 @@ _SQL_CAMPANHAS = """
     ORDER BY total DESC
 """
 
+_SQL_FUNIL_WEB = """
+    SELECT
+        COUNT(CASE WHEN estado_id IN (1000,1001,1002) THEN 1 END) AS total_pedidos,
+        COUNT(CASE WHEN estado_id = 1000 THEN 1 END)              AS pagos
+    FROM pedidos
+    WHERE produto_id = %s
+      AND data_contato_site BETWEEN %s AND %s
+"""
+
+_SQL_RECEITA_WEB = """
+    SELECT
+        COUNT(*)                     AS total_pagamentos,
+        COALESCE(SUM(valor_pago), 0) AS total_receita
+    FROM pedidos
+    WHERE produto_id = %s
+      AND estado_id = 1000
+      AND data_pagamento BETWEEN %s AND %s
+"""
+
+_SQL_CAMPANHAS_WEB = """
+    SELECT
+        COALESCE(NULLIF(campaignid, ''), 'Campanha não informada') AS campanha,
+        COUNT(*)                     AS quantidade,
+        COALESCE(SUM(valor_pago), 0) AS total
+    FROM pedidos
+    WHERE produto_id = %s
+      AND estado_id = 1000
+      AND data_pagamento BETWEEN %s AND %s
+    GROUP BY campaignid
+    ORDER BY total DESC
+"""
+
 
 @admin_bp.route('/produto/<int:produto_id>/analytics')
 @requer_login
@@ -1282,4 +1314,55 @@ def analytics_produto(produto_id):
         pct_pagaram_interesse_nao = pct_pagaram_interesse_nao,
         conv_4_sem_followup = conv_4_sem_followup,
         conv_4_com_followup = conv_4_com_followup,
+    )
+
+
+@admin_bp.route('/produto/<int:produto_id>/analytics-web')
+@requer_login
+def analytics_web_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    hoje = datetime.date.today()
+    data_ini_str = request.args.get('data_ini', hoje.isoformat())
+    data_fim_str = request.args.get('data_fim', hoje.isoformat())
+
+    try:
+        data_ini = datetime.datetime.fromisoformat(data_ini_str)
+        data_fim = datetime.datetime.fromisoformat(data_fim_str) + datetime.timedelta(days=1, seconds=-1)
+    except ValueError:
+        data_ini = datetime.datetime.combine(hoje, datetime.time.min)
+        data_fim  = datetime.datetime.combine(hoje, datetime.time.max)
+        data_ini_str = data_fim_str = hoje.isoformat()
+
+    try:
+        funil     = db.execute_query(_SQL_FUNIL_WEB,     (produto_id, data_ini, data_fim), fetch_one=True)
+        receita   = db.execute_query(_SQL_RECEITA_WEB,   (produto_id, data_ini, data_fim), fetch_one=True)
+        campanhas = db.execute_query(_SQL_CAMPANHAS_WEB, (produto_id, data_ini, data_fim), fetch_all=True)
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro no analytics web produto #{produto_id}: {e}")
+        flash('Erro ao carregar analytics web.', 'danger')
+        funil = receita = None
+        campanhas = []
+
+    conv_pedidos_pagos = 0.0
+    ticket_medio = 0.0
+
+    if funil and funil['total_pedidos'] > 0:
+        conv_pedidos_pagos = round((funil['pagos'] / funil['total_pedidos']) * 100, 1)
+
+    if receita and receita['total_pagamentos']:
+        ticket_medio = float(receita['total_receita']) / receita['total_pagamentos']
+
+    return render_template('admin/produto_analytics_web.html',
+        produto            = produto,
+        funil              = funil,
+        receita            = receita,
+        campanhas          = campanhas,
+        data_ini           = data_ini_str,
+        data_fim           = data_fim_str,
+        ticket_medio       = ticket_medio,
+        conv_pedidos_pagos = conv_pedidos_pagos,
     )

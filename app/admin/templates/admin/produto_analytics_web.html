@@ -1,0 +1,308 @@
+{% extends "admin/base.html" %}
+{% block title %}Analytics Web — {{ produto.nome }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .period-form {
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 32px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px 24px;
+    }
+    .period-form .form-group { margin: 0; }
+    .period-form label { margin-bottom: 6px; display: block; }
+
+    .section-title {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-family: var(--mono);
+        margin: 28px 0 12px;
+    }
+
+    .funil-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        margin-bottom: 32px;
+    }
+
+    .funil-step {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px 28px;
+        position: relative;
+        margin-bottom: 8px;
+    }
+
+    .funil-step::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 4px;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .funil-step.step-1::before { background: linear-gradient(90deg, #4a90d9, #5ba3ed); }
+    .funil-step.step-2::before { background: linear-gradient(90deg, #4a9632, #5fb83e); }
+
+    .funil-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .funil-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        letter-spacing: 0.3px;
+    }
+
+    .funil-number {
+        font-size: 32px;
+        font-weight: 700;
+        font-family: var(--mono);
+        color: #3d2510;
+    }
+
+    .funil-subtitle {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 4px;
+    }
+
+    .funil-arrow {
+        text-align: center;
+        padding: 8px 0;
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 14px;
+        font-family: var(--mono);
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 8px;
+    }
+
+    .metric-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px 20px;
+        position: relative;
+        overflow: hidden;
+    }
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: var(--border);
+    }
+    .metric-card.accent::before  { background: var(--accent); }
+    .metric-card.green::before   { background: var(--accent2); }
+
+    .metric-label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-family: var(--mono);
+        margin-bottom: 8px;
+    }
+    .metric-value {
+        font-size: 28px;
+        font-weight: 600;
+        font-family: var(--mono);
+        color: #3d2510;
+        line-height: 1;
+    }
+    .metric-sub {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+    }
+
+    .empty-state {
+        text-align: center;
+        color: var(--muted);
+        padding: 48px 0;
+        font-size: 14px;
+    }
+
+    .shortcut-btns {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .shortcut-btn {
+        font-size: 12px;
+        padding: 5px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font-family: var(--font);
+        transition: all 0.15s;
+    }
+    .shortcut-btn:hover { background: var(--bg); color: var(--text); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">🌐 Analytics Web</h1>
+        <p class="page-subtitle">{{ produto.nome }}</p>
+    </div>
+</div>
+
+<!-- Filtro de período -->
+<form method="GET" action="{{ request.path }}" class="period-form">
+    <div class="form-group">
+        <label>Data inicial</label>
+        <input type="date" name="data_ini" value="{{ data_ini }}" style="width:160px;">
+    </div>
+    <div class="form-group">
+        <label>Data final</label>
+        <input type="date" name="data_fim" value="{{ data_fim }}" style="width:160px;">
+    </div>
+    <button type="submit" class="btn btn-primary">Filtrar</button>
+    <div class="shortcut-btns" style="align-self:flex-end;">
+        <button type="button" class="shortcut-btn" onclick="setDias(0)">Hoje</button>
+        <button type="button" class="shortcut-btn" onclick="setDias(1)">Ontem</button>
+        <button type="button" class="shortcut-btn" onclick="setDias(7)">7 dias</button>
+        <button type="button" class="shortcut-btn" onclick="setDias(30)">30 dias</button>
+    </div>
+</form>
+
+{% if funil %}
+
+<!-- ── Funil de Conversão ────────────────────────────────── -->
+<div class="section-title">Funil de Conversão — por data_contato_site</div>
+
+<div class="funil-container">
+
+    <!-- Etapa 1: Pedidos web -->
+    <div class="funil-step step-1">
+        <div class="funil-header">
+            <div class="funil-title">🌐 Pedidos Web</div>
+        </div>
+        <div class="funil-number">{{ funil.total_pedidos }}</div>
+        <div class="funil-subtitle">pedidos criados (criado, aguardando pagamento e pago)</div>
+    </div>
+
+    {% if funil.total_pedidos > 0 %}
+    <div class="funil-arrow">↓ {{ conv_pedidos_pagos }}% converteram</div>
+    {% endif %}
+
+    <!-- Etapa 2: Pagos -->
+    <div class="funil-step step-2">
+        <div class="funil-header">
+            <div class="funil-title">💰 Pagos</div>
+        </div>
+        <div class="funil-number">{{ funil.pagos }}</div>
+        <div class="funil-subtitle">{{ conv_pedidos_pagos }}% dos pedidos foram pagos</div>
+    </div>
+
+</div>
+
+<!-- ── Receita ─────────────────────────────────── -->
+{% if receita %}
+<div class="section-title">Receita — por data_pagamento (estado Pago via web)</div>
+<div class="metrics-grid">
+    <div class="metric-card green">
+        <div class="metric-label">Total Pagamentos</div>
+        <div class="metric-value">{{ receita.total_pagamentos }}</div>
+        <div class="metric-sub">clientes pagaram</div>
+    </div>
+    <div class="metric-card green">
+        <div class="metric-label">Receita Total</div>
+        <div class="metric-value" style="font-size:22px;">R$ {{ '%.2f'|format(receita.total_receita) }}</div>
+        <div class="metric-sub">no período</div>
+    </div>
+    {% if receita.total_pagamentos %}
+    <div class="metric-card accent">
+        <div class="metric-label">Ticket Médio</div>
+        <div class="metric-value" style="font-size:22px;">R$ {{ '%.2f'|format(ticket_medio) }}</div>
+        <div class="metric-sub">por pagamento</div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ── Por Campanha ────────────────────────────── -->
+{% if campanhas %}
+<div class="section-title">Receita por Campanha — por data_pagamento</div>
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Campanha</th>
+                    <th style="text-align:right;">Qtd</th>
+                    <th style="text-align:right;">Total</th>
+                    <th style="text-align:right;">% da Receita</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set total_geral = receita.total_receita if receita and receita.total_receita else 0 %}
+                {% for c in campanhas %}
+                <tr>
+                    <td style="font-family:var(--mono); font-size:13px;">{{ c.campanha }}</td>
+                    <td style="text-align:right; font-family:var(--mono);">{{ c.quantidade }}</td>
+                    <td style="text-align:right; font-family:var(--mono); font-weight:600;">R$ {{ '%.2f'|format(c.total) }}</td>
+                    <td style="text-align:right; color:var(--muted); font-family:var(--mono);">
+                        {% if total_geral > 0 %}{{ '%.1f'|format(c.total / total_geral * 100) }}%{% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        Nenhum dado encontrado para o período selecionado.
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function setDias(dias) {
+    const fim = new Date();
+    const ini = new Date();
+    if (dias === 1) {
+        fim.setDate(fim.getDate() - 1);
+        ini.setDate(ini.getDate() - 1);
+    } else if (dias > 1) {
+        ini.setDate(ini.getDate() - dias + 1);
+    }
+    const fmt = d => d.toISOString().split('T')[0];
+    document.querySelector('[name=data_ini]').value = fmt(ini);
+    document.querySelector('[name=data_fim]').value = fmt(fim);
+    document.querySelector('.period-form').submit();
+}
+</script>
+{% endblock %}
