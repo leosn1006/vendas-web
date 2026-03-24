@@ -47,8 +47,11 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
         logger.debug(f"[{tag}] 👁 Mensagem marcada como lida.")
 
     elif tipo == 'digitando':
-        enviar_mensagem_digitando(message_id_original, pedido.get('phone_number_id'))
-        logger.debug(f"[{tag}] ⌨️ Status 'digitando' enviado.")
+        try:
+            enviar_mensagem_digitando(message_id_original, pedido.get('phone_number_id'))
+            logger.debug(f"[{tag}] ⌨️ Status 'digitando' enviado.")
+        except Exception as exc_digitando:
+            logger.warning(f"[{tag}] ⚠️ Falha ao enviar digitando (não crítico): {exc_digitando}")
 
     elif tipo == 'enviar_audio':
         _exige_campo(acao, 'url', tag)

@@ -186,7 +186,7 @@ def enviar_mensagem_digitando(message_id: str, phone_number_id: str = None):
         response.raise_for_status()
 
     except Exception as e:
-        raise ValueError(f"[MENSAGEM-ENVIAR] ❌ Erro ao enviar mensagem: {response.json()}")
+        raise ValueError(f"[MENSAGEM-ENVIAR] ❌ Erro ao enviar mensagem: {e}")
 
 
 def enviar_documento(pedido: Pedido, url_documento: str, caption: str, filename: str):
