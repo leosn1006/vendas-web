@@ -1,4 +1,4 @@
-from flask import Blueprint, session
+from flask import Blueprint, request, session
 
 admin_bp = Blueprint(
     'admin',
@@ -22,7 +22,7 @@ def inject_produto_ativo():
             "SELECT id, nome FROM produtos ORDER BY nome",
             fetch_all=True
         ) or []
-        produto_ativo_id = session.get('produto_ativo_id')
+        produto_ativo_id = request.view_args.get('produto_id') or session.get('produto_ativo_id')
         produto_ativo = next((p for p in produtos if p['id'] == produto_ativo_id), None)
         return dict(produtos_lista=produtos, produto_ativo=produto_ativo)
     except Exception:
