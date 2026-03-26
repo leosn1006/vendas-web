@@ -24,7 +24,7 @@ def persistir_lide(body):
         elif "pascoa-lucrativa" in url:
             produto = 6
         elif "pudim" in url:
-            produto = 7
+            produto = 8
         else:
             produto = 1  # produto padrão para campanhas desconhecidas, pode ser ajustado para criar regras específicas por URL ou campanha
 
