@@ -928,9 +928,9 @@ def _converter_para_opus(caminho_entrada):
 
     # Bitrate dinâmico: manter resultado ≤ 490KB (com margem de 10KB)
     if duracao > 0:
-        bitrate = max(16, min(64, int(490 * 8 / duracao)))
+        bitrate = max(12, min(64, int(490 * 8 / duracao)))
     else:
-        bitrate = 64
+        bitrate = 32  # fallback seguro quando ffprobe não detecta duração
 
     fd, caminho_saida = tempfile.mkstemp(suffix='_opus.ogg')
     os.close(fd)
