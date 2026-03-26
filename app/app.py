@@ -9,6 +9,7 @@ from flask_login import LoginManager
 from admin import admin_bp
 from admin.auth import init_login_manager
 from web import web_bp
+from database import busca_produtos_disponiveis_web
 import os
 import logging
 
@@ -103,13 +104,15 @@ def webhook_receive():
 @app.get("/")
 def index():
     host = request.host.lower()
-    if 'lsnlivros.com.br' in host:
-        return render_template('lsnlivros.html')
-    return render_template('portifolio.html')
+    #if 'lsnlivros.com.br' in host:
+    #    return render_template('lsnlivros.html')
+    produtos = busca_produtos_disponiveis_web()
+    return render_template('portifolio.html', produtos=produtos)
 
 @app.get("/portifolio")
 def portifolio():
-    return render_template('portifolio.html')
+    produtos = busca_produtos_disponiveis_web()
+    return render_template('portifolio.html', produtos=produtos)
 
 @app.get("/politica-privacidade")
 def politica_privacidade():

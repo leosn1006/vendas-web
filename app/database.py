@@ -844,6 +844,17 @@ def get_produto_disponivel_web(produto_id: int):
     )
 
 
+def busca_produtos_disponiveis_web():
+    """Retorna lista de produtos visíveis no portfólio (disponivel_web=TRUE e url_pagina_vendas preenchida)."""
+    return db.execute_query(
+        """SELECT id, nome, preco, descricao, url_pagina_vendas, url_imagem_complementar
+           FROM produtos
+           WHERE disponivel_web = TRUE AND ativo = TRUE AND url_pagina_vendas IS NOT NULL
+           ORDER BY id""",
+        fetch_one=False
+    ) or []
+
+
 def get_phone_number_id_produto(produto_id: int):
     """Retorna o api_phone_number_id (ID da API Meta) associado ao produto ou None."""
     row = db.execute_query(

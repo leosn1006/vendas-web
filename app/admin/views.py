@@ -189,7 +189,8 @@ def editar_produto(produto_id):
                     nome_arquivo_surpresa               = %s,
                     ativo                               = %s,
                     numero_convenio_bb                  = %s,
-                    disponivel_web                      = %s
+                    disponivel_web                      = %s,
+                    url_pagina_vendas                   = %s
                 WHERE id = %s
             """, (
                 request.form.get('nome'),
@@ -218,6 +219,7 @@ def editar_produto(produto_id):
                 1 if request.form.get('ativo') else 0,
                 request.form.get('numero_convenio_bb') or None,
                 1 if request.form.get('disponivel_web') else 0,
+                request.form.get('url_pagina_vendas') or None,
                 produto_id
             ))
             flash('Produto atualizado com sucesso!', 'success')

@@ -184,6 +184,14 @@
                             </label>
                             <p class="field-hint">Ative para permitir compras diretas pelo site</p>
                         </div>
+
+                        <div class="form-group">
+                            <label for="url_pagina_vendas">URL da página de vendas</label>
+                            <input type="text" id="url_pagina_vendas" name="url_pagina_vendas"
+                                   value="{{ produto.url_pagina_vendas or '' }}"
+                                   placeholder="Ex: /pudim">
+                            <p class="field-hint">Caminho da landing page deste produto (ex: /pudim). Quando preenchida e "Disponível para venda no site" ativo, o produto aparece no portfólio.</p>
+                        </div>
                     </div>
                 </div>
 

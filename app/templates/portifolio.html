@@ -547,6 +547,104 @@
             color: var(--cinza);
         }
 
+        /* ── CATÁLOGO DE PRODUTOS ── */
+        .products-grid {
+            display: grid;
+            gap: 24px;
+            margin-top: 40px;
+        }
+
+        @media (min-width: 540px) {
+            .products-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (min-width: 900px) {
+            .products-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        .product-card {
+            background: var(--branco);
+            border-radius: 16px;
+            box-shadow: var(--sombra);
+            border: 1px solid #f0e8da;
+            overflow: hidden;
+            text-decoration: none;
+            color: var(--texto);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.25s;
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 36px rgba(0,0,0,0.13);
+        }
+
+        .product-card-img {
+            height: 160px;
+            background: linear-gradient(135deg, var(--verde-med), var(--verde));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            overflow: hidden;
+        }
+
+        .product-card-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .product-card-body {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-card-body h4 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--marrom);
+            margin-bottom: 8px;
+        }
+
+        .product-card-body p {
+            font-size: 13px;
+            color: var(--cinza);
+            line-height: 1.6;
+            flex: 1;
+            margin-bottom: 16px;
+        }
+
+        .product-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: auto;
+        }
+
+        .product-price {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: var(--verde);
+        }
+
+        .btn-sm {
+            padding: 8px 18px;
+            font-size: 13px;
+        }
+
+        .catalog-empty {
+            text-align: center;
+            padding: 40px;
+            color: var(--cinza);
+            font-size: 14px;
+        }
+
         /* ── CTA ── */
         .cta-section {
             background: linear-gradient(135deg, var(--marrom), #3d2510);
@@ -696,7 +794,7 @@
             </a>
             <nav>
                 <a href="#servicos">Serviços</a>
-                <a href="#ebooks">E-books</a>
+                <a href="#catalogo">E-books</a>
                 <a href="#verificacao">Verificação</a>
                 <a href="/contato">Contato</a>
             </nav>
@@ -713,7 +811,7 @@
                 <h2>Receitas Saborosas &amp; Alimentação Natural</h2>
                 <p>E-books com receitas deliciosas, práticas e feitas para o dia a dia. Conteúdo testado, ingredientes fáceis de encontrar e entrega imediata pelo WhatsApp.</p>
                 <div class="button-group">
-                    <a href="#ebooks" class="btn btn-primary">Conheça nossos e-books</a>
+                    <a href="#catalogo" class="btn btn-primary">Conheça nossos e-books</a>
                     <a href="#verificacao" class="btn btn-outline">Sobre a empresa</a>
                 </div>
             </div>
@@ -766,7 +864,7 @@
     </div>
 </section>
 
-<!-- ── EBOOKS ── -->
+<!-- ── EBOOKS / CATÁLOGO ── -->
 <section class="ebooks" id="ebooks">
     <div class="container">
         <div class="ebooks-grid">
@@ -792,13 +890,50 @@
                         <span>Apenas R$10,00 por e-book completo</span>
                     </li>
                 </ul>
-                <a href="/contato" class="btn btn-laranja">Adquirir um e-book</a>
+                <a href="#catalogo" class="btn btn-laranja">Ver nossos e-books</a>
             </div>
             <div class="ebooks-visual">
                 <div class="big-num">50</div>
                 <p>receitas exclusivas<br>por apenas <strong>R$10</strong></p>
             </div>
         </div>
+    </div>
+</section>
+
+<!-- ── CATÁLOGO DE PRODUTOS ── -->
+<section class="ebooks" id="catalogo" style="background: var(--branco); padding-top: 0;">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-label">Escolha o seu</span>
+            <h2 class="section-title">Nossos E-books Disponíveis</h2>
+            <p class="section-sub">Clique em qualquer e-book para conhecer mais e adquirir pelo WhatsApp.</p>
+        </div>
+
+        {% if produtos %}
+        <div class="products-grid">
+            {% for produto in produtos %}
+            <a href="{{ produto.url_pagina_vendas }}" class="product-card">
+                <div class="product-card-img">
+                    {% if produto.url_imagem_complementar %}
+                    <img src="{{ produto.url_imagem_complementar }}" alt="{{ produto.nome }}">
+                    {% else %}
+                    📚
+                    {% endif %}
+                </div>
+                <div class="product-card-body">
+                    <h4>{{ produto.nome }}</h4>
+                    <p>{{ (produto.descricao or '')[:100] }}{% if (produto.descricao or '')|length > 100 %}…{% endif %}</p>
+                    <div class="product-card-footer">
+                        <span class="product-price">R$ {{ "%.2f"|format(produto.preco) }}</span>
+                        <span class="btn btn-laranja btn-sm">Ver e-book →</span>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="catalog-empty">Em breve novos e-books disponíveis. <a href="/contato">Entre em contato</a>.</p>
+        {% endif %}
     </div>
 </section>
 
@@ -886,7 +1021,7 @@
         <p>Entre em contato pelo WhatsApp ou e-mail. Nossa equipe responde rápido e entrega o e-book na hora.</p>
         <div class="cta-buttons">
             <a href="/contato" class="btn btn-white">Fale Conosco</a>
-            <a href="#ebooks" class="btn btn-outline-white">Ver E-books</a>
+            <a href="#catalogo" class="btn btn-outline-white">Ver E-books</a>
         </div>
     </div>
 </section>
@@ -906,7 +1041,7 @@
                 <h5>Empresa</h5>
                 <ul>
                     <li><a href="#servicos">Serviços</a></li>
-                    <li><a href="#ebooks">E-books</a></li>
+                    <li><a href="#catalogo">E-books</a></li>
                     <li><a href="#verificacao">Verificação</a></li>
                 </ul>
             </div>
