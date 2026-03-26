@@ -952,9 +952,7 @@ def _converter_para_opus(caminho_entrada):
             os.remove(caminho_saida)
         return None, 'Conversão demorou demais. Tente um arquivo menor.'
 
-    tamanho_saida = os.path.getsize(caminho_saida)
-    logger.info(f"[AUDIO-UPLOAD] duracao={duracao:.1f}s bitrate={bitrate}k tamanho_saida={tamanho_saida // 1024}KB")
-    if tamanho_saida > 500 * 1024:
+    if os.path.getsize(caminho_saida) > 500 * 1024:
         os.remove(caminho_saida)
         return None, 'Áudio muito longo. Máximo suportado: aproximadamente 4 minutos.'
 
