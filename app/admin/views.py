@@ -928,9 +928,9 @@ def _converter_para_opus(caminho_entrada):
 
     # Bitrate dinâmico: manter resultado ≤ 490KB (com margem de 10KB)
     if duracao > 0:
-        bitrate = max(12, min(32, int(480 * 8 / duracao)))
+        bitrate = max(16, min(64, int(490 * 8 / duracao)))
     else:
-        bitrate = 32
+        bitrate = 64
 
     fd, caminho_saida = tempfile.mkstemp(suffix='_opus.ogg')
     os.close(fd)
@@ -939,6 +939,8 @@ def _converter_para_opus(caminho_entrada):
         subprocess.run([
             'ffmpeg', '-y', '-i', caminho_entrada,
             '-c:a', 'libopus', '-b:a', f'{bitrate}k',
+            '-ar', '48000', '-ac', '1',
+            '-map_metadata', '-1',
             '-vn', caminho_saida
         ], capture_output=True, timeout=120, check=True)
     except subprocess.CalledProcessError:
@@ -1055,29 +1057,19 @@ def upload_arquivo():
         try:
             arquivo.save(caminho_temp)
 
-            # Verificar se já é OGG/Opus válido — pula a conversão
-            if _e_ogg_opus(caminho_temp):
-                tamanho_kb = os.path.getsize(caminho_temp) / 1024
-                if tamanho_kb > 500:
-                    flash(f'Áudio muito grande ({tamanho_kb:.0f} KB). Máximo permitido: 500 KB.', 'danger')
-                    return redirect(url_for('admin.listar_arquivos', aba=tipo))
+            # Sempre re-encodar para garantir parâmetros compatíveis com WhatsApp
+            caminho_opus, erro = _converter_para_opus(caminho_temp)
+            if erro:
+                flash(erro, 'danger')
+                return redirect(url_for('admin.listar_arquivos', aba=tipo))
+            try:
+                os.replace(caminho_opus, destino)
+            except Exception:
                 import shutil
-                shutil.copy2(caminho_temp, destino)
-                os.chmod(destino, 0o644)
-                msg = f'Áudio "{nome_final}" salvo ({tamanho_kb:.0f} KB) — já estava em OGG/Opus.'
-            else:
-                caminho_opus, erro = _converter_para_opus(caminho_temp)
-                if erro:
-                    flash(erro, 'danger')
-                    return redirect(url_for('admin.listar_arquivos', aba=tipo))
-                try:
-                    os.replace(caminho_opus, destino)
-                except Exception:
-                    import shutil
-                    shutil.move(caminho_opus, destino)
-                os.chmod(destino, 0o644)
-                tamanho_kb = os.path.getsize(destino) / 1024
-                msg = f'Áudio "{nome_final}" convertido para OGG/Opus ({tamanho_kb:.0f} KB) e salvo com sucesso!'
+                shutil.move(caminho_opus, destino)
+            os.chmod(destino, 0o644)
+            tamanho_kb = os.path.getsize(destino) / 1024
+            msg = f'Áudio "{nome_final}" convertido para OGG/Opus ({tamanho_kb:.0f} KB) e salvo com sucesso!'
         finally:
             if os.path.exists(caminho_temp):
                 os.remove(caminho_temp)
