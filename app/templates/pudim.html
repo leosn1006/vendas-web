@@ -110,7 +110,7 @@ async function irParaWhatsApp(){
     if(emProcessamento)return;
     emProcessamento=true;
     mostrarLoader();
-    let numeroWhatsapp='5561982155687';
+    let numeroWhatsapp='556198824782';
     let mensagemBaseWA='Ola, tenho interesse no ebook de pudim sem forno';
     const urlDaPaginaAtual=window.location.href;
     const urlParams=new URLSearchParams(window.location.search);
@@ -122,7 +122,7 @@ async function irParaWhatsApp(){
     const device=urlParams.get('device')||'';
     const placement=urlParams.get('placement')||'';
     const video_id=urlParams.get('video_id')||'';
-    const API_URL='https://lneditor.com.br/api/v1/webhook/gravar-lide';
+    const API_URL='/api/v1/webhook/gravar-lide';
     const dadosParaEnviar={gclid:gclidCode,url:urlDaPaginaAtual,campaignid,adgroupid,creative,matchtype,device,placement,video_id};
     try{
         const resp=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(dadosParaEnviar)});
