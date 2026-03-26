@@ -135,6 +135,10 @@ def paes_sem_gluten():
 def pascoa_lucrativa():
     return render_template('pascoa-lucrativa.html')
 
+@app.get("/pudim")
+def pudim():
+    return render_template('pudim.html')
+
 @app.get("/viver-bem")
 def dicas_quimio():
     return render_template('dicas-quimio.html')
