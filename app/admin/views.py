@@ -928,7 +928,7 @@ def _converter_para_opus(caminho_entrada):
 
     # Bitrate dinâmico: manter resultado ≤ 490KB (com margem de 10KB)
     if duracao > 0:
-        bitrate = max(12, min(64, int(490 * 8 / duracao)))
+        bitrate = max(12, min(64, int(400 * 8 / duracao)))
     else:
         bitrate = 32  # fallback seguro quando ffprobe não detecta duração
 
