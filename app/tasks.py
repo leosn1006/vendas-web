@@ -1,9 +1,6 @@
 # worker para tratar as mensagens da fila Redis
 import logging
 from celery import shared_task
-from logging_setup import setup_rotating_file_logging
-
-setup_rotating_file_logging("worker")
 
 logger = logging.getLogger(__name__)
 

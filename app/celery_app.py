@@ -36,6 +36,14 @@ celery_app.conf.beat_schedule = {
     },
 }
 
+from celery.signals import worker_process_init
+
+@worker_process_init.connect
+def init_worker_logging(**kwargs):
+    from logging_setup import setup_rotating_file_logging
+    setup_rotating_file_logging("worker")
+
+
 celery_app.conf.update(
     timezone="America/Sao_Paulo",
     enable_utc=True,
