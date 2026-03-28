@@ -43,6 +43,7 @@ celery_app.conf.update(
     result_serializer="json",
     accept_content=["json"],
     result_expires=86400,
+    worker_hijack_root_logger=False,
     worker_prefetch_multiplier=1,
     task_acks_late=True,
     broker_connection_retry_on_startup=True, # Tenta conectar ao Redis ao iniciar

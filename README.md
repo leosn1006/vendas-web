@@ -119,9 +119,13 @@ make logs-worker
 make logs-files
 make restart-worker
 
-# Logs
+# Logs (tempo real via Docker)
 docker compose logs -f app
 docker compose logs -f worker
+
+# Logs do worker em arquivo (persistido com rotação diária)
+tail -f storage/logs/log_worker.log
+tail -n 100 storage/logs/log_worker.log
 
 # Rebuild de serviço específico
 docker compose up -d --build app
