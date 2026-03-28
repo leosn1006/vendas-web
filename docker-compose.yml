@@ -83,6 +83,8 @@ services:
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost}
       - GOOGLE_SA_JSON_P1=${GOOGLE_SA_JSON_P1:-}
       - GOOGLE_SA_JSON_P6=${GOOGLE_SA_JSON_P6:-}
+      - GOOGLE_SA_JSON_P7=${GOOGLE_SA_JSON_P7:-}
+      - GOOGLE_SA_JSON_P8=${GOOGLE_SA_JSON_P8:-}
 
     volumes:
       - ./storage:/app/storage
@@ -132,6 +134,8 @@ services:
       - BB_PAY_OUATH_URL=${BB_PAY_OUATH_URL:-https://oauth.bb.com.br/oauth/token}
       - GOOGLE_SA_JSON_P1=${GOOGLE_SA_JSON_P1:-}
       - GOOGLE_SA_JSON_P6=${GOOGLE_SA_JSON_P6:-}
+      - GOOGLE_SA_JSON_P7=${GOOGLE_SA_JSON_P7:-}
+      - GOOGLE_SA_JSON_P8=${GOOGLE_SA_JSON_P8:-}
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost}
     volumes:
       - ./storage:/app/storage
