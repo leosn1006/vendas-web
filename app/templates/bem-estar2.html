@@ -196,6 +196,9 @@
             emProcessamento = true;
             loader.style.display = 'flex';
 
+            // Abre a janela ANTES do await para manter o contexto de gesto do usuário
+            const popup = window.open('', '_blank', 'noopener,noreferrer');
+
             // Valores padrão (caso a API falhe)
             let numeroWhatsapp = '556182364563';
             let mensagemBaseWA = 'Olá Luiza! Vi seu site e gostaria de receber o guia sobre a quimio.';
@@ -216,7 +219,7 @@
 
             try {
                 // Chamada exata para o seu endpoint de lide
-                const resp = await fetch('https://lneditor.com.br/api/v1/webhook/gravar-lide', {
+                const resp = await fetch('/api/v1/webhook/gravar-lide', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dadosParaEnviar)
@@ -235,9 +238,9 @@
             } finally {
                 const urlFinal = `https://wa.me/${numeroWhatsapp}?text=${encodeURIComponent(mensagemBaseWA)}`;
 
-                // Tenta abrir em nova aba, se falhar (bloqueio de popup), abre na mesma
-                const popup = window.open(urlFinal, '_blank', 'noopener,noreferrer');
-                if (!popup) window.location.href = urlFinal;
+                // Atualiza a janela já aberta (ou navega na mesma se popup foi bloqueado)
+                if (popup) popup.location.href = urlFinal;
+                else window.location.href = urlFinal;
 
                 loader.style.display = 'none';
                 emProcessamento = false;
