@@ -146,6 +146,10 @@ def pudim():
 def dicas_quimio():
     return render_template('dicas-quimio.html')
 
+@app.get("/bem-estar")
+def bem_estar():
+    return render_template('bem-estar.html')
+
 
 @app.post("/api/v1/webhook/gravar-lide")
 def gravar_lide():

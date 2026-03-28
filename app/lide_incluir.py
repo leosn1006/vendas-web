@@ -25,6 +25,8 @@ def persistir_lide(body):
             produto = 6
         elif "pudim" in url:
             produto = 8
+        elif "bem-estar" in url:
+            produto = 7
         else:
             produto = 1  # produto padrão para campanhas desconhecidas, pode ser ajustado para criar regras específicas por URL ou campanha
 

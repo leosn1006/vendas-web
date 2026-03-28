@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O Que Ninguém Me Contou Sobre a Quimio — Por Luiza Negreiros</title>
+    <meta name="description" content="Dicas reais de quem está passando pela quimioterapia: sintomas, soluções práticas, direitos legais (FGTS) e apoio emocional. Conheça pelo WhatsApp.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --roxo:       #6b3fa0;
+            --roxo-med:   #8b5cbf;
+            --roxo-claro: #b89ad4;
+            --rosa:       #c45c8a;
+            --rosa-cl:    #e07aaa;
+            --creme:      #fdf8f5;
+            --marrom:     #4a2c2a;
+            --dourado:    #d4a843;
+            --dourado-cl: #f0c96a;
+            --texto:      #2c2c2c;
+            --cinza:      #666;
+            --branco:     #ffffff;
+            --sombra:     0 4px 24px rgba(0,0,0,0.10);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--creme);
+            color: var(--texto);
+            max-width: 480px;
+            margin: 0 auto;
+            padding-bottom: 64px;
+        }
+
+        /* ── HERO ── */
+        .hero {
+            background: linear-gradient(160deg, #3a1a60 0%, #6b3fa0 55%, #8b5cbf 100%);
+            padding: 40px 24px 32px;
+            text-align: center;
+            color: #fff;
+        }
+        .hero-badge {
+            display: inline-block;
+            background: var(--rosa);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 5px 14px;
+            border-radius: 50px;
+            margin-bottom: 18px;
+        }
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 26px;
+            line-height: 1.3;
+            margin-bottom: 14px;
+            color: #fff;
+        }
+        .hero h1 em { color: var(--dourado-cl); font-style: normal; }
+        .hero-sub {
+            font-size: 15px;
+            color: rgba(255,255,255,0.88);
+            line-height: 1.6;
+            margin-bottom: 28px;
+        }
+
+        /* ── STRIP ── */
+        .strip {
+            display: flex;
+            justify-content: space-around;
+            background: var(--roxo);
+            padding: 14px 12px;
+            text-align: center;
+        }
+        .strip-item { color: #fff; }
+        .strip-num { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 900; display: block; }
+        .strip-label { font-size: 12px; text-transform: uppercase; letter-spacing: .8px; opacity: .85; }
+
+        /* ── SEÇÕES GERAIS ── */
+        section { padding: 36px 24px 28px; }
+        .section-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--rosa);
+            margin-bottom: 8px;
+        }
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            color: var(--marrom);
+            line-height: 1.3;
+            margin-bottom: 20px;
+        }
+
+        /* ── DOR ── */
+        .dor-text {
+            font-size: 15px;
+            line-height: 1.75;
+            color: #444;
+        }
+        .dor-text strong { color: var(--marrom); }
+
+        /* ── PARA QUEM É ── */
+        .identificacao-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .identificacao-item {
+            background: #fff;
+            border-radius: 14px;
+            padding: 16px 18px;
+            box-shadow: var(--sombra);
+            border-left: 4px solid var(--roxo-med);
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+        .identificacao-item .icone { font-size: 26px; flex-shrink: 0; }
+        .identificacao-item p { font-size: 14px; color: #444; line-height: 1.6; }
+        .identificacao-item p strong { color: var(--marrom); display: block; margin-bottom: 2px; font-size: 15px; }
+
+        /* ── SOLUÇÃO ── */
+        .solucao-box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 22px 20px;
+            box-shadow: var(--sombra);
+            border-left: 4px solid var(--roxo-med);
+            font-size: 15px;
+            line-height: 1.7;
+            color: #444;
+        }
+
+        /* ── CAPÍTULOS ── */
+        .capitulos-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .capitulo-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 18px;
+            box-shadow: var(--sombra);
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+        .capitulo-num {
+            background: linear-gradient(135deg, var(--roxo), var(--rosa));
+            color: #fff;
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            font-weight: 900;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .capitulo-info strong {
+            display: block;
+            font-size: 15px;
+            color: var(--marrom);
+            margin-bottom: 4px;
+        }
+        .capitulo-info span {
+            font-size: 13px;
+            color: var(--cinza);
+            line-height: 1.5;
+        }
+
+        /* ── BENEFÍCIOS ── */
+        .beneficios-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .beneficio-card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 18px 14px;
+            box-shadow: var(--sombra);
+            text-align: center;
+        }
+        .beneficio-card .icone { font-size: 28px; margin-bottom: 8px; display: block; }
+        .beneficio-card strong { font-size: 13px; color: var(--marrom); display: block; margin-bottom: 4px; }
+        .beneficio-card span { font-size: 12px; color: var(--cinza); line-height: 1.5; }
+
+        /* ── DEPOIMENTOS ── */
+        .depoimentos-lista { display: flex; flex-direction: column; gap: 16px; }
+        .depoimento-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--sombra);
+            position: relative;
+        }
+        .depoimento-aspas {
+            font-family: 'Playfair Display', serif;
+            font-size: 64px;
+            color: var(--roxo-claro);
+            opacity: .4;
+            position: absolute;
+            top: 8px; left: 16px;
+            line-height: 1;
+        }
+        .depoimento-texto {
+            font-size: 14px;
+            line-height: 1.7;
+            color: #444;
+            padding-top: 28px;
+            margin-bottom: 14px;
+        }
+        .depoimento-autor { display: flex; align-items: center; gap: 10px; }
+        .depoimento-avatar {
+            width: 36px; height: 36px;
+            background: var(--roxo-med);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; color: #fff; font-size: 16px; flex-shrink: 0;
+        }
+        .depoimento-nome strong { display: block; font-size: 13px; color: var(--marrom); }
+        .depoimento-nome span { font-size: 12px; color: var(--cinza); }
+        .estrelas { color: var(--dourado); }
+
+        /* ── OFERTA ── */
+        .oferta-box {
+            background: linear-gradient(135deg, #3a1a60, #6b3fa0);
+            border-radius: 20px;
+            padding: 28px 22px;
+            text-align: center;
+            color: #fff;
+            box-shadow: 0 8px 32px rgba(107,63,160,.35);
+        }
+        .oferta-titulo {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            margin-bottom: 6px;
+        }
+        .oferta-subtitulo { font-size: 13px; opacity: .85; margin-bottom: 20px; }
+        .oferta-produto {
+            background: rgba(255,255,255,.1);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            text-align: left;
+            line-height: 1.8;
+        }
+        .oferta-bonus {
+            background: rgba(212,168,67,.15);
+            border: 1px dashed var(--dourado-cl);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+        .oferta-bonus .bonus-label {
+            display: inline-block;
+            background: var(--dourado);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: 50px;
+            margin-bottom: 6px;
+        }
+        .preco-antigo {
+            font-size: 15px;
+            opacity: .7;
+            text-decoration: line-through;
+            margin-bottom: 4px;
+        }
+        .preco-novo {
+            font-family: 'Playfair Display', serif;
+            font-size: 42px;
+            font-weight: 900;
+            color: var(--dourado-cl);
+            line-height: 1.1;
+        }
+        .preco-novo span { font-size: 22px; vertical-align: super; font-weight: 700; }
+        .preco-sub { font-size: 12px; opacity: .75; margin-top: 4px; }
+
+        /* ── GARANTIA ── */
+        .garantia-box {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: #fff;
+            border-radius: 16px;
+            padding: 18px 20px;
+            box-shadow: var(--sombra);
+            border: 1px solid #e8e0f0;
+        }
+        .garantia-icone { font-size: 44px; flex-shrink: 0; }
+        .garantia-texto strong { display: block; font-size: 15px; color: var(--roxo); margin-bottom: 4px; }
+        .garantia-texto span { font-size: 13px; color: var(--cinza); line-height: 1.5; }
+
+        /* ── CTA ── */
+        .btn-wrap { padding: 8px 24px 24px; }
+        .btn-cta {
+            width: 100%;
+            background: linear-gradient(90deg, var(--rosa), var(--rosa-cl));
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            padding: 18px 24px;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(196,92,138,.5);
+            transition: transform .15s, box-shadow .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(196,92,138,.6); }
+        .btn-cta:active { transform: translateY(0); }
+        .btn-cta-hero {
+            margin-top: 24px;
+            max-width: 340px;
+            margin-left: auto;
+            margin-right: auto;
+            font-size: 15px;
+            padding: 16px 20px;
+            animation: pulso 2s ease-in-out infinite;
+        }
+        @keyframes pulso {
+            0%, 100% { box-shadow: 0 4px 20px rgba(196,92,138,.5); }
+            50%       { box-shadow: 0 6px 32px rgba(196,92,138,.85); }
+        }
+        .btn-sub {
+            text-align: center;
+            font-size: 12px;
+            color: var(--cinza);
+            margin-top: 8px;
+        }
+
+        /* ── FAQ ── */
+        .faq-lista { display: flex; flex-direction: column; gap: 10px; }
+        .faq-item { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: var(--sombra); }
+        .faq-pergunta {
+            width: 100%; text-align: left;
+            background: none; border: none; cursor: pointer;
+            padding: 16px 18px;
+            font-size: 14px; font-weight: 700; color: var(--marrom);
+            font-family: 'Lato', sans-serif;
+            display: flex; justify-content: space-between; align-items: center; gap: 8px;
+        }
+        .faq-chevron { font-size: 18px; transition: transform .25s; flex-shrink: 0; }
+        .faq-item.aberto .faq-chevron { transform: rotate(180deg); }
+        .faq-resposta { display: none; padding: 0 18px 16px; font-size: 14px; color: #555; line-height: 1.65; }
+        .faq-item.aberto .faq-resposta { display: block; }
+
+        /* ── DIVISOR ── */
+        .divisor {
+            display: flex; align-items: center; gap: 12px;
+            padding: 4px 24px;
+            font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
+            text-transform: uppercase; color: var(--cinza);
+        }
+        .divisor hr { flex: 1; border: none; border-top: 1px solid #e0d5e8; }
+
+        /* ── FOOTER ── */
+        footer {
+            background: #2c2c2c; color: #aaa;
+            text-align: center;
+            padding: 28px 24px;
+            font-size: 12px; line-height: 1.8;
+        }
+        footer a { color: #999; text-decoration: underline; }
+        .footer-links { display: flex; justify-content: center; gap: 20px; margin-top: 10px; font-size: 13px; }
+
+        /* ── MODAL PIX ── */
+        .modal-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.65);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: #fff;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 380px;
+            padding: 28px 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.35);
+            position: relative;
+            text-align: center;
+        }
+        .modal-close {
+            position: absolute; top: 16px; right: 18px;
+            background: none; border: none; font-size: 22px; color: #aaa;
+            cursor: pointer; line-height: 1;
+        }
+        .modal-titulo {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            color: var(--marrom);
+            margin-bottom: 6px;
+        }
+        .modal-sub { font-size: 13px; color: var(--cinza); margin-bottom: 22px; line-height: 1.5; }
+
+        /* ── ESTADO 1: formulário ── */
+        #estado-form { display: block; }
+        .input-label { font-size: 13px; font-weight: 700; color: var(--marrom); text-align: left; display: block; margin-bottom: 6px; }
+        .input-wa {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e0d5e8;
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: 'Lato', sans-serif;
+            color: var(--texto);
+            outline: none;
+            transition: border-color .2s;
+            margin-bottom: 16px;
+        }
+        .input-wa:focus { border-color: var(--roxo-med); }
+        .btn-gerar {
+            width: 100%;
+            background: linear-gradient(90deg, var(--rosa), var(--rosa-cl));
+            color: #fff; border: none;
+            border-radius: 50px; padding: 16px;
+            font-size: 15px; font-weight: 700;
+            font-family: 'Lato', sans-serif;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(196,92,138,.45);
+            transition: transform .15s;
+        }
+        .btn-gerar:hover { transform: translateY(-1px); }
+        .btn-gerar:disabled { opacity: .6; cursor: default; transform: none; }
+        .form-nota { font-size: 11px; color: #bbb; margin-top: 10px; }
+
+        /* ── ESTADO 2: QR Code ── */
+        #estado-qr { display: none; }
+        .qr-img {
+            width: 200px; height: 200px;
+            border-radius: 12px;
+            border: 2px solid #e0d5e8;
+            margin: 0 auto 16px;
+            display: block;
+        }
+        .qr-preco {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px; color: var(--roxo);
+            margin-bottom: 14px;
+        }
+        .copiaecola-wrap {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .copiaecola-txt {
+            font-size: 11px;
+            color: #555;
+            word-break: break-all;
+            text-align: left;
+            flex: 1;
+        }
+        .btn-copiar {
+            background: var(--roxo-med); color: #fff;
+            border: none; border-radius: 8px;
+            padding: 8px 12px; font-size: 12px; font-weight: 700;
+            cursor: pointer; white-space: nowrap; flex-shrink: 0;
+        }
+        .btn-copiar.copiado { background: #666; }
+        .status-aguardando {
+            display: flex; align-items: center; justify-content: center;
+            gap: 8px; font-size: 13px; color: var(--cinza);
+        }
+        .spinner-sm {
+            width: 18px; height: 18px;
+            border: 2px solid #ddd;
+            border-top-color: var(--roxo-med);
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── ESTADO 2b: fallback ── */
+        #estado-fallback { display: none; }
+
+        /* ── ESTADO 3: sucesso ── */
+        #estado-sucesso { display: none; }
+        .sucesso-icone { font-size: 64px; margin-bottom: 12px; display: block; }
+        .sucesso-titulo {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px; color: var(--roxo); margin-bottom: 8px;
+        }
+        .sucesso-sub { font-size: 14px; color: var(--cinza); margin-bottom: 22px; line-height: 1.6; }
+        .btn-compartilhar {
+            display: block; width: 100%;
+            background: #f0f0f0; color: #444;
+            text-decoration: none; border: none;
+            border-radius: 50px; padding: 14px;
+            font-size: 14px; font-weight: 700;
+            font-family: 'Lato', sans-serif;
+            cursor: pointer; transition: background .15s;
+        }
+        .btn-compartilhar:hover { background: #e5e5e5; }
+        .bbpay-separator {
+            display: flex; align-items: center; gap: 10px;
+            margin: 14px 0 0; color: #aaa; font-size: 12px;
+        }
+        .bbpay-separator::before, .bbpay-separator::after {
+            content: ''; flex: 1; height: 1px; background: #ddd;
+        }
+        .btn-bbpay {
+            display: none; align-items: center; justify-content: center; gap: 10px;
+            width: 100%; margin-top: 10px;
+            background: #465EFF; color: #fff;
+            text-decoration: none; border-radius: 50px;
+            padding: 14px 20px; font-size: 15px; font-weight: 700;
+            font-family: 'Lato', sans-serif; transition: background .15s;
+            box-sizing: border-box;
+        }
+        .btn-bbpay:hover { background: #3349dd; }
+        .bbpay-logo-badge {
+            background: #FCFC30; color: #465EFF;
+            font-weight: 900; font-size: 12px;
+            padding: 2px 7px; border-radius: 4px; line-height: 1.4;
+            flex-shrink: 0;
+        }
+
+        /* ── TIMER URGÊNCIA ── */
+        .timer-box {
+            background: rgba(0,0,0,.25);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #fff;
+        }
+        .timer-box .timer-icone { font-size: 18px; }
+        .timer-box .timer-num {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--dourado-cl);
+            letter-spacing: 1px;
+        }
+
+        /* ── STICKY CTA ── */
+        .sticky-cta {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            z-index: 900;
+            background: linear-gradient(90deg, var(--rosa), var(--rosa-cl));
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 -4px 20px rgba(196,92,138,.4);
+            transform: translateY(100%);
+            transition: transform .3s ease;
+        }
+        .sticky-cta.visivel { transform: translateY(0); }
+        .sticky-cta button {
+            background: none; border: none;
+            color: #fff; font-family: 'Lato', sans-serif;
+            font-size: 15px; font-weight: 700;
+            cursor: pointer; letter-spacing: .3px;
+            flex: 1; text-align: center;
+        }
+        .sticky-cta .sticky-preco {
+            font-size: 13px;
+            color: rgba(255,255,255,.85);
+            white-space: nowrap;
+        }
+
+        /* ── AUTORA ── */
+        .autora-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 24px 20px;
+            box-shadow: var(--sombra);
+            border: 1px solid #f0e8f5;
+        }
+        .autora-topo {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+        .autora-foto {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            object-position: top;
+            border: 3px solid var(--roxo-claro);
+            flex-shrink: 0;
+        }
+        .autora-nome strong {
+            display: block;
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            color: var(--marrom);
+            margin-bottom: 2px;
+        }
+        .autora-nome span {
+            font-size: 13px;
+            color: var(--cinza);
+            line-height: 1.4;
+        }
+        .autora-historia {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #444;
+        }
+        .autora-historia p + p { margin-top: 12px; }
+        .autora-historia strong { color: var(--marrom); }
+        .autora-destaque {
+            background: var(--creme);
+            border-left: 3px solid var(--roxo-med);
+            border-radius: 0 10px 10px 0;
+            padding: 12px 14px;
+            margin-top: 16px;
+            font-size: 14px;
+            font-style: italic;
+            color: var(--marrom);
+            line-height: 1.6;
+        }
+        .nao-medica-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f0e8f5;
+            border: 1px solid var(--roxo-claro);
+            border-radius: 50px;
+            padding: 5px 14px;
+            font-size: 12px;
+            color: var(--roxo);
+            font-weight: 700;
+            margin-top: 14px;
+        }
+
+        /* ── GALERIA JORNADA (3 fotos) ── */
+        .fotos-jornada {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x mandatory;
+            padding-bottom: 8px;
+            margin: 20px -20px 20px;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+        .fotos-jornada::-webkit-scrollbar { display: none; }
+        .foto-jornada-card {
+            flex: 0 0 160px;
+            scroll-snap-align: start;
+            text-align: center;
+        }
+        .foto-jornada-card img {
+            width: 160px;
+            height: 160px;
+            border-radius: 16px;
+            object-fit: cover;
+            object-position: center;
+            border: 3px solid var(--roxo-claro);
+            box-shadow: var(--sombra);
+            display: block;
+            margin: 0 auto;
+        }
+        .foto-jornada-legenda {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--roxo);
+            margin-top: 8px;
+            line-height: 1.3;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+    <span class="hero-badge">Relato real · E-book digital · Acesso imediato</span>
+    <h1>O que ninguém me contou sobre <em>a quimio</em></h1>
+    <p class="hero-sub">Dicas verdadeiras de quem está passando pela quimioterapia — <strong style="color:#fff;">sintomas, soluções práticas e apoio emocional</strong> que eu fui descobrindo na marra.</p>
+    <img src="/static/images/capa-diario-superacao.png"
+         alt="Capa do e-book O Que Ninguém Me Contou Sobre a Quimio"
+         style="width:100%;max-width:280px;display:block;margin:20px auto 0;border-radius:8px;"
+         onerror="this.style.display='none'">
+    <button class="btn-cta btn-cta-hero" id="btnHero">
+        QUERO MEU GUIA — FALAR NO WHATSAPP →
+    </button>
+    <p style="font-size:12px;color:rgba(255,255,255,.65);margin-top:8px;">💬 Atendimento pelo WhatsApp &nbsp;·&nbsp; Rápido e seguro</p>
+</section>
+
+<!-- ══ STRIP ══ -->
+<div class="strip">
+    <div class="strip-item">
+        <span class="strip-num">12</span>
+        <span class="strip-label">Sintomas</span>
+    </div>
+    <div class="strip-item">
+        <span class="strip-num">★4.9</span>
+        <span class="strip-label">Avaliação</span>
+    </div>
+    <div class="strip-item">
+        <span class="strip-num">FGTS</span>
+        <span class="strip-label">Direito legal</span>
+    </div>
+    <div class="strip-item">
+        <span class="strip-num">7d</span>
+        <span class="strip-label">Garantia</span>
+    </div>
+</div>
+
+<!-- ══ DOR ══ -->
+<section>
+    <span class="section-label">Você sente isso?</span>
+    <h2 class="section-title">Você busca na internet e encontra teoria. O que falta são as dicas de quem viveu.</h2>
+    <p class="dor-text">
+        O diagnóstico chegou. O tratamento começou. E aí vem a quimioterapia — e com ela, uma lista de sintomas que ninguém te prepara direito para enfrentar.<br><br>
+        Náusea, fadiga, queda de cabelo, alteração de paladar, ardência, inchaço… Você pergunta para as médicas e recebe a resposta padrão. Você busca na internet e encontra texto genérico. <strong>O que falta é alguém que passou por cada um desses sintomas e te diz o que funcionou de verdade.</strong><br><br>
+        Foi exatamente isso que eu quis escrever.
+    </p>
+</section>
+
+<!-- ══ PARA QUEM É ══ -->
+<section style="padding-top: 0;">
+    <span class="section-label">Para quem é esse e-book?</span>
+    <h2 class="section-title">Você se identifica?</h2>
+    <div class="identificacao-lista">
+        <div class="identificacao-item">
+            <span class="icone">🌷</span>
+            <p>
+                <strong>Pacientes em quimioterapia</strong>
+                Você está em tratamento e busca dicas práticas para lidar com sintomas do dia a dia — do jeito que realmente funciona, não o texto de bula.
+            </p>
+        </div>
+        <div class="identificacao-item">
+            <span class="icone">🤝</span>
+            <p>
+                <strong>Familiares e cuidadores</strong>
+                Você quer entender o que a pessoa que ama está sentindo — e como apoiar de verdade, sem sufocar e sem se perder.
+            </p>
+        </div>
+        <div class="identificacao-item">
+            <span class="icone">⚖️</span>
+            <p>
+                <strong>Quem ainda não sabe dos seus direitos</strong>
+                Diagnóstico grave dá direito ao saque do FGTS — e poucas pessoas sabem disso. O e-book explica passo a passo como fazer.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- ══ SOLUÇÃO ══ -->
+<section style="padding-top: 0;">
+    <span class="section-label">A solução</span>
+    <h2 class="section-title">As dicas que eu fui descobrindo na marra</h2>
+    <div class="solucao-box">
+        <strong>"O Que Ninguém Me Contou Sobre a Quimio"</strong> é o e-book que eu, Luiza Negreiros, 34 anos, diagnosticada com câncer de mama em maio de 2025, escrevi ainda em tratamento. Fui testando, errando e encontrando soluções reais para cada sintoma — e reuni tudo aqui. Não é teoria. É o que funcionou de verdade para mim, sintoma por sintoma.
+    </div>
+</section>
+
+<!-- ══ AUTORA ══ -->
+<section style="padding-top: 0;">
+    <span class="section-label">Quem sou eu</span>
+    <h2 class="section-title">A minha história</h2>
+    <div class="autora-card">
+        <!-- Galeria de 3 fotos da jornada -->
+        <div class="fotos-jornada">
+            <div class="foto-jornada-card">
+                <img src="/static/images/luiza-carolina-antes.jpg" alt="Luiza antes do diagnóstico" style="object-position: top;">
+                <p class="foto-jornada-legenda">Antes do diagnóstico</p>
+            </div>
+            <div class="foto-jornada-card">
+                <img src="/static/images/luiza-carolina-durante.jpg" alt="Luiza durante o tratamento">
+                <p class="foto-jornada-legenda">Último dia de quimio</p>
+            </div>
+            <div class="foto-jornada-card">
+                <img src="/static/images/luiza-carolina.jpg" alt="Luiza hoje">
+                <p class="foto-jornada-legenda">Hoje, superando</p>
+            </div>
+        </div>
+        <div style="text-align:center; margin-bottom:16px;">
+            <strong style="font-family:'Playfair Display',serif; font-size:18px; color:var(--marrom);">Luiza Negreiros</strong><br>
+            <span style="font-size:13px; color:var(--cinza);">34 anos. Diagnóstico: maio de 2025. Câncer de mama. Em tratamento.</span>
+        </div>
+        <div class="autora-historia">
+            <p>Em maio de 2025, aos 34 anos, recebi o diagnóstico de câncer de mama localmente avançado. Fiz 18 sessões de quimioterapia, implantei um cateter port-a-cath, passei por indução à menopausa química — e sofri muito no caminho.</p>
+            <p>Vômitos, diarreia, queda de cabelo, ardência, inchaço, alteração de paladar, reação alérgica grave. <strong>Fui testando e descobrindo o que funcionava</strong> — às vezes sozinha, às vezes com ajuda dos profissionais que me acompanharam.</p>
+            <p>Escrevi este e-book ainda em tratamento porque não queria esperar. Cada dia que passa sem compartilhar o que aprendi é um dia a mais que alguém pode estar sofrendo com algo que tem solução simples.</p>
+        </div>
+        <div class="autora-destaque">
+            "A primeira coisa que minha oncologista me disse foi: diagnóstico não é sentença. Então, calma. Você não é a primeira nem a última. E se Deus quiser, vai alcançar a cura."
+        </div>
+        <div style="text-align:center;">
+            <span class="nao-medica-badge">⚕️ Não sou médica — sou alguém que está vivendo</span>
+        </div>
+    </div>
+</section>
+
+<!-- ══ CAPÍTULOS ══ -->
+<section style="padding-top: 0;">
+    <span class="section-label">O que você vai encontrar</span>
+    <h2 class="section-title">Conteúdo real, baseado na minha experiência</h2>
+    <div class="capitulos-grid">
+        <div class="capitulo-card">
+            <div class="capitulo-num">1</div>
+            <div class="capitulo-info">
+                <strong>O Meu Caso</strong>
+                <span>Diagnóstico, tipo de CA, protocolo de quimioterapia e como foi cada fase do meu tratamento.</span>
+            </div>
+        </div>
+        <div class="capitulo-card">
+            <div class="capitulo-num">2</div>
+            <div class="capitulo-info">
+                <strong>Após o Diagnóstico</strong>
+                <span>Saúde mental, terapia, religiosidade e como contar (ou não) para as pessoas ao redor.</span>
+            </div>
+        </div>
+        <div class="capitulo-card">
+            <div class="capitulo-num">3</div>
+            <div class="capitulo-info">
+                <strong>Seus Direitos Legais</strong>
+                <span>Como sacar o FGTS com diagnóstico de doença grave e como brigar pelo plano de saúde na justiça.</span>
+            </div>
+        </div>
+        <div class="capitulo-card">
+            <div class="capitulo-num">4</div>
+            <div class="capitulo-info">
+                <strong>Durante a Quimioterapia</strong>
+                <span>O que esperar das sessões, o cateter port-a-cath, a equipe e como tornar os dias mais leves.</span>
+            </div>
+        </div>
+        <div class="capitulo-card">
+            <div class="capitulo-num">5</div>
+            <div class="capitulo-info">
+                <strong>12 Sintomas com Soluções Reais</strong>
+                <span>Náusea, queda de cabelo, fadiga, ardência, inchaço e muito mais — o que eu testei e o que funcionou.</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ══ BENEFÍCIOS ══ -->
+<section style="padding-top: 0;">
+    <span class="section-label">Diferenciais</span>
+    <h2 class="section-title">Por que esse e-book é diferente</h2>
+    <div class="beneficios-grid">
+        <div class="beneficio-card">
+            <span class="icone">💜</span>
+            <strong>Relato de Quem Vive</strong>
+            <span>Escrito durante o tratamento — não depois, não de memória. É agora.</span>
+        </div>
+        <div class="beneficio-card">
+            <span class="icone">💡</span>
+            <strong>Dicas Específicas</strong>
+            <span>Produtos, remédios e soluções que a Luiza testou — com nome, dose e resultado.</span>
+        </div>
+        <div class="beneficio-card">
+            <span class="icone">⚖️</span>
+            <strong>Seus Direitos</strong>
+            <span>Capítulo exclusivo sobre saque do FGTS e como acionar a justiça contra o plano.</span>
+        </div>
+        <div class="beneficio-card">
+            <span class="icone">🧠</span>
+            <strong>Mente e Fé</strong>
+            <span>Terapia, religiosidade e como manter a cabeça em pé quando tudo está difícil.</span>
+        </div>
+    </div>
+</section>
+
+<div class="divisor"><hr><span>quem já leu</span><hr></div>
+
+<!-- ══ DEPOIMENTOS ══ -->
+<section>
+    <span class="section-label">Depoimentos</span>
+    <h2 class="section-title">O que estão dizendo</h2>
+    <div class="depoimentos-lista">
+        <div class="depoimento-card">
+            <span class="depoimento-aspas">"</span>
+            <p class="depoimento-texto">Estava com ardência e urgência para urinar há semanas, fiz mil exames e nada resolvia. A dica do óleo de coco que a Luiza menciona mudou minha vida — em 2 dias melhorei 70%. Parece brincadeira, mas não é. Esse e-book tem ouro puro.</p>
+            <div class="depoimento-autor">
+                <div class="depoimento-avatar">M</div>
+                <div class="depoimento-nome">
+                    <strong>Mariana Costa</strong>
+                    <span>Brasília — DF <span class="estrelas">★★★★★</span></span>
+                </div>
+            </div>
+        </div>
+        <div class="depoimento-card">
+            <span class="depoimento-aspas">"</span>
+            <p class="depoimento-texto">Minha filha está fazendo quimio e conseguimos sacar o FGTS dela seguindo o passo a passo do capítulo 3. Além disso, as balas de gengibre para náusea e a dica das torradas salvaram ela em vários momentos. Vale cada centavo.</p>
+            <div class="depoimento-autor">
+                <div class="depoimento-avatar">R</div>
+                <div class="depoimento-nome">
+                    <strong>Regina Santos</strong>
+                    <span>São Paulo — SP <span class="estrelas">★★★★★</span></span>
+                </div>
+            </div>
+        </div>
+        <div class="depoimento-card">
+            <span class="depoimento-aspas">"</span>
+            <p class="depoimento-texto">Estou na 8ª sessão e estava desesperada com a queda de cabelo. A parte sobre o capacete criogênico e os produtos específicos que a Luiza testou (Vichy Dercos, tônico Principia) me deram esperança. Consegui reduzir muito a queda seguindo as orientações dela!</p>
+            <div class="depoimento-autor">
+                <div class="depoimento-avatar">J</div>
+                <div class="depoimento-nome">
+                    <strong>Juliana Ferreira</strong>
+                    <span>Rio de Janeiro — RJ <span class="estrelas">★★★★★</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="divisor"><hr><span>a oferta</span><hr></div>
+
+<!-- ══ OFERTA ══ -->
+<section>
+    <span class="section-label">Oferta especial</span>
+    <h2 class="section-title">Tudo que você recebe hoje</h2>
+    <div class="oferta-box">
+        <div class="oferta-titulo">O Que Ninguém Me Contou Sobre a Quimio</div>
+        <div class="oferta-subtitulo">Escrito por mim, Luiza Negreiros · Relato real · O que funcionou comigo</div>
+        <div class="oferta-produto">
+            💜 5 capítulos: diagnóstico, mente, direitos legais, quimio e 12 sintomas<br>
+            ✅ Dicas testadas pela própria autora durante o tratamento<br>
+            ✅ Capítulo exclusivo: como sacar o FGTS por doença grave<br>
+            ✅ Acesso imediato após confirmação do pagamento
+        </div>
+        <div class="timer-box">
+            <span class="timer-icone">⏰</span>
+            <span>Oferta expira em:</span>
+            <span class="timer-num" id="timerDisplay">20:00</span>
+        </div>
+        <p class="preco-antigo">Valor normal: R$59,00</p>
+        <p class="preco-novo"><span>R$</span>19<span style="font-size: 28px;">,90</span></p>
+        <p class="preco-sub">Menos que o preço de um livro em livraria</p>
+    </div>
+</section>
+
+<div class="btn-wrap">
+    <button class="btn-cta" id="btnOferta">
+        QUERO MEU GUIA — FALAR NO WHATSAPP
+    </button>
+    <p class="btn-sub">💬 Atendimento direto pelo WhatsApp</p>
+</div>
+
+<!-- ══ GARANTIA ══ -->
+<section style="padding-top: 0;">
+    <div class="garantia-box">
+        <span class="garantia-icone">🛡️</span>
+        <div class="garantia-texto">
+            <strong>Garantia de 7 Dias</strong>
+            <span>Se por qualquer motivo você não gostar do conteúdo, devolvemos seu dinheiro. Sem perguntas, sem burocracia.</span>
+        </div>
+    </div>
+</section>
+
+<div class="divisor"><hr><span>dúvidas frequentes</span><hr></div>
+
+<!-- ══ FAQ ══ -->
+<section>
+    <span class="section-label">FAQ</span>
+    <h2 class="section-title">Perguntas frequentes</h2>
+    <div class="faq-lista">
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Como vou receber o e-book?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">Ao clicar no botão, você será direcionado para o nosso WhatsApp. Lá, nossa equipe cuida de tudo — envio, pagamento e suporte.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Como é feito o pagamento?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">O pagamento é feito via PIX, de forma rápida e segura, diretamente pelo WhatsApp. Você recebe as instruções e o link de acesso na mesma conversa.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Para quem é esse e-book?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">Para pacientes em qualquer fase do tratamento oncológico, para familiares e cuidadores que querem apoiar melhor, e para qualquer pessoa que busca uma história real de superação.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Precisa ser paciente de câncer para ler?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">Não! Muitos leitores são familiares, amigos ou cuidadores que queriam entender melhor o que a pessoa amada está passando. O conteúdo é valioso para qualquer pessoa próxima ao processo.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Este e-book substitui orientação médica?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta"><strong>Não.</strong> Este é um relato pessoal de experiência vivida. Todo o conteúdo é de natureza emocional e organizacional, e não substitui em nenhuma hipótese o acompanhamento médico, psicológico ou nutricional profissional.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Há suporte após a compra?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">Sim! Se tiver qualquer dúvida sobre o acesso ao e-book, entre em contato pela nossa <a href="/contato" target="_blank">página de contato</a>. Respondemos em até 24 horas.</div>
+        </div>
+    </div>
+</section>
+
+<div class="btn-wrap">
+    <button class="btn-cta" id="btnFaq">
+        QUERO MEU GUIA — FALAR NO WHATSAPP
+    </button>
+    <p class="btn-sub">De <s>R$59</s> por apenas R$19,90 — via WhatsApp</p>
+</div>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+    <p><strong style="color:#777;">LSN Livros Digitais</strong> &nbsp;·&nbsp; © 2025. Todos os direitos reservados.</p>
+    <p style="margin-top:6px; font-size:10px; color:#bbb;">Para suporte ou dúvidas, acesse nossa <a href="/contato" target="_blank" rel="noopener">página de contato</a>.</p>
+    <div class="footer-links">
+        <a href="/politica-privacidade" target="_blank" rel="noopener">Política de Privacidade</a>
+        <a href="/termos-de-uso" target="_blank" rel="noopener">Termos de Uso</a>
+    </div>
+    <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid #3a3a3a; text-align: left;">
+        <p style="font-size: 10px; color: #777; line-height: 1.6;">
+            <strong style="color: #666;">AVISO LEGAL:</strong> Este e-book é um relato pessoal de experiência vivida e <strong style="color:#888;">não substitui orientação médica, psicológica ou nutricional profissional</strong>. Os resultados apresentados nos depoimentos são individuais e podem variar. Este produto é um e-book digital vendido por R$19,90, com acesso imediato após confirmação do pagamento.
+        </p>
+    </div>
+</footer>
+
+<!-- ══ STICKY CTA ══ -->
+<div class="sticky-cta" id="stickyCta">
+    <button id="btnSticky">💜 QUERO O GUIA — VIA WHATSAPP <span class="sticky-preco">· Rápido e fácil</span></button>
+</div>
+
+<!-- ══ LOADER ══ -->
+<div id="loader" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="width:48px;height:48px;border:5px solid #fff;border-top-color:#6b3fa0;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+</div>
+<style>
+    #loader.active { display:flex !important; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script>
+    // ── FAQ accordion ──
+    document.querySelectorAll('.faq-pergunta').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.parentElement;
+            const aberto = item.classList.contains('aberto');
+            document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('aberto'));
+            if (!aberto) item.classList.add('aberto');
+        });
+    });
+
+    // ── Sticky CTA — aparece após 30% de scroll ──
+    const stickyCta = document.getElementById('stickyCta');
+    const scrollGatilho = document.documentElement.scrollHeight * 0.30;
+    window.addEventListener('scroll', () => {
+        stickyCta.classList.toggle('visivel', window.scrollY > scrollGatilho);
+    }, { passive: true });
+
+    // ── WhatsApp redirect ──
+    const loader = document.getElementById('loader');
+    let emProcessamento = false;
+
+    function mostrarLoader() {
+        loader.classList.add('active');
+        document.body.style.pointerEvents = 'none';
+    }
+
+    function esconderLoader() {
+        loader.classList.remove('active');
+        document.body.style.pointerEvents = '';
+    }
+
+    async function irParaWhatsApp() {
+        if (emProcessamento) return;
+        emProcessamento = true;
+        mostrarLoader();
+
+        let numeroWhatsapp = '556182364563';
+        let mensagemBaseWA = '😊 Olá, tenho interesse em saber mais sobre o guia da quimio';
+
+        const urlDaPaginaAtual = window.location.href;
+        const urlParams = new URLSearchParams(window.location.search);
+        const gclidCode  = urlParams.get('gclid') || '';
+        const campaignid = urlParams.get('gad_campaignid') || '';
+        const adgroupid  = urlParams.get('adgroupid') || '';
+        const creative   = urlParams.get('creative') || '';
+        const matchtype  = urlParams.get('matchtype') || '';
+        const device     = urlParams.get('device') || '';
+        const placement  = urlParams.get('placement') || '';
+        const video_id   = urlParams.get('video_id') || '';
+
+        const API_URL = 'https://lneditor.com.br/api/v1/webhook/gravar-lide';
+        const dadosParaEnviar = { gclid: gclidCode, url: urlDaPaginaAtual, campaignid, adgroupid, creative, matchtype, device, placement, video_id };
+
+        try {
+            const resp = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dadosParaEnviar)
+            });
+            if (resp.ok) {
+                const contentType = resp.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const data = await resp.json();
+                    if (data.whatsapp_numero?.trim()) numeroWhatsapp = data.whatsapp_numero.trim();
+                    if (data.mensagemBaseWA?.trim()) mensagemBaseWA = data.mensagemBaseWA.trim();
+                }
+            }
+        } catch (e) {
+            console.error('Erro ao chamar API de LIDE:', e);
+        }
+
+        const urlWhatsapp = 'https://wa.me/' + numeroWhatsapp + '?text=' + encodeURIComponent(mensagemBaseWA);
+
+        try {
+            const popup = window.open(urlWhatsapp, '_blank', 'noopener,noreferrer');
+            if (!popup) window.location.href = urlWhatsapp;
+        } finally {
+            esconderLoader();
+            emProcessamento = false;
+        }
+    }
+
+    ['btnHero', 'btnOferta', 'btnFaq', 'btnSticky'].forEach(id => {
+        document.getElementById(id)?.addEventListener('click', irParaWhatsApp);
+    });
+</script>
+
+</body>
+</html>
