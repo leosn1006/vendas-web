@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guia da Luiza — Apoio na Quimioterapia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --roxo: #6b3fa0;
+            --rosa: #c45c8a;
+            --creme: #fdf8f5;
+            --texto: #2c2c2c;
+        }
+        body { font-family: 'Lato', sans-serif; background: var(--creme); color: var(--texto); margin: 0; padding-bottom: 80px; line-height: 1.6; }
+        .container { max-width: 480px; margin: 0 auto; background: #fff; min-height: 100vh; box-shadow: 0 0 20px rgba(0,0,0,0.05); }
+
+        /* HERO ENXUTO */
+        .hero { background: linear-gradient(160deg, #3a1a60 0%, #6b3fa0 100%); color: #fff; padding: 40px 24px; text-align: center; }
+        .hero h1 { font-family: 'Playfair Display', serif; font-size: 28px; margin-bottom: 15px; line-height: 1.2; }
+        .hero p { font-size: 16px; opacity: 0.9; margin-bottom: 25px; }
+
+        .foto-autora { width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--rosa); margin: 0 auto 20px; display: block; object-fit: cover; }
+
+        /* BOTAO DE ALTA CONVERSÃO */
+        .btn-whatsapp {
+            background: #25D366; color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center;
+            padding: 18px; border-radius: 50px; font-weight: 700; font-size: 16px; gap: 10px; margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3); border: none; width: 100%; cursor: pointer;
+        }
+
+        /* CONTEÚDO RÁPIDO */
+        section { padding: 30px 24px; }
+        .check-list { list-style: none; padding: 0; }
+        .check-list li { margin-bottom: 15px; display: flex; gap: 12px; align-items: flex-start; font-size: 15px; }
+        .check-list li::before { content: '💜'; }
+
+        /* RODAPÉ COMPLIANCE */
+        footer { background: #f4f4f4; padding: 30px 24px; font-size: 11px; color: #777; text-align: center; }
+        .aviso-legal { border-top: 1px solid #ddd; margin-top: 15px; padding-top: 15px; text-align: justify; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="hero">
+        <img src="/static/images/luiza-carolina.jpg" class="foto-autora" alt="Luiza Negreiros">
+        <h1>"Eu passei por isso e quero te ajudar a passar também."</h1>
+        <p>Olá, eu sou a Luiza. Escrevi um guia prático com tudo o que funcionou para mim durante a quimioterapia. Quero te enviar agora pelo WhatsApp.</p>
+
+        <button class="btn-whatsapp" id="btnHero">
+            QUERO RECEBER O GUIA NO WHATSAPP →
+        </button>
+        <span style="font-size: 12px; opacity: 0.8;">Conversa segura e envio imediato</span>
+    </div>
+
+    <section>
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 22px;">O que eu preparei para você:</h2>
+        <ul class="check-list">
+            <li><strong>Alívio Real:</strong> O que eu usei para náuseas e inchaço que nenhum médico me receitou.</li>
+            <li><strong>Cabelo e Autoestima:</strong> Minha experiência com o capacete gelado e produtos que funcionam.</li>
+            <li><strong>Seus Direitos:</strong> O passo a passo simples para sacar seu FGTS (ajuda muito no custo!).</li>
+            <li><strong>Apoio Emocional:</strong> Como mantive a cabeça boa e a fé em dia.</li>
+        </ul>
+    </section>
+
+    <section style="background: var(--creme); text-align: center;">
+        <p style="font-style: italic; font-size: 15px;">"A dica do óleo de coco que a Luiza dá no guia mudou meu dia a dia. Vale muito a pena conversar com ela!"</p>
+        <p><strong>— Mariana C., Brasília</strong></p>
+        <button class="btn-whatsapp" id="btnCorpo">
+            FALAR COM A LUIZA NO WHATSAPP
+        </button>
+    </section>
+
+    <footer>
+        <p><strong>LSN Livros Digitais</strong> · lneditor.com.br</p>
+        <div class="aviso-legal">
+            <strong>AVISO IMPORTANTE:</strong> Este material é um relato de experiência pessoal. <strong>Não substitui orientação médica, psicológica ou nutricional.</strong> O uso de qualquer sugestão é de responsabilidade do leitor. Não prometemos cura, apenas compartilhamos bem-estar.
+        </div>
+    </footer>
+</div>
+
+<div id="loader" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;color:#fff;flex-direction:column;">
+    <div style="width:40px;height:40px;border:4px solid #fff;border-top-color:#25D366;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:10px;"></div>
+    <span>Abrindo WhatsApp...</span>
+</div>
+
+<script>
+    const loader = document.getElementById('loader');
+    async function irParaWhatsApp() {
+        loader.style.display = 'flex';
+        let numeroWhatsapp = '556182364563';
+        let mensagemBaseWA = 'Olá Luiza! Vi seu site e gostaria de receber o guia sobre a quimio.';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const dadosParaEnviar = {
+            gclid: urlParams.get('gclid') || '',
+            url: window.location.href,
+            campaignid: urlParams.get('gad_campaignid') || ''
+        };
+
+        try {
+            const resp = await fetch('https://lneditor.com.br/api/v1/webhook/gravar-lide', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dadosParaEnviar)
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.whatsapp_numero) numeroWhatsapp = data.whatsapp_numero;
+            }
+        } catch (e) { console.error(e); }
+
+        window.location.href = `https://wa.me/${numeroWhatsapp}?text=${encodeURIComponent(mensagemBaseWA)}`;
+    }
+
+    document.getElementById('btnHero').addEventListener('click', irParaWhatsApp);
+    document.getElementById('btnCorpo').addEventListener('click', irParaWhatsApp);
+</script>
+
+<style> @keyframes spin { to { transform: rotate(360deg); } } </style>
+</body>
+</html>

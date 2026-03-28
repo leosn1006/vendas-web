@@ -148,7 +148,7 @@ def dicas_quimio():
 
 @app.get("/bem-estar")
 def bem_estar():
-    return render_template('bem-estar.html')
+    return render_template('bem-estar2.html')
 
 
 @app.post("/api/v1/webhook/gravar-lide")
