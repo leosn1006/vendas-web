@@ -1,0 +1,204 @@
+{% extends "admin/base.html" %}
+{% block title %}Financeiro — {{ produto.nome }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .period-form {
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 32px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px 24px;
+    }
+    .period-form .form-group { margin: 0; }
+    .period-form label { margin-bottom: 6px; display: block; }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 28px;
+    }
+
+    .metric-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px 20px;
+        position: relative;
+        overflow: hidden;
+    }
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: var(--border);
+    }
+    .metric-card.green::before { background: var(--accent2); }
+    .metric-card.accent::before { background: var(--accent); }
+
+    .metric-label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-family: var(--mono);
+        margin-bottom: 8px;
+    }
+    .metric-value {
+        font-size: 28px;
+        font-weight: 600;
+        font-family: var(--mono);
+        color: #3d2510;
+        line-height: 1;
+    }
+    .metric-sub {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+    }
+
+    .shortcut-btns {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .shortcut-btn {
+        font-size: 12px;
+        padding: 5px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font-family: var(--font);
+        transition: all 0.15s;
+    }
+    .shortcut-btn:hover { background: var(--bg); color: var(--text); }
+
+    .empty-state {
+        text-align: center;
+        color: var(--muted);
+        padding: 48px 0;
+        font-size: 14px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">💳 Financeiro</h1>
+        <p class="page-subtitle">{{ produto.nome }}</p>
+    </div>
+</div>
+
+<!-- Filtro de período -->
+<form method="GET" action="{{ request.path }}" class="period-form">
+    <div class="form-group">
+        <label>Data inicial</label>
+        <input type="date" name="data_ini" value="{{ data_ini }}" style="width:160px;">
+    </div>
+    <div class="form-group">
+        <label>Data final</label>
+        <input type="date" name="data_fim" value="{{ data_fim }}" style="width:160px;">
+    </div>
+    <button type="submit" class="btn btn-primary">Filtrar</button>
+    <div class="shortcut-btns" style="align-self:flex-end;">
+        <button type="button" class="shortcut-btn" onclick="setDias(0)">Hoje</button>
+        <button type="button" class="shortcut-btn" onclick="setDias(1)">Ontem</button>
+        <button type="button" class="shortcut-btn" onclick="setDias(7)">7 dias</button>
+        <button type="button" class="shortcut-btn" onclick="setDias(30)">30 dias</button>
+    </div>
+</form>
+
+{% set resumo = financeiro.resumo %}
+{% set transacoes = financeiro.transacoes %}
+
+<!-- Cards de resumo -->
+<div class="metrics-grid">
+    <div class="metric-card green">
+        <div class="metric-label">Total Recebido</div>
+        <div class="metric-value" style="font-size:22px;">R$ {{ '%.2f'|format(resumo.total_valor or 0) }}</div>
+        <div class="metric-sub">no período</div>
+    </div>
+    <div class="metric-card green">
+        <div class="metric-label">Transações</div>
+        <div class="metric-value">{{ resumo.qtd_transacoes or 0 }}</div>
+        <div class="metric-sub">pagamentos recebidos</div>
+    </div>
+    {% if resumo.qtd_transacoes %}
+    <div class="metric-card accent">
+        <div class="metric-label">Ticket Médio</div>
+        <div class="metric-value" style="font-size:22px;">R$ {{ '%.2f'|format((resumo.total_valor or 0) / resumo.qtd_transacoes) }}</div>
+        <div class="metric-sub">por transação</div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tabela de transações -->
+{% if transacoes %}
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Data/Hora</th>
+                    <th style="text-align:right;">Valor</th>
+                    <th>Chave PIX</th>
+                    <th>Pagador</th>
+                    <th>CPF/CNPJ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transacoes %}
+                <tr>
+                    <td style="font-family:var(--mono); font-size:13px; white-space:nowrap;">
+                        {{ t.horario.strftime('%d/%m/%Y %H:%M') if t.horario else '—' }}
+                    </td>
+                    <td style="text-align:right; font-family:var(--mono); font-weight:600;">
+                        R$ {{ '%.2f'|format(t.valor) }}
+                    </td>
+                    <td style="font-family:var(--mono); font-size:13px;">{{ t.chave_pix }}</td>
+                    <td style="font-size:13px;">{{ t.nome_pagador or '—' }}</td>
+                    <td style="font-family:var(--mono); font-size:13px; color:var(--muted);">{{ t.cpf_cnpj or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        Nenhum pagamento PIX encontrado para o período selecionado.
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function setDias(dias) {
+    const fim = new Date();
+    const ini = new Date();
+    if (dias === 1) {
+        fim.setDate(fim.getDate() - 1);
+        ini.setDate(ini.getDate() - 1);
+    } else if (dias > 1) {
+        ini.setDate(ini.getDate() - dias + 1);
+    }
+    const fmt = d => d.toISOString().split('T')[0];
+    document.querySelector('[name=data_ini]').value = fmt(ini);
+    document.querySelector('[name=data_fim]').value = fmt(fim);
+    document.querySelector('.period-form').submit();
+}
+</script>
+{% endblock %}

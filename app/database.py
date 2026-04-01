@@ -949,6 +949,70 @@ def marcar_ebook_enviado(pedido_id: int) -> None:
 
 # ── pagamento_pix ─────────────────────────────────────────────────────────────
 
+def listar_chaves_pix_produto(produto_id) -> list:
+    """Lista todas as chaves PIX de um produto (ativas e inativas)."""
+    return db.execute_query(
+        "SELECT id, chave_pix, ativo, criado_em FROM chaves_pix_produto WHERE produto_id = %s ORDER BY criado_em DESC",
+        (produto_id,),
+        fetch_all=True,
+    ) or []
+
+
+def adicionar_chave_pix_produto(produto_id, chave_pix: str) -> int:
+    """Insere uma chave PIX para o produto. INSERT IGNORE evita duplicata."""
+    return db.execute_query(
+        "INSERT IGNORE INTO chaves_pix_produto (produto_id, chave_pix) VALUES (%s, %s)",
+        (produto_id, chave_pix.strip()),
+    )
+
+
+def desativar_chave_pix_produto(chave_id: int):
+    """Soft-delete: marca a chave como inativa (mantém histórico)."""
+    db.execute_query(
+        "UPDATE chaves_pix_produto SET ativo = 0 WHERE id = %s",
+        (chave_id,),
+    )
+
+
+def busca_financeiro_pix(produto_id, data_ini, data_fim) -> dict:
+    """
+    Retorna resumo e lista de transações PIX do produto no período.
+
+    Returns:
+        dict com keys 'resumo' (total_valor, qtd_transacoes, ticket_medio)
+                   e 'transacoes' (lista de pagamento_pix)
+    """
+    resumo = db.execute_query(
+        """SELECT
+               COALESCE(SUM(valor), 0)   AS total_valor,
+               COUNT(*)                  AS qtd_transacoes
+           FROM pagamento_pix
+           WHERE produto_id = %s AND horario BETWEEN %s AND %s""",
+        (produto_id, data_ini, data_fim),
+        fetch_one=True,
+    ) or {'total_valor': 0, 'qtd_transacoes': 0}
+
+    transacoes = db.execute_query(
+        """SELECT horario, valor, chave_pix, cpf_cnpj, nome_pagador, txid, e2e_id
+           FROM pagamento_pix
+           WHERE produto_id = %s AND horario BETWEEN %s AND %s
+           ORDER BY horario DESC""",
+        (produto_id, data_ini, data_fim),
+        fetch_all=True,
+    ) or []
+
+    total = float(resumo['total_valor'] or 0)
+    qtd   = int(resumo['qtd_transacoes'] or 0)
+    return {
+        'resumo': {
+            'total_valor':     total,
+            'qtd_transacoes':  qtd,
+            'ticket_medio':    round(total / qtd, 2) if qtd > 0 else 0.0,
+        },
+        'transacoes': transacoes,
+    }
+
+
 def busca_chaves_pix_produtos() -> dict:
     """
     Retorna dict {chave_pix: produto_id} com todas as chaves PIX ativas.

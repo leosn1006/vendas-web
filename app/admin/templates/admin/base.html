@@ -495,6 +495,10 @@
            class="nav-link {% if request.endpoint == 'admin.analytics_web_produto' %}active{% endif %}">
             <span class="icon">🌐</span> Analytics Web
         </a>
+        <a href="{{ url_for('admin.financeiro_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.financeiro_produto' %}active{% endif %}">
+            <span class="icon">💳</span> Financeiro
+        </a>
         <a href="{{ url_for('admin.dados_basicos_produto', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint == 'admin.dados_basicos_produto' %}active{% endif %}">
             <span class="icon">📋</span> Dados Básicos
@@ -506,6 +510,10 @@
         <a href="{{ url_for('admin.numeros_whatsapp', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint == 'admin.numeros_whatsapp' %}active{% endif %}">
             <span class="icon">📞</span> Números WhatsApp
+        </a>
+        <a href="{{ url_for('admin.chaves_pix_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint in ['admin.chaves_pix_produto','admin.adicionar_chave_pix','admin.desativar_chave_pix'] %}active{% endif %}">
+            <span class="icon">🔑</span> Chaves PIX
         </a>
         <a href="{{ url_for('admin.mensagens_sugeridas', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint == 'admin.mensagens_sugeridas' %}active{% endif %}">

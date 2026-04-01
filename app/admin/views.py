@@ -15,7 +15,9 @@ from database import (db,
     adicionar_acao_fluxo, atualizar_acao_fluxo, remover_acao_fluxo,
     get_pedido, get_ultimo_pedido_by_phone, salvar_mensagem_pedido,
     buscar_todas_mensagens_pedido,
-    buscar_pedido_por_nome, acertar_valor_pedido)
+    buscar_pedido_por_nome, acertar_valor_pedido,
+    listar_chaves_pix_produto, adicionar_chave_pix_produto, desativar_chave_pix_produto,
+    busca_financeiro_pix)
 
 _FLUXOS = ['introducao', 'pedido', 'comprovante', 'responder', 'followup', 'confirmacao_web']
 _FLUXOS_READONLY = {'responder'}
@@ -1361,4 +1363,84 @@ def analytics_web_produto(produto_id):
         data_fim           = data_fim_str,
         ticket_medio       = ticket_medio,
         conv_pedidos_pagos = conv_pedidos_pagos,
+    )
+
+
+# ── Chaves PIX ────────────────────────────────────────────────────────────────
+
+@admin_bp.route('/produto/<int:produto_id>/chaves-pix')
+@requer_login
+def chaves_pix_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+    chaves = listar_chaves_pix_produto(produto_id)
+    return render_template('admin/produto_chaves_pix.html', produto=produto, chaves=chaves)
+
+
+@admin_bp.route('/produto/<int:produto_id>/chaves-pix/adicionar', methods=['POST'])
+@requer_admin
+def adicionar_chave_pix(produto_id):
+    chave = request.form.get('chave_pix', '').strip()
+    if not chave:
+        flash('Informe a chave PIX.', 'warning')
+        return redirect(url_for('admin.chaves_pix_produto', produto_id=produto_id))
+    try:
+        adicionar_chave_pix_produto(produto_id, chave)
+        flash(f'Chave PIX "{chave}" adicionada com sucesso!', 'success')
+        logger.info(f"[ADMIN] ✅ Chave PIX '{chave}' associada ao produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao adicionar chave PIX: {e}")
+        flash(f'Erro ao adicionar chave PIX: {e}', 'danger')
+    return redirect(url_for('admin.chaves_pix_produto', produto_id=produto_id))
+
+
+@admin_bp.route('/produto/<int:produto_id>/chaves-pix/<int:chave_id>/desativar', methods=['POST'])
+@requer_admin
+def desativar_chave_pix(produto_id, chave_id):
+    try:
+        desativar_chave_pix_produto(chave_id)
+        flash('Chave PIX desativada.', 'success')
+        logger.info(f"[ADMIN] ✅ Chave PIX #{chave_id} desativada do produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao desativar chave PIX: {e}")
+        flash(f'Erro ao desativar chave PIX: {e}', 'danger')
+    return redirect(url_for('admin.chaves_pix_produto', produto_id=produto_id))
+
+
+# ── Financeiro PIX ────────────────────────────────────────────────────────────
+
+@admin_bp.route('/produto/<int:produto_id>/financeiro')
+@requer_login
+def financeiro_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    hoje = datetime.date.today()
+    data_ini_str = request.args.get('data_ini', hoje.isoformat())
+    data_fim_str = request.args.get('data_fim', hoje.isoformat())
+
+    try:
+        data_ini = datetime.datetime.fromisoformat(data_ini_str)
+        data_fim = datetime.datetime.fromisoformat(data_fim_str) + datetime.timedelta(days=1, seconds=-1)
+    except ValueError:
+        data_ini = datetime.datetime.combine(hoje, datetime.time.min)
+        data_fim  = datetime.datetime.combine(hoje, datetime.time.max)
+        data_ini_str = data_fim_str = hoje.isoformat()
+
+    try:
+        financeiro = busca_financeiro_pix(produto_id, data_ini, data_fim)
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro no financeiro PIX produto #{produto_id}: {e}")
+        flash('Erro ao carregar dados financeiros.', 'danger')
+        financeiro = {'resumo': {'total_valor': 0, 'qtd_transacoes': 0, 'ticket_medio': 0}, 'transacoes': []}
+
+    return render_template('admin/produto_financeiro.html',
+        produto     = produto,
+        financeiro  = financeiro,
+        data_ini    = data_ini_str,
+        data_fim    = data_fim_str,
     )

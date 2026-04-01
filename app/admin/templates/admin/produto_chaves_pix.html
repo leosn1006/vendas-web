@@ -1,0 +1,87 @@
+{% extends "admin/base.html" %}
+{% block title %}Chaves PIX — {{ produto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Chaves PIX</h1>
+        <p class="page-subtitle">{{ produto.nome }}</p>
+    </div>
+</div>
+
+<div class="card">
+    {% if chaves %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Chave PIX</th>
+                    <th>Status</th>
+                    <th>Cadastrado em</th>
+                    {% if current_user.is_admin() %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in chaves %}
+                <tr>
+                    <td>
+                        <span style="font-family: var(--mono); font-size: 14px;">{{ c.chave_pix }}</span>
+                    </td>
+                    <td>
+                        {% if c.ativo %}
+                        <span style="color: #4a9632; font-size: 13px; font-weight: 600;">● Ativa</span>
+                        {% else %}
+                        <span style="color: var(--muted); font-size: 13px;">○ Inativa</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--muted); font-size: 13px;">
+                        {{ c.criado_em.strftime('%d/%m/%Y %H:%M') if c.criado_em else '—' }}
+                    </td>
+                    {% if current_user.is_admin() %}
+                    <td style="text-align: right;">
+                        {% if c.ativo %}
+                        <form method="POST"
+                              action="{{ url_for('admin.desativar_chave_pix', produto_id=produto.id, chave_id=c.id) }}"
+                              onsubmit="return confirm('Desativar a chave {{ c.chave_pix }}?')">
+                            <button type="submit" class="btn btn-danger btn-sm">Desativar</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--muted); font-size: 14px; padding: 8px 0 20px;">
+        Nenhuma chave PIX cadastrada ainda.
+    </p>
+    {% endif %}
+
+    {% if current_user.is_admin() %}
+    <div style="margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border);">
+        <p style="font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+                  color: var(--muted); font-family: var(--mono); margin-bottom: 12px;">
+            Adicionar chave PIX
+        </p>
+        <form method="POST"
+              action="{{ url_for('admin.adicionar_chave_pix', produto_id=produto.id) }}"
+              style="display: flex; gap: 12px; align-items: flex-end; max-width: 480px;">
+            <div style="flex: 1;">
+                <label for="chave_pix">Chave PIX</label>
+                <input type="text" id="chave_pix" name="chave_pix"
+                       placeholder="ex: +5561998824782 ou email@dominio.com"
+                       required autocomplete="off">
+            </div>
+            <button type="submit" class="btn btn-primary" style="white-space: nowrap; margin-bottom: 0;">
+                + Adicionar
+            </button>
+        </form>
+        <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">
+            Formatos aceitos: telefone com + (ex: +5561998824782), e-mail, CPF, CNPJ ou chave aleatória (EVP).
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
