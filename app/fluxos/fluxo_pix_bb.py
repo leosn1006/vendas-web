@@ -37,13 +37,18 @@ def executar(data_str: str = None):
     chaves = database.busca_chaves_pix_produtos()
 
     novos = ignorados = 0
+    por_produto: dict[int | None, int] = {}
     for pix in pix_list:
         chave = pix.get('chave', '')
         produto_id = chaves.get(chave)
         inserido = database.salvar_pagamento_pix(pix, produto_id)
         if inserido:
             novos += 1
+            por_produto[produto_id] = por_produto.get(produto_id, 0) + 1
         else:
             ignorados += 1
 
     logger.info(f'[FLUXO-PIX-BB] ✅ Concluído — {novos} novo(s), {ignorados} já existia(m)')
+    for pid, qtd in sorted(por_produto.items(), key=lambda x: -(x[1])):
+        label = f'produto_id={pid}' if pid else 'sem produto'
+        logger.info(f'[FLUXO-PIX-BB]   {label}: {qtd} pagamento(s)')

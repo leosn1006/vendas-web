@@ -56,9 +56,12 @@ def consultar_todos_pix(inicio: datetime, fim: datetime) -> list:
         cert=(_CERT_PEM, _CERT_KEY),
         timeout=15,
     )
+    if resp.status_code == 404:
+        logger.info(f'[BB-PIX] Nenhuma transação encontrada de {inicio.date()} a {fim.date()}')
+        return []
     if not resp.ok:
         logger.error(f'[BB-PIX] Erro ao consultar PIX {resp.status_code}: {resp.text}')
-    resp.raise_for_status()
+        resp.raise_for_status()
 
     data = resp.json()
     pix_list = data.get('pix', [])
