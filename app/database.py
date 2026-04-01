@@ -945,3 +945,56 @@ def marcar_ebook_enviado(pedido_id: int) -> None:
            WHERE id = %s""",
         (pedido_id,)
     )
+
+
+# ── pagamento_pix ─────────────────────────────────────────────────────────────
+
+def busca_chaves_pix_produtos() -> dict:
+    """
+    Retorna dict {chave_pix: produto_id} com todas as chaves PIX ativas.
+    Um produto pode ter múltiplas chaves (tabela chaves_pix_produto).
+    """
+    rows = db.execute_query(
+        "SELECT chave_pix, produto_id FROM chaves_pix_produto WHERE ativo = 1",
+        fetch_all=True,
+    )
+    return {row['chave_pix']: row['produto_id'] for row in (rows or [])}
+
+
+def salvar_pagamento_pix(pix: dict, produto_id) -> bool:
+    """
+    Persiste uma transação PIX recebida.
+    Usa INSERT IGNORE para evitar duplicatas (unicidade garantida por e2e_id).
+
+    Retorna True se inseriu (novo), False se já existia.
+    """
+    from datetime import datetime
+
+    # Horário vem como ISO 8601 com offset, ex: "2026-03-31T06:59:38.00-03:00"
+    horario_str = pix.get('horario', '')
+    try:
+        horario = datetime.fromisoformat(horario_str).replace(tzinfo=None)
+    except (ValueError, TypeError):
+        horario = None
+
+    pagador  = pix.get('pagador') or {}
+    cpf_cnpj = pagador.get('cpf') or pagador.get('cnpj') or None
+    txid     = pix.get('txid') or None
+
+    with db.get_cursor() as cursor:
+        cursor.execute(
+            """INSERT IGNORE INTO pagamento_pix
+               (e2e_id, produto_id, chave_pix, valor, horario, cpf_cnpj, nome_pagador, txid)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                pix.get('endToEndId'),
+                produto_id,
+                pix.get('chave', ''),
+                float(pix.get('valor', 0)),
+                horario,
+                cpf_cnpj,
+                pagador.get('nome'),
+                txid,
+            ),
+        )
+        return cursor.rowcount > 0

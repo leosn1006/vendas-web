@@ -34,6 +34,10 @@ celery_app.conf.beat_schedule = {
         'task': 'tasks.verificar_pagamentos_pendentes',
         'schedule': crontab(minute='*/10'),  # a cada 10 minutos
     },
+    'processar-pagamentos-pix': {
+        'task': 'tasks.processar_pagamentos_pix',
+        'schedule': crontab(minute=15, hour='5-23,0'),  # de hora em hora às :15 (5h15 a 00h15)
+    },
 }
 
 from celery.signals import worker_process_init

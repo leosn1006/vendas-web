@@ -170,6 +170,19 @@ def processar_uploads_google_sheets(self):
 
 
 @shared_task(bind=True, max_retries=0)
+def processar_pagamentos_pix(self):
+    try:
+        logger.info('[TASK-PIX-BB] Iniciando coleta de PIX recebidos')
+        from fluxos.fluxo_pix_bb import executar
+        executar()
+        logger.info('[TASK-PIX-BB] ✅ Concluído')
+    except Exception as exc:
+        logger.error(f'[TASK-PIX-BB] ❌ Erro: {exc}')
+        import traceback
+        traceback.print_exc()
+
+
+@shared_task(bind=True, max_retries=0)
 def verificar_pagamentos_pendentes(self):
     try:
         logger.info('[TASK-RESILIENCIA-PGTO] Iniciando sweep de pagamentos BB Pay pendentes')
