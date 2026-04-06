@@ -74,5 +74,15 @@ def executar(pedido, mensagem_whatsapp):
 
     except Exception as exc:
         logger.error(f"[FLUXO-RESPONDER-MENSAGEM] ❌ Erro: {exc}")
+        try:
+            from whatsapp import notificar_admin_via_template
+            nome_produto = produto.get('nome', 'Desconhecido') if produto else 'Desconhecido'
+            notificar_admin_via_template(
+                pedido,
+                nome_produto,
+                f"Erro ao responder cliente. {type(exc).__name__}: {str(exc)[:300]}"
+            )
+        except Exception as exc_notif:
+            logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] ⚠️ Falha ao notificar admin: {exc_notif}")
         logger.info("=" * 120)
         raise exc

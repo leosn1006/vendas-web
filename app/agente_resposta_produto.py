@@ -121,14 +121,14 @@ def responder_cliente_com_historico_produto(
         logger.info(f"[AGENTE] 🔧 Tool chamada: notificar_admin | motivo={motivo} | resumo={resumo[:80]}")
 
         if pedido:
-            from whatsapp import notificar_admin_pedido
-            notificar_admin_pedido(pedido, (
-                f"🤖 *Agente escalou* — Pedido #{pedido.get('id')}\n\n"
-                f"Cliente: #{pedido.get('id')} — {pedido.get('contact_name')} ({pedido.get('contact_phone')})\n"
-                f"Motivo: *{motivo}*\n"
-                f"Resumo: {resumo}"
-            ))
-            logger.info(f"[AGENTE] 📲 Admin notificado — motivo: {motivo}")
+            from whatsapp import notificar_admin_via_template
+            nome_produto = produto.get('nome', 'Desconhecido') if produto else 'Desconhecido'
+            notificar_admin_via_template(
+                pedido,
+                nome_produto,
+                f"Agente escalou. Motivo: {motivo}. Cliente: {pedido.get('contact_name')} ({pedido.get('contact_phone')}). Resumo: {resumo}"
+            )
+            logger.info(f"[AGENTE] 📲 Admin notificado via template — motivo: {motivo}")
 
         return "Vou verificar com nossa equipe e te retorno em breve 🙏"
 

@@ -365,3 +365,53 @@ def notificar_admin_pedido(pedido: dict, mensagem: str):
         logger.info(f"[NOTIF-ADMIN] ✅ Notificação enviada para {admin_phone}")
     except Exception as e:
         logger.error(f"[NOTIF-ADMIN] ❌ Falha ao notificar admin: {e}")
+
+
+def notificar_admin_via_template(pedido: dict, nome_produto: str, mensagem: str):
+    """
+    Envia notificação ao admin usando o template 'administrativa_resposta'.
+    Usa phone_number_id fixo (974838442380155) onde o template está aprovado,
+    independente do produto. Obrigatório para mensagens fora da janela de 24h.
+    Parâmetros do template: {{1}} pedido, {{2}} nome_produto, {{3}} mensagem.
+    """
+    admin_phone = os.getenv('ADMIN_WHATSAPP_NUMBER', '').replace('+', '')
+    if not admin_phone:
+        logger.warning("[NOTIF-ADMIN-TEMPLATE] ADMIN_WHATSAPP_NUMBER não configurado — ignorado")
+        return
+
+    ADMIN_PHONE_NUMBER_ID = '974838442380155'
+    url = f"{WHATSAPP_API_URL}{ADMIN_PHONE_NUMBER_ID}/messages"
+    token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+    pedido_num = f"#{pedido.get('id', '?')}"
+
+    dados = {
+        "messaging_product": "whatsapp",
+        "to": admin_phone,
+        "type": "template",
+        "template": {
+            "name": "administrativa_resposta",
+            "language": {"code": "pt_BR"},
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": pedido_num},
+                        {"type": "text", "text": nome_produto or "Desconhecido"},
+                        {"type": "text", "text": mensagem[:1024]},
+                    ]
+                }
+            ]
+        }
+    }
+
+    try:
+        response = requests.post(url, headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json; charset=utf-8",
+        }, json=dados, timeout=10)
+        if response.status_code == 200:
+            logger.info(f"[NOTIF-ADMIN-TEMPLATE] ✅ Enviado para {admin_phone} — pedido {pedido_num}")
+        else:
+            logger.error(f"[NOTIF-ADMIN-TEMPLATE] ❌ Erro {response.status_code}: {response.text}")
+    except Exception as e:
+        logger.error(f"[NOTIF-ADMIN-TEMPLATE] ❌ Exceção: {e}")
