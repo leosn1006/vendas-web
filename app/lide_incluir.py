@@ -25,6 +25,8 @@ def persistir_lide(body):
             produto = 6
         elif "pudim" in url:
             produto = 8
+        elif "sobremesa" in url:
+            produto = 9
         elif "bem-estar" in url:
             produto = 7
         else:
