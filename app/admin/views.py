@@ -17,7 +17,8 @@ from database import (db,
     buscar_todas_mensagens_pedido,
     buscar_pedido_por_nome, acertar_valor_pedido,
     listar_chaves_pix_produto, adicionar_chave_pix_produto, desativar_chave_pix_produto,
-    busca_financeiro_pix)
+    busca_financeiro_pix,
+    listar_planilhas_dns_produto, adicionar_planilha_dns, atualizar_planilha_dns, remover_planilha_dns)
 
 _FLUXOS = ['introducao', 'pedido', 'comprovante', 'responder', 'followup', 'confirmacao_web']
 _FLUXOS_READONLY = {'responder'}
@@ -1407,6 +1408,75 @@ def desativar_chave_pix(produto_id, chave_id):
         logger.error(f"[ADMIN] ❌ Erro ao desativar chave PIX: {e}")
         flash(f'Erro ao desativar chave PIX: {e}', 'danger')
     return redirect(url_for('admin.chaves_pix_produto', produto_id=produto_id))
+
+
+# ── Planilhas Google Ads por DNS ─────────────────────────────────────────────
+
+@admin_bp.route('/produto/<int:produto_id>/planilhas-google')
+@requer_login
+def planilhas_google_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+    planilhas = listar_planilhas_dns_produto(produto_id)
+    return render_template('admin/produto_planilhas_google.html', produto=produto, planilhas=planilhas)
+
+
+@admin_bp.route('/produto/<int:produto_id>/planilhas-google/adicionar', methods=['POST'])
+@requer_admin
+def adicionar_planilha_google(produto_id):
+    dns            = request.form.get('dns', '').strip()
+    spreadsheet_id = request.form.get('spreadsheet_id', '').strip()
+    sheet_name     = request.form.get('sheet_name', 'Página1').strip()
+    conversion_name = request.form.get('conversion_name', '').strip()
+    sa_env_var     = request.form.get('sa_env_var', '').strip()
+    if not all([dns, spreadsheet_id, conversion_name, sa_env_var]):
+        flash('Preencha todos os campos obrigatórios.', 'danger')
+        return redirect(url_for('admin.planilhas_google_produto', produto_id=produto_id))
+    try:
+        adicionar_planilha_dns(produto_id, dns, spreadsheet_id, sheet_name, conversion_name, sa_env_var)
+        flash(f'Planilha para "{dns}" adicionada.', 'success')
+        logger.info(f"[ADMIN] ✅ Planilha Google DNS '{dns}' adicionada ao produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao adicionar planilha DNS: {e}")
+        flash(f'Erro ao adicionar: {e}', 'danger')
+    return redirect(url_for('admin.planilhas_google_produto', produto_id=produto_id))
+
+
+@admin_bp.route('/produto/<int:produto_id>/planilhas-google/<int:planilha_id>/editar', methods=['POST'])
+@requer_admin
+def editar_planilha_google(produto_id, planilha_id):
+    dns            = request.form.get('dns', '').strip()
+    spreadsheet_id = request.form.get('spreadsheet_id', '').strip()
+    sheet_name     = request.form.get('sheet_name', 'Página1').strip()
+    conversion_name = request.form.get('conversion_name', '').strip()
+    sa_env_var     = request.form.get('sa_env_var', '').strip()
+    ativo          = request.form.get('ativo') == '1'
+    if not all([dns, spreadsheet_id, conversion_name, sa_env_var]):
+        flash('Preencha todos os campos obrigatórios.', 'danger')
+        return redirect(url_for('admin.planilhas_google_produto', produto_id=produto_id))
+    try:
+        atualizar_planilha_dns(planilha_id, dns, spreadsheet_id, sheet_name, conversion_name, sa_env_var, ativo)
+        flash(f'Planilha para "{dns}" atualizada.', 'success')
+        logger.info(f"[ADMIN] ✅ Planilha Google DNS #{planilha_id} editada no produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao editar planilha DNS: {e}")
+        flash(f'Erro ao editar: {e}', 'danger')
+    return redirect(url_for('admin.planilhas_google_produto', produto_id=produto_id))
+
+
+@admin_bp.route('/produto/<int:produto_id>/planilhas-google/<int:planilha_id>/remover', methods=['POST'])
+@requer_admin
+def remover_planilha_google(produto_id, planilha_id):
+    try:
+        remover_planilha_dns(planilha_id)
+        flash('Planilha removida.', 'success')
+        logger.info(f"[ADMIN] ✅ Planilha Google DNS #{planilha_id} removida do produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao remover planilha DNS: {e}")
+        flash(f'Erro ao remover: {e}', 'danger')
+    return redirect(url_for('admin.planilhas_google_produto', produto_id=produto_id))
 
 
 # ── Financeiro PIX ────────────────────────────────────────────────────────────

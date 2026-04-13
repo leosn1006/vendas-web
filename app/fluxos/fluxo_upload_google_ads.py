@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from types import SimpleNamespace
 from google.ads.googleads.client import GoogleAdsClient
-from database import busca_vendas_pendentes_google, marcar_venda_como_enviada_ao_google_ads
+from database import busca_vendas_pendentes_google, busca_vendas_pendentes_google_por_dns, marcar_venda_como_enviada_ao_google_ads
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ def exportar_para_google_sheets():
     HEADER = ["Google Click ID", "Conversion Name", "Conversion Time", "Conversion Value", "Currency Code"]
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
 
-    vendas = busca_vendas_pendentes_google()
+    vendas = busca_vendas_pendentes_google_por_dns()
     if not vendas:
         logger.info("[FLUXO-GOOGLE-SHEETS] ✅ Nenhuma venda pendente.")
         return
@@ -113,13 +113,14 @@ def exportar_para_google_sheets():
         if isinstance(venda, dict):
             venda = SimpleNamespace(**venda)
         key = (venda.produto_id, venda.google_sheets_spreadsheet_id,
-               venda.google_sheets_sheet_name, venda.google_ads_conversion_name)
+               venda.google_sheets_sheet_name, venda.google_ads_conversion_name,
+               venda.google_sa_env_var)
         grupos[key].append(venda)
 
-    for (produto_id, spreadsheet_id, sheet_name, conversion_name), grupo_vendas in grupos.items():
-        sa_json = os.getenv(f"GOOGLE_SA_JSON_P{produto_id}")
+    for (produto_id, spreadsheet_id, sheet_name, conversion_name, sa_env_var), grupo_vendas in grupos.items():
+        sa_json = os.getenv(sa_env_var)
         if not sa_json:
-            logger.error(f"[FLUXO-GOOGLE-SHEETS] ❌ GOOGLE_SA_JSON_P{produto_id} não encontrada — produto {produto_id} ignorado")
+            logger.error(f"[FLUXO-GOOGLE-SHEETS] ❌ {sa_env_var} não encontrada — produto {produto_id} ignorado")
             continue
         try:
             creds = Credentials.from_service_account_info(_json.loads(sa_json), scopes=scopes)

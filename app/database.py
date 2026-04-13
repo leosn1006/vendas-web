@@ -198,6 +198,7 @@ class Pedido(TypedDict):
     data_envio_pedido: Optional[str]
     data_envio_google_ads: Optional[str]
     data_agendamento_pagamento: Optional[str]
+    dns_origem: Optional[str]
 
 def criar_pedido(pedido: Pedido):
     """
@@ -233,6 +234,7 @@ def criar_pedido(pedido: Pedido):
     data_envio_pedido = pedido.get('data_envio_pedido')
     data_envio_google_ads = pedido.get('data_envio_google_ads')
     data_agendamento_pagamento = pedido.get('data_agendamento_pagamento')
+    dns_origem = pedido.get('dns_origem')
 
 
     query = """
@@ -265,6 +267,7 @@ def criar_pedido(pedido: Pedido):
            , data_envio_pedido
            , data_envio_google_ads
            , data_agendamento_pagamento
+           , dns_origem
             )
         VALUES (
              %s
@@ -275,6 +278,7 @@ def criar_pedido(pedido: Pedido):
            , %s
            , %s
            , CURRENT_TIMESTAMP
+           , %s
            , %s
            , %s
            , %s
@@ -324,6 +328,7 @@ def criar_pedido(pedido: Pedido):
            , data_envio_pedido
            , data_envio_google_ads
            , data_agendamento_pagamento
+           , dns_origem
         ))
     return pedido_id
 
@@ -641,6 +646,62 @@ def marcar_venda_como_enviada_ao_google_ads(pedido_id):
     query = "UPDATE pedidos SET data_envio_google_ads = CURRENT_TIMESTAMP WHERE id = %s"
     db.execute_query(query, (pedido_id,))
     return pedido_id
+
+def busca_vendas_pendentes_google_por_dns() -> list:
+    """
+    Busca vendas com GCLID pendentes de envio usando a tabela google_ads_planilha_dns
+    (mapeamento produto × DNS de origem). Pedidos sem dns_origem ou sem mapeamento
+    cadastrado na nova tabela são ignorados silenciosamente.
+    """
+    query = """
+        SELECT p.*,
+               g.produto_id,
+               g.google_sheets_spreadsheet_id,
+               g.google_sheets_sheet_name,
+               g.google_ads_conversion_name,
+               g.google_sa_env_var
+        FROM pedidos p
+        JOIN google_ads_planilha_dns g
+          ON g.produto_id = p.produto_id
+         AND g.dns        = p.dns_origem
+         AND g.ativo      = TRUE
+        WHERE p.gclid IS NOT NULL
+          AND p.gclid != ''
+          AND p.estado_id IN (0, 1000)
+          AND p.data_envio_google_ads IS NULL
+        ORDER BY p.data_pagamento ASC
+    """
+    result = db.execute_query(query, fetch_all=True)
+    return result if result else []
+
+
+# ── google_ads_planilha_dns ───────────────────────────────────────────────────
+
+def listar_planilhas_dns_produto(produto_id) -> list:
+    result = db.execute_query(
+        "SELECT * FROM google_ads_planilha_dns WHERE produto_id = %s ORDER BY dns",
+        (produto_id,), fetch_all=True)
+    return result or []
+
+def adicionar_planilha_dns(produto_id, dns, spreadsheet_id, sheet_name, conversion_name, sa_env_var):
+    db.execute_query(
+        """INSERT INTO google_ads_planilha_dns
+               (produto_id, dns, google_sheets_spreadsheet_id, google_sheets_sheet_name,
+                google_ads_conversion_name, google_sa_env_var)
+           VALUES (%s, %s, %s, %s, %s, %s)""",
+        (produto_id, dns, spreadsheet_id, sheet_name, conversion_name, sa_env_var))
+
+def atualizar_planilha_dns(planilha_id, dns, spreadsheet_id, sheet_name, conversion_name, sa_env_var, ativo):
+    db.execute_query(
+        """UPDATE google_ads_planilha_dns
+           SET dns=%s, google_sheets_spreadsheet_id=%s, google_sheets_sheet_name=%s,
+               google_ads_conversion_name=%s, google_sa_env_var=%s, ativo=%s
+           WHERE id=%s""",
+        (dns, spreadsheet_id, sheet_name, conversion_name, sa_env_var, ativo, planilha_id))
+
+def remover_planilha_dns(planilha_id):
+    db.execute_query(
+        "DELETE FROM google_ads_planilha_dns WHERE id = %s", (planilha_id,))
 
 
 # ── telefones_produto ─────────────────────────────────────────────────────────

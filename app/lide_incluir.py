@@ -1,5 +1,6 @@
 import logging
 import os
+from urllib.parse import urlparse
 from agente_gera_mensagem_inicial import gera_mensagem_inicial_randomicamente
 from flask import jsonify, request
 from database import Pedido, criar_pedido, listar_telefones_produto
@@ -12,6 +13,7 @@ def persistir_lide(body):
         # Por exemplo, extrair os dados do body e usar uma função do database.py para salvar
         gclide = body.get('gclid', "")
         url = body.get('url', "") or request.referrer or ""
+        dns_origem = urlparse(url).netloc or None
         campaignid = body.get('campaignid', "")
         adgroupid = body.get('adgroupid', "")
         creative = body.get('creative', "")
@@ -59,7 +61,8 @@ def persistir_lide(body):
             matchtype=matchtype,
             device=device,
             placement=placement,
-            video_id=video_id
+            video_id=video_id,
+            dns_origem=dns_origem,
         )
         criar_pedido(pedido)
         print(f"[LIDE] ✅ Lide gravado com gclid: {gclide}")

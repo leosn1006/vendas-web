@@ -1,0 +1,179 @@
+{% extends "admin/base.html" %}
+{% block title %}Planilhas Google Ads — {{ produto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Planilhas Google Ads por DNS</h1>
+        <p class="page-subtitle">{{ produto.nome }}</p>
+    </div>
+</div>
+
+<div class="card">
+    {% if planilhas %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>DNS</th>
+                    <th>Spreadsheet ID</th>
+                    <th>Aba</th>
+                    <th>Conversion Name</th>
+                    <th>Env Var SA</th>
+                    <th>Status</th>
+                    {% if current_user.is_admin() %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in planilhas %}
+                <tr>
+                    <td style="font-family: var(--mono); font-size: 13px;">{{ p.dns }}</td>
+                    <td style="font-family: var(--mono); font-size: 12px; color: var(--muted);">{{ p.google_sheets_spreadsheet_id }}</td>
+                    <td style="font-size: 13px;">{{ p.google_sheets_sheet_name }}</td>
+                    <td style="font-size: 13px;">{{ p.google_ads_conversion_name }}</td>
+                    <td style="font-family: var(--mono); font-size: 12px;">{{ p.google_sa_env_var }}</td>
+                    <td>
+                        {% if p.ativo %}
+                        <span style="color: #4a9632; font-size: 13px; font-weight: 600;">● Ativa</span>
+                        {% else %}
+                        <span style="color: var(--muted); font-size: 13px;">○ Inativa</span>
+                        {% endif %}
+                    </td>
+                    {% if current_user.is_admin() %}
+                    <td style="text-align: right; white-space: nowrap;">
+                        <button type="button" class="btn btn-sm"
+                                onclick="abrirEdicao({{ p.id }}, '{{ p.dns }}', '{{ p.google_sheets_spreadsheet_id }}', '{{ p.google_sheets_sheet_name }}', '{{ p.google_ads_conversion_name }}', '{{ p.google_sa_env_var }}', {{ '1' if p.ativo else '0' }})">
+                            Editar
+                        </button>
+                        <form method="POST"
+                              action="{{ url_for('admin.remover_planilha_google', produto_id=produto.id, planilha_id=p.id) }}"
+                              style="display:inline;"
+                              onsubmit="return confirm('Remover a planilha para {{ p.dns }}?')">
+                            <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--muted); font-size: 14px; padding: 8px 0 20px;">
+        Nenhuma planilha cadastrada ainda.
+    </p>
+    {% endif %}
+
+    {% if current_user.is_admin() %}
+    <div style="margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border);">
+        <p style="font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+                  color: var(--muted); font-family: var(--mono); margin-bottom: 12px;">
+            Adicionar planilha
+        </p>
+        <form method="POST"
+              action="{{ url_for('admin.adicionar_planilha_google', produto_id=produto.id) }}"
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 720px;">
+            <div>
+                <label for="dns">DNS de origem *</label>
+                <input type="text" id="dns" name="dns"
+                       placeholder="ex: deliciasdalu.online"
+                       required autocomplete="off">
+            </div>
+            <div>
+                <label for="spreadsheet_id">Spreadsheet ID *</label>
+                <input type="text" id="spreadsheet_id" name="spreadsheet_id"
+                       placeholder="ID da planilha Google"
+                       required autocomplete="off">
+            </div>
+            <div>
+                <label for="sheet_name">Nome da aba</label>
+                <input type="text" id="sheet_name" name="sheet_name"
+                       placeholder="Página1" value="Página1" autocomplete="off">
+            </div>
+            <div>
+                <label for="conversion_name">Conversion Name *</label>
+                <input type="text" id="conversion_name" name="conversion_name"
+                       placeholder="ex: compra_pudim"
+                       required autocomplete="off">
+            </div>
+            <div>
+                <label for="sa_env_var">Env Var da Service Account *</label>
+                <input type="text" id="sa_env_var" name="sa_env_var"
+                       placeholder="ex: GOOGLE_SA_JSON_DELICIAS"
+                       required autocomplete="off">
+            </div>
+            <div style="align-self: flex-end;">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">+ Adicionar</button>
+            </div>
+        </form>
+        <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">
+            A Env Var deve conter o JSON da Service Account com acesso à planilha.
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal de edição -->
+{% if current_user.is_admin() %}
+<div id="modal-edicao" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:8px; padding:32px; width:640px; max-width:95vw;">
+        <p style="font-size:12px; font-weight:600; letter-spacing:1px; text-transform:uppercase;
+                  color:var(--muted); font-family:var(--mono); margin-bottom:16px;">Editar planilha</p>
+        <form id="form-edicao" method="POST" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div>
+                <label>DNS de origem *</label>
+                <input type="text" name="dns" id="edit-dns" required autocomplete="off">
+            </div>
+            <div>
+                <label>Spreadsheet ID *</label>
+                <input type="text" name="spreadsheet_id" id="edit-spreadsheet_id" required autocomplete="off">
+            </div>
+            <div>
+                <label>Nome da aba</label>
+                <input type="text" name="sheet_name" id="edit-sheet_name" autocomplete="off">
+            </div>
+            <div>
+                <label>Conversion Name *</label>
+                <input type="text" name="conversion_name" id="edit-conversion_name" required autocomplete="off">
+            </div>
+            <div>
+                <label>Env Var da Service Account *</label>
+                <input type="text" name="sa_env_var" id="edit-sa_env_var" required autocomplete="off">
+            </div>
+            <div>
+                <label>Status</label>
+                <select name="ativo" id="edit-ativo">
+                    <option value="1">Ativa</option>
+                    <option value="0">Inativa</option>
+                </select>
+            </div>
+            <div style="grid-column:1/-1; display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
+                <button type="button" class="btn" onclick="fecharEdicao()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirEdicao(id, dns, spreadsheetId, sheetName, conversionName, saEnvVar, ativo) {
+    const base = "{{ url_for('admin.editar_planilha_google', produto_id=produto.id, planilha_id=0) }}".replace('/0/', '/' + id + '/');
+    document.getElementById('form-edicao').action = base;
+    document.getElementById('edit-dns').value = dns;
+    document.getElementById('edit-spreadsheet_id').value = spreadsheetId;
+    document.getElementById('edit-sheet_name').value = sheetName;
+    document.getElementById('edit-conversion_name').value = conversionName;
+    document.getElementById('edit-sa_env_var').value = saEnvVar;
+    document.getElementById('edit-ativo').value = String(ativo);
+    const modal = document.getElementById('modal-edicao');
+    modal.style.display = 'flex';
+}
+function fecharEdicao() {
+    document.getElementById('modal-edicao').style.display = 'none';
+}
+document.getElementById('modal-edicao').addEventListener('click', function(e) {
+    if (e.target === this) fecharEdicao();
+});
+</script>
+{% endif %}
+{% endblock %}
