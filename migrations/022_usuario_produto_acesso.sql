@@ -12,5 +12,4 @@ CREATE TABLE IF NOT EXISTS usuario_produtos (
 );
 
 -- Indica que o usuário ainda usa a senha padrão e deve trocá-la no primeiro acesso
-ALTER TABLE usuarios
-    ADD COLUMN IF NOT EXISTS primeiro_acesso BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE usuarios ADD COLUMN primeiro_acesso BOOLEAN NOT NULL DEFAULT FALSE;
