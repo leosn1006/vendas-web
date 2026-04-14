@@ -746,6 +746,32 @@ def listar_telefones_produto(produto_id):
     return db.execute_query(query, (produto_id,), fetch_all=True) or []
 
 
+def selecionar_telefone_produto(produto_id):
+    """
+    Seleciona o telefone do produto com menor contador_uso e o incrementa.
+    Garante distribuição round-robin a partir do momento de implantação,
+    ignorando o histórico de pedidos anteriores.
+
+    Returns:
+        dict com id, telefone, api_phone_number_id ou None se não houver telefones
+    """
+    with db.get_cursor() as cursor:
+        cursor.execute("""
+            SELECT id, telefone, api_phone_number_id
+            FROM telefones_produto
+            WHERE produto_id = %s
+            ORDER BY contador_uso ASC, created_at ASC
+            LIMIT 1
+        """, (produto_id,))
+        telefone = cursor.fetchone()
+        if telefone:
+            cursor.execute("""
+                UPDATE telefones_produto SET contador_uso = contador_uso + 1
+                WHERE id = %s
+            """, (telefone['id'],))
+    return telefone
+
+
 def adicionar_telefone_produto(telefone, produto_id, api_phone_number_id=None):
     """
     Adiciona um mapeamento telefone → produto.
