@@ -7,7 +7,7 @@ from flask import render_template, redirect, url_for, request, flash, session, c
 from flask_login import current_user
 from werkzeug.utils import secure_filename
 from admin import admin_bp
-from admin.auth import requer_login, requer_admin
+from admin.auth import requer_login, requer_admin, requer_acesso_produto, usuario_tem_acesso_produto
 from database import (db,
     listar_telefones_produto, adicionar_telefone_produto, remover_telefone_produto,
     listar_mensagens_sugeridas, adicionar_mensagem_sugerida, remover_mensagem_sugerida,
@@ -147,7 +147,7 @@ def novo_produto():
     return render_template('admin/produto_form.html', produto=None, acao='novo')
 
 @admin_bp.route('/produtos/<int:produto_id>', methods=['GET', 'POST'])
-@requer_login
+@requer_acesso_produto
 def editar_produto(produto_id):
     produto = db.execute_query(
         "SELECT * FROM produtos WHERE id = %s",
@@ -156,11 +156,6 @@ def editar_produto(produto_id):
 
     if produto is None:
         flash('Produto não encontrado.', 'danger')
-        return redirect(url_for('admin.listar_produtos'))
-
-    # perfil consulta só visualiza
-    if request.method == 'POST' and not current_user.is_admin():
-        flash('Você não tem permissão para editar produtos.', 'danger')
         return redirect(url_for('admin.listar_produtos'))
 
     if request.method == 'POST':
@@ -236,7 +231,7 @@ def editar_produto(produto_id):
     return render_template('admin/produto_form.html', produto=produto, acao='editar')
 
 @admin_bp.route('/produtos/<int:produto_id>/agente-vendas', methods=['GET', 'POST'])
-@requer_login
+@requer_acesso_produto
 def agente_vendas_produto(produto_id):
     produto = db.execute_query(
         "SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True
@@ -246,9 +241,6 @@ def agente_vendas_produto(produto_id):
         return redirect(url_for('admin.listar_produtos'))
 
     if request.method == 'POST':
-        if not current_user.is_admin():
-            flash('Você não tem permissão para editar produtos.', 'danger')
-            return redirect(url_for('admin.agente_vendas_produto', produto_id=produto_id))
         try:
             db.execute_query(
                 "UPDATE produtos SET prompt_vendas = %s, faq = %s, url_arquivo_produto = %s WHERE id = %s",
@@ -265,7 +257,7 @@ def agente_vendas_produto(produto_id):
     return render_template('admin/produto_agente_vendas.html', produto=produto)
 
 @admin_bp.route('/produtos/<int:produto_id>/dados-basicos', methods=['GET', 'POST'])
-@requer_login
+@requer_acesso_produto
 def dados_basicos_produto(produto_id):
     produto = db.execute_query(
         "SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True
@@ -275,9 +267,6 @@ def dados_basicos_produto(produto_id):
         return redirect(url_for('admin.listar_produtos'))
 
     if request.method == 'POST':
-        if not current_user.is_admin():
-            flash('Você não tem permissão para editar produtos.', 'danger')
-            return redirect(url_for('admin.dados_basicos_produto', produto_id=produto_id))
         try:
             db.execute_query("""
                 UPDATE produtos SET
@@ -348,21 +337,168 @@ def desativar_produto(produto_id):
     return redirect(url_for('admin.listar_produtos'))
 
 # ============================================================
-# Usuários — só admin
+# Usuários — CRUD (só admin)
 # ============================================================
 @admin_bp.route('/usuarios')
 @requer_admin
 def listar_usuarios():
     try:
         usuarios = db.execute_query(
-            "SELECT id, email, nome, perfil, ativo, created_at FROM usuarios ORDER BY created_at DESC",
+            "SELECT id, email, nome, perfil, ativo, primeiro_acesso, created_at FROM usuarios ORDER BY nome",
             fetch_all=True
+        ) or []
+        todos_produtos = db.execute_query(
+            "SELECT id, nome FROM produtos WHERE ativo = TRUE ORDER BY nome",
+            fetch_all=True
+        ) or []
+        # Produtos vinculados a cada usuário
+        vinculos = db.execute_query(
+            "SELECT usuario_id, produto_id FROM usuario_produtos",
+            fetch_all=True
+        ) or []
+        # Mapa: usuario_id -> set(produto_id)
+        mapa_vinculos = {}
+        for v in vinculos:
+            mapa_vinculos.setdefault(v['usuario_id'], set()).add(v['produto_id'])
+        return render_template(
+            'admin/usuarios.html',
+            usuarios        = usuarios,
+            todos_produtos  = todos_produtos,
+            mapa_vinculos   = mapa_vinculos,
         )
-        return render_template('admin/usuarios.html', usuarios=usuarios)
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro ao listar usuários: {e}")
         flash('Erro ao carregar usuários.', 'danger')
         return redirect(url_for('admin.dashboard'))
+
+
+@admin_bp.route('/usuarios/novo', methods=['POST'])
+@requer_admin
+def criar_usuario():
+    from werkzeug.security import generate_password_hash
+    nome   = request.form.get('nome', '').strip()
+    email  = request.form.get('email', '').strip().lower()
+    perfil = request.form.get('perfil', 'consulta')
+
+    if not nome or not email:
+        flash('Nome e e-mail são obrigatórios.', 'danger')
+        return redirect(url_for('admin.listar_usuarios'))
+    if perfil not in ('admin', 'consulta'):
+        flash('Perfil inválido.', 'danger')
+        return redirect(url_for('admin.listar_usuarios'))
+
+    try:
+        db.execute_query(
+            """INSERT INTO usuarios (email, senha, nome, perfil, ativo, primeiro_acesso)
+               VALUES (%s, %s, %s, %s, TRUE, TRUE)""",
+            (email, generate_password_hash('1234'), nome, perfil)
+        )
+        flash(f'Usuário "{nome}" criado com sucesso. Senha inicial: 1234', 'success')
+        logger.info(f"[ADMIN] ✅ Usuário '{email}' criado por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao criar usuário: {e}")
+        flash(f'Erro ao criar usuário: {e}', 'danger')
+    return redirect(url_for('admin.listar_usuarios'))
+
+
+@admin_bp.route('/usuarios/<int:usuario_id>/editar', methods=['POST'])
+@requer_admin
+def editar_usuario(usuario_id):
+    nome   = request.form.get('nome', '').strip()
+    email  = request.form.get('email', '').strip().lower()
+    perfil = request.form.get('perfil', 'consulta')
+    ativo  = request.form.get('ativo') == '1'
+
+    if not nome or not email:
+        flash('Nome e e-mail são obrigatórios.', 'danger')
+        return redirect(url_for('admin.listar_usuarios'))
+    if perfil not in ('admin', 'consulta'):
+        flash('Perfil inválido.', 'danger')
+        return redirect(url_for('admin.listar_usuarios'))
+
+    try:
+        db.execute_query(
+            "UPDATE usuarios SET nome = %s, email = %s, perfil = %s, ativo = %s WHERE id = %s",
+            (nome, email, perfil, ativo, usuario_id)
+        )
+        flash('Usuário atualizado com sucesso.', 'success')
+        logger.info(f"[ADMIN] ✅ Usuário #{usuario_id} editado por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao editar usuário: {e}")
+        flash(f'Erro ao editar usuário: {e}', 'danger')
+    return redirect(url_for('admin.listar_usuarios'))
+
+
+@admin_bp.route('/usuarios/<int:usuario_id>/resetar-senha', methods=['POST'])
+@requer_admin
+def resetar_senha_usuario(usuario_id):
+    from werkzeug.security import generate_password_hash
+    try:
+        db.execute_query(
+            "UPDATE usuarios SET senha = %s, primeiro_acesso = TRUE WHERE id = %s",
+            (generate_password_hash('1234'), usuario_id)
+        )
+        flash('Senha resetada para 1234. O usuário será obrigado a trocar no próximo acesso.', 'success')
+        logger.info(f"[ADMIN] ✅ Senha do usuário #{usuario_id} resetada por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao resetar senha: {e}")
+        flash(f'Erro ao resetar senha: {e}', 'danger')
+    return redirect(url_for('admin.listar_usuarios'))
+
+
+@admin_bp.route('/usuarios/<int:usuario_id>/toggle-ativo', methods=['POST'])
+@requer_admin
+def toggle_ativo_usuario(usuario_id):
+    if usuario_id == current_user.id:
+        flash('Você não pode desativar sua própria conta.', 'danger')
+        return redirect(url_for('admin.listar_usuarios'))
+    try:
+        db.execute_query(
+            "UPDATE usuarios SET ativo = NOT ativo WHERE id = %s",
+            (usuario_id,)
+        )
+        flash('Status do usuário alterado.', 'success')
+        logger.info(f"[ADMIN] ✅ Status do usuário #{usuario_id} alterado por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao alterar status: {e}")
+        flash(f'Erro: {e}', 'danger')
+    return redirect(url_for('admin.listar_usuarios'))
+
+
+@admin_bp.route('/usuarios/<int:usuario_id>/produtos/adicionar', methods=['POST'])
+@requer_admin
+def vincular_produto_usuario(usuario_id):
+    produto_id = request.form.get('produto_id', type=int)
+    if not produto_id:
+        flash('Selecione um produto.', 'danger')
+        return redirect(url_for('admin.listar_usuarios'))
+    try:
+        db.execute_query(
+            "INSERT IGNORE INTO usuario_produtos (usuario_id, produto_id) VALUES (%s, %s)",
+            (usuario_id, produto_id)
+        )
+        flash('Produto vinculado com sucesso.', 'success')
+        logger.info(f"[ADMIN] ✅ Produto #{produto_id} vinculado ao usuário #{usuario_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao vincular produto: {e}")
+        flash(f'Erro ao vincular produto: {e}', 'danger')
+    return redirect(url_for('admin.listar_usuarios'))
+
+
+@admin_bp.route('/usuarios/<int:usuario_id>/produtos/<int:produto_id>/remover', methods=['POST'])
+@requer_admin
+def desvincular_produto_usuario(usuario_id, produto_id):
+    try:
+        db.execute_query(
+            "DELETE FROM usuario_produtos WHERE usuario_id = %s AND produto_id = %s",
+            (usuario_id, produto_id)
+        )
+        flash('Produto desvinculado.', 'success')
+        logger.info(f"[ADMIN] ✅ Produto #{produto_id} desvinculado do usuário #{usuario_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao desvincular produto: {e}")
+        flash(f'Erro ao desvincular produto: {e}', 'danger')
+    return redirect(url_for('admin.listar_usuarios'))
 
 #criar produto a partir de um outro produto, para facilitar a criação de variações
 @admin_bp.route('/produtos/<int:produto_id>/clonar', methods=['POST'])
@@ -489,7 +625,7 @@ def clonar_produto(produto_id):
 # Conversas — visualização e envio manual de mensagens
 # ============================================================
 @admin_bp.route('/produto/<int:produto_id>/conversas', methods=['GET', 'POST'])
-@requer_login
+@requer_acesso_produto
 def conversas_produto(produto_id):
     session['produto_ativo_id'] = produto_id
     produto = db.execute_query("SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True)
@@ -517,7 +653,7 @@ def conversas_produto(produto_id):
 
 
 @admin_bp.route('/produto/<int:produto_id>/conversas/<int:pedido_id>')
-@requer_login
+@requer_acesso_produto
 def conversa_pedido(produto_id, pedido_id):
     session['produto_ativo_id'] = produto_id
     produto = db.execute_query("SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True)
@@ -533,7 +669,7 @@ def conversa_pedido(produto_id, pedido_id):
 
 
 @admin_bp.route('/produto/<int:produto_id>/conversas/<int:pedido_id>/enviar', methods=['POST'])
-@requer_admin
+@requer_acesso_produto
 def conversa_enviar_mensagem(produto_id, pedido_id):
     from whatsapp import enviar_mensagem as wpp_enviar, enviar_audio as wpp_audio, enviar_documento as wpp_doc
     pedido = get_pedido(pedido_id)
@@ -582,7 +718,7 @@ def conversa_enviar_mensagem(produto_id, pedido_id):
 # Acertar Valor — ajuste manual de pagamento
 # ============================================================
 @admin_bp.route('/produto/<int:produto_id>/acertar-valor', methods=['GET', 'POST'])
-@requer_admin
+@requer_acesso_produto
 def acertar_valor_produto(produto_id):
     session['produto_ativo_id'] = produto_id
     produto = db.execute_query("SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True)
@@ -609,7 +745,7 @@ def acertar_valor_produto(produto_id):
 
 
 @admin_bp.route('/produto/<int:produto_id>/acertar-valor/<int:pedido_id>/salvar', methods=['POST'])
-@requer_admin
+@requer_acesso_produto
 def acertar_valor_salvar(produto_id, pedido_id):
     pedido = get_pedido(pedido_id)
     if not pedido or pedido.get('produto_id') != produto_id:
@@ -644,6 +780,10 @@ def acertar_valor_salvar(produto_id, pedido_id):
 def selecionar_produto():
     produto_id = request.form.get('produto_id', type=int)
     if produto_id:
+        # Consulta deve ter vínculo com o produto que está selecionando
+        if not current_user.is_admin() and not usuario_tem_acesso_produto(current_user.id, produto_id):
+            flash('Você não tem acesso a este produto.', 'danger')
+            return redirect(url_for('admin.dashboard'))
         session['produto_ativo_id'] = produto_id
         return redirect(url_for('admin.analytics_produto', produto_id=produto_id))
     session.pop('produto_ativo_id', None)
@@ -702,7 +842,7 @@ def remover_numero_whatsapp(produto_id, telefone_id):
 # Mensagens Sugeridas por produto
 # ============================================================
 @admin_bp.route('/produto/<int:produto_id>/mensagens-sugeridas')
-@requer_login
+@requer_acesso_produto
 def mensagens_sugeridas(produto_id):
     session['produto_ativo_id'] = produto_id
     produto = db.execute_query(
@@ -1224,7 +1364,7 @@ _SQL_CAMPANHAS_WEB = """
 
 
 @admin_bp.route('/produto/<int:produto_id>/analytics')
-@requer_login
+@requer_acesso_produto
 def analytics_produto(produto_id):
     session['produto_ativo_id'] = produto_id
     produto = _get_produto_or_redirect(produto_id)
@@ -1317,7 +1457,7 @@ def analytics_produto(produto_id):
 
 
 @admin_bp.route('/produto/<int:produto_id>/analytics-web')
-@requer_login
+@requer_acesso_produto
 def analytics_web_produto(produto_id):
     session['produto_ativo_id'] = produto_id
     produto = _get_produto_or_redirect(produto_id)
@@ -1482,7 +1622,7 @@ def remover_planilha_google(produto_id, planilha_id):
 # ── Financeiro PIX ────────────────────────────────────────────────────────────
 
 @admin_bp.route('/produto/<int:produto_id>/financeiro')
-@requer_login
+@requer_acesso_produto
 def financeiro_produto(produto_id):
     session['produto_ativo_id'] = produto_id
     produto = _get_produto_or_redirect(produto_id)

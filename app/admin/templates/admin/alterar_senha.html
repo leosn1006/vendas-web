@@ -1,0 +1,40 @@
+{% extends "admin/base.html" %}
+{% block title %}Alterar Senha{% endblock %}
+
+{% block content %}
+<div style="max-width: 420px; margin: 60px auto;">
+
+    {% if current_user.primeiro_acesso %}
+    <div class="alert alert-warning" style="margin-bottom: 24px;">
+        🔐 Este é seu primeiro acesso. Por segurança, defina uma senha pessoal antes de continuar.
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <h1 class="page-title" style="margin-bottom: 20px;">Alterar Senha</h1>
+
+        <form method="POST">
+            <div class="form-grid full">
+                <div class="form-group">
+                    <label>Nova Senha</label>
+                    <input type="password" name="nova_senha" required
+                           minlength="6" placeholder="Mínimo 6 caracteres"
+                           autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label>Confirmar Nova Senha</label>
+                    <input type="password" name="confirmacao" required
+                           minlength="6" placeholder="Repita a nova senha"
+                           autocomplete="new-password">
+                </div>
+            </div>
+            <div class="form-actions">
+                {% if not current_user.primeiro_acesso %}
+                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-ghost">Cancelar</a>
+                {% endif %}
+                <button type="submit" class="btn btn-primary">Salvar Senha</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,12 +1,58 @@
 {% extends "admin/base.html" %}
 {% block title %}Usuários{% endblock %}
 
+{% block extra_css %}
+<style>
+.modal-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 32px;
+    width: 100%;
+    max-width: 440px;
+    position: relative;
+}
+.modal h2 { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #3d2510; }
+.modal-close {
+    position: absolute; top: 16px; right: 18px;
+    background: none; border: none; cursor: pointer;
+    font-size: 18px; color: var(--muted);
+}
+.vinculos-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.badge-produto {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(224,123,42,0.10); color: var(--accent);
+    border: 1px solid rgba(224,123,42,0.25);
+    border-radius: 20px; padding: 3px 10px 3px 12px;
+    font-size: 12px; font-weight: 600; font-family: var(--mono);
+}
+.badge-produto form { display: inline; }
+.badge-produto button {
+    background: none; border: none; cursor: pointer;
+    color: var(--accent); font-size: 13px; padding: 0 0 0 3px; line-height: 1;
+}
+.badge-produto button:hover { color: var(--danger); }
+.add-produto-row { display: flex; gap: 8px; margin-top: 6px; }
+.add-produto-row select { flex: 1; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <div>
         <h1 class="page-title">Usuários</h1>
         <p class="page-subtitle">{{ usuarios|length }} usuário(s) cadastrado(s)</p>
     </div>
+    <button class="btn btn-primary" onclick="abrirModalNovo()">+ Novo Usuário</button>
 </div>
 
 <div class="card">
@@ -19,14 +65,20 @@
                     <th>E-mail</th>
                     <th>Perfil</th>
                     <th>Status</th>
-                    <th>Criado em</th>
+                    <th>Produtos vinculados</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for u in usuarios %}
                 <tr>
                     <td style="font-family: var(--mono); color: var(--muted);">{{ u.id }}</td>
-                    <td style="font-weight: 500;">{{ u.nome }}</td>
+                    <td style="font-weight: 500;">
+                        {{ u.nome }}
+                        {% if u.primeiro_acesso %}
+                        <span class="badge badge-yellow" title="Usuário ainda não trocou a senha padrão">senha temp.</span>
+                        {% endif %}
+                    </td>
                     <td style="color: var(--muted);">{{ u.email }}</td>
                     <td>
                         {% if u.perfil == 'admin' %}
@@ -42,13 +94,64 @@
                         <span class="badge badge-red">inativo</span>
                         {% endif %}
                     </td>
-                    <td style="color: var(--muted); font-size: 13px;">
-                        {{ u.created_at.strftime('%d/%m/%Y') if u.created_at else '—' }}
+                    <td>
+                        {% set ids_vinculados = mapa_vinculos.get(u.id, set()) %}
+                        <div class="vinculos-wrap">
+                            {% for p in todos_produtos %}
+                            {% if p.id in ids_vinculados %}
+                            <span class="badge-produto">
+                                {{ p.nome }}
+                                <form method="POST"
+                                      action="{{ url_for('admin.desvincular_produto_usuario', usuario_id=u.id, produto_id=p.id) }}"
+                                      onsubmit="return confirm('Remover vínculo com {{ p.nome }}?')">
+                                    <button type="submit" title="Remover">✕</button>
+                                </form>
+                            </span>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% set tem_livre = namespace(value=false) %}
+                        {% for _p in todos_produtos %}{% if _p.id not in ids_vinculados %}{% set tem_livre.value = true %}{% endif %}{% endfor %}
+                        {% if tem_livre.value %}
+                        <form method="POST"
+                              action="{{ url_for('admin.vincular_produto_usuario', usuario_id=u.id) }}"
+                              class="add-produto-row">
+                            <select name="produto_id" required>
+                                <option value="">— vincular produto —</option>
+                                {% for p in todos_produtos %}
+                                {% if p.id not in ids_vinculados %}
+                                <option value="{{ p.id }}">{{ p.nome }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                            <button class="btn btn-ghost btn-sm" type="submit">Vincular</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button class="btn btn-ghost btn-sm"
+                                    onclick="abrirModalEditar({{ u.id }}, '{{ u.nome|e }}', '{{ u.email|e }}', '{{ u.perfil }}', {{ 1 if u.ativo else 0 }})">
+                                Editar
+                            </button>
+                            <form method="POST"
+                                  action="{{ url_for('admin.resetar_senha_usuario', usuario_id=u.id) }}"
+                                  onsubmit="return confirm('Resetar a senha de {{ u.nome|e }} para 1234?')">
+                                <button class="btn btn-ghost btn-sm" type="submit">Reset senha</button>
+                            </form>
+                            <form method="POST"
+                                  action="{{ url_for('admin.toggle_ativo_usuario', usuario_id=u.id) }}"
+                                  onsubmit="return confirm('{{ 'Desativar' if u.ativo else 'Ativar' }} o usuário {{ u.nome|e }}?')">
+                                <button class="btn btn-sm {{ 'btn-danger' if u.ativo else 'btn-ghost' }}" type="submit">
+                                    {{ 'Desativar' if u.ativo else 'Ativar' }}
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" style="text-align:center; color: var(--muted); padding: 40px;">
+                    <td colspan="7" style="text-align:center; color: var(--muted); padding: 40px;">
                         Nenhum usuário cadastrado.
                     </td>
                 </tr>
@@ -57,4 +160,104 @@
         </table>
     </div>
 </div>
+
+<!-- Modal: Novo Usuário -->
+<div class="modal-backdrop" id="modal-novo">
+    <div class="modal">
+        <button class="modal-close" onclick="fecharModal('modal-novo')">✕</button>
+        <h2>Novo Usuário</h2>
+        <form method="POST" action="{{ url_for('admin.criar_usuario') }}">
+            <div class="form-grid full">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" name="nome" required placeholder="Nome completo">
+                </div>
+                <div class="form-group">
+                    <label>E-mail</label>
+                    <input type="email" name="email" required placeholder="email@exemplo.com">
+                </div>
+                <div class="form-group">
+                    <label>Perfil</label>
+                    <select name="perfil">
+                        <option value="consulta">Consulta (usuário)</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <p style="font-size:13px; color: var(--muted); margin-top: 4px;">
+                    A senha inicial será <strong>1234</strong>. O usuário será obrigado a trocar no primeiro acesso.
+                </p>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-novo')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Criar Usuário</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Editar Usuário -->
+<div class="modal-backdrop" id="modal-editar">
+    <div class="modal">
+        <button class="modal-close" onclick="fecharModal('modal-editar')">✕</button>
+        <h2>Editar Usuário</h2>
+        <form method="POST" id="form-editar" action="">
+            <div class="form-grid full">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" name="nome" id="edit-nome" required>
+                </div>
+                <div class="form-group">
+                    <label>E-mail</label>
+                    <input type="email" name="email" id="edit-email" required>
+                </div>
+                <div class="form-group">
+                    <label>Perfil</label>
+                    <select name="perfil" id="edit-perfil">
+                        <option value="consulta">Consulta (usuário)</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="ativo" id="edit-ativo">
+                        <option value="1">Ativo</option>
+                        <option value="0">Inativo</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-editar')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function abrirModalNovo() {
+    document.getElementById('modal-novo').classList.add('open');
+}
+
+function abrirModalEditar(id, nome, email, perfil, ativo) {
+    document.getElementById('edit-nome').value   = nome;
+    document.getElementById('edit-email').value  = email;
+    document.getElementById('edit-perfil').value = perfil;
+    document.getElementById('edit-ativo').value  = ativo;
+    document.getElementById('form-editar').action = '/admin/usuarios/' + id + '/editar';
+    document.getElementById('modal-editar').classList.add('open');
+}
+
+function fecharModal(id) {
+    document.getElementById(id).classList.remove('open');
+}
+
+// Fechar modal clicando fora
+document.querySelectorAll('.modal-backdrop').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+        if (e.target === el) fecharModal(el.id);
+    });
+});
+</script>
 {% endblock %}

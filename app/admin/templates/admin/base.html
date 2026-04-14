@@ -487,6 +487,8 @@
         <!-- Sub-menu do produto ativo -->
         {% if produto_ativo %}
         <div class="nav-produto-nome">{{ produto_ativo.nome }}</div>
+
+        {% if current_user.is_admin() or has_produto_acesso %}
         <a href="{{ url_for('admin.analytics_produto', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint == 'admin.analytics_produto' %}active{% endif %}">
             <span class="icon">📊</span> Analytics
@@ -507,6 +509,21 @@
            class="nav-link {% if request.endpoint == 'admin.agente_vendas_produto' %}active{% endif %}">
             <span class="icon">🤖</span> Agente de Vendas IA
         </a>
+        <a href="{{ url_for('admin.mensagens_sugeridas', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.mensagens_sugeridas' %}active{% endif %}">
+            <span class="icon">💬</span> Mensagens Sugeridas
+        </a>
+        <a href="{{ url_for('admin.conversas_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint in ['admin.conversas_produto','admin.conversa_pedido'] %}active{% endif %}">
+            <span class="icon">💬</span> Conversas
+        </a>
+        <a href="{{ url_for('admin.acertar_valor_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint in ['admin.acertar_valor_produto','admin.acertar_valor_salvar'] %}active{% endif %}">
+            <span class="icon">💰</span> Acertar Valor
+        </a>
+        {% endif %}
+
+        {% if current_user.is_admin() %}
         <a href="{{ url_for('admin.numeros_whatsapp', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint == 'admin.numeros_whatsapp' %}active{% endif %}">
             <span class="icon">📞</span> Números WhatsApp
@@ -519,22 +536,12 @@
            class="nav-link {% if request.endpoint in ['admin.planilhas_google_produto','admin.adicionar_planilha_google','admin.editar_planilha_google','admin.remover_planilha_google'] %}active{% endif %}">
             <span class="icon">📊</span> Planilhas Google
         </a>
-        <a href="{{ url_for('admin.mensagens_sugeridas', produto_id=produto_ativo.id) }}"
-           class="nav-link {% if request.endpoint == 'admin.mensagens_sugeridas' %}active{% endif %}">
-            <span class="icon">💬</span> Mensagens Sugeridas
-        </a>
         <a href="{{ url_for('admin.fluxos_overview', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint in ['admin.fluxos_overview','admin.fluxo_acoes','admin.editar_acao_fluxo'] %}active{% endif %}">
             <span class="icon">⚙️</span> Fluxos
         </a>
-        <a href="{{ url_for('admin.conversas_produto', produto_id=produto_ativo.id) }}"
-           class="nav-link {% if request.endpoint in ['admin.conversas_produto','admin.conversa_pedido'] %}active{% endif %}">
-            <span class="icon">💬</span> Conversas
-        </a>
-        <a href="{{ url_for('admin.acertar_valor_produto', produto_id=produto_ativo.id) }}"
-           class="nav-link {% if request.endpoint in ['admin.acertar_valor_produto','admin.acertar_valor_salvar'] %}active{% endif %}">
-            <span class="icon">💰</span> Acertar Valor
-        </a>
+        {% endif %}
+
         {% endif %}
 
         {% if current_user.is_admin() %}
