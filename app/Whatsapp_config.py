@@ -67,7 +67,8 @@ if __name__ == '__main__':
     # Exemplo de uso
     # numero = "1012710858592627"
     # numero = '1026973267170405'
-    numero = '1010970915440720'
+    # numero = '1010970915440720'
+    numero = '1054444921090542'
     sucesso = ativa_whatsapp(numero)
     if sucesso:
         print(f"WhatsApp ativado com sucesso")
