@@ -95,7 +95,7 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% set ids_vinculados = mapa_vinculos.get(u.id, set()) %}
+                        {% set ids_vinculados = mapa_vinculos.get(u.id, []) %}
                         <div class="vinculos-wrap">
                             {% for p in todos_produtos %}
                             {% if p.id in ids_vinculados %}

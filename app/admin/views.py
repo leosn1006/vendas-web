@@ -368,7 +368,7 @@ def listar_usuarios():
         )
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro ao listar usuários: {e}")
-        flash(f'Erro ao carregar usuários: {e}', 'danger')
+        flash('Erro ao carregar usuários.', 'danger')
         return redirect(url_for('admin.dashboard'))
 
 
