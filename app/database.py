@@ -3,7 +3,7 @@ Módulo de conexão com o banco de dados MySQL.
 """
 import os
 import mysql.connector
-from mysql.connector import Error
+from mysql.connector import Error, IntegrityError
 from contextlib import contextmanager
 import logging
 from typing import TypedDict, Optional
@@ -363,21 +363,26 @@ def salvar_mensagem_pedido(mensagem_id, pedido_id, mensagem_json, tipo_mensagem=
     Returns:
         str: ID da mensagem
     """
-    # Buscar o próximo sequencial para este pedido
     query_seq = """
         SELECT COALESCE(MAX(sequencial_mensagem), 0) + 1 as proximo_sequencial
         FROM mensagens_pedidos
         WHERE pedido_id = %s
     """
-    result = db.execute_query(query_seq, (pedido_id,), fetch_one=True)
-    sequencial = result['proximo_sequencial'] if result else 1
-
-    query = """
+    query_insert = """
         INSERT INTO mensagens_pedidos (message_id, pedido_id, sequencial_mensagem, mensagem_json, tipo_mensagem)
         VALUES (%s, %s, %s, %s, %s)
     """
-    db.execute_query(query, (mensagem_id, pedido_id, sequencial, mensagem_json, tipo_mensagem))
-    return mensagem_id
+    for tentativa in range(5):
+        result = db.execute_query(query_seq, (pedido_id,), fetch_one=True)
+        sequencial = result['proximo_sequencial'] if result else 1
+        try:
+            db.execute_query(query_insert, (mensagem_id, pedido_id, sequencial, mensagem_json, tipo_mensagem))
+            return mensagem_id
+        except IntegrityError as e:
+            if e.errno == 1062 and 'uk_pedido_sequencial' in str(e) and tentativa < 4:
+                logger.warning(f"Colisão de sequencial para pedido {pedido_id} (tentativa {tentativa + 1}), retentar...")
+                continue
+            raise
 
 def get_pedido(id_pedido):
     """
