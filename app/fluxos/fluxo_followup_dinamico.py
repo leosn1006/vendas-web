@@ -16,7 +16,7 @@ def executar():
     logger.info("=" * 120)
     logger.info(f"[{_TAG}] 🕐 Iniciando verificação de followup: {agora.strftime('%H:%M')}")
 
-    pedidos = buscar_pedidos_followup(horas_sem_atualizacao=4)
+    pedidos = buscar_pedidos_followup(horas_sem_atualizacao=2)
 
     if not pedidos:
         logger.info(f"[{_TAG}] ℹ️ Nenhum pedido pendente de followup.")
