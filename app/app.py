@@ -146,6 +146,10 @@ def pudim():
 def sobremesa():
     return render_template('sobremesa.html')
 
+@app.get("/sem-acucar")
+def sem_acucar():
+    return render_template('sem-acucar.html')
+
 @app.get("/viver-bem")
 def dicas_quimio():
     return render_template('dicas-quimio.html')

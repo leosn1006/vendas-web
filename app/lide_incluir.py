@@ -38,6 +38,8 @@ def persistir_lide(body):
             produto = 9
         elif "bem-estar" in url:
             produto = 7
+        elif "sem-acucar" in url:
+            produto = 10
         else:
             produto = 1  # produto padrão para campanhas desconhecidas
 
