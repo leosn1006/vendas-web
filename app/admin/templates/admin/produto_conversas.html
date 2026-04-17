@@ -208,7 +208,6 @@
         {% endif %}
     </div>
 
-    {% if current_user.is_admin() %}
     <div class="send-area">
         <form method="POST"
               action="{{ url_for('admin.conversa_enviar_mensagem', produto_id=produto.id, pedido_id=pedido.id) }}">
@@ -239,7 +238,6 @@
             </div>
         </form>
     </div>
-    {% endif %}
 </div>
 {% endif %}
 {% endblock %}
