@@ -1,6 +1,8 @@
 import requests
 import os
 import logging
+import pytz
+from datetime import datetime
 from config import WHATSAPP_API_URL
 from database import Pedido
 
@@ -422,12 +424,9 @@ def notificar_admin_erro_sistema(descricao: str, log: str = "log_worker"):
     Notifica o admin via template 'administrativa_erro_sistema' quando um worker falha.
     Parâmetros do template: {{1}} momento (horário SP), {{2}} descrição breve.
     """
-    from datetime import datetime
-    import pytz
-
     admin_phone = os.getenv('ADMIN_WHATSAPP_NUMBER', '').replace('+', '')
     if not admin_phone:
-        logger.warning("[NOTIF-ADMIN-ERRO-WORKER] ADMIN_WHATSAPP_NUMBER não configurado — ignorado")
+        logger.warning("[NOTIF-ADMIN-ERRO-SISTEMA] ADMIN_WHATSAPP_NUMBER não configurado — ignorado")
         return
 
     momento = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m %H:%M')
@@ -462,8 +461,8 @@ def notificar_admin_erro_sistema(descricao: str, log: str = "log_worker"):
             "Content-Type": "application/json; charset=utf-8",
         }, json=dados, timeout=10)
         if response.status_code == 200:
-            logger.warning(f"[NOTIF-ADMIN-ERRO-WORKER] ✅ Enviado para {admin_phone} — {descricao[:80]}")
+            logger.info(f"[NOTIF-ADMIN-ERRO-SISTEMA] ✅ Enviado para {admin_phone} — {descricao[:80]}")
         else:
-            logger.error(f"[NOTIF-ADMIN-ERRO-WORKER] ❌ Erro {response.status_code}: {response.text}")
+            logger.error(f"[NOTIF-ADMIN-ERRO-SISTEMA] ❌ Erro {response.status_code}: {response.text}")
     except Exception as e:
-        logger.error(f"[NOTIF-ADMIN-ERRO-WORKER] ❌ Exceção: {e}")
+        logger.error(f"[NOTIF-ADMIN-ERRO-SISTEMA] ❌ Exceção: {e}")

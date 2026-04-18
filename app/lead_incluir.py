@@ -1,12 +1,12 @@
 import logging
 import os
-import traceback
 from urllib.parse import urlparse
 from agente_gera_mensagem_inicial import gera_mensagem_inicial_randomicamente
 from flask import jsonify, request
 from database import Pedido, criar_pedido, selecionar_telefone_produto
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 FALLBACK_TELEFONE = {
     1: "556182155687",
@@ -15,10 +15,10 @@ FALLBACK_TELEFONE = {
     8: "556198824782",
 }
 
-def persistir_lide(body):
+def persistir_lead(body):
     try:
-        logger.info(f"[LIDE] 📦 Dados recebidos para criar lide: {body}")
-        gclide = body.get('gclid', "")
+        logger.info(f"[LEAD] 📦 Dados recebidos para criar lead: {body}")
+        gclid = body.get('gclid', "")
         url = body.get('url', "") or request.referrer or ""
         dns_origem = urlparse(url).netloc or None
         campaignid = body.get('campaignid', "")
@@ -43,13 +43,13 @@ def persistir_lide(body):
         else:
             produto = 1  # produto padrão para campanhas desconhecidas
 
-        logger.info(f"[LIDE] 🔍 URL recebida: '{url}' → produto determinado: {produto}")
+        logger.info(f"[LEAD] 🔍 URL recebida: '{url}' → produto determinado: {produto}")
 
         texto, emoji = gera_mensagem_inicial_randomicamente(produto)
 
         telefone = selecionar_telefone_produto(produto)
         if not telefone:
-            logger.warning(f"[LIDE] ⚠️ Nenhum telefone cadastrado para produto {produto}, usando fallback")
+            logger.warning(f"[LEAD] ⚠️ Nenhum telefone cadastrado para produto {produto}, usando fallback")
         whatsapp_numero = telefone['telefone'] if telefone else FALLBACK_TELEFONE.get(produto, "")
         api_phone_id = telefone.get('api_phone_number_id') if telefone else None
 
@@ -57,7 +57,7 @@ def persistir_lide(body):
             produto_id=produto,
             valor_pago=0.00,
             estado_id=1,  # Estado Iniciado
-            gclid=gclide,
+            gclid=gclid,
             data_ultima_atualizacao=None,
             mensagem_sugerida=texto,
             emoji_sugerida=emoji,
@@ -75,15 +75,14 @@ def persistir_lide(body):
             dns_origem=dns_origem,
         )
         criar_pedido(pedido)
-        logger.info(f"[LIDE] ✅ Lide gravado com gclid: {gclide}")
+        logger.info(f"[LEAD] ✅ Lead gravado com gclid: {gclid}")
         resposta = {
             "whatsapp_numero": whatsapp_numero,
             "emojiEscolhido" : emoji,
             "mensagemBaseWA" : texto
         }
-        logger.info(f"[LIDE] ✅ Resposta gerada: {resposta}")
+        logger.info(f"[LEAD] ✅ Resposta gerada: {resposta}")
         return jsonify(resposta), 200
     except Exception as e:
-        logger.critical(f"[LIDE] ❌ ERRO ao gravar lide: {e}")
-        traceback.print_exc()
-        return jsonify({'error': 'Erro ao gravar lide'}), 500
+        logger.exception(f"[LEAD] ❌ ERRO ao gravar lead: {e}")
+        return jsonify({'error': 'Erro ao gravar lead'}), 500

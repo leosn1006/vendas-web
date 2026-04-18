@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template, send_file
 from whatsapp_seguranca import whatsapp_security, validar_assinatura_whatsapp
-from lide_incluir import persistir_lide
+from lead_incluir import persistir_lead
 from notificacoes import notificador, notificar_erro
 from error_handlers import registrar_error_handlers
 from celery_app import celery_app
@@ -164,8 +164,8 @@ def gravar_lide():
     try:
         # Obtém o JSON do corpo da requisição
         body = request.get_json(force=True, silent=True)
-        resposta = persistir_lide(body)
-        logger.info(f"[LIDE] ✅ Processado com sucesso!")
+        resposta = persistir_lead(body)
+        logger.info(f"[LEAD] ✅ Processado com sucesso!")
         return resposta
     except Exception as e:
         logger.critical(f"[LIDE] ❌ ERRO: {e}")
