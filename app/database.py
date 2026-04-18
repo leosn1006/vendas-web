@@ -45,6 +45,8 @@ class Database:
                 logger.info(f"Pool de conexões criado: {self.config['database']}@{self.config['host']}")
             except Error as e:
                 logger.error(f"Erro ao criar pool de conexões: {e}")
+                from whatsapp import notificar_admin_erro_sistema
+                notificar_admin_erro_sistema(f"MYSQL | falha ao criar pool | {type(e).__name__}", log="log_app")
                 raise
 
     def get_connection(self):

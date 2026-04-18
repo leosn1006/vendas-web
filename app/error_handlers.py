@@ -4,7 +4,7 @@ Contém handlers para exceções globais e códigos HTTP específicos.
 """
 import logging
 from flask import request, jsonify
-from notificacoes import notificador
+from whatsapp import notificar_admin_erro_sistema
 
 logger = logging.getLogger(__name__)
 
@@ -23,21 +23,16 @@ def registrar_error_handlers(app):
         Captura TODOS os erros não tratados da aplicação.
         Envia notificação simples para o WhatsApp do admin (exceto 404 de bots).
         """
-        # Coleta contexto mínimo
-        contexto = {}
+        endpoint = ""
         try:
             if request and request.endpoint:
-                contexto['Endpoint'] = request.endpoint
+                endpoint = f" | endpoint: {request.endpoint}"
         except:
             pass
 
-        # Notifica o erro (mensagem será simples)
-        notificador.notificar_erro(e, contexto_adicional=contexto)
+        notificar_admin_erro_sistema(f"FLASK{endpoint} | {type(e).__name__}", log="log_app")
 
-        # Loga detalhes completos no servidor
-        logger.error(f"[ERRO GLOBAL] {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.exception(f"[ERRO GLOBAL] {type(e).__name__}: {str(e)}")
 
         # Retorna resposta apropriada
         return jsonify({
