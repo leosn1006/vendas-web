@@ -22,10 +22,14 @@ def ativa_whatsapp(numero) -> bool:
         "pin": "123456",
     }
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         logger.info(f"WhatsApp ativado com sucesso ")
         return True
+    except requests.Timeout:
+        logger.error(f"Timeout ao ativar WhatsApp para o número {numero} (>30s)")
+        print("Detalhe da API: timeout — verifique conectividade com graph.facebook.com")
+        return False
     except requests.RequestException as e:
         body = e.response.text if e.response is not None else ''
         logger.error(f"Erro ao ativar WhatsApp para o número {numero}: {e} | resposta: {body}")
@@ -67,7 +71,13 @@ if __name__ == '__main__':
     # Exemplo de uso
     # numero = "1012710858592627"
     # numero = '1026973267170405'
-    numero = '1010970915440720'
+    # numero = '1010970915440720'
+    # numero = 1062772840249831
+    # numero = 1054425447760930
+    numero = 1121969160997310
+
+
+# (61) 98402-2952
     sucesso = ativa_whatsapp(numero)
     if sucesso:
         print(f"WhatsApp ativado com sucesso")
