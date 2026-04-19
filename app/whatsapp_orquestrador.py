@@ -44,6 +44,7 @@ def extrair_dados_mensagem(mensagem_whatsapp):
 def recebe_webhook(mensagem_whatsapp):
     try:
         logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 Recebendo webhook do WhatsApp: {mensagem_whatsapp}" )
+        return "modo de manutenção — processamento suspenso"  # temporário — rate limit WABA
         # Extrair dados da mensagem
         dados = extrair_dados_mensagem(mensagem_whatsapp)
         logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 Dados extraídos da mensagem: {dados}" )
