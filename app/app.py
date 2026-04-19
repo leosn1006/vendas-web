@@ -132,11 +132,11 @@ def lanche():
 
 @app.get("/paes-sem-gluten")
 def paes_sem_gluten():
-    return render_template('paes-sem-gluten-2-temp.html')
+    return render_template('paes-sem-gluten-2.html')
 
 @app.get("/paes-sem-gluten-temp")
 def paes_sem_gluten_temp():
-    return render_template('paes-sem-gluten-2.html')
+    return render_template('paes-sem-gluten-2-temp.html')
 
 @app.get("/pascoa-lucrativa")
 def pascoa_lucrativa():
