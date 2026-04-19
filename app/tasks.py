@@ -36,8 +36,8 @@ def fluxo_enviar_introducao_dinamico(self, pedido, mensagem_whatsapp):
         logger.info("=" * 120)
     except Exception as exc:
         msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
-        logger.exception(f"[TASK-INTRODUCAO-DIN] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('telefone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
-        notificar_admin_erro_sistema(f"TASK-INTRODUCAO-DIN | pedido #{pedido.get('id')} | tel: {pedido.get('telefone')} | {type(exc).__name__}")
+        logger.exception(f"[TASK-INTRODUCAO-DIN] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        notificar_admin_erro_sistema(f"TASK-INTRODUCAO-DIN | pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")
         raise self.retry(exc=exc, countdown=30)
 
 
@@ -52,8 +52,8 @@ def fluxo_enviar_pedido_dinamico(self, pedido, mensagem_whatsapp):
         logger.info("=" * 120)
     except Exception as exc:
         msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
-        logger.exception(f"[TASK-PEDIDO-DIN] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('telefone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
-        notificar_admin_erro_sistema(f"TASK-PEDIDO-DIN | pedido #{pedido.get('id')} | tel: {pedido.get('telefone')} | {type(exc).__name__}")
+        logger.exception(f"[TASK-PEDIDO-DIN] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        notificar_admin_erro_sistema(f"TASK-PEDIDO-DIN | pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")
         raise self.retry(exc=exc, countdown=30)
 
 
@@ -69,8 +69,8 @@ def fluxo_responder_mensagem(self, pedido, mensagem_whatsapp):
         logger.info("=" * 120)
     except Exception as exc:
         msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
-        logger.exception(f"[TASK-RESPONDER-MENSAGEM] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('telefone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
-        notificar_admin_erro_sistema(f"TASK-RESPONDER-MENSAGEM | pedido #{pedido.get('id')} | tel: {pedido.get('telefone')} | {type(exc).__name__}")
+        logger.exception(f"[TASK-RESPONDER-MENSAGEM] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        notificar_admin_erro_sistema(f"TASK-RESPONDER-MENSAGEM | pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")
         raise self.retry(exc=exc, countdown=30)
 
 @shared_task(name="tasks.conferir_comprovante_dinamico", bind=True, max_retries=0)
@@ -84,8 +84,8 @@ def fluxo_conferir_comprovante_dinamico(self, pedido, mensagem_whatsapp):
         logger.info("=" * 120)
     except Exception as exc:
         msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
-        logger.exception(f"[TASK-COMPROVANTE-DIN] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('telefone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
-        notificar_admin_erro_sistema(f"TASK-COMPROVANTE-DIN | pedido #{pedido.get('id')} | tel: {pedido.get('telefone')} | {type(exc).__name__}")
+        logger.exception(f"[TASK-COMPROVANTE-DIN] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        notificar_admin_erro_sistema(f"TASK-COMPROVANTE-DIN | pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")
         raise self.retry(exc=exc, countdown=30)
 
 
@@ -101,8 +101,8 @@ def fluxo_transcrever_audio(self, pedido, mensagem_whatsapp):
     except Exception as exc:
         msg = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0]
         audio_id = msg.get('audio', {}).get('id', '?')
-        logger.exception(f"[TASK-TRANSCRIBIR-AUDIO] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('telefone')} | audio_id: {audio_id} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
-        notificar_admin_erro_sistema(f"TASK-TRANSCRIBIR-AUDIO | pedido #{pedido.get('id')} | tel: {pedido.get('telefone')} | {type(exc).__name__}")
+        logger.exception(f"[TASK-TRANSCRIBIR-AUDIO] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | audio_id: {audio_id} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        notificar_admin_erro_sistema(f"TASK-TRANSCRIBIR-AUDIO | pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")
         raise self.retry(exc=exc, countdown=30)
 
 
