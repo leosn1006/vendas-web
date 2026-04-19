@@ -142,6 +142,10 @@ def pascoa_lucrativa():
 def pudim():
     return render_template('pudim.html')
 
+@app.get("/pudim-temp")
+def pudim_temp():
+    return render_template('pudim-temp.html')
+
 @app.get("/sobremesa")
 def sobremesa():
     return render_template('sobremesa.html')
