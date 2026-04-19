@@ -136,7 +136,7 @@ def paes_sem_gluten():
 
 @app.get("/paes-sem-gluten-temp")
 def paes_sem_gluten_temp():
-    return render_template('paes-sem-gluten-2-temp.html')
+    return render_template('paes-sem-gluten-2.html')
 
 @app.get("/pascoa-lucrativa")
 def pascoa_lucrativa():
@@ -144,11 +144,11 @@ def pascoa_lucrativa():
 
 @app.get("/pudim")
 def pudim():
-    return render_template('pudim-temp.html')
+    return render_template('pudim.html')
 
 @app.get("/pudim-temp")
 def pudim_temp():
-    return render_template('pudim.html')
+    return render_template('pudim-temp.html')
 
 @app.get("/sobremesa")
 def sobremesa():
