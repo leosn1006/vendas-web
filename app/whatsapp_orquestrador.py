@@ -41,10 +41,20 @@ def extrair_dados_mensagem(mensagem_whatsapp):
     except (KeyError, IndexError) as e:
         return None
 
+_NUMEROS_TESTE = {'556181477119'}  # whitelist temporária — retomada gradual
+
 def recebe_webhook(mensagem_whatsapp):
     try:
         logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 Recebendo webhook do WhatsApp: {mensagem_whatsapp}" )
-        return "modo de manutenção — processamento suspenso"  # temporário — rate limit WABA
+        # Modo de retomada gradual: só processa números autorizados
+        try:
+            numero = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['from']
+            if numero not in _NUMEROS_TESTE:
+                logger.info(f"[ORQUESTRADOR-WEBHOOK] 🔒 Modo teste — ignorando {numero}")
+                return "modo de teste — número não autorizado"
+        except (KeyError, IndexError):
+            return "modo de teste — dados incompletos"
+
         # Extrair dados da mensagem
         dados = extrair_dados_mensagem(mensagem_whatsapp)
         logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 Dados extraídos da mensagem: {dados}" )
