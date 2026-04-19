@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>50 Receitas de Pães Caseiros sem Glúten - Receba no WhatsApp</title>
+    <meta name="description" content="50 receitas de pães caseiros 100% sem glúten, testadas e aprovadas. Receba agora no WhatsApp por apenas R$10.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --verde:      #2d6a1f;
+            --verde-med:  #4a9632;
+            --verde-claro:#7bc34a;
+            --laranja:    #e07b2a;
+            --laranja-cl: #f5a623;
+            --creme:      #fdf6ec;
+            --marrom:     #5c3d1e;
+            --texto:      #2c2c2c;
+            --cinza:      #666;
+            --branco:     #ffffff;
+            --sombra:     0 4px 24px rgba(0,0,0,0.10);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--creme);
+            color: var(--texto);
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* ── HERO ── */
+        .hero {
+            width: 100%;
+            background: var(--creme);
+        }
+
+        .hero-capa-wrap {
+            position: relative;
+            padding: 20px 32px 0;
+        }
+
+        .hero-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        }
+
+        .hero-badge-preco {
+            position: absolute;
+            top: 32px; right: 44px;
+            background: var(--laranja);
+            color: #fff;
+            font-family: 'Lato', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 8px 14px;
+            border-radius: 24px;
+            box-shadow: 0 3px 12px rgba(224,123,42,0.5);
+            animation: pulse 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .hero-content {
+            padding: 20px 24px 32px;
+            text-align: center;
+        }
+
+        .hero-tag {
+            display: inline-block;
+            background: var(--laranja-cl);
+            color: var(--marrom);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 5px 14px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+        }
+
+        .hero-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--marrom);
+            line-height: 1.15;
+            margin-bottom: 10px;
+        }
+
+        .hero-title span { color: var(--verde); }
+
+        .hero-sub {
+            font-size: 15px;
+            color: var(--cinza);
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+
+        .hero-sub strong { color: var(--laranja); }
+
+        /* ── BOTÃO CTA ── */
+        .btn-cta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 18px 24px;
+            background: linear-gradient(135deg, #25d366, #128c3e);
+            color: #fff;
+            font-family: 'Lato', sans-serif;
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 24px rgba(37,211,102,0.45);
+            transition: transform 0.15s, box-shadow 0.15s;
+            text-decoration: none;
+        }
+
+        .btn-cta:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(37,211,102,0.5); }
+        .btn-cta:active { transform: translateY(0); }
+
+        .btn-cta svg { flex-shrink: 0; }
+
+        .btn-wrap {
+            padding: 0 24px 40px;
+        }
+
+        /* ── DIVISOR ── */
+        .divisor {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 24px;
+            margin: 8px 0 32px;
+        }
+
+        .divisor hr { flex: 1; border: none; border-top: 1px solid #ddd; }
+        .divisor span { font-size: 12px; color: #aaa; white-space: nowrap; }
+
+        /* ── SEÇÕES ── */
+        section { padding: 32px 24px; }
+        section + section { padding-top: 0; }
+
+        .section-label {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--verde-med);
+            margin-bottom: 8px;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--marrom);
+            line-height: 1.25;
+            margin-bottom: 20px;
+        }
+
+        /* ── BENEFÍCIOS ── */
+        .beneficios-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .beneficio-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            background: #fff;
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: var(--sombra);
+            animation: fadeUp 0.5s ease both;
+        }
+
+        .beneficio-item:nth-child(2) { animation-delay: 0.1s; }
+        .beneficio-item:nth-child(3) { animation-delay: 0.2s; }
+        .beneficio-item:nth-child(4) { animation-delay: 0.3s; }
+        .beneficio-item:nth-child(5) { animation-delay: 0.4s; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .beneficio-icone {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            background: var(--creme);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .beneficio-texto strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--marrom);
+            margin-bottom: 3px;
+        }
+
+        .beneficio-texto span {
+            font-size: 13px;
+            color: var(--cinza);
+            line-height: 1.4;
+        }
+
+        /* ── RECEITAS ── */
+        .receitas-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .receita-card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 18px 16px;
+            box-shadow: var(--sombra);
+            border-left: 4px solid var(--verde-claro);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .receita-num {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--verde-claro);
+            line-height: 1;
+            min-width: 36px;
+        }
+
+        .receita-info strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--marrom);
+            margin-bottom: 3px;
+        }
+
+        .receita-info span {
+            font-size: 12px;
+            color: var(--cinza);
+        }
+
+        .receitas-mais {
+            text-align: center;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--verde), var(--verde-med));
+            border-radius: 14px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        /* ── DEPOIMENTOS ── */
+        .depoimentos-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .depoimento-card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: var(--sombra);
+            position: relative;
+        }
+
+        .depoimento-aspas {
+            font-family: 'Playfair Display', serif;
+            font-size: 52px;
+            color: var(--verde-claro);
+            line-height: 0.8;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .depoimento-texto {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--texto);
+            margin-bottom: 14px;
+            font-style: italic;
+        }
+
+        .depoimento-autor {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .depoimento-avatar {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--verde-claro), var(--verde));
+            display: flex; align-items: center; justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .depoimento-nome strong {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--marrom);
+        }
+
+        .depoimento-nome span {
+            font-size: 12px;
+            color: var(--cinza);
+        }
+
+        .estrelas { color: var(--laranja-cl); font-size: 13px; letter-spacing: 1px; }
+
+        /* ── FAQ ── */
+        .faq-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .faq-item {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: var(--sombra);
+            overflow: hidden;
+        }
+
+        .faq-pergunta {
+            width: 100%;
+            background: none;
+            border: none;
+            padding: 18px 20px;
+            text-align: left;
+            font-family: 'Lato', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--marrom);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .faq-chevron {
+            flex-shrink: 0;
+            font-size: 18px;
+            color: var(--verde-med);
+            transition: transform 0.25s;
+        }
+
+        .faq-item.aberto .faq-chevron { transform: rotate(180deg); }
+
+        .faq-resposta {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s;
+            padding: 0 20px;
+            font-size: 14px;
+            color: var(--cinza);
+            line-height: 1.6;
+        }
+
+        .faq-item.aberto .faq-resposta {
+            max-height: 200px;
+            padding: 0 20px 18px;
+        }
+
+        /* ── SOCIAL PROOF STRIP ── */
+        .strip {
+            background: var(--branco);
+            border-top: 1px solid #e8ddd0;
+            border-bottom: 1px solid #e8ddd0;
+            padding: 28px 24px;
+            text-align: center;
+        }
+
+        .strip-num {
+            font-family: 'Playfair Display', serif;
+            font-size: 40px;
+            font-weight: 900;
+            line-height: 1;
+            color: var(--laranja);
+        }
+
+        .strip-label {
+            font-size: 13px;
+            color: var(--cinza);
+            margin-top: 4px;
+        }
+
+        .strip-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            padding: 24px;
+            text-align: center;
+            border-top: 1px solid #e0d5c5;
+        }
+
+        footer p { color: #aaa; font-size: 11px; margin-bottom: 10px; }
+
+        .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .footer-links a {
+            color: #888;
+            text-decoration: none;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover { color: var(--verde); }
+        .footer-links span { color: #ccc; font-size: 11px; }
+
+        /* ── LOADER ── */
+        .loader-overlay {
+            position: fixed; inset: 0;
+            background: rgba(255,255,255,0.92);
+            display: none; align-items: center; justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(4px);
+        }
+
+        .loader-overlay.active { display: flex; }
+
+        .loader-box {
+            display: flex; flex-direction: column;
+            align-items: center; gap: 16px;
+        }
+
+        .spinner {
+            width: 52px; height: 52px;
+            border: 4px solid #e5e5e5;
+            border-top-color: var(--verde);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loader-text { color: var(--verde); font-size: 14px; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+    <div class="hero-capa-wrap">
+        <img src="/static/images/capa-paes-sem-gluten.webp"
+             alt="Capa do e-book 50 Receitas de Pães Caseiros sem Glúten"
+             class="hero-img">
+        <div class="hero-badge-preco">Apenas R$ 10,00</div>
+    </div>
+    <div class="hero-content">
+        <span class="hero-tag">100% Sem Glúten</span>
+        <h1 class="hero-title">50 Receitas de<br><span>Pães Caseiros</span></h1>
+        <p class="hero-sub">O sabor e a maciez do <strong>pão de verdade</strong>, feitos na sua cozinha.</p>
+        <button class="btn-cta" id="btnHero">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.097.543 4.066 1.496 5.774L0 24l6.418-1.467A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.655-.522-5.17-1.43l-.37-.22-3.81.872.927-3.701-.242-.382A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+            </svg>
+            QUERO RECEBER AGORA
+        </button>
+    </div>
+</section>
+
+<!-- ══ STRIP SOCIAL PROOF ══ -->
+<div class="strip">
+    <div class="strip-grid">
+        <div>
+            <div class="strip-num">50</div>
+            <div class="strip-label">Receitas exclusivas</div>
+        </div>
+        <div>
+            <div class="strip-num">★ 4.9</div>
+            <div class="strip-label">Avaliação média</div>
+        </div>
+        <div>
+            <div class="strip-num">3k+</div>
+            <div class="strip-label">Pessoas atendidas</div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ BENEFÍCIOS ══ -->
+<section>
+    <span class="section-label">O que você vai receber</span>
+    <h2 class="section-title">Tudo que você precisa para fazer pão em casa</h2>
+    <div class="beneficios-lista">
+        <div class="beneficio-item">
+            <div class="beneficio-icone">📖</div>
+            <div class="beneficio-texto">
+                <strong>50 receitas testadas e aprovadas</strong>
+                <span>Pães, bisnaguinhas, ciabatta, baguetes e muito mais — todos sem glúten.</span>
+            </div>
+        </div>
+        <div class="beneficio-item">
+            <div class="beneficio-icone">🌾</div>
+            <div class="beneficio-texto">
+                <strong>100% sem glúten e sem lactose</strong>
+                <span>Para quem quer comer de forma mais natural, leve e saborosa no dia a dia.</span>
+            </div>
+        </div>
+        <div class="beneficio-item">
+            <div class="beneficio-icone">🛒</div>
+            <div class="beneficio-texto">
+                <strong>Ingredientes fáceis de encontrar</strong>
+                <span>Nada de produtos importados ou difíceis — tudo no mercado mais perto de você.</span>
+            </div>
+        </div>
+        <div class="beneficio-item">
+            <div class="beneficio-icone">📱</div>
+            <div class="beneficio-texto">
+                <strong>Entrega imediata no WhatsApp</strong>
+                <span>Assim que confirmar, você recebe o e-book em PDF direto na conversa.</span>
+            </div>
+        </div>
+        <div class="beneficio-item">
+            <div class="beneficio-icone">🎁</div>
+            <div class="beneficio-texto">
+                <strong>E-book surpresa de presente</strong>
+                <span>Quem enviar o comprovante de pagamento ganha um segundo e-book grátis!</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="btn-wrap">
+    <button class="btn-cta" id="btnBeneficios">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.097.543 4.066 1.496 5.774L0 24l6.418-1.467A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.655-.522-5.17-1.43l-.37-.22-3.81.872.927-3.701-.242-.382A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+        </svg>
+        QUERO RECEBER AGORA
+    </button>
+</div>
+
+<!-- ══ PARA QUEM É ══ -->
+<section>
+    <span class="section-label">Feito para você</span>
+    <h2 class="section-title">Este e-book é para você que...</h2>
+    <div class="beneficios-lista">
+        <div class="beneficio-item">
+            <div class="beneficio-icone">😤</div>
+            <div class="beneficio-texto">
+                <strong>Já tentou pão sem glúten e se decepcionou</strong>
+                <span>Pão borrachudo, sem sabor e que esfarela — você merece algo melhor. Essas receitas são diferentes.</span>
+            </div>
+        </div>
+        <div class="beneficio-item">
+            <div class="beneficio-icone">👨‍👩‍👧</div>
+            <div class="beneficio-texto">
+                <strong>Cozinha para a família inteira</strong>
+                <span>Pães que agradam até quem pode comer glúten. Sem fazer receita separada para cada um.</span>
+            </div>
+        </div>
+        <div class="beneficio-item">
+            <div class="beneficio-icone">🥗</div>
+            <div class="beneficio-texto">
+                <strong>Quer comer mais saudável sem abrir mão do sabor</strong>
+                <span>Sem glúten não precisa ser sem graça. Aqui você aprende a fazer pão gostoso de verdade.</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ══ ANTES E DEPOIS ══ -->
+<section style="padding-top: 0;">
+    <span class="section-label">Compare a diferença</span>
+    <h2 class="section-title">Antes e depois do e-book</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div style="background: #fff0f0; border-radius: 14px; padding: 18px; border-top: 4px solid #e05050;">
+            <div style="font-size: 13px; font-weight: 700; color: #c0392b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;">Sem o e-book</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #e05050; font-size: 15px; flex-shrink: 0;">✕</span>
+                    Pão sem glúten empedrado e sem sabor
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #e05050; font-size: 15px; flex-shrink: 0;">✕</span>
+                    Ingredientes caros e difíceis de achar
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #e05050; font-size: 15px; flex-shrink: 0;">✕</span>
+                    Receitas da internet que não funcionam
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #e05050; font-size: 15px; flex-shrink: 0;">✕</span>
+                    Família reclamando do pão diferente
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #e05050; font-size: 15px; flex-shrink: 0;">✕</span>
+                    Tempo e dinheiro desperdiçados
+                </div>
+            </div>
+        </div>
+        <div style="background: #f0fff4; border-radius: 14px; padding: 18px; border-top: 4px solid #4a9632;">
+            <div style="font-size: 13px; font-weight: 700; color: #2d6a1f; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;">Com o e-book</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #4a9632; font-size: 15px; flex-shrink: 0;">✓</span>
+                    Pão macio igual ao da padaria
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #4a9632; font-size: 15px; flex-shrink: 0;">✓</span>
+                    Tudo no mercado perto de você
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #4a9632; font-size: 15px; flex-shrink: 0;">✓</span>
+                    50 receitas testadas e aprovadas
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #4a9632; font-size: 15px; flex-shrink: 0;">✓</span>
+                    Agrada até quem pode comer glúten
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #555;">
+                    <span style="color: #4a9632; font-size: 15px; flex-shrink: 0;">✓</span>
+                    Acesso imediato por apenas R$10
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="btn-wrap" style="padding-top: 0;">
+    <button class="btn-cta" id="btnComparacao">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.097.543 4.066 1.496 5.774L0 24l6.418-1.467A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.655-.522-5.17-1.43l-.37-.22-3.81.872.927-3.701-.242-.382A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+        </svg>
+        QUERO RECEBER AGORA
+    </button>
+</div>
+
+
+<div class="divisor"><hr><span>algumas receitas do e-book</span><hr></div>
+
+<!-- ══ RECEITAS ══ -->
+<section>
+    <span class="section-label">Prévia do conteúdo</span>
+    <h2 class="section-title">Você vai aprender a fazer</h2>
+    <div class="receitas-grid">
+        <div class="receita-card">
+            <div class="receita-num">01</div>
+            <div class="receita-info">
+                <strong>Pão de Forma Fofinho</strong>
+                <span>Massa macia e aerada, perfeita para sanduíches</span>
+            </div>
+        </div>
+        <div class="receita-card">
+            <div class="receita-num">02</div>
+            <div class="receita-info">
+                <strong>Bisnaguinha Caseira</strong>
+                <span>Igual à da padaria — mas sem glúten e sem culpa</span>
+            </div>
+        </div>
+        <div class="receita-card">
+            <div class="receita-num">03</div>
+            <div class="receita-info">
+                <strong>Pão de Batata</strong>
+                <span>Leve, úmido e com casca fininha e crocante</span>
+            </div>
+        </div>
+        <div class="receita-card">
+            <div class="receita-num">04</div>
+            <div class="receita-info">
+                <strong>Focaccia com Ervas</strong>
+                <span>Azeitonas, alecrim e azeite — sabor italiano na sua mesa</span>
+            </div>
+        </div>
+        <div class="receita-card">
+            <div class="receita-num">05</div>
+            <div class="receita-info">
+                <strong>Pão Integral com Sementes</strong>
+                <span>Chia, linhaça e girassol — nutritivo e saboroso</span>
+            </div>
+        </div>
+        <div class="receitas-mais">
+            + 45 receitas incríveis no e-book completo 🎉
+        </div>
+    </div>
+</section>
+
+<div class="btn-wrap">
+    <button class="btn-cta" id="btnReceitas">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.097.543 4.066 1.496 5.774L0 24l6.418-1.467A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.655-.522-5.17-1.43l-.37-.22-3.81.872.927-3.701-.242-.382A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+        </svg>
+        QUERO RECEBER AGORA
+    </button>
+</div>
+
+<div class="divisor"><hr><span>quem já recebeu</span><hr></div>
+
+<!-- ══ DEPOIMENTOS ══ -->
+<section>
+    <span class="section-label">Depoimentos</span>
+    <h2 class="section-title">O que estão dizendo</h2>
+    <div class="depoimentos-lista">
+        <div class="depoimento-card">
+            <span class="depoimento-aspas">"</span>
+            <p class="depoimento-texto">Há anos procuro um pão sem glúten que fique macio de verdade. Fiz o pão de forma (receita 01) no primeiro dia e não acreditei no resultado — levei para o café com minha mãe e ela perguntou se era pão normal. Simplesmente incrível!</p>
+            <div class="depoimento-autor">
+                <div class="depoimento-avatar">M</div>
+                <div class="depoimento-nome">
+                    <strong>Maria Aparecida S.</strong>
+                    <span>Brasília — DF <span class="estrelas">★★★★★</span></span>
+                </div>
+            </div>
+        </div>
+        <div class="depoimento-card">
+            <span class="depoimento-aspas">"</span>
+            <p class="depoimento-texto">Comprei para minha filha de 12 anos que não come glúten. Já testei 8 receitas e todas ficaram ótimas — o pão de batata é o favorito dela. Vale muito mais do que os R$10 que paguei!</p>
+            <div class="depoimento-autor">
+                <div class="depoimento-avatar">C</div>
+                <div class="depoimento-nome">
+                    <strong>Carla Mendonça</strong>
+                    <span>São Paulo — SP <span class="estrelas">★★★★★</span></span>
+                </div>
+            </div>
+        </div>
+        <div class="depoimento-card">
+            <span class="depoimento-aspas">"</span>
+            <p class="depoimento-texto">A bisnaguinha ficou igualzinha à da padaria — meu marido foi checar o rótulo da farinha porque não acreditou que era sem glúten. As instruções são claras, o tempo de preparo bate certinho e todos os ingredientes eu achei no mercado do bairro.</p>
+            <div class="depoimento-autor">
+                <div class="depoimento-avatar">R</div>
+                <div class="depoimento-nome">
+                    <strong>Renata Oliveira</strong>
+                    <span>Goiânia — GO <span class="estrelas">★★★★★</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="btn-wrap">
+    <button class="btn-cta" id="btnDepoimentos">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.097.543 4.066 1.496 5.774L0 24l6.418-1.467A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.655-.522-5.17-1.43l-.37-.22-3.81.872.927-3.701-.242-.382A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+        </svg>
+        QUERO RECEBER AGORA
+    </button>
+</div>
+
+<div class="divisor"><hr><span>dúvidas frequentes</span><hr></div>
+
+<!-- ══ FAQ ══ -->
+<section>
+    <span class="section-label">FAQ</span>
+    <h2 class="section-title">Perguntas frequentes</h2>
+    <div class="faq-lista">
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Como vou receber o e-book?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">Assim que você clicar no botão e enviar a mensagem no WhatsApp, nossa equipe vai te atender e enviar o PDF direto na conversa. É tudo pelo WhatsApp, sem cadastro ou site externo.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Quanto custa o e-book?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">O e-book custa R$10,00. Após enviar a mensagem no WhatsApp, nossa equipe envia as instruções de pagamento via PIX e, após a confirmação, o PDF é entregue direto na conversa. Simples, rápido e sem cadastro.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                As receitas realmente ficam macias?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">Sim! Todas as receitas foram testadas diversas vezes para garantir textura e sabor próximos ao pão tradicional. O segredo está na combinação certa de farinhas e nas técnicas ensinadas no e-book.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                Precisa de equipamentos especiais?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">Não! Basta um forno convencional e utensílios comuns de cozinha. As receitas foram pensadas para funcionar em qualquer cozinha doméstica.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-pergunta">
+                As receitas são realmente 100% sem glúten?
+                <span class="faq-chevron">⌄</span>
+            </button>
+            <div class="faq-resposta">Sim! Todas as receitas foram desenvolvidas sem nenhum ingrediente com glúten. Recomendamos sempre verificar os rótulos dos produtos comprados para garantir que não há adição de glúten no processamento.</div>
+        </div>
+    </div>
+</section>
+
+<div class="btn-wrap">
+    <button class="btn-cta" id="btnFaq">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.097.543 4.066 1.496 5.774L0 24l6.418-1.467A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.886 0-3.655-.522-5.17-1.43l-.37-.22-3.81.872.927-3.701-.242-.382A9.953 9.953 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+        </svg>
+        QUERO RECEBER AGORA
+    </button>
+</div>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+    <p><strong style="color:#777;">Receitas Digitais e Saúde</strong> &nbsp;·&nbsp; © 2025. Todos os direitos reservados.</p>
+    <p style="margin-top:6px; font-size:10px; color:#bbb;">Para suporte ou dúvidas, acesse nossa <a href="/contato" style="color:#999; text-decoration:underline;">página de contato</a>.</p>
+    <div class="footer-links">
+        <a href="/politica-privacidade">Política de Privacidade</a>
+        <span>|</span>
+        <a href="/termos-de-uso">Termos de Uso</a>
+        <span>|</span>
+        <a href="/contato">Contato</a>
+    </div>
+    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e0d5c5; text-align: left;">
+        <p style="font-size: 10px; color: #bbb; line-height: 1.6; margin-bottom: 0;">
+            <strong style="color: #aaa;">AVISO LEGAL:</strong> Os resultados apresentados nos depoimentos são individuais e podem variar de pessoa para pessoa. Este produto é um e-book digital vendido por R$10,00 e entregue via WhatsApp após confirmação do pagamento. As receitas foram testadas em ambiente doméstico e não substituem orientação médica ou nutricional. Em caso de dúvidas sobre restrições alimentares específicas, consulte um profissional de saúde.
+        </p>
+    </div>
+</footer>
+
+<!-- ══ LOADER ══ -->
+<div id="loader" class="loader-overlay" aria-hidden="true">
+    <div class="loader-box">
+        <div class="spinner"></div>
+        <div class="loader-text">Preparando seu acesso…</div>
+    </div>
+</div>
+
+<script>
+    // ── FAQ accordion ──
+    document.querySelectorAll('.faq-pergunta').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.parentElement;
+            const aberto = item.classList.contains('aberto');
+            document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('aberto'));
+            if (!aberto) item.classList.add('aberto');
+        });
+    });
+
+    // ── WhatsApp redirect ──
+    const NUMERO_WPP = "556182332793";
+    const NOME_WPP   = "WHATSAPP 12";
+    const EMOJIS     = ["😄","😃","😊","🌹","🥰","🙂"];
+
+    function irParaWhatsApp() {
+        const emoji   = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+        const gclid   = new URLSearchParams(window.location.search).get("gclid") || "";
+        const payload = {
+            whatsapp_numero: NUMERO_WPP,
+            whatsapp:        NOME_WPP,
+            gclid_isolado:   gclid,
+            timestamp_unix:  Math.floor(Date.now() / 1000),
+            chave_emoji:     emoji,
+            url_completa:    window.location.href
+        };
+        fetch("https://webhook.projetosdobruno.com/webhook/GERALGCLID", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            keepalive: true
+        }).catch(function() { return null; });
+        window.location.href = "https://wa.me/" + NUMERO_WPP + "?text=" + encodeURIComponent(emoji + " Olá, tenho interesse em saber mais sobre as receitas de pães");
+    }
+
+    // Liga todos os botões CTA
+    ['btnHero', 'btnBeneficios', 'btnParaQuem', 'btnReceitas', 'btnDepoimentos', 'btnFaq', 'btnComparacao'].forEach(id => {
+        document.getElementById(id)?.addEventListener('click', irParaWhatsApp);
+    });
+</script>
+
+</body>
+</html>
