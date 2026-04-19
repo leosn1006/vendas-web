@@ -43,8 +43,11 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
         time.sleep(delay)
 
     if tipo == 'marcar_lida':
-        marcar_como_lida(message_id_original, pedido.get('phone_number_id'))
-        logger.debug(f"[{tag}] 👁 Mensagem marcada como lida.")
+        try:
+            marcar_como_lida(message_id_original, pedido.get('phone_number_id'))
+            logger.debug(f"[{tag}] 👁 Mensagem marcada como lida.")
+        except Exception as exc_lida:
+            logger.warning(f"[{tag}] ⚠️ Falha ao marcar como lida (não crítico): {exc_lida}")
 
     elif tipo == 'digitando':
         try:

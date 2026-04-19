@@ -93,31 +93,37 @@ def executar(pedido, mensagem_whatsapp):
         atualizar_pedido_com_comprovante(pedido_id, path_comprovante)
         salvar_mensagem_pedido(message_id, pedido_id, f"Comprovante recebido: {filename}", tipo_mensagem='recebida')
 
-        # ── Validação com IA ──────────────────────────────────────────────
-        logger.debug(f"[{_TAG}] 🤖 Validando comprovante com IA...")
-        resultado_json = validar_comprovante_com_ia(path_comprovante)
-        resultado      = json.loads(resultado_json)
-        logger.debug(f"[{_TAG}] 🤖 Resultado: {resultado}")
-
-        valor_pago            = _to_float(resultado.get('valor'), 0.0)
-        destinatario_extraido = str(resultado.get('destinatario') or '').strip().lower()
-
-        produto      = get_produto_by_id(produto_id)
-        pix_esperado = str(produto.get('pix_destinatario_esperado') or '').strip().lower()
-        valor_minimo = _to_float(produto.get('valor_minimo_pagamento'), 0.0)
-
-        tokens_esperados   = pix_esperado.split()
-        comprovante_valido = bool(tokens_esperados) and all(
-            token in destinatario_extraido for token in tokens_esperados
-        ) # and (valor_pago >= valor_minimo)
-        logger.debug(f"[{_TAG}] 🤖 Válido: {comprovante_valido} "
-                     f"(valor={valor_pago:.2f} mín={valor_minimo:.2f}, dest='{destinatario_extraido}')")
-
-        # ── Persistência de pagamento (sempre) ────────────────────────────
+        produto       = get_produto_by_id(produto_id)
         preco_produto = _to_float(produto.get('preco'), 0.0)
-        if not comprovante_valido and valor_pago == 0.0:
-            valor_pago = preco_produto
-            logger.info(f"[{_TAG}] ⚠️ Valor não extraído — usando preço do produto R$ {valor_pago:.2f}")
+
+        # ── Validação com IA ──────────────────────────────────────────────
+        if path_comprovante is None:
+            logger.warning(f"[{_TAG}] ⚠️ pedido #{pedido_id} — arquivo grande demais, comprovante aceito automaticamente (R$ {preco_produto:.2f})")
+            resultado          = {}
+            comprovante_valido = True
+            valor_pago         = preco_produto
+        else:
+            logger.debug(f"[{_TAG}] 🤖 Validando comprovante com IA...")
+            resultado_json = validar_comprovante_com_ia(path_comprovante)
+            resultado      = json.loads(resultado_json)
+            logger.debug(f"[{_TAG}] 🤖 Resultado: {resultado}")
+
+            valor_pago            = _to_float(resultado.get('valor'), 0.0)
+            destinatario_extraido = str(resultado.get('destinatario') or '').strip().lower()
+            pix_esperado          = str(produto.get('pix_destinatario_esperado') or '').strip().lower()
+            valor_minimo          = _to_float(produto.get('valor_minimo_pagamento'), 0.0)
+
+            tokens_esperados   = pix_esperado.split()
+            comprovante_valido = bool(tokens_esperados) and all(
+                token in destinatario_extraido for token in tokens_esperados
+            ) # and (valor_pago >= valor_minimo)
+            logger.debug(f"[{_TAG}] 🤖 Válido: {comprovante_valido} "
+                         f"(valor={valor_pago:.2f} mín={valor_minimo:.2f}, dest='{destinatario_extraido}')")
+
+            # ── Persistência de pagamento (sempre) ────────────────────────────
+            if not comprovante_valido and valor_pago == 0.0:
+                valor_pago = preco_produto
+                logger.info(f"[{_TAG}] ⚠️ Valor não extraído — usando preço do produto R$ {valor_pago:.2f}")
 
         atualizar_pedido_com_pagamento(
             pedido_id,
