@@ -41,9 +41,19 @@ def extrair_dados_mensagem(mensagem_whatsapp):
     except (KeyError, IndexError) as e:
         return None
 
+_NUMEROS_BLOQUEADOS = {'551721368696'}
+
 def recebe_webhook(mensagem_whatsapp):
     try:
         logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 Recebendo webhook do WhatsApp: {mensagem_whatsapp}" )
+
+        try:
+            numero = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['from']
+            if numero in _NUMEROS_BLOQUEADOS:
+                logger.info(f"[ORQUESTRADOR-WEBHOOK] 🚫 Número bloqueado — ignorando {numero}")
+                return "número bloqueado"
+        except (KeyError, IndexError):
+            pass
 
         # Extrair dados da mensagem
         dados = extrair_dados_mensagem(mensagem_whatsapp)
