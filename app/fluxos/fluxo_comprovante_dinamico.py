@@ -7,6 +7,7 @@ from database import (
     get_produto_by_id,
 )
 from whatsapp_upload import receber_comprovante
+from whatsapp import notificar_admin_pedido
 from agente_valida_comprovante import validar_comprovante_com_ia
 from fluxos._executor_acao import executar_acao, filtrar_e_ordenar
 
@@ -85,7 +86,8 @@ def executar(pedido, mensagem_whatsapp):
             mime     = dados_msg['document']['mime_type']
             filename = dados_msg['document'].get('filename') or 'documento_comprovante'
         else:
-            raise ValueError(f"[{_TAG}] Tipo de mídia não suportado: {tipo}")
+            logger.warning(f"[{_TAG}] ⚠️ pedido #{pedido_id} — tipo de mídia não suportado: {tipo}")
+            return
 
         path_comprovante = receber_comprovante(tipo, url, mime, filename, pedido_id)
 
@@ -112,30 +114,28 @@ def executar(pedido, mensagem_whatsapp):
         else:
             logger.debug(f"[{_TAG}] 🤖 Validando comprovante com IA...")
             resultado_json = validar_comprovante_com_ia(path_comprovante)
-            resultado      = json.loads(resultado_json)
-            logger.debug(f"[{_TAG}] 🤖 Resultado: {resultado}")
-
-            if resultado.get('recusado'):
-                logger.warning(f"[{_TAG}] ⚠️ pedido #{pedido_id} — IA recusou processar imagem, aceito automaticamente (R$ {preco_produto:.2f})")
+            try:
+                resultado = json.loads(resultado_json)
+            except (json.JSONDecodeError, TypeError):
+                logger.warning(f"[{_TAG}] ⚠️ pedido #{pedido_id} — JSON inválido da IA, aceito automaticamente")
                 resultado          = {}
                 comprovante_valido = True
                 valor_pago         = preco_produto
             else:
-                valor_pago            = _to_float(resultado.get('valor'), 0.0)
-                destinatario_extraido = str(resultado.get('destinatario') or '').strip().lower()
-                pix_esperado          = str(produto.get('pix_destinatario_esperado') or '').strip().lower()
-                valor_minimo          = _to_float(produto.get('valor_minimo_pagamento'), 0.0)
-
-                tokens_esperados   = pix_esperado.split()
-                comprovante_valido = bool(tokens_esperados) and all(
-                    token in destinatario_extraido for token in tokens_esperados
-                ) # and (valor_pago >= valor_minimo)
-                logger.debug(f"[{_TAG}] 🤖 Válido: {comprovante_valido} "
-                             f"(valor={valor_pago:.2f} mín={valor_minimo:.2f}, dest='{destinatario_extraido}')")
-
-                if not comprovante_valido and valor_pago == 0.0:
-                    valor_pago = preco_produto
-                    logger.info(f"[{_TAG}] ⚠️ Valor não extraído — usando preço do produto R$ {valor_pago:.2f}")
+                logger.debug(f"[{_TAG}] 🤖 Resultado: {resultado}")
+                if resultado.get('recusado'):
+                    logger.warning(f"[{_TAG}] ⚠️ pedido #{pedido_id} — IA recusou processar imagem, aceito automaticamente (R$ {preco_produto:.2f})")
+                    resultado          = {}
+                    comprovante_valido = True
+                    valor_pago         = preco_produto
+                else:
+                    valor_pago            = _to_float(resultado.get('valor'), 0.0)
+                    destinatario_extraido = str(resultado.get('destinatario') or '').strip().lower()
+                    comprovante_valido    = True  # validação de destinatário desabilitada por enquanto
+                    if valor_pago == 0.0:
+                        valor_pago = preco_produto
+                        logger.info(f"[{_TAG}] ⚠️ Valor não extraído — usando preço do produto R$ {valor_pago:.2f}")
+                    logger.debug(f"[{_TAG}] 🤖 Comprovante aceito (dest='{destinatario_extraido}', valor={valor_pago:.2f})")
 
         atualizar_pedido_com_pagamento(
             pedido_id,
@@ -149,23 +149,20 @@ def executar(pedido, mensagem_whatsapp):
         )
 
         # ── Notificações ao admin ─────────────────────────────────────────
-        from whatsapp import notificar_admin_pedido
-        if comprovante_valido:
-            if preco_produto > 0 and valor_pago > preco_produto * 3:
-                notificar_admin_pedido(pedido, (
-                    f"⚠️ *Pagamento alto* — Pedido #{pedido_id}\n\n"
-                    f"Cliente: #{pedido_id} — {pedido.get('contact_name')} ({pedido.get('contact_phone')})\n"
-                    f"Valor pago: *R$ {valor_pago:.2f}* | Preço produto: R$ {preco_produto:.2f}\n"
-                    f"Pagador: {resultado.get('nome_pagador') or '—'}\n"
-                    f"Banco: {resultado.get('nome_banco') or '—'}"
-                ))
-                logger.info(f"[{_TAG}] 📲 Admin notificado — pagamento alto (R$ {valor_pago:.2f})")
-        else:
-            logger.info(f"[{_TAG}] ℹ️ Comprovante não validado — pedido #{pedido_id} — admin não notificado (notificação desligada)")
+        if preco_produto > 0 and valor_pago > preco_produto * 3:
+            notificar_admin_pedido(pedido, (
+                f"⚠️ *Pagamento alto* — Pedido #{pedido_id}\n\n"
+                f"Cliente: #{pedido_id} — {pedido.get('contact_name')} ({pedido.get('contact_phone')})\n"
+                f"Valor pago: *R$ {valor_pago:.2f}* | Preço produto: R$ {preco_produto:.2f}\n"
+                f"Pagador: {resultado.get('nome_pagador') or '—'}\n"
+                f"Banco: {resultado.get('nome_banco') or '—'}"
+            ))
+            logger.info(f"[{_TAG}] 📲 Admin notificado — pagamento alto (R$ {valor_pago:.2f})")
 
-        # ── Executa ações dinâmicas (sempre fluxo feliz para o cliente) ───
+        # ── Executa ações dinâmicas ───────────────────────────────────────
         todas_acoes = listar_acoes_fluxo(produto_id, 'comprovante')
-        acoes       = filtrar_e_ordenar(todas_acoes, ('sempre', 'pagamento_valido'))
+        condicoes   = ('sempre', 'pagamento_valido') if comprovante_valido else ('sempre', 'pagamento_invalido')
+        acoes       = filtrar_e_ordenar(todas_acoes, condicoes)
 
         if not acoes:
             raise ValueError(
