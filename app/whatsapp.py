@@ -376,6 +376,7 @@ def notificar_admin_via_template(pedido: dict, nome_produto: str, mensagem: str)
     independente do produto. Obrigatório para mensagens fora da janela de 24h.
     Parâmetros do template: {{1}} pedido, {{2}} nome_produto, {{3}} mensagem.
     """
+    return  # temporariamente desabilitado — rate limit
     admin_phone = os.getenv('ADMIN_WHATSAPP_NUMBER', '').replace('+', '')
     if not admin_phone:
         logger.warning("[NOTIF-ADMIN-TEMPLATE] ADMIN_WHATSAPP_NUMBER não configurado — ignorado")
