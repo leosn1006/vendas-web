@@ -95,14 +95,14 @@ def validar_comprovante_com_ia(caminho_arquivo):
         # Verifica se houve refusal da OpenAI
         refusal = getattr(response.choices[0].message, 'refusal', None)
         if refusal:
-            logger.error(f"[AGENTE_COMPROVANTE] ❌ OpenAI recusou processar: {refusal}")
-            return '{"valido": false, "valor": 0.0, "destinatario_correto": false, "motivo": "Sistema de validação recusou processar o comprovante"}'
+            logger.warning(f"[AGENTE_COMPROVANTE] ⚠️ OpenAI recusou processar: {refusal}")
+            return '{"recusado": true, "valor": 0.0, "destinatario": "", "motivo": "Sistema de validação recusou processar o comprovante"}'
 
         resposta = response.choices[0].message.content
 
         if not resposta:
-            logger.error(f"[AGENTE_COMPROVANTE] ❌ Resposta vazia da API. Finish reason: {response.choices[0].finish_reason}")
-            return '{"valido": false, "valor": 0.0, "destinatario_correto": false, "motivo": "Erro ao processar imagem - resposta vazia da IA"}'
+            logger.warning(f"[AGENTE_COMPROVANTE] ⚠️ Resposta vazia da API. Finish reason: {response.choices[0].finish_reason}")
+            return '{"recusado": true, "valor": 0.0, "destinatario": "", "motivo": "Erro ao processar imagem - resposta vazia da IA"}'
 
         logger.info(f"[AGENTE_COMPROVANTE] ✅ Resposta gerada: {resposta}")
         return resposta
@@ -111,4 +111,4 @@ def validar_comprovante_com_ia(caminho_arquivo):
         logger.error(f"[AGENTE_COMPROVANTE] ❌ Erro ao processar mensagem: {e}")
         import traceback
         traceback.print_exc()
-        return '{"valido": false, "valor": 0.0, "destinatario_correto": false, "motivo": "Erro técnico ao validar comprovante"}'
+        return '{"recusado": true, "valor": 0.0, "destinatario": "", "motivo": "Erro técnico ao validar comprovante"}'
