@@ -49,7 +49,7 @@ def setup_rotating_file_logging(service_name: str) -> None:
     )
     handler.suffix = "%Y-%m-%d"
     handler.namer = _build_log_namer(service_name)
-    handler.setLevel(log_level)
+    handler.setLevel(logging.DEBUG)
     handler._vendas_file_logger = True
     handler.setFormatter(
         logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
