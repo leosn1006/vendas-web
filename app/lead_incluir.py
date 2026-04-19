@@ -43,7 +43,7 @@ def persistir_lead(body):
         else:
             produto = 1  # produto padrão para campanhas desconhecidas
 
-        logger.info(f"[LEAD] 🔍 URL recebida: '{url}' → produto determinado: {produto}")
+        # logger.info(f"[LEAD] 🔍 URL recebida: '{url}' → produto determinado: {produto}")
 
         texto, emoji = gera_mensagem_inicial_randomicamente(produto)
 
@@ -75,13 +75,13 @@ def persistir_lead(body):
             dns_origem=dns_origem,
         )
         criar_pedido(pedido)
-        logger.info(f"[LEAD] ✅ Lead gravado com gclid: {gclid}")
+        # logger.info(f"[LEAD] ✅ Lead gravado com gclid: {gclid}")
         resposta = {
             "whatsapp_numero": whatsapp_numero,
             "emojiEscolhido" : emoji,
             "mensagemBaseWA" : texto
         }
-        logger.info(f"[LEAD] ✅ Resposta gerada: {resposta}")
+        # logger.info(f"[LEAD] ✅ Resposta gerada: {resposta}")
         return jsonify(resposta), 200
     except Exception as e:
         logger.exception(f"[LEAD] ❌ ERRO ao gravar lead: {e}")

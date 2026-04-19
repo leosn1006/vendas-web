@@ -424,6 +424,7 @@ def notificar_admin_erro_sistema(descricao: str, log: str = "log_worker"):
     Notifica o admin via template 'administrativa_erro_sistema' quando um worker falha.
     Parâmetros do template: {{1}} momento (horário SP), {{2}} descrição breve.
     """
+    return  # temporariamente desabilitado — rate limit
     admin_phone = os.getenv('ADMIN_WHATSAPP_NUMBER', '').replace('+', '')
     if not admin_phone:
         logger.warning("[NOTIF-ADMIN-ERRO-SISTEMA] ADMIN_WHATSAPP_NUMBER não configurado — ignorado")
