@@ -140,7 +140,7 @@ def pascoa_lucrativa():
 
 @app.get("/pudim")
 def pudim():
-    return render_template('pudim.html')
+    return render_template('pudim-temp.html')
 
 @app.get("/pudim-temp")
 def pudim_temp():
