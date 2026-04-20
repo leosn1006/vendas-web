@@ -194,13 +194,23 @@ function atualizarPix() {
     btn.disabled = true;
     btn.textContent = 'Buscando...';
     fetch('{{ url_for("admin.financeiro_atualizar_pix", produto_id=produto.id) }}', { method: 'POST' })
-        .then(r => r.json())
-        .then(data => {
-            btn.textContent = data.ok ? '✓ Iniciado' : '✗ Erro';
-            if (data.ok) setTimeout(() => location.reload(), 4000);
-            else { alert(data.msg); btn.disabled = false; btn.textContent = '↻ Buscar PIX agora'; }
+        .then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })))
+        .then(({ ok, status, data }) => {
+            if (ok) {
+                btn.textContent = '✓ Iniciado';
+                setTimeout(() => location.reload(), 4000);
+            } else {
+                const msg = data?.msg || `Erro ao atualizar PIX (HTTP ${status})`;
+                alert(msg);
+                btn.disabled = false;
+                btn.textContent = '↻ Buscar PIX agora';
+            }
         })
-        .catch(() => { btn.disabled = false; btn.textContent = '↻ Buscar PIX agora'; });
+        .catch(err => {
+            alert('Erro na requisição: ' + (err.message || 'Tente novamente'));
+            btn.disabled = false;
+            btn.textContent = '↻ Buscar PIX agora';
+        });
 }
 
 function setDias(dias) {
