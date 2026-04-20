@@ -1654,3 +1654,15 @@ def financeiro_produto(produto_id):
         data_ini    = data_ini_str,
         data_fim    = data_fim_str,
     )
+
+
+@admin_bp.route('/produto/<int:produto_id>/financeiro/atualizar-pix', methods=['POST'])
+@requer_acesso_produto
+def financeiro_atualizar_pix(produto_id):
+    try:
+        from celery_app import celery_app
+        celery_app.send_task('tasks.processar_pagamentos_pix')
+        return jsonify({'ok': True, 'msg': 'Busca de PIX iniciada. Aguarde alguns segundos e atualize a página.'})
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao disparar task PIX: {e}")
+        return jsonify({'ok': False, 'msg': f'Erro ao iniciar busca: {e}'}), 500

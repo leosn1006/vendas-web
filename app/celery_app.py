@@ -38,6 +38,10 @@ celery_app.conf.beat_schedule = {
         'task': 'tasks.processar_pagamentos_pix',
         'schedule': crontab(minute=15, hour='5-23,0'),  # de hora em hora às :15 (5h15 a 00h15)
     },
+    'processar-pagamentos-pix-fechamento': {
+        'task': 'tasks.processar_pagamentos_pix_fechamento',
+        'schedule': crontab(minute=5, hour=0),  # 00h05 — captura PIX de 23:15–23:59 do dia anterior
+    },
 }
 
 from celery.signals import worker_process_init

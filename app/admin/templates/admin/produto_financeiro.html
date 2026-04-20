@@ -97,6 +97,9 @@
         <h1 class="page-title">💳 Financeiro</h1>
         <p class="page-subtitle">{{ produto.nome }}</p>
     </div>
+    <button id="btn-atualizar-pix" class="btn btn-secondary" onclick="atualizarPix()">
+        ↻ Buscar PIX agora
+    </button>
 </div>
 
 <!-- Filtro de período -->
@@ -186,6 +189,20 @@
 
 {% block extra_js %}
 <script>
+function atualizarPix() {
+    const btn = document.getElementById('btn-atualizar-pix');
+    btn.disabled = true;
+    btn.textContent = 'Buscando...';
+    fetch('{{ url_for("admin.financeiro_atualizar_pix", produto_id=produto.id) }}', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            btn.textContent = data.ok ? '✓ Iniciado' : '✗ Erro';
+            if (data.ok) setTimeout(() => location.reload(), 4000);
+            else { alert(data.msg); btn.disabled = false; btn.textContent = '↻ Buscar PIX agora'; }
+        })
+        .catch(() => { btn.disabled = false; btn.textContent = '↻ Buscar PIX agora'; });
+}
+
 function setDias(dias) {
     const fim = new Date();
     const ini = new Date();
