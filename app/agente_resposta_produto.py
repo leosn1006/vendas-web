@@ -22,8 +22,14 @@ _TOOL_NOTIFICAR_ADMIN = {
             "properties": {
                 "motivo": {
                     "type": "string",
-                    "enum": ["estorno", "pergunta_sem_resposta"],
-                    "description": "Categoria do problema"
+                    "enum": ["estorno", "insatisfacao", "ajuda_pagamento", "pergunta_sem_resposta"],
+                    "description": (
+                        "Categoria do problema: "
+                        "'estorno' = cliente pede devolução ou reembolso; "
+                        "'insatisfacao' = cliente irritado, reclamação, produto não atendeu expectativas; "
+                        "'ajuda_pagamento' = cliente com dificuldade para realizar o pagamento; "
+                        "'pergunta_sem_resposta' = dúvida não coberta pelo FAQ ou contexto"
+                    )
                 },
                 "resumo": {
                     "type": "string",
