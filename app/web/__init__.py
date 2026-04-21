@@ -21,9 +21,11 @@ def checkout(produto_id):
 def pix_gerar():
     from web.checkout import gerar_pix
     url_base = request.url_root.rstrip('/')
+    dns_origem = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
     return jsonify(gerar_pix(
         request.get_json(force=True, silent=True) or {},
         url_base=url_base,
+        dns_origem=dns_origem,
     ))
 
 

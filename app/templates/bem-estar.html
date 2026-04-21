@@ -1127,7 +1127,7 @@
         const placement  = urlParams.get('placement') || '';
         const video_id   = urlParams.get('video_id') || '';
 
-        const API_URL = 'https://lneditor.com.br/api/v1/webhook/gravar-lide';
+        const API_URL = '/api/v1/webhook/gravar-lide';
         const dadosParaEnviar = { gclid: gclidCode, url: urlDaPaginaAtual, campaignid, adgroupid, creative, matchtype, device, placement, video_id };
 
         try {

@@ -960,6 +960,7 @@ def get_phone_number_id_produto(produto_id: int):
 
 def criar_pedido_web_unificado(produto_id: int, phone_number_id: str,
                                contact_phone: str, contact_name: str,
+                               dns_origem: str = '',
                                email: str = '', gclid: str = '',
                                campaignid: str = '', adgroupid: str = '',
                                creative: str = '', matchtype: str = '',
@@ -971,13 +972,16 @@ def criar_pedido_web_unificado(produto_id: int, phone_number_id: str,
              (produto_id, valor_pago, estado_id, gclid,
               data_ultima_atualizacao, data_contato_site, data_pedido,
               phone_number_id, contact_phone, contact_name, email,
+                dns_origem,
               campaignid, adgroupid, creative, matchtype, device, placement, video_id)
            VALUES (%s, 0.0, 1001, %s,
                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
                    %s, %s, %s, %s,
+                    %s,
                    %s, %s, %s, %s, %s, %s, %s)""",
         (produto_id, gclid or '',
          phone_number_id or '', contact_phone or '', contact_name or '', email or '',
+            dns_origem or '',
          campaignid or '', adgroupid or '', creative or '',
          matchtype or '', device or '', placement or '', video_id or '')
     )

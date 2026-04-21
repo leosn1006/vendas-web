@@ -32,7 +32,7 @@ def _gerar_qrcode_base64(texto: str) -> str:
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def gerar_pix(body: dict, url_base: str = '') -> dict:
+def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     """
     Cria um pedido em `pedidos` (estado 1001) e gera uma solicitação PIX no BB Pay.
 
@@ -66,6 +66,7 @@ def gerar_pix(body: dict, url_base: str = '') -> dict:
         phone_number_id=phone_number_id,
         contact_phone=_phone,
         contact_name=body.get('nome', ''),
+        dns_origem=dns_origem,
         email=body.get('email', ''),
         gclid=body.get('gclid', ''),
         campaignid=body.get('campaignid', ''),

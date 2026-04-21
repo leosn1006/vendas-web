@@ -18,8 +18,9 @@ def executar(pedido, mensagem_whatsapp):
 
         produto_id   = pedido['produto_id']
         pedido_id    = pedido['id']
-        message_id   = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['id']
-        mensagem_txt = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
+        dados_msg    = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]
+        message_id   = dados_msg['id']
+        mensagem_txt = dados_msg.get('text', {}).get('body', '') or ''
 
         # Grava mensagem recebida
         salvar_mensagem_pedido(message_id, pedido_id, mensagem_txt, tipo_mensagem='recebida')

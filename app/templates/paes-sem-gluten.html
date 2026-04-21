@@ -178,7 +178,7 @@
                 const placement = urlParams.get('placement') || '';
                 const video_id = urlParams.get('video_id') || '';
                 // Endpoint da API de LIDE
-                const API_URL = 'https://lneditor.com.br/api/v1/webhook/gravar-lide';
+                const API_URL = '/api/v1/webhook/gravar-lide';
                 // Payload
                 const dadosParaEnviar = { gclid: gclidCode, url: urlDaPaginaAtual, campaignid, adgroupid, creative, matchtype, device, placement, video_id };
                 try {
