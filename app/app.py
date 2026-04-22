@@ -101,13 +101,15 @@ def webhook_receive():
         traceback.print_exc()
         return jsonify({'error': 'Erro ao processar webhook', 'details': str(e)}), 400
 
+def _is_lssolucoes():
+    host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return 'lssolucoesdigitais.com.br' in host
+
 @app.get("/")
 def index():
-    host = request.host.lower()
-    #if 'lsnlivros.com.br' in host:
-    #    return render_template('lsnlivros.html')
     produtos = busca_produtos_disponiveis_web()
-    return render_template('portifolio.html', produtos=produtos)
+    tmpl = 'portifolio-lssolucoes.html' if _is_lssolucoes() else 'portifolio.html'
+    return render_template(tmpl, produtos=produtos)
 
 @app.get("/portifolio")
 def portifolio():
@@ -116,15 +118,18 @@ def portifolio():
 
 @app.get("/politica-privacidade")
 def politica_privacidade():
-    return render_template('politica-privacidade.html')
+    tmpl = 'politica-privacidade-lssolucoes.html' if _is_lssolucoes() else 'politica-privacidade.html'
+    return render_template(tmpl)
 
 @app.get("/termos-de-uso")
 def termos_de_uso():
-    return render_template('termos-de-uso.html')
+    tmpl = 'termos-de-uso-lssolucoes.html' if _is_lssolucoes() else 'termos-de-uso.html'
+    return render_template(tmpl)
 
 @app.get("/contato")
 def contato():
-    return render_template('contato.html')
+    tmpl = 'contato-lssolucoes.html' if _is_lssolucoes() else 'contato.html'
+    return render_template(tmpl)
 
 @app.get("/lanche")
 def lanche():
