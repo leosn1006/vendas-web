@@ -384,7 +384,7 @@ def notificar_admin_via_template(pedido: dict, nome_produto: str, mensagem: str)
 
     ADMIN_PHONE_NUMBER_ID = '974838442380155'
     url = f"{WHATSAPP_API_URL}{ADMIN_PHONE_NUMBER_ID}/messages"
-    token = get_whatsapp_token(ADMIN_PHONE_NUMBER_ID)
+    token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
     pedido_num = f"#{pedido.get('id', '?')}"
 
     dados = {
@@ -436,7 +436,7 @@ def notificar_admin_erro_sistema(descricao: str, log: str = "log_worker"):
 
     ADMIN_PHONE_NUMBER_ID = '974838442380155'
     url = f"{WHATSAPP_API_URL}{ADMIN_PHONE_NUMBER_ID}/messages"
-    token = get_whatsapp_token(ADMIN_PHONE_NUMBER_ID)
+    token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
 
     dados = {
         "messaging_product": "whatsapp",
