@@ -25,14 +25,32 @@ class WhatsAppSecurity:
         self.app_secret = os.getenv('WHATSAPP_APP_SECRET', 'seu-app-secret-aqui')
         self.access_token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
 
-    # Mapa temporário: display_phone_number → nome da env var com o app_secret
-    # Necessário quando cada número pertence a uma Meta App distinta (app secrets diferentes).
+    # Roteamento por domínio: cada Meta App tem uma URL de webhook em um domínio distinto.
+    # O Host header (definido pelo nginx) identifica de qual Meta App veio a requisição.
+    # Funciona para eventos de teste (telefone falso 16505551111) e mensagens reais.
+    _HOST_SECRET_MAP = {
+        'lsnlivros.com.br': 'WHATSAPP_APP_SECRET_LSN',
+    }
+
+    # Fallback por telefone: cobre casos onde o mesmo domínio serve múltiplos números
+    # com App Secrets distintos.
     _PHONE_SECRET_MAP = {
         '556182393719': 'WHATSAPP_APP_SECRET_LSN',
     }
 
     def _secret_para_payload(self, payload: bytes) -> str:
-        """Retorna o WHATSAPP_APP_SECRET correto para o telefone do body."""
+        """Retorna o WHATSAPP_APP_SECRET correto para a requisição atual."""
+        # Prioridade 1: roteia pelo Host header (funciona para teste e mensagens reais)
+        host = request.host.split(':')[0].lower()
+        env_key = self._HOST_SECRET_MAP.get(host)
+        if env_key:
+            secret = os.getenv(env_key)
+            if secret:
+                logger.info(f"[WEBHOOK] 🔑 Usando {env_key} para host {host}")
+                return secret
+            logger.warning(f"[WEBHOOK] ⚠️ {env_key} não definido no .env para host {host} — usando secret padrão")
+
+        # Prioridade 2: roteia pelo display_phone_number do body
         try:
             body = json.loads(payload)
             phone = body['entry'][0]['changes'][0]['value']['metadata']['display_phone_number']
@@ -41,16 +59,16 @@ class WhatsAppSecurity:
                 secret = os.getenv(env_key)
                 if secret:
                     return secret
-                logger.warning(f"[WEBHOOK] ⚠️ {env_key} não definido no .env — usando secret padrão para {phone}")
+                logger.warning(f"[WEBHOOK] ⚠️ {env_key} não definido no .env para phone {phone}")
         except Exception:
-            pass  # body sem metadata (ex: challenge de verificação) — usa padrão
+            pass  # body sem metadata esperada — usa padrão
         return self.app_secret
 
     def validate_signature(self, payload: bytes = None) -> bool:
         """
         Valida a assinatura HMAC-SHA256 enviada pelo WhatsApp Business API
         no header X-Hub-Signature-256.
-        Suporta múltiplas Meta Apps via _PHONE_SECRET_MAP.
+        Suporta múltiplas Meta Apps via _HOST_SECRET_MAP (por domínio) e _PHONE_SECRET_MAP (fallback por telefone).
         """
         signature = request.headers.get('X-Hub-Signature-256', '')
         if not signature:
