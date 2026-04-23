@@ -31,7 +31,7 @@ def executar(pedido, mensagem_whatsapp):
         else:
             raise ValueError(f"[FLUXO-TRANSCREVER] ❌ Tipo de mensagem não suportado para transcrição: {tipo}")
 
-        path_audio = receber_audio(tipo, id_audio, mime, pedido_id)
+        path_audio = receber_audio(tipo, id_audio, mime, pedido_id, phone_number_id=pedido.get('phone_number_id'))
         texto_transcricao = transcrever_audio(path_audio)
 
         # Adiciona o texto transcrito no objeto mensagem_whatsapp para os fluxos subsequentes

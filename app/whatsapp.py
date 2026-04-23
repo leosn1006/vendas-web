@@ -4,9 +4,10 @@ import logging
 import pytz
 from datetime import datetime
 from config import WHATSAPP_API_URL
-from database import Pedido
+from database import Pedido, get_whatsapp_token
 
 logger = logging.getLogger(__name__)
+
 
 def enviar_introducao(pedido, url_audio=None):
     if pedido is None:
@@ -27,7 +28,7 @@ def marcar_como_lida(message_id: str, phone_number_id: str = None):
 
     phone_number_id = phone_number_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
     url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
-    token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+    token = get_whatsapp_token(phone_number_id)
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -55,7 +56,7 @@ def enviar_audio(pedido: Pedido, url_audio: str):
         # Envia uma mensagem de audio para o WhatsApp usando a API.
         phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
         url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
-        token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+        token = get_whatsapp_token(phone_number_id)
 
         # Headers reais (com token completo, não logado)
         headers_reais = {
@@ -105,7 +106,7 @@ def enviar_mensagem(pedido: Pedido, mensagem: str):
         # Envia uma mensagem de audio para o WhatsApp usando a API.
         phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
         url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
-        token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+        token = get_whatsapp_token(phone_number_id)
 
         # Headers reais (com token completo, não logado)
         headers_reais = {
@@ -155,7 +156,7 @@ def enviar_mensagem_digitando(message_id: str, phone_number_id: str = None):
         # Envia uma mensagem de audio para o WhatsApp usando a API.
         phone_number_id = phone_number_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
         url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
-        token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+        token = get_whatsapp_token(phone_number_id)
 
         # Headers reais (com token completo, não logado)
         headers_reais = {
@@ -201,7 +202,7 @@ def enviar_documento(pedido: Pedido, url_documento: str, caption: str, filename:
         # Envia uma mensagem de documento para o WhatsApp usando a API.
         phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
         url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
-        token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+        token = get_whatsapp_token(phone_number_id)
 
         # Headers reais (com token completo, não logado)
         headers_reais = {
@@ -253,7 +254,7 @@ def enviar_imagem(pedido: Pedido, url_imagem: str):
         # Envia uma mensagem de imagem para o WhatsApp usando a API.
         phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
         url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
-        token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+        token = get_whatsapp_token(phone_number_id)
 
         # Headers reais (com token completo, não logado)
         headers_reais = {
@@ -302,7 +303,7 @@ def enviar_produto_whatsapp(pedido: dict, template_name: str, language: str,
     """
     phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
     url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
-    token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+    token = get_whatsapp_token(phone_number_id)
 
     headers_reais = {
         "Authorization": f"Bearer {token}",
@@ -383,7 +384,7 @@ def notificar_admin_via_template(pedido: dict, nome_produto: str, mensagem: str)
 
     ADMIN_PHONE_NUMBER_ID = '974838442380155'
     url = f"{WHATSAPP_API_URL}{ADMIN_PHONE_NUMBER_ID}/messages"
-    token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+    token = get_whatsapp_token(ADMIN_PHONE_NUMBER_ID)
     pedido_num = f"#{pedido.get('id', '?')}"
 
     dados = {
@@ -435,7 +436,7 @@ def notificar_admin_erro_sistema(descricao: str, log: str = "log_worker"):
 
     ADMIN_PHONE_NUMBER_ID = '974838442380155'
     url = f"{WHATSAPP_API_URL}{ADMIN_PHONE_NUMBER_ID}/messages"
-    token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+    token = get_whatsapp_token(ADMIN_PHONE_NUMBER_ID)
 
     dados = {
         "messaging_product": "whatsapp",

@@ -742,10 +742,10 @@ def listar_telefones_produto(produto_id):
         produto_id: ID do produto
 
     Returns:
-        list: Lista de dicts com id, telefone, created_at
+        list: Lista de dicts com id, telefone, api_phone_number_id, token_env_key, created_at
     """
     query = """
-        SELECT id, telefone, api_phone_number_id, created_at
+        SELECT id, telefone, api_phone_number_id, token_env_key, created_at
         FROM telefones_produto
         WHERE produto_id = %s
         ORDER BY created_at ASC
@@ -760,11 +760,11 @@ def selecionar_telefone_produto(produto_id):
     ignorando o histórico de pedidos anteriores.
 
     Returns:
-        dict com id, telefone, api_phone_number_id ou None se não houver telefones
+        dict com id, telefone, api_phone_number_id, token_env_key ou None se não houver telefones
     """
     with db.get_cursor() as cursor:
         cursor.execute("""
-            SELECT id, telefone, api_phone_number_id
+            SELECT id, telefone, api_phone_number_id, token_env_key
             FROM telefones_produto
             WHERE produto_id = %s
             ORDER BY contador_uso ASC, created_at ASC
@@ -779,7 +779,7 @@ def selecionar_telefone_produto(produto_id):
     return telefone
 
 
-def adicionar_telefone_produto(telefone, produto_id, api_phone_number_id=None):
+def adicionar_telefone_produto(telefone, produto_id, api_phone_number_id=None, token_env_key='WHATSAPP_ACCESS_TOKEN'):
     """
     Adiciona um mapeamento telefone → produto.
 
@@ -787,12 +787,13 @@ def adicionar_telefone_produto(telefone, produto_id, api_phone_number_id=None):
         telefone: display phone do WhatsApp (ex: 5561982155687), usado para lookup de produto
         produto_id: ID do produto
         api_phone_number_id: ID da API Meta (ex: 492584860944948), usado para enviar mensagens
+        token_env_key: nome da variável de ambiente com o token desta conta (ex: 'WHATSAPP_ACCESS_TOKEN_2')
 
     Returns:
         int: ID do registro criado
     """
-    query = "INSERT INTO telefones_produto (telefone, produto_id, api_phone_number_id) VALUES (%s, %s, %s)"
-    return db.execute_query(query, (telefone, produto_id, api_phone_number_id))
+    query = "INSERT INTO telefones_produto (telefone, produto_id, api_phone_number_id, token_env_key) VALUES (%s, %s, %s, %s)"
+    return db.execute_query(query, (telefone, produto_id, api_phone_number_id, token_env_key))
 
 
 def remover_telefone_produto(telefone_id):
@@ -947,6 +948,41 @@ def busca_produtos_disponiveis_web():
            ORDER BY id""",
         fetch_one=False
     ) or []
+
+
+_whatsapp_token_cache: dict = {}  # api_phone_number_id -> token string resolvido
+
+
+def get_whatsapp_token(api_phone_number_id: str) -> str:
+    """Retorna o token WhatsApp correto para o phone_number_id dado, com cache em memória.
+    Lança ValueError com mensagem clara se o número não estiver cadastrado ou o token não estiver no .env.
+    """
+    if not api_phone_number_id:
+        token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+        if not token:
+            raise ValueError("[WHATSAPP-TOKEN] ❌ WHATSAPP_ACCESS_TOKEN não está configurado no .env")
+        return token
+
+    if api_phone_number_id not in _whatsapp_token_cache:
+        row = db.execute_query(
+            "SELECT token_env_key FROM telefones_produto WHERE api_phone_number_id = %s LIMIT 1",
+            (api_phone_number_id,), fetch_one=True
+        )
+        if not row:
+            raise ValueError(
+                f"[WHATSAPP-TOKEN] ❌ phone_number_id '{api_phone_number_id}' não encontrado em telefones_produto. "
+                f"Cadastre o número no admin (produto → Números WhatsApp) e preencha o campo API phone_number_id."
+            )
+        key = row.get('token_env_key') or 'WHATSAPP_ACCESS_TOKEN'
+        token = os.getenv(key)
+        if not token:
+            raise ValueError(
+                f"[WHATSAPP-TOKEN] ❌ Variável de ambiente '{key}' não está definida no .env. "
+                f"Configure o token da conta WhatsApp associada ao número {api_phone_number_id}."
+            )
+        _whatsapp_token_cache[api_phone_number_id] = token
+
+    return _whatsapp_token_cache[api_phone_number_id]
 
 
 def get_phone_number_id_produto(produto_id: int):

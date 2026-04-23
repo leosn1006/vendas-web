@@ -18,6 +18,7 @@
                 <tr>
                     <th>Display phone (wa.me)</th>
                     <th>API phone_number_id</th>
+                    <th>Token env key</th>
                     <th>Cadastrado em</th>
                     {% if current_user.is_admin() %}<th></th>{% endif %}
                 </tr>
@@ -30,6 +31,9 @@
                     </td>
                     <td>
                         <span style="font-family: var(--mono); font-size: 14px;">{{ t.api_phone_number_id or '—' }}</span>
+                    </td>
+                    <td>
+                        <span style="font-family: var(--mono); font-size: 14px;">{{ t.token_env_key or 'WHATSAPP_ACCESS_TOKEN' }}</span>
                     </td>
                     <td style="color: var(--muted); font-size: 13px;">
                         {{ t.created_at.strftime('%d/%m/%Y %H:%M') if t.created_at else '—' }}
@@ -63,7 +67,7 @@
         </p>
         <form method="POST"
               action="{{ url_for('admin.adicionar_numero_whatsapp', produto_id=produto.id) }}"
-              style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: flex-end; max-width: 720px;">
+              style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: flex-end; max-width: 960px;">
             <div>
                 <label for="telefone">Display phone (wa.me)</label>
                 <input type="text" id="telefone" name="telefone"
@@ -76,13 +80,21 @@
                        placeholder="ex: 492584860944948"
                        autocomplete="off">
             </div>
+            <div>
+                <label for="token_env_key">Token env key</label>
+                <input type="text" id="token_env_key" name="token_env_key"
+                       placeholder="ex: WHATSAPP_ACCESS_TOKEN_2"
+                       value="WHATSAPP_ACCESS_TOKEN"
+                       autocomplete="off">
+            </div>
             <button type="submit" class="btn btn-primary" style="white-space: nowrap; margin-bottom: 0;">
                 + Adicionar
             </button>
         </form>
         <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">
             <b>Display phone:</b> número visível no WhatsApp, usado para identificar o produto e gerar o link wa.me.<br>
-            <b>API phone_number_id:</b> ID numérico do painel Meta (metadata.phone_number_id no webhook), usado para enviar mensagens pela API.
+            <b>API phone_number_id:</b> ID numérico do painel Meta (metadata.phone_number_id no webhook), usado para enviar mensagens pela API.<br>
+            <b>Token env key:</b> nome da variável no .env que contém o token desta conta (ex: WHATSAPP_ACCESS_TOKEN ou WHATSAPP_ACCESS_TOKEN_2).
         </p>
     </div>
     {% endif %}

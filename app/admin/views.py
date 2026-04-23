@@ -3,7 +3,7 @@ import os
 import datetime
 import subprocess
 import tempfile
-from flask import render_template, redirect, url_for, request, flash, session, current_app
+from flask import render_template, redirect, url_for, request, flash, session, current_app, jsonify
 from flask_login import current_user
 from werkzeug.utils import secure_filename
 from admin import admin_bp
@@ -815,8 +815,9 @@ def adicionar_numero_whatsapp(produto_id):
         flash('Informe o número.', 'warning')
         return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
     api_phone_number_id = request.form.get('api_phone_number_id', '').strip() or None
+    token_env_key = request.form.get('token_env_key', '').strip() or 'WHATSAPP_ACCESS_TOKEN'
     try:
-        adicionar_telefone_produto(telefone, produto_id, api_phone_number_id)
+        adicionar_telefone_produto(telefone, produto_id, api_phone_number_id, token_env_key)
         flash(f'Número {telefone} adicionado com sucesso!', 'success')
         logger.info(f"[ADMIN] ✅ Telefone '{telefone}' associado ao produto #{produto_id} por {current_user.email}")
     except Exception as e:

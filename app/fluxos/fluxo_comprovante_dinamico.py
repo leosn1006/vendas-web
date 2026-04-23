@@ -89,7 +89,7 @@ def executar(pedido, mensagem_whatsapp):
             logger.warning(f"[{_TAG}] ⚠️ pedido #{pedido_id} — tipo de mídia não suportado: {tipo}")
             return
 
-        path_comprovante = receber_comprovante(tipo, url, mime, filename, pedido_id)
+        path_comprovante = receber_comprovante(tipo, url, mime, filename, pedido_id, phone_number_id=pedido.get('phone_number_id'))
 
         # Persiste caminho do comprovante e a mensagem recebida
         atualizar_pedido_com_comprovante(pedido_id, path_comprovante)

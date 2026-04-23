@@ -5,6 +5,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from config import WHATSAPP_API_URL
+from database import get_whatsapp_token
 
 logger = logging.getLogger(__name__)
 
@@ -13,14 +14,14 @@ EXTENSOES_PERMITIDAS = {'.pdf', '.jpg', '.jpeg', '.png', '.ogg', '.opus'}  # Ext
 MIMES_PERMITIDOS = {'application/pdf', 'image/jpeg', 'image/png', 'audio/ogg', 'audio/ogg; codecs=opus', 'audio/opus'}  # MIMEs permitidos
 TAMANHO_MAX_MB = 25
 
-def receber_comprovante(tipo_midia, url, mime_type, filename, pedido_id ):
+def receber_comprovante(tipo_midia, url, mime_type, filename, pedido_id, phone_number_id=None):
     """
     Dados_whatsapp: dicionário contendo a chave 'document' ou 'image'
     pedido_id: ID do pedido no seu sistema
-    access_token: Seu Token do WhatsApp Business API
+    phone_number_id: API phone_number_id para selecionar o token correto
     """
     logger.info(f"[WHATSAPP-UPLOAD] Iniciando processo de upload do comprovante: Tipo Mídia={tipo_midia}, URL={url}, MIME={mime_type}, Pedido ID={pedido_id}")
-    access_token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+    access_token = get_whatsapp_token(phone_number_id)
     # 1. Extração segura dos dados do JSON do WhatsApp
     # tipo_midia = "document" if "document" in dados_whatsapp else "image"
     info = tipo_midia
@@ -85,9 +86,9 @@ def receber_comprovante(tipo_midia, url, mime_type, filename, pedido_id ):
         return None
 
 
-def receber_audio(tipo_midia, id_audio, mime_type, pedido_id):
+def receber_audio(tipo_midia, id_audio, mime_type, pedido_id, phone_number_id=None):
     logger.debug(f"[WHATSAPP-UPLOAD-AUDIO] Iniciando processo de upload do comprovante: Tipo Mídia={tipo_midia}, ID={id_audio}, MIME={mime_type}, Pedido ID={pedido_id}")
-    access_token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+    access_token = get_whatsapp_token(phone_number_id)
     # 1. Extração segura dos dados do JSON do WhatsApp
     mime_original = mime_type
 
