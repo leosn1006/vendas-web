@@ -99,7 +99,7 @@ def exportar_para_google_sheets():
     logger.info("=" * 120)
     logger.info("[FLUXO-GOOGLE-SHEETS] 🎬 Iniciando exportação de GCLIDs para Google Sheets")
 
-    HEADER = ["Google Click ID", "wbraid", "gbraid", "Conversion Name", "Conversion Time", "Conversion Value", "Currency Code"]
+    HEADER = ["Google Click ID", "Conversion Name", "Conversion Time", "Conversion Value", "Currency Code", "wbraid", "gbraid"]
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
 
     vendas = busca_vendas_pendentes_google_por_dns()
@@ -140,7 +140,7 @@ def exportar_para_google_sheets():
                         venda.data_pagamento = datetime.strptime(venda.data_pagamento, "%Y-%m-%d %H:%M:%S")
 
                 conversion_time = venda.data_pagamento.strftime("%Y-%m-%d %H:%M:%S") + " America/Sao_Paulo"
-                rows.append([venda.gclid or '', getattr(venda, 'wbraid', '') or '', getattr(venda, 'gbraid', '') or '', conversion_name, conversion_time, "10.00", "BRL"])
+                rows.append([venda.gclid or '', conversion_name, conversion_time, "10.00", "BRL", getattr(venda, 'wbraid', '') or '', getattr(venda, 'gbraid', '') or ''])
                 ids.append(venda.id)
 
             ws.append_rows(rows, value_input_option="USER_ENTERED")
