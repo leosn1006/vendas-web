@@ -4,9 +4,12 @@ Módulo de segurança para validação de webhooks e autenticação.
 import os
 import hmac
 import hashlib
+import json
 import logging
 from functools import wraps
 from flask import request, jsonify
+
+logger = logging.getLogger(__name__)
 
 
 class WhatsAppSecurity:
@@ -22,39 +25,45 @@ class WhatsAppSecurity:
         self.app_secret = os.getenv('WHATSAPP_APP_SECRET', 'seu-app-secret-aqui')
         self.access_token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
 
+    # Mapa temporário: display_phone_number → nome da env var com o app_secret
+    # Necessário quando cada número pertence a uma Meta App distinta (app secrets diferentes).
+    _PHONE_SECRET_MAP = {
+        '556182393719': 'WHATSAPP_APP_SECRET_LSN',
+    }
+
+    def _secret_para_payload(self, payload: bytes) -> str:
+        """Retorna o WHATSAPP_APP_SECRET correto para o telefone do body."""
+        try:
+            body = json.loads(payload)
+            phone = body['entry'][0]['changes'][0]['value']['metadata']['display_phone_number']
+            env_key = self._PHONE_SECRET_MAP.get(phone)
+            if env_key:
+                secret = os.getenv(env_key)
+                if secret:
+                    return secret
+                logger.warning(f"[WEBHOOK] ⚠️ {env_key} não definido no .env — usando secret padrão para {phone}")
+        except Exception:
+            pass  # body sem metadata (ex: challenge de verificação) — usa padrão
+        return self.app_secret
+
     def validate_signature(self, payload: bytes = None) -> bool:
         """
         Valida a assinatura HMAC-SHA256 enviada pelo WhatsApp Business API
         no header X-Hub-Signature-256.
-
-        Args:
-            payload: Dados do payload (opcional, usa request.get_data() se não fornecido)
-
-        Returns:
-            bool: True se a assinatura for válida, False caso contrário
+        Suporta múltiplas Meta Apps via _PHONE_SECRET_MAP.
         """
         signature = request.headers.get('X-Hub-Signature-256', '')
-
         if not signature:
             return False
 
-        # Remove o prefixo 'sha256=' da assinatura
         expected_signature = signature.replace('sha256=', '')
 
-        # Obtém o payload
         if payload is None:
-            payload = request.get_data()
+            payload = request.get_data()  # Flask cacheia — request.get_json() ainda funciona depois
 
-        # Calcula o HMAC do payload usando o app_secret
-        mac = hmac.new(
-            self.app_secret.encode('utf-8'),
-            payload,
-            hashlib.sha256
-        )
-        calculated_signature = mac.hexdigest()
-
-        # Compara as assinaturas de forma segura
-        return hmac.compare_digest(expected_signature, calculated_signature)
+        secret = self._secret_para_payload(payload)
+        mac = hmac.new(secret.encode('utf-8'), payload, hashlib.sha256)
+        return hmac.compare_digest(expected_signature, mac.hexdigest())
 
     def validate_verify_token(self, token: str) -> bool:
         """
@@ -97,7 +106,6 @@ whatsapp_security = WhatsAppSecurity()
 
 
 # ============ DECORADORES ============
-logger = logging.getLogger(__name__)
 
 def validar_assinatura_whatsapp():
     """

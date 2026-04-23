@@ -77,8 +77,10 @@ def webhook_verify():
 def webhook_receive():
     logger.info("=" * 80)
     logger.info(f"[WEBHOOK] Requisição recebida de: {request.remote_addr}")
+    logger.info(f"[WEBHOOK] URL completa: {request.url}")
     logger.info(f"[WEBHOOK] Content-Type: {request.content_type}")
     logger.info(f"[WEBHOOK] X-Hub-Signature-256: {request.headers.get('X-Hub-Signature-256', 'AUSENTE')}")
+    logger.info(f"[WEBHOOK] Headers: {dict(request.headers)}")
 
     try:
         body = request.get_json(force=True, silent=True)
