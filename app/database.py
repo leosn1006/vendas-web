@@ -449,13 +449,15 @@ def get_ultimo_pedido_by_phone(contact_phone, produto_id):
     """
     return db.execute_query(query, (contact_phone, produto_id), fetch_one=True)
 
-def get_ultimo_pedido_por_mensagem_sugerida(mensagem_sugerida):
+def get_ultimo_pedido_por_mensagem_sugerida(mensagem_sugerida, produto_id, phone_number_id):
     """
     Busca o último pedido de um contato pelo telefone.
     -- filtra pedidos que estão nos estados Iniciado
     -- filtra pedidos com mensagem sugerida igual nas últimas 1 hora
     Args:
         mensagem_sugerida: Mensagem sugerida do pedido
+        produto_id: ID do produto — evita vincular ao produto errado quando a mensagem é idêntica
+        phone_number_id: ID do telefone que recebeu a mensagem — garante que o pedido foi direcionado para este telefone
 
     Returns:
         dict: Dados do pedido ou None
@@ -464,12 +466,14 @@ def get_ultimo_pedido_por_mensagem_sugerida(mensagem_sugerida):
         SELECT *
         FROM pedidos p
         WHERE p.mensagem_sugerida = %s
-          AND p.data_contato_site >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+          AND p.produto_id        = %s
+          AND p.phone_number_id   = %s
+          AND p.data_contato_site >= DATE_SUB(NOW(), INTERVAL 30 MINUTE)
           AND p.estado_id         =  1
         ORDER BY p.data_pedido DESC
         LIMIT 1
     """
-    return db.execute_query(query, (mensagem_sugerida,), fetch_one=True)
+    return db.execute_query(query, (mensagem_sugerida, produto_id, phone_number_id), fetch_one=True)
 
 def vincula_pedido_com_contato(id_pedido, contact_phone, contact_name, phone_number_id):
     """

@@ -127,7 +127,7 @@ def buscar_pedido(dados):
     else:
         logger.info(f"[ORQUESTRADOR] 🆕 Novo cliente: {nome}")
         # Verifica se tem um pedido cadastrado com essa mensagem sugerida (última 1 hora)
-        pedido = get_ultimo_pedido_por_mensagem_sugerida(msg_enviado_cliente)
+        pedido = get_ultimo_pedido_por_mensagem_sugerida(msg_enviado_cliente, dados.get('produto'), phone_number_id)
         if pedido is not None:
             logger.info(f"[ORQUESTRADOR] 🔗 Associando contato ao pedido existente: {pedido['id']}")
             pedido = vincula_pedido_com_contato(pedido['id'], numero_remetente, nome, phone_number_id)
@@ -165,7 +165,7 @@ def criar_pedido_sem_campanha(dados):
             estado_id=1,  # Estado Iniciado
             gclid=None,
             data_ultima_atualizacao=None,
-            mensagem_sugerida=None,
+            mensagem_sugerida=dados.get('texto'),
             emoji_sugerida=None,
             phone_number_id=dados.get('phone_number_id'),
             contact_phone=dados.get('numero_remetente'),
