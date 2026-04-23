@@ -1,6 +1,6 @@
 import logging
 import os
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 from agente_gera_mensagem_inicial import gera_mensagem_inicial_randomicamente
 from flask import jsonify, request
 from database import Pedido, criar_pedido, selecionar_telefone_produto
@@ -22,6 +22,9 @@ def persistir_lead(body):
         gclid = body.get('gclid', "")
         url = body.get('url', "") or request.referrer or ""
         dns_origem = urlparse(url).netloc or None
+        _qparams = parse_qs(urlparse(url).query)
+        wbraid = _qparams.get('wbraid', [''])[0]
+        gbraid = _qparams.get('gbraid', [''])[0]
         campaignid = body.get('campaignid', "")
         adgroupid = body.get('adgroupid', "")
         creative = body.get('creative', "")
@@ -59,6 +62,8 @@ def persistir_lead(body):
             valor_pago=0.00,
             estado_id=1,  # Estado Iniciado
             gclid=gclid,
+            wbraid=wbraid,
+            gbraid=gbraid,
             data_ultima_atualizacao=None,
             mensagem_sugerida=texto,
             emoji_sugerida=emoji,

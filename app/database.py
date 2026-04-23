@@ -176,6 +176,8 @@ class Pedido(TypedDict):
     valor_pago: Optional[float]
     estado_id: int
     gclid: Optional[str]
+    wbraid: Optional[str]
+    gbraid: Optional[str]
     data_ultima_atualizacao: Optional[str]
     mensagem_sugerida: Optional[str]
     emoji_sugerida: Optional[str]
@@ -214,6 +216,8 @@ def criar_pedido(pedido: Pedido):
     valor_pago = pedido.get('valor_pago') or 0.0
     estado_id = 1  # Estado Iniciado
     gclid = pedido.get('gclid')
+    wbraid = pedido.get('wbraid')
+    gbraid = pedido.get('gbraid')
     mensagem_sugerida = pedido.get('mensagem_sugerida')
     emoji_sugerida = pedido.get('emoji_sugerida')
     phone_number_id = pedido.get('phone_number_id')
@@ -245,6 +249,8 @@ def criar_pedido(pedido: Pedido):
            , valor_pago
            , estado_id
            , gclid
+           , wbraid
+           , gbraid
            , data_ultima_atualizacao
            , mensagem_sugerida
            , emoji_sugerida
@@ -273,6 +279,8 @@ def criar_pedido(pedido: Pedido):
             )
         VALUES (
              %s
+           , %s
+           , %s
            , %s
            , %s
            , %s
@@ -308,6 +316,8 @@ def criar_pedido(pedido: Pedido):
            , valor_pago
            , estado_id
            , gclid
+           , wbraid
+           , gbraid
            , mensagem_sugerida
            , emoji_sugerida
            , phone_number_id
@@ -672,8 +682,11 @@ def busca_vendas_pendentes_google_por_dns() -> list:
           ON g.produto_id = p.produto_id
          AND g.dns        = p.dns_origem
          AND g.ativo      = TRUE
-        WHERE p.gclid IS NOT NULL
-          AND p.gclid != ''
+        WHERE (
+                (p.gclid  IS NOT NULL AND p.gclid  != '')
+             OR (p.wbraid IS NOT NULL AND p.wbraid != '')
+             OR (p.gbraid IS NOT NULL AND p.gbraid != '')
+              )
           AND p.estado_id IN (0, 1000)
           AND p.data_envio_google_ads IS NULL
         ORDER BY p.data_pagamento ASC
