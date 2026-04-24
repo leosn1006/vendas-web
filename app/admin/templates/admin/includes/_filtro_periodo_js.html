@@ -1,0 +1,101 @@
+<script>
+function fmtData(data) {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+}
+
+function parseData(valor) {
+    if (!valor) {
+        return null;
+    }
+
+    const [ano, mes, dia] = valor.split('-').map(Number);
+    if (!ano || !mes || !dia) {
+        return null;
+    }
+
+    return new Date(ano, mes - 1, dia);
+}
+
+function getPeriodForm() {
+    return document.querySelector('.period-form');
+}
+
+function atualizarResumoPeriodo() {
+    const form = getPeriodForm();
+    const label = form ? form.querySelector('#periodo-label') : null;
+    if (!label) {
+        return;
+    }
+
+    const dataIni = parseData(form.querySelector('[name=data_ini]').value);
+    const dataFim = parseData(form.querySelector('[name=data_fim]').value);
+    const meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const resumo = data => `${String(data.getDate()).padStart(2, '0')} ${meses[data.getMonth()]}`;
+
+    if (!dataIni || !dataFim) {
+        label.textContent = 'Periodo atual';
+        return;
+    }
+
+    if (dataIni.getTime() === dataFim.getTime()) {
+        label.textContent = resumo(dataIni);
+        return;
+    }
+
+    label.textContent = `${resumo(dataIni)} - ${resumo(dataFim)}`;
+}
+
+function aplicarPeriodo(dataIni, dataFim) {
+    const form = getPeriodForm();
+    form.querySelector('[name=data_ini]').value = fmtData(dataIni);
+    form.querySelector('[name=data_fim]').value = fmtData(dataFim);
+    atualizarResumoPeriodo();
+    form.submit();
+}
+
+function moverPeriodo(direcao) {
+    const form = getPeriodForm();
+    let dataIni = parseData(form.querySelector('[name=data_ini]').value);
+    let dataFim = parseData(form.querySelector('[name=data_fim]').value);
+
+    if (!dataIni || !dataFim) {
+        const hoje = new Date();
+        dataIni = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+        dataFim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    }
+
+    if (dataFim < dataIni) {
+        [dataIni, dataFim] = [dataFim, dataIni];
+    }
+
+    const dias = Math.max(1, Math.round((dataFim - dataIni) / 86400000) + 1);
+    dataIni.setDate(dataIni.getDate() + (dias * direcao));
+    dataFim.setDate(dataFim.getDate() + (dias * direcao));
+
+    aplicarPeriodo(dataIni, dataFim);
+}
+
+function setDias(dias) {
+    const fim = new Date();
+    const ini = new Date();
+    if (dias === 1) {
+        fim.setDate(fim.getDate() - 1);
+        ini.setDate(ini.getDate() - 1);
+    } else if (dias > 1) {
+        ini.setDate(ini.getDate() - dias + 1);
+    }
+    aplicarPeriodo(ini, fim);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const form = getPeriodForm();
+    if (!form) return;
+    atualizarResumoPeriodo();
+    form.querySelectorAll('[name=data_ini], [name=data_fim]').forEach((input) => {
+        input.addEventListener('change', atualizarResumoPeriodo);
+    });
+});
+</script>

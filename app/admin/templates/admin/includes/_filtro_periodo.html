@@ -1,0 +1,25 @@
+<form method="GET" action="{{ request.path }}" class="period-form">
+    <div class="form-group">
+        <label>Data inicial</label>
+        <input type="date" name="data_ini" value="{{ data_ini }}" class="period-date-input">
+    </div>
+    <div class="form-group">
+        <label>Data final</label>
+        <input type="date" name="data_fim" value="{{ data_fim }}" class="period-date-input">
+    </div>
+    <div class="period-nav" aria-label="Navegacao por periodo">
+        <button type="button" class="period-nav-btn" onclick="moverPeriodo(-1)" aria-label="Periodo anterior">&lt;</button>
+        <div class="period-nav-display">
+            <span class="period-nav-kicker">Janela atual</span>
+            <strong class="period-nav-label" id="periodo-label">Periodo atual</strong>
+        </div>
+        <button type="button" class="period-nav-btn" onclick="moverPeriodo(1)" aria-label="Proximo periodo">&gt;</button>
+    </div>
+    <button type="submit" class="btn btn-primary">Filtrar</button>
+    <div class="shortcut-btns">
+        <button type="button" class="shortcut-btn" onclick="setDias(0)">Hoje</button>
+        <button type="button" class="shortcut-btn" onclick="setDias(1)">Ontem</button>
+        <button type="button" class="shortcut-btn" onclick="setDias(7)">7 dias</button>
+        <button type="button" class="shortcut-btn" onclick="setDias(30)">30 dias</button>
+    </div>
+</form>
