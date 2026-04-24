@@ -4,7 +4,6 @@ Módulo de segurança para validação de webhooks e autenticação.
 import os
 import hmac
 import hashlib
-import json
 import logging
 from functools import wraps
 from flask import request, jsonify
@@ -25,45 +24,28 @@ class WhatsAppSecurity:
         self.app_secret = os.getenv('WHATSAPP_APP_SECRET', 'seu-app-secret-aqui')
         self.access_token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
 
-    # Roteamento por domínio: cada Meta App tem uma URL de webhook em um domínio distinto.
-    # O Host header (definido pelo nginx) identifica de qual Meta App veio a requisição.
-    # Funciona para eventos de teste (telefone falso 16505551111) e mensagens reais.
+    # Cada Meta App tem uma URL de webhook num domínio distinto.
+    # O Host header (definido pelo nginx) identifica a Meta App que enviou a requisição.
+    # Domínios não mapeados são rejeitados explicitamente — sem fallback silencioso.
     _HOST_SECRET_MAP = {
+        'lneditor.com.br': 'WHATSAPP_APP_SECRET',
         'lsnlivros.com.br': 'WHATSAPP_APP_SECRET_LSN',
         'lssolucoesdigitais.com.br': 'WHATSAPP_APP_SECRET_LSSD',
     }
 
-    # Fallback por telefone: cobre casos onde o mesmo domínio serve múltiplos números
-    # com App Secrets distintos.
-    _PHONE_SECRET_MAP = {
-        '556182393719': 'WHATSAPP_APP_SECRET_LSN',
-    }
-
-    def _secret_para_payload(self, payload: bytes) -> str:
-        """Retorna o WHATSAPP_APP_SECRET correto para a requisição atual."""
-        # Prioridade 1: roteia pelo Host header (funciona para teste e mensagens reais)
+    def _secret_para_payload(self) -> str:
+        """Retorna o WHATSAPP_APP_SECRET correto para o domínio da requisição."""
         host = request.host.split(':')[0].lower()
         env_key = self._HOST_SECRET_MAP.get(host)
-        if env_key:
-            secret = os.getenv(env_key)
-            if secret:
-                logger.info(f"[WEBHOOK] 🔑 Usando {env_key} para host {host}")
-                return secret
-            logger.warning(f"[WEBHOOK] ⚠️ {env_key} não definido no .env para host {host} — usando secret padrão")
-
-        # Prioridade 2: roteia pelo display_phone_number do body
-        try:
-            body = json.loads(payload)
-            phone = body['entry'][0]['changes'][0]['value']['metadata']['display_phone_number']
-            env_key = self._PHONE_SECRET_MAP.get(phone)
-            if env_key:
-                secret = os.getenv(env_key)
-                if secret:
-                    return secret
-                logger.warning(f"[WEBHOOK] ⚠️ {env_key} não definido no .env para phone {phone}")
-        except Exception:
-            pass  # body sem metadata esperada — usa padrão
-        return self.app_secret
+        if not env_key:
+            logger.error(f"[WEBHOOK] ❌ Host '{host}' não mapeado em _HOST_SECRET_MAP — rejeitar requisição")
+            return ''
+        secret = os.getenv(env_key)
+        if not secret:
+            logger.error(f"[WEBHOOK] ❌ {env_key} não definido no .env para host '{host}' — rejeitar requisição")
+            return ''
+        logger.info(f"[WEBHOOK] 🔑 Usando {env_key} para host {host}")
+        return secret
 
     def validate_signature(self, payload: bytes = None) -> bool:
         """
@@ -80,7 +62,7 @@ class WhatsAppSecurity:
         if payload is None:
             payload = request.get_data()  # Flask cacheia — request.get_json() ainda funciona depois
 
-        secret = self._secret_para_payload(payload)
+        secret = self._secret_para_payload()
         mac = hmac.new(secret.encode('utf-8'), payload, hashlib.sha256)
         return hmac.compare_digest(expected_signature, mac.hexdigest())
 
