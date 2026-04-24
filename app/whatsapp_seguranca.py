@@ -30,6 +30,7 @@ class WhatsAppSecurity:
     # Funciona para eventos de teste (telefone falso 16505551111) e mensagens reais.
     _HOST_SECRET_MAP = {
         'lsnlivros.com.br': 'WHATSAPP_APP_SECRET_LSN',
+        'lssolucoesdigitais.com.br': 'WHATSAPP_APP_SECRET_LSSD',
     }
 
     # Fallback por telefone: cobre casos onde o mesmo domínio serve múltiplos números
