@@ -3,6 +3,7 @@ import os
 import datetime
 import subprocess
 import tempfile
+from zoneinfo import ZoneInfo
 from flask import render_template, redirect, url_for, request, flash, session, current_app, jsonify
 from flask_login import current_user
 from werkzeug.utils import secure_filename
@@ -32,6 +33,11 @@ _FLUXOS_LABELS = {
 }
 
 logger = logging.getLogger(__name__)
+SP_TIMEZONE = ZoneInfo('America/Sao_Paulo')
+
+
+def _hoje_sao_paulo():
+    return datetime.datetime.now(SP_TIMEZONE).date()
 
 # ============================================================
 # Dashboard
@@ -1372,7 +1378,7 @@ def analytics_produto(produto_id):
     if not produto:
         return redirect(url_for('admin.dashboard'))
 
-    hoje = datetime.date.today()
+    hoje = _hoje_sao_paulo()
     data_ini_str = request.args.get('data_ini', hoje.isoformat())
     data_fim_str = request.args.get('data_fim', hoje.isoformat())
 
@@ -1465,7 +1471,7 @@ def analytics_web_produto(produto_id):
     if not produto:
         return redirect(url_for('admin.dashboard'))
 
-    hoje = datetime.date.today()
+    hoje = _hoje_sao_paulo()
     data_ini_str = request.args.get('data_ini', hoje.isoformat())
     data_fim_str = request.args.get('data_fim', hoje.isoformat())
 
@@ -1630,7 +1636,7 @@ def financeiro_produto(produto_id):
     if not produto:
         return redirect(url_for('admin.dashboard'))
 
-    hoje = datetime.date.today()
+    hoje = _hoje_sao_paulo()
     data_ini_str = request.args.get('data_ini', hoje.isoformat())
     data_fim_str = request.args.get('data_fim', hoje.isoformat())
 

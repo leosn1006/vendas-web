@@ -222,7 +222,12 @@ function setDias(dias) {
     } else if (dias > 1) {
         ini.setDate(ini.getDate() - dias + 1);
     }
-    const fmt = d => d.toISOString().split('T')[0];
+    const fmt = d => {
+        const ano = d.getFullYear();
+        const mes = String(d.getMonth() + 1).padStart(2, '0');
+        const dia = String(d.getDate()).padStart(2, '0');
+        return `${ano}-${mes}-${dia}`;
+    };
     document.querySelector('[name=data_ini]').value = fmt(ini);
     document.querySelector('[name=data_fim]').value = fmt(fim);
     document.querySelector('.period-form').submit();
