@@ -157,8 +157,8 @@ def pudim():
 def pudim_temp():
     return render_template('pudim-temp.html')
 
-@app.get("/sobremesa")
-def sobremesa():
+@app.get("/sobremesas")
+def sobremesas():
     return render_template('sobremesa.html')
 
 @app.get("/sem-acucar")
