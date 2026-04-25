@@ -55,7 +55,8 @@ from celery.signals import worker_process_init
 @worker_process_init.connect
 def init_worker_logging(**kwargs):
     from logging_setup import setup_rotating_file_logging
-    setup_rotating_file_logging("worker")
+    worker_name = os.getenv("WORKER_NAME", "worker")
+    setup_rotating_file_logging(worker_name)
 
 
 celery_app.conf.update(

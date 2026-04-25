@@ -110,17 +110,132 @@ services:
       retries: 5
       start_period: 40s
 
-  worker:
+  worker-urgente:
     build: .
-    container_name: vendas-worker
+    container_name: vendas-worker-urgente
     restart: unless-stopped
-    command: celery -A celery_app worker --loglevel=warning --concurrency=2 --queues=urgente,normal,baixa --hostname=worker@%h
+    command: celery -A celery_app worker --loglevel=warning --concurrency=4 --queues=urgente --hostname=urgente@%h
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
+      - WORKER_NAME=worker_urgente
+      - TZ=America/Sao_Paulo
+      - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN}
+      - WHATSAPP_APP_SECRET=${WHATSAPP_APP_SECRET}
+      - WHATSAPP_APP_SECRET_LSN=${WHATSAPP_APP_SECRET_LSN:-}
+      - WHATSAPP_APP_SECRET_LSSD=${WHATSAPP_APP_SECRET_LSSD:-}
+      - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN}
+      - WHATSAPP_ACCESS_TOKEN_LSN=${WHATSAPP_ACCESS_TOKEN_LSN:-}
+      - WHATSAPP_ACCESS_TOKEN_LSSD=${WHATSAPP_ACCESS_TOKEN_LSSD:-}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID:-}
+      - WHATSAPP_BUSINESS_ACCOUNT_ID=${WHATSAPP_BUSINESS_ACCOUNT_ID:-}
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=vendasdb
+      - DB_USER=appuser
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_ADS_ADM_ID=${GOOGLE_ADS_ADM_ID:-}
+      - GOOGLE_ADS_SUBACCOUNT_ID=${GOOGLE_ADS_SUBACCOUNT_ID:-}
+      - GOOGLE_ADS_META_ID=${GOOGLE_ADS_META_ID:-}
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=${LOG_LEVEL:-warning}
+      - ADMIN_WHATSAPP_NUMBER=${ADMIN_WHATSAPP_NUMBER:-}
+      - BB_PAY_CLIENT_ID=${BB_PAY_CLIENT_ID:-}
+      - BB_PAY_CLIENT_SECRET_BASIC=${BB_PAY_CLIENT_SECRET_BASIC:-}
+      - BB_PAY_APP_KEY=${BB_PAY_APP_KEY:-}
+      - BB_PAY_API_URL=${BB_PAY_API_URL:-https://checkout.mtls.api.bb.com.br/v2/}
+      - BB_PAY_OUATH_URL=${BB_PAY_OUATH_URL:-https://oauth.bb.com.br/oauth/token}
+      - GOOGLE_SA_JSON_P1=${GOOGLE_SA_JSON_P1:-}
+      - GOOGLE_SA_JSON_P6=${GOOGLE_SA_JSON_P6:-}
+      - GOOGLE_SA_JSON_P7=${GOOGLE_SA_JSON_P7:-}
+      - GOOGLE_SA_JSON_P8=${GOOGLE_SA_JSON_P8:-}
+      - GOOGLE_SA_JSON_P10=${GOOGLE_SA_JSON_P10:-}
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost}
+      - BB_PIX_APP_KEY=${BB_PIX_APP_KEY:-}
+      - BB_PIX_CLIENT_BASIC=${BB_PIX_CLIENT_BASIC:-}
+      - BB_PIX_API_URL=${BB_PIX_API_URL:-https://api-pix.bb.com.br/pix/v2}
+      - BB_PIX_OAUTH_URL=${BB_PIX_OAUTH_URL:-https://oauth.bb.com.br/oauth/token}
+      - BB_PIX_CERT_PEM=${BB_PIX_CERT_PEM:-/app/certs/lsnlivros_chain.pem}
+      - BB_PIX_CERT_KEY=${BB_PIX_CERT_KEY:-/app/certs/lsnlivros.key}
+    volumes:
+      - ./storage:/app/storage
+      - ./infra/nginx/certs:/app/certs:ro
+    networks:
+      - webnet
+
+  worker-normal:
+    build: .
+    container_name: vendas-worker-normal
+    restart: unless-stopped
+    command: celery -A celery_app worker --loglevel=warning --concurrency=2 --queues=normal --hostname=normal@%h
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - WORKER_NAME=worker_normal
+      - TZ=America/Sao_Paulo
+      - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN}
+      - WHATSAPP_APP_SECRET=${WHATSAPP_APP_SECRET}
+      - WHATSAPP_APP_SECRET_LSN=${WHATSAPP_APP_SECRET_LSN:-}
+      - WHATSAPP_APP_SECRET_LSSD=${WHATSAPP_APP_SECRET_LSSD:-}
+      - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN}
+      - WHATSAPP_ACCESS_TOKEN_LSN=${WHATSAPP_ACCESS_TOKEN_LSN:-}
+      - WHATSAPP_ACCESS_TOKEN_LSSD=${WHATSAPP_ACCESS_TOKEN_LSSD:-}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID:-}
+      - WHATSAPP_BUSINESS_ACCOUNT_ID=${WHATSAPP_BUSINESS_ACCOUNT_ID:-}
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=vendasdb
+      - DB_USER=appuser
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_ADS_ADM_ID=${GOOGLE_ADS_ADM_ID:-}
+      - GOOGLE_ADS_SUBACCOUNT_ID=${GOOGLE_ADS_SUBACCOUNT_ID:-}
+      - GOOGLE_ADS_META_ID=${GOOGLE_ADS_META_ID:-}
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=${LOG_LEVEL:-warning}
+      - ADMIN_WHATSAPP_NUMBER=${ADMIN_WHATSAPP_NUMBER:-}
+      - BB_PAY_CLIENT_ID=${BB_PAY_CLIENT_ID:-}
+      - BB_PAY_CLIENT_SECRET_BASIC=${BB_PAY_CLIENT_SECRET_BASIC:-}
+      - BB_PAY_APP_KEY=${BB_PAY_APP_KEY:-}
+      - BB_PAY_API_URL=${BB_PAY_API_URL:-https://checkout.mtls.api.bb.com.br/v2/}
+      - BB_PAY_OUATH_URL=${BB_PAY_OUATH_URL:-https://oauth.bb.com.br/oauth/token}
+      - GOOGLE_SA_JSON_P1=${GOOGLE_SA_JSON_P1:-}
+      - GOOGLE_SA_JSON_P6=${GOOGLE_SA_JSON_P6:-}
+      - GOOGLE_SA_JSON_P7=${GOOGLE_SA_JSON_P7:-}
+      - GOOGLE_SA_JSON_P8=${GOOGLE_SA_JSON_P8:-}
+      - GOOGLE_SA_JSON_P10=${GOOGLE_SA_JSON_P10:-}
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost}
+      - BB_PIX_APP_KEY=${BB_PIX_APP_KEY:-}
+      - BB_PIX_CLIENT_BASIC=${BB_PIX_CLIENT_BASIC:-}
+      - BB_PIX_API_URL=${BB_PIX_API_URL:-https://api-pix.bb.com.br/pix/v2}
+      - BB_PIX_OAUTH_URL=${BB_PIX_OAUTH_URL:-https://oauth.bb.com.br/oauth/token}
+      - BB_PIX_CERT_PEM=${BB_PIX_CERT_PEM:-/app/certs/lsnlivros_chain.pem}
+      - BB_PIX_CERT_KEY=${BB_PIX_CERT_KEY:-/app/certs/lsnlivros.key}
+    volumes:
+      - ./storage:/app/storage
+      - ./infra/nginx/certs:/app/certs:ro
+    networks:
+      - webnet
+
+  worker-baixa:
+    build: .
+    container_name: vendas-worker-baixa
+    restart: unless-stopped
+    command: celery -A celery_app worker --loglevel=warning --concurrency=2 --queues=baixa --hostname=baixa@%h
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - WORKER_NAME=worker_baixa
       - TZ=America/Sao_Paulo
       - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN}
       - WHATSAPP_APP_SECRET=${WHATSAPP_APP_SECRET}
