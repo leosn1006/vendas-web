@@ -1,6 +1,35 @@
 {% extends "admin/base.html" %}
 {% block title %}Números WhatsApp — {{ produto.nome }}{% endblock %}
 
+{% block extra_css %}
+<style>
+.modal-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 32px;
+    width: 100%;
+    max-width: 520px;
+    position: relative;
+}
+.modal h2 { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #3d2510; }
+.modal-close {
+    position: absolute; top: 16px; right: 18px;
+    background: none; border: none; cursor: pointer;
+    font-size: 18px; color: var(--muted);
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <div>
@@ -20,6 +49,7 @@
                     <th>API phone_number_id</th>
                     <th>Token env key</th>
                     <th>Cadastrado em</th>
+                    <th style="text-align: right;">Usos</th>
                     {% if current_user.is_admin() %}<th></th>{% endif %}
                 </tr>
             </thead>
@@ -38,9 +68,16 @@
                     <td style="color: var(--muted); font-size: 13px;">
                         {{ t.created_at.strftime('%d/%m/%Y %H:%M') if t.created_at else '—' }}
                     </td>
+                    <td style="text-align: right; font-family: var(--mono); font-size: 14px;">
+                        {{ t.contador_uso or 0 }}
+                    </td>
                     {% if current_user.is_admin() %}
-                    <td style="text-align: right;">
-                        <form method="POST"
+                    <td style="text-align: right; white-space: nowrap;">
+                        <button type="button" class="btn btn-secondary btn-sm"
+                                onclick="abrirModalEditar({{ t.id }}, {{ t.telefone|tojson }}, {{ (t.api_phone_number_id or '')|tojson }}, {{ (t.token_env_key or 'WHATSAPP_ACCESS_TOKEN')|tojson }})">
+                            Alterar
+                        </button>
+                        <form method="POST" style="display: inline;"
                               action="{{ url_for('admin.remover_numero_whatsapp', produto_id=produto.id, telefone_id=t.id) }}"
                               onsubmit="return confirm('Remover o número {{ t.telefone }}?')">
                             <button type="submit" class="btn btn-danger btn-sm">Remover</button>
@@ -67,12 +104,12 @@
         </p>
         <form method="POST"
               action="{{ url_for('admin.adicionar_numero_whatsapp', produto_id=produto.id) }}"
-              style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: flex-end; max-width: 960px;">
+              style="display: grid; grid-template-columns: 1fr 1fr 1fr auto auto; gap: 12px; align-items: flex-end; max-width: 1100px;">
             <div>
                 <label for="telefone">Display phone (wa.me)</label>
                 <input type="text" id="telefone" name="telefone"
-                       placeholder="ex: 5561982155687"
-                       required autocomplete="off">
+                       placeholder="ex: 556182155687"
+                       autocomplete="off">
             </div>
             <div>
                 <label for="api_phone_number_id">API phone_number_id (opcional)</label>
@@ -90,6 +127,11 @@
             <button type="submit" class="btn btn-primary" style="white-space: nowrap; margin-bottom: 0;">
                 + Adicionar
             </button>
+            <button type="submit"
+                    formaction="{{ url_for('admin.ativar_numero_whatsapp', produto_id=produto.id) }}"
+                    class="btn btn-secondary" style="white-space: nowrap; margin-bottom: 0;">
+                Ativar
+            </button>
         </form>
         <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">
             <b>Display phone:</b> número visível no WhatsApp, usado para identificar o produto e gerar o link wa.me.<br>
@@ -99,4 +141,52 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Modal: Alterar Número -->
+<div class="modal-backdrop" id="modal-editar">
+    <div class="modal">
+        <button class="modal-close" onclick="fecharModal('modal-editar')">✕</button>
+        <h2>Alterar Número</h2>
+        <form method="POST" id="form-editar" action="">
+            <div>
+                <label>Display phone (wa.me)</label>
+                <input type="text" name="telefone" id="edit-telefone" required autocomplete="off">
+            </div>
+            <div style="margin-top: 12px;">
+                <label>API phone_number_id</label>
+                <input type="text" name="api_phone_number_id" id="edit-api-phone" autocomplete="off">
+            </div>
+            <div style="margin-top: 12px;">
+                <label>Token env key</label>
+                <input type="text" name="token_env_key" id="edit-token-env" autocomplete="off">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+                <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-editar')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function abrirModalEditar(id, telefone, apiPhone, tokenEnv) {
+    document.getElementById('edit-telefone').value  = telefone;
+    document.getElementById('edit-api-phone').value = apiPhone;
+    document.getElementById('edit-token-env').value = tokenEnv;
+    document.getElementById('form-editar').action   = '/admin/produto/{{ produto.id }}/numeros-whatsapp/' + id + '/editar';
+    document.getElementById('modal-editar').classList.add('open');
+}
+
+function fecharModal(id) {
+    document.getElementById(id).classList.remove('open');
+}
+
+document.querySelectorAll('.modal-backdrop').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+        if (e.target === el) fecharModal(el.id);
+    });
+});
+</script>
 {% endblock %}

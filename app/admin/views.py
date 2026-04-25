@@ -9,8 +9,9 @@ from flask_login import current_user
 from werkzeug.utils import secure_filename
 from admin import admin_bp
 from admin.auth import requer_login, requer_admin, requer_acesso_produto, usuario_tem_acesso_produto
+from Whatsapp_config import ativa_whatsapp
 from database import (db,
-    listar_telefones_produto, adicionar_telefone_produto, remover_telefone_produto,
+    listar_telefones_produto, adicionar_telefone_produto, remover_telefone_produto, atualizar_telefone_produto,
     listar_mensagens_sugeridas, adicionar_mensagem_sugerida, remover_mensagem_sugerida,
     listar_acoes_fluxo, get_acao_fluxo,
     adicionar_acao_fluxo, atualizar_acao_fluxo, remover_acao_fluxo,
@@ -842,6 +843,46 @@ def remover_numero_whatsapp(produto_id, telefone_id):
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro ao remover telefone: {e}")
         flash(f'Erro ao remover número: {e}', 'danger')
+    return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+
+
+@admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/<int:telefone_id>/editar', methods=['POST'])
+@requer_admin
+def editar_numero_whatsapp(produto_id, telefone_id):
+    telefone = request.form.get('telefone', '').strip()
+    if not telefone:
+        flash('Informe o número.', 'warning')
+        return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+    api_phone_number_id = request.form.get('api_phone_number_id', '').strip() or None
+    token_env_key = request.form.get('token_env_key', '').strip() or 'WHATSAPP_ACCESS_TOKEN'
+    try:
+        atualizar_telefone_produto(telefone_id, produto_id, telefone, api_phone_number_id, token_env_key)
+        flash(f'Número {telefone} atualizado com sucesso!', 'success')
+        logger.info(f"[ADMIN] ✅ Telefone #{telefone_id} atualizado por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao editar telefone: {e}")
+        flash(f'Erro ao atualizar número: {e}', 'danger')
+    return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+
+
+@admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/ativar', methods=['POST'])
+@requer_admin
+def ativar_numero_whatsapp(produto_id):
+    api_phone_number_id = request.form.get('api_phone_number_id', '').strip()
+    token_env_key = request.form.get('token_env_key', '').strip() or 'WHATSAPP_ACCESS_TOKEN'
+    if not api_phone_number_id:
+        flash('Informe o API phone_number_id para ativar.', 'warning')
+        return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+    token = os.getenv(token_env_key, '')
+    if not token:
+        flash(f'Token não encontrado para a chave "{token_env_key}".', 'danger')
+        return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+    sucesso = ativa_whatsapp(api_phone_number_id, token=token)
+    if sucesso:
+        flash(f'Número {api_phone_number_id} ativado com sucesso!', 'success')
+        logger.info(f"[ADMIN] ✅ WhatsApp {api_phone_number_id} ativado por {current_user.email}")
+    else:
+        flash(f'Falha ao ativar o número {api_phone_number_id}. Verifique os logs.', 'danger')
     return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
 
 

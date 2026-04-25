@@ -762,12 +762,21 @@ def listar_telefones_produto(produto_id):
         list: Lista de dicts com id, telefone, api_phone_number_id, token_env_key, created_at
     """
     query = """
-        SELECT id, telefone, api_phone_number_id, token_env_key, created_at
+        SELECT id, telefone, api_phone_number_id, token_env_key, created_at, contador_uso
         FROM telefones_produto
         WHERE produto_id = %s
         ORDER BY created_at ASC
     """
     return db.execute_query(query, (produto_id,), fetch_all=True) or []
+
+
+def atualizar_telefone_produto(telefone_id, produto_id, telefone, api_phone_number_id, token_env_key):
+    query = """
+        UPDATE telefones_produto
+        SET telefone = %s, api_phone_number_id = %s, token_env_key = %s
+        WHERE id = %s AND produto_id = %s
+    """
+    db.execute_query(query, (telefone, api_phone_number_id or None, token_env_key or 'WHATSAPP_ACCESS_TOKEN', telefone_id, produto_id))
 
 
 def selecionar_telefone_produto(produto_id):

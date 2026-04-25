@@ -8,9 +8,9 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-def ativa_whatsapp(numero) -> bool:
+def ativa_whatsapp(numero, token: str = None) -> bool:
     """Ativa o WhatsApp para o número fornecido usando a API do WhatsApp."""
-    token = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+    token = token or os.getenv('WHATSAPP_ACCESS_TOKEN', '')
     url = f"{WHATSAPP_API_URL}{numero}/register"
     headers = {
         "Authorization": f"Bearer {token}",
