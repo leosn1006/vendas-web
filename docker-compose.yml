@@ -114,7 +114,7 @@ services:
     build: .
     container_name: vendas-worker
     restart: unless-stopped
-    command: celery -A celery_app worker --loglevel=warning --concurrency=2
+    command: celery -A celery_app worker --loglevel=warning --concurrency=2 --queues=urgente,normal,baixa --hostname=worker@%h
     depends_on:
       db:
         condition: service_healthy

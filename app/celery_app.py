@@ -20,27 +20,33 @@ celery_app.conf.beat_schedule = {
     'followup-pagamento-dinamico': {
         'task': 'tasks.followup_pagamento_dinamico',
         'schedule': crontab(minute=0, hour='8-20'),  # todo hora cheia das 8h às 20h
+        'options': {'queue': 'baixa'},
     },
 #parar um por enquanto, certificado de acesso com problemas
 #    'upload-conversoes-google-ads': {
 #        'task': 'tasks.processar_uploads_google_ads',
 #        'schedule': crontab(minute=0),  # todo hora cheia
+#        'options': {'queue': 'baixa'},
 #    },
     'upload-gclids-google-sheets': {
         'task': 'tasks.processar_uploads_google_sheets',
         'schedule': crontab(minute=30, hour='22,0'),  # 22h30 e 00h30 (antes do upload do Google Ads às 01h-02h)
+        'options': {'queue': 'baixa'},
     },
     'verificar-pagamentos-bb-pay': {
         'task': 'tasks.verificar_pagamentos_pendentes',
         'schedule': crontab(minute='*/10'),  # a cada 10 minutos
+        'options': {'queue': 'baixa'},
     },
     'processar-pagamentos-pix': {
         'task': 'tasks.processar_pagamentos_pix',
         'schedule': crontab(minute=15, hour='5-23,0'),  # de hora em hora às :15 (5h15 a 00h15)
+        'options': {'queue': 'baixa'},
     },
     'processar-pagamentos-pix-fechamento': {
         'task': 'tasks.processar_pagamentos_pix_fechamento',
         'schedule': crontab(minute=5, hour=0),  # 00h05 — captura PIX de 23:15–23:59 do dia anterior
+        'options': {'queue': 'baixa'},
     },
 }
 
@@ -69,5 +75,24 @@ celery_app.conf.update(
         'interval_start': 0.2,
         'interval_step': 0.2,
         'interval_max': 1,
+    },
+    task_routes={
+        # URGENTE — fluxos de vendas diretos
+        "tasks.processar_webhook":                  {"queue": "urgente"},
+        "tasks.enviar_introducao_dinamico":         {"queue": "urgente"},
+        "tasks.enviar_pedido_dinamico":             {"queue": "urgente"},
+        "tasks.conferir_comprovante_dinamico":      {"queue": "urgente"},
+        "tasks.transcrever_audio":                  {"queue": "urgente"},
+        # NORMAL — conversas e entrega
+        "tasks.responder_mensagem":                 {"queue": "normal"},
+        "tasks.enviar_confirmacao_web":             {"queue": "normal"},
+        "tasks.enviar_email_entrega":               {"queue": "normal"},
+        # BAIXA — background/agendados
+        "tasks.followup_pagamento_dinamico":             {"queue": "baixa"},
+        "tasks.processar_uploads_google_ads":            {"queue": "baixa"},
+        "tasks.processar_uploads_google_sheets":         {"queue": "baixa"},
+        "tasks.processar_pagamentos_pix":                {"queue": "baixa"},
+        "tasks.processar_pagamentos_pix_fechamento":     {"queue": "baixa"},
+        "tasks.verificar_pagamentos_pendentes":          {"queue": "baixa"},
     },
 )
