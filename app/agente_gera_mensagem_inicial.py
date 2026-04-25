@@ -54,7 +54,7 @@ def gera_mensagem_inicial(produto):
         traceback.print_exc()
         return "Maravilha! Quero saber mais sobre o produto 😊"
 
-_EMOJIS = ["😊", "😄", "😃", "😀", "😁", "😆", "😍", "😉", "✨"]
+_EMOJIS = ["✨"]
 
 _MENSAGENS_FALLBACK = [
     "Olá, tenho interesse nas receitas",
