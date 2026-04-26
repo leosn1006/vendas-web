@@ -34,8 +34,6 @@ class Database:
             'pool_size': 5,
             'pool_reset_session': True,
             'connection_timeout': 10,
-            'reconnect_attempts': 3,
-            'reconnect_delay': 2,
         }
         self._connection_pool = None
 
@@ -54,21 +52,21 @@ class Database:
                 raise
 
     def get_connection(self):
-        """
-        Obtém uma conexão do pool.
-
-        Returns:
-            mysql.connector.connection.MySQLConnection: Conexão com o banco de dados
-        """
         if self._connection_pool is None:
             self._create_pool()
 
-        try:
-            connection = self._connection_pool.get_connection()
-            return connection
-        except Error as e:
-            logger.error(f"Erro ao obter conexão: {e}")
-            raise
+        for attempt in range(1, 4):
+            try:
+                return self._connection_pool.get_connection()
+            except Error as e:
+                if attempt < 3:
+                    logger.warning(f"Erro ao obter conexão (tentativa {attempt}/3): {e}")
+                    time.sleep(2 * attempt)
+                    self._connection_pool = None
+                    self._create_pool()
+                else:
+                    logger.error(f"Erro ao obter conexão: {e}")
+                    raise
 
     @contextmanager
     def get_cursor(self, dictionary=True, buffered=True):
