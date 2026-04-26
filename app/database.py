@@ -2,6 +2,7 @@
 Módulo de conexão com o banco de dados MySQL.
 """
 import os
+import time
 import mysql.connector
 from mysql.connector import Error, IntegrityError
 from contextlib import contextmanager
@@ -31,7 +32,10 @@ class Database:
             'autocommit': False,
             'pool_name': 'vendas_pool',
             'pool_size': 5,
-            'pool_reset_session': True
+            'pool_reset_session': True,
+            'connection_timeout': 10,
+            'reconnect_attempts': 3,
+            'reconnect_delay': 2,
         }
         self._connection_pool = None
 
