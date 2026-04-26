@@ -107,10 +107,19 @@ def _is_lssolucoes():
     host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
     return 'lssolucoesdigitais.com.br' in host
 
+def _is_lsfb():
+    host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return 'lsfb-livros.com.br' in host
+
 @app.get("/")
 def index():
     produtos = busca_produtos_disponiveis_web()
-    tmpl = 'portifolio-lssolucoes.html' if _is_lssolucoes() else 'portifolio.html'
+    if _is_lssolucoes():
+        tmpl = 'portifolio-lssolucoes.html'
+    elif _is_lsfb():
+        tmpl = 'portifolio-lsfb.html'
+    else:
+        tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
 
 @app.get("/portifolio")
@@ -120,17 +129,32 @@ def portifolio():
 
 @app.get("/politica-privacidade")
 def politica_privacidade():
-    tmpl = 'politica-privacidade-lssolucoes.html' if _is_lssolucoes() else 'politica-privacidade.html'
+    if _is_lssolucoes():
+        tmpl = 'politica-privacidade-lssolucoes.html'
+    elif _is_lsfb():
+        tmpl = 'politica-privacidade-lsfb.html'
+    else:
+        tmpl = 'politica-privacidade.html'
     return render_template(tmpl)
 
 @app.get("/termos-de-uso")
 def termos_de_uso():
-    tmpl = 'termos-de-uso-lssolucoes.html' if _is_lssolucoes() else 'termos-de-uso.html'
+    if _is_lssolucoes():
+        tmpl = 'termos-de-uso-lssolucoes.html'
+    elif _is_lsfb():
+        tmpl = 'termos-de-uso-lsfb.html'
+    else:
+        tmpl = 'termos-de-uso.html'
     return render_template(tmpl)
 
 @app.get("/contato")
 def contato():
-    tmpl = 'contato-lssolucoes.html' if _is_lssolucoes() else 'contato.html'
+    if _is_lssolucoes():
+        tmpl = 'contato-lssolucoes.html'
+    elif _is_lsfb():
+        tmpl = 'contato-lsfb.html'
+    else:
+        tmpl = 'contato.html'
     return render_template(tmpl)
 
 @app.get("/lanche")
