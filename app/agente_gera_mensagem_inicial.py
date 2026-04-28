@@ -3,7 +3,7 @@ import random
 
 logger = logging.getLogger(__name__)
 
-_EMOJIS = ["✨"]
+# _EMOJIS = ["✨"]
 
 _MENSAGENS_FALLBACK = [
     "Olá, tenho interesse nas receitas",

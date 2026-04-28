@@ -13,6 +13,7 @@ FALLBACK_TELEFONE = {
     6: "556181256294",
     7: "556182364563",
     8: "556198824782",
+    9: "556182402494",
     10: "556184022952",
 }
 
@@ -49,7 +50,7 @@ def persistir_lead(body):
 
         # logger.info(f"[LEAD] 🔍 URL recebida: '{url}' → produto determinado: {produto}")
 
-        texto, emoji = gera_mensagem_inicial_randomicamente(produto)
+        texto = gera_mensagem_inicial_randomicamente(produto)
 
         telefone = selecionar_telefone_produto(produto)
         if not telefone:
@@ -66,7 +67,7 @@ def persistir_lead(body):
             gbraid=gbraid,
             data_ultima_atualizacao=None,
             mensagem_sugerida=texto,
-            emoji_sugerida=emoji,
+            emoji_sugerida="",
             phone_number_id=api_phone_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID', ''),
             contact_phone=None,
             contact_name=None,
@@ -84,7 +85,7 @@ def persistir_lead(body):
         # logger.info(f"[LEAD] ✅ Lead gravado com gclid: {gclid}")
         resposta = {
             "whatsapp_numero": whatsapp_numero,
-            "emojiEscolhido" : emoji,
+            "emojiEscolhido" : "",
             "mensagemBaseWA" : texto
         }
         # logger.info(f"[LEAD] ✅ Resposta gerada: {resposta}")
