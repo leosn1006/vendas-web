@@ -35,13 +35,12 @@ def receber_comprovante(tipo_midia, url, mime_type, filename, pedido_id, phone_n
         extensao_original = None
 
     if not url or not mime_original:
-        logger.error(f"[WHATSAPP-UPLOAD] ❌ Dados inválidos enviados pelo WhatsApp: URL={url}, MIME={mime_original}, Pedido ID={pedido_id}")
+        logger.warning(f"[WHATSAPP-UPLOAD] ⚠️ Sem comprovante: URL ou MIME ausente no webhook | URL={url}, MIME={mime_original}, Pedido ID={pedido_id}")
         return None
 
     # 2. Sanitização: Validação de Tipo (MIME e Extensão) (só vem nome do arquivo para documento, para imagem não vem nome do arquivo, então força extensão .jpg para imagens sem extensão)
     if mime_original not in MIMES_PERMITIDOS or (tipo_midia=='document' and extensao_original not in EXTENSOES_PERMITIDAS):
-        logger.error(f"[WHATSAPP-UPLOAD] ❌  Tipo de arquivo não permitido: MIME={mime_original}, Extensão={extensao_original}, Pedido ID={pedido_id}")
-        print(f"Bloqueado: Tipo de arquivo não permitido ({mime_original})")
+        logger.warning(f"[WHATSAPP-UPLOAD] ⚠️ Sem comprovante: tipo de arquivo não suportado | MIME={mime_original}, Extensão={extensao_original}, Pedido ID={pedido_id}")
         return None
 
     # 3. Preparação do Caminho (Estrutura: storage/comprovantes/ano/mes/dia/pedido_id_timestamp.extensão)
@@ -67,8 +66,7 @@ def receber_comprovante(tipo_midia, url, mime_type, filename, pedido_id, phone_n
         # 6. Validação de Tamanho Real
         tamanho = int(resposta.headers.get('Content-Length', 0))
         if tamanho > TAMANHO_MAX_MB * 1024 * 1024:
-            logger.error(f"[WHATSAPP-UPLOAD] ❌ Arquivo excede o limite de tamanho: Tamanho={tamanho} bytes, Pedido ID={pedido_id}")
-            print("Arquivo excede o limite de tamanho.")
+            logger.warning(f"[WHATSAPP-UPLOAD] ⚠️ Sem comprovante: arquivo grande demais ({tamanho / 1024 / 1024:.1f} MB > {TAMANHO_MAX_MB} MB) | Pedido ID={pedido_id}")
             return None
 
         # 7. Escrita no Disco
@@ -82,7 +80,7 @@ def receber_comprovante(tipo_midia, url, mime_type, filename, pedido_id, phone_n
         return str(caminho_final.relative_to(base_path))
 
     except Exception as e:
-        logger.error(f"[WHATSAPP-UPLOAD] ❌ Erro ao processar o upload do comprovante: {e}")
+        logger.warning(f"[WHATSAPP-UPLOAD] ⚠️ Sem comprovante: erro de download ({type(e).__name__}: {e}) | Pedido ID={pedido_id}")
         return None
 
 
@@ -117,7 +115,10 @@ def receber_audio(tipo_midia, id_audio, mime_type, pedido_id, phone_number_id=No
         url_metadata = f"{WHATSAPP_API_URL}{id_audio}"
         headers = {"Authorization": f"Bearer {access_token}"}
         resposta_metadata = requests.get(url_metadata, headers=headers, timeout=20)
-        resposta_metadata.raise_for_status()
+
+        if not resposta_metadata.ok:
+            logger.error(f"[WHATSAPP-UPLOAD-AUDIO] ❌ Erro {resposta_metadata.status_code} ao obter metadata do áudio: {resposta_metadata.text} | ID={id_audio}, Pedido ID={pedido_id}")
+            resposta_metadata.raise_for_status()
 
         # Extrai a URL real do arquivo de áudio
         metadata = resposta_metadata.json()

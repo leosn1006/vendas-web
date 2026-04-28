@@ -102,7 +102,7 @@ def executar(pedido, mensagem_whatsapp):
         ja_pago = _to_float(pedido.get('valor_pago'), 0.0) > 0.0
 
         if path_comprovante is None:
-            logger.warning(f"[{_TAG}] ⚠️ pedido #{pedido_id} — arquivo grande demais, comprovante aceito automaticamente (R$ {preco_produto:.2f})")
+            logger.warning(f"[{_TAG}] ⚠️ pedido #{pedido_id} — sem comprovante disponível, seguindo fluxo (R$ {preco_produto:.2f})")
             resultado          = {}
             comprovante_valido = True
             valor_pago         = preco_produto
