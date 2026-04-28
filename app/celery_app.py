@@ -19,7 +19,7 @@ celery_app = Celery(
 celery_app.conf.beat_schedule = {
     'followup-pagamento-dinamico': {
         'task': 'tasks.followup_pagamento_dinamico',
-        'schedule': crontab(minute=0, hour='8-20'),  # todo hora cheia das 8h às 20h
+        'schedule': crontab(minute='*/30', hour='7-22'),  # a cada 30min das 7h às 22h30
         'options': {'queue': 'baixa'},
     },
 #parar um por enquanto, certificado de acesso com problemas
