@@ -10,19 +10,57 @@
 </div>
 
 <div class="card" style="margin-bottom: 16px;">
-    <form method="GET" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+    <form id="form-data" method="GET" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
         <div>
             <label for="data" style="display: block; font-size: 12px; font-weight: 600;
                    text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
                    font-family: var(--mono); margin-bottom: 6px;">Data</label>
-            <input type="date" id="data" name="data" value="{{ data_selecionada }}"
-                   style="margin: 0; padding: 7px 12px; font-size: 13px;">
+            <div style="display: flex; gap: 6px; align-items: center;">
+                <button type="button" onclick="moverDia(-1)"
+                        style="width: 32px; height: 32px; border: 1px solid var(--border);
+                               border-radius: 8px; background: var(--surface); cursor: pointer;
+                               font-size: 16px; font-weight: 700; color: var(--text);
+                               display: flex; align-items: center; justify-content: center;">&lt;</button>
+                <input type="date" id="data" name="data" value="{{ data_selecionada }}"
+                       style="margin: 0; padding: 7px 12px; font-size: 13px;">
+                <button type="button" onclick="moverDia(1)"
+                        style="width: 32px; height: 32px; border: 1px solid var(--border);
+                               border-radius: 8px; background: var(--surface); cursor: pointer;
+                               font-size: 16px; font-weight: 700; color: var(--text);
+                               display: flex; align-items: center; justify-content: center;">&gt;</button>
+            </div>
         </div>
         <button type="submit" class="btn btn-primary btn-sm" style="margin-bottom: 0;">
             Filtrar
         </button>
+        <div style="display: flex; gap: 6px; align-self: flex-end;">
+            <button type="button" onclick="setDia(0)"
+                    style="font-size: 12px; padding: 5px 12px; border-radius: 6px;
+                           border: 1px solid var(--border); background: transparent;
+                           color: var(--muted); cursor: pointer; font-family: var(--font);">Hoje</button>
+            <button type="button" onclick="setDia(1)"
+                    style="font-size: 12px; padding: 5px 12px; border-radius: 6px;
+                           border: 1px solid var(--border); background: transparent;
+                           color: var(--muted); cursor: pointer; font-family: var(--font);">Ontem</button>
+        </div>
     </form>
 </div>
+
+<script>
+function moverDia(delta) {
+    const input = document.getElementById('data');
+    const d = new Date(input.value + 'T00:00:00');
+    d.setDate(d.getDate() + delta);
+    input.value = d.toISOString().slice(0, 10);
+    document.getElementById('form-data').submit();
+}
+function setDia(diasAtras) {
+    const d = new Date();
+    d.setDate(d.getDate() - diasAtras);
+    document.getElementById('data').value = d.toISOString().slice(0, 10);
+    document.getElementById('form-data').submit();
+}
+</script>
 
 <div class="card">
     {% if orcamentos %}
