@@ -1375,7 +1375,7 @@ _SQL_CAMPANHAS = """
     WHERE p.produto_id = %s
       AND p.estado_id = 0
       AND p.data_pagamento BETWEEN %s AND %s
-    GROUP BY p.campaignid
+    GROUP BY COALESCE(c.nome, NULLIF(p.campaignid, ''), 'Campanha não informada')
     ORDER BY total DESC
 """
 
@@ -1408,7 +1408,7 @@ _SQL_CAMPANHAS_WEB = """
     WHERE p.produto_id = %s
       AND p.estado_id = 1000
       AND p.data_pagamento BETWEEN %s AND %s
-    GROUP BY p.campaignid
+    GROUP BY COALESCE(c.nome, NULLIF(p.campaignid, ''), 'Campanha não informada')
     ORDER BY total DESC
 """
 
