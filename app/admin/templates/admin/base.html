@@ -568,6 +568,10 @@
            class="nav-link {% if request.endpoint in ['admin.planilhas_google_produto','admin.adicionar_planilha_google','admin.editar_planilha_google','admin.remover_planilha_google'] %}active{% endif %}">
             <span class="icon">📊</span> Planilhas Google
         </a>
+        <a href="{{ url_for('admin.campanhas_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint in ['admin.campanhas_produto','admin.salvar_campanha','admin.remover_campanha'] %}active{% endif %}">
+            <span class="icon">📢</span> Campanhas
+        </a>
         <a href="{{ url_for('admin.fluxos_overview', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint in ['admin.fluxos_overview','admin.fluxo_acoes','admin.editar_acao_fluxo'] %}active{% endif %}">
             <span class="icon">⚙️</span> Fluxos

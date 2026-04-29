@@ -1367,14 +1367,15 @@ _SQL_RECEITA = """
 
 _SQL_CAMPANHAS = """
     SELECT
-        COALESCE(NULLIF(campaignid, ''), 'Campanha não informada') AS campanha,
+        COALESCE(c.nome, NULLIF(p.campaignid, ''), 'Campanha não informada') AS campanha,
         COUNT(*)                AS quantidade,
-        COALESCE(SUM(valor_pago), 0) AS total
-    FROM pedidos
-    WHERE produto_id = %s
-      AND estado_id = 0
-      AND data_pagamento BETWEEN %s AND %s
-    GROUP BY campaignid
+        COALESCE(SUM(p.valor_pago), 0) AS total
+    FROM pedidos p
+    LEFT JOIN campanhas c ON c.produto_id = p.produto_id AND c.campaignid = p.campaignid
+    WHERE p.produto_id = %s
+      AND p.estado_id = 0
+      AND p.data_pagamento BETWEEN %s AND %s
+    GROUP BY p.campaignid
     ORDER BY total DESC
 """
 
@@ -1399,14 +1400,15 @@ _SQL_RECEITA_WEB = """
 
 _SQL_CAMPANHAS_WEB = """
     SELECT
-        COALESCE(NULLIF(campaignid, ''), 'Campanha não informada') AS campanha,
+        COALESCE(c.nome, NULLIF(p.campaignid, ''), 'Campanha não informada') AS campanha,
         COUNT(*)                     AS quantidade,
-        COALESCE(SUM(valor_pago), 0) AS total
-    FROM pedidos
-    WHERE produto_id = %s
-      AND estado_id = 1000
-      AND data_pagamento BETWEEN %s AND %s
-    GROUP BY campaignid
+        COALESCE(SUM(p.valor_pago), 0) AS total
+    FROM pedidos p
+    LEFT JOIN campanhas c ON c.produto_id = p.produto_id AND c.campaignid = p.campaignid
+    WHERE p.produto_id = %s
+      AND p.estado_id = 1000
+      AND p.data_pagamento BETWEEN %s AND %s
+    GROUP BY p.campaignid
     ORDER BY total DESC
 """
 
@@ -1553,6 +1555,76 @@ def analytics_web_produto(produto_id):
         ticket_medio       = ticket_medio,
         conv_pedidos_pagos = conv_pedidos_pagos,
     )
+
+
+# ── Campanhas ─────────────────────────────────────────────────────────────────
+
+_SQL_LISTA_CAMPANHAS = """
+    SELECT
+        p.campaignid,
+        c.nome,
+        COUNT(*) AS total_pedidos
+    FROM pedidos p
+    LEFT JOIN campanhas c ON c.produto_id = p.produto_id AND c.campaignid = p.campaignid
+    WHERE p.produto_id = %s
+      AND p.campaignid IS NOT NULL AND p.campaignid != ''
+    GROUP BY p.campaignid
+    ORDER BY total_pedidos DESC
+"""
+
+
+@admin_bp.route('/produto/<int:produto_id>/campanhas')
+@requer_acesso_produto
+def campanhas_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+    campanhas = db.execute_query(_SQL_LISTA_CAMPANHAS, (produto_id,), fetch_all=True)
+    return render_template('admin/campanhas_produto.html', produto=produto, campanhas=campanhas)
+
+
+@admin_bp.route('/produto/<int:produto_id>/campanhas/salvar', methods=['POST'])
+@requer_acesso_produto
+def salvar_campanha(produto_id):
+    campaignid = request.form.get('campaignid', '').strip()
+    nome = request.form.get('nome', '').strip()
+    if not campaignid or not nome:
+        flash('Informe o Campaign ID e o nome.', 'warning')
+        return redirect(url_for('admin.campanhas_produto', produto_id=produto_id))
+    try:
+        db.execute_query(
+            """INSERT INTO campanhas (produto_id, campaignid, nome)
+               VALUES (%s, %s, %s)
+               ON DUPLICATE KEY UPDATE nome = VALUES(nome)""",
+            (produto_id, campaignid, nome)
+        )
+        flash(f'Nome "{nome}" salvo para a campanha {campaignid}.', 'success')
+        logger.info(f"[ADMIN] ✅ Campanha {campaignid} → '{nome}' salva no produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao salvar campanha: {e}")
+        flash(f'Erro ao salvar campanha: {e}', 'danger')
+    return redirect(url_for('admin.campanhas_produto', produto_id=produto_id))
+
+
+@admin_bp.route('/produto/<int:produto_id>/campanhas/remover', methods=['POST'])
+@requer_acesso_produto
+def remover_campanha(produto_id):
+    campaignid = request.form.get('campaignid', '').strip()
+    if not campaignid:
+        flash('Campaign ID não informado.', 'warning')
+        return redirect(url_for('admin.campanhas_produto', produto_id=produto_id))
+    try:
+        db.execute_query(
+            "DELETE FROM campanhas WHERE produto_id = %s AND campaignid = %s",
+            (produto_id, campaignid)
+        )
+        flash(f'Nome removido da campanha {campaignid}.', 'success')
+        logger.info(f"[ADMIN] ✅ Nome da campanha {campaignid} removido do produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao remover campanha: {e}")
+        flash(f'Erro ao remover campanha: {e}', 'danger')
+    return redirect(url_for('admin.campanhas_produto', produto_id=produto_id))
 
 
 # ── Chaves PIX ────────────────────────────────────────────────────────────────

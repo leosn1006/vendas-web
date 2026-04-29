@@ -1,0 +1,75 @@
+{% extends "admin/base.html" %}
+{% block title %}Campanhas — {{ produto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Campanhas</h1>
+        <p class="page-subtitle">{{ produto.nome }}</p>
+    </div>
+</div>
+
+<div class="card">
+    <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px;">
+        Campaign IDs encontrados nos pedidos deste produto. Cadastre um nome para cada ID aparecer
+        legível no analytics.
+    </p>
+
+    {% if campanhas %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Campaign ID</th>
+                    <th>Nome</th>
+                    <th style="text-align:right;">Pedidos</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in campanhas %}
+                <tr>
+                    <td>
+                        <span style="font-family: var(--mono); font-size: 13px;">{{ c.campaignid }}</span>
+                    </td>
+                    <td>
+                        <form method="POST"
+                              action="{{ url_for('admin.salvar_campanha', produto_id=produto.id) }}"
+                              style="display: flex; gap: 8px; align-items: center; min-width: 260px;">
+                            <input type="hidden" name="campaignid" value="{{ c.campaignid }}">
+                            <input type="text" name="nome"
+                                   value="{{ c.nome or '' }}"
+                                   placeholder="Nome da campanha"
+                                   autocomplete="off"
+                                   style="flex: 1; margin: 0; padding: 5px 10px; font-size: 13px;">
+                            <button type="submit" class="btn btn-primary btn-sm"
+                                    style="white-space: nowrap;">
+                                {{ 'Atualizar' if c.nome else 'Salvar' }}
+                            </button>
+                        </form>
+                    </td>
+                    <td style="text-align:right; font-family: var(--mono); font-size: 13px; color: var(--muted);">
+                        {{ c.total_pedidos }}
+                    </td>
+                    <td style="text-align: right; width: 80px;">
+                        {% if c.nome %}
+                        <form method="POST"
+                              action="{{ url_for('admin.remover_campanha', produto_id=produto.id) }}"
+                              onsubmit="return confirm('Remover o nome da campanha {{ c.campaignid }}?')">
+                            <input type="hidden" name="campaignid" value="{{ c.campaignid }}">
+                            <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--muted); font-size: 14px; padding: 8px 0 20px;">
+        Nenhum pedido com Campaign ID encontrado para este produto.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}
