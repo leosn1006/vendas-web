@@ -1,0 +1,86 @@
+{% extends "admin/base.html" %}
+{% block title %}Orçamento — {{ produto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Orçamento</h1>
+        <p class="page-subtitle">{{ produto.nome }}</p>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 16px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+        <div>
+            <label for="data" style="display: block; font-size: 12px; font-weight: 600;
+                   text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
+                   font-family: var(--mono); margin-bottom: 6px;">Data</label>
+            <input type="date" id="data" name="data" value="{{ data_selecionada }}"
+                   style="margin: 0; padding: 7px 12px; font-size: 13px;">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm" style="margin-bottom: 0;">
+            Filtrar
+        </button>
+    </form>
+</div>
+
+<div class="card">
+    {% if orcamentos %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Campanha</th>
+                    <th style="text-align:right;">Investido (R$)</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for o in orcamentos %}
+                <tr>
+                    <td style="font-size: 13px;">
+                        {{ o.campanha }}
+                        <span style="font-family: var(--mono); font-size: 11px; color: var(--muted);">
+                            ({{ o.campaignid }})
+                        </span>
+                    </td>
+                    <td>
+                        <form method="POST"
+                              action="{{ url_for('admin.salvar_orcamento', produto_id=produto.id) }}"
+                              style="display: flex; gap: 8px; align-items: center; justify-content: flex-end;">
+                            <input type="hidden" name="campaignid" value="{{ o.campaignid }}">
+                            <input type="hidden" name="data" value="{{ data_selecionada }}">
+                            <input type="number" name="valor_investido" step="0.01" min="0"
+                                   value="{{ '%.2f'|format(o.valor_investido) if o.valor_investido is not none else '' }}"
+                                   placeholder="0.00"
+                                   style="width: 120px; margin: 0; padding: 5px 10px;
+                                          font-size: 13px; text-align: right; font-family: var(--mono);"
+                                   autocomplete="off">
+                            <button type="submit" class="btn btn-primary btn-sm" style="white-space: nowrap;">
+                                {{ 'Atualizar' if o.valor_investido is not none else 'Salvar' }}
+                            </button>
+                        </form>
+                    </td>
+                    <td style="text-align: right; width: 80px;">
+                        {% if o.valor_investido is not none %}
+                        <form method="POST"
+                              action="{{ url_for('admin.remover_orcamento', produto_id=produto.id) }}"
+                              onsubmit="return confirm('Remover investimento da campanha {{ o.campaignid }} em {{ data_selecionada }}?')">
+                            <input type="hidden" name="campaignid" value="{{ o.campaignid }}">
+                            <input type="hidden" name="data" value="{{ data_selecionada }}">
+                            <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--muted); font-size: 14px; padding: 8px 0 20px;">
+        Nenhuma campanha ativa em {{ data_selecionada }}.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

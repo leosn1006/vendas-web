@@ -1627,6 +1627,179 @@ def remover_campanha(produto_id):
     return redirect(url_for('admin.campanhas_produto', produto_id=produto_id))
 
 
+# ── Orçamento de Campanhas ────────────────────────────────────────────────────
+
+_SQL_LISTA_ORCAMENTO = """
+    SELECT
+        base.campaignid,
+        COALESCE(cam.nome, base.campaignid) AS campanha,
+        orc.valor_investido
+    FROM (
+        SELECT campaignid FROM pedidos
+        WHERE produto_id = %s AND DATE(data_contato_site) = %s
+          AND campaignid IS NOT NULL AND campaignid != ''
+        UNION
+        SELECT campaignid FROM orcamento_campanha
+        WHERE produto_id = %s AND data = %s
+    ) base
+    LEFT JOIN campanhas cam
+        ON cam.produto_id = %s AND cam.campaignid = base.campaignid
+    LEFT JOIN orcamento_campanha orc
+        ON orc.produto_id = %s AND orc.campaignid = base.campaignid AND orc.data = %s
+    ORDER BY campanha
+"""
+
+_SQL_ROI = """
+    SELECT
+        base.campaignid,
+        COALESCE(cam.nome, base.campaignid, 'Campanha não informada') AS campanha,
+        COALESCE(ped.total_vendido,   0) AS valor_vendido,
+        COALESCE(orc.total_investido, 0) AS valor_investido
+    FROM (
+        SELECT campaignid FROM pedidos
+        WHERE produto_id = %s AND data_pagamento BETWEEN %s AND %s
+          AND campaignid IS NOT NULL AND campaignid != ''
+        UNION
+        SELECT campaignid FROM orcamento_campanha
+        WHERE produto_id = %s AND data BETWEEN %s AND %s
+    ) base
+    LEFT JOIN (
+        SELECT campaignid, SUM(valor_pago) AS total_vendido
+        FROM pedidos
+        WHERE produto_id = %s AND estado_id = 0 AND data_pagamento BETWEEN %s AND %s
+        GROUP BY campaignid
+    ) ped ON ped.campaignid = base.campaignid
+    LEFT JOIN (
+        SELECT campaignid, SUM(valor_investido) AS total_investido
+        FROM orcamento_campanha
+        WHERE produto_id = %s AND data BETWEEN %s AND %s
+        GROUP BY campaignid
+    ) orc ON orc.campaignid = base.campaignid
+    LEFT JOIN campanhas cam
+        ON cam.produto_id = %s AND cam.campaignid = base.campaignid
+    ORDER BY valor_vendido DESC
+"""
+
+
+@admin_bp.route('/produto/<int:produto_id>/orcamento')
+@requer_acesso_produto
+def orcamento_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    hoje = _hoje_sao_paulo().isoformat()
+    data_str = request.args.get('data', hoje)
+    try:
+        datetime.date.fromisoformat(data_str)
+    except ValueError:
+        data_str = hoje
+
+    orcamentos = db.execute_query(
+        _SQL_LISTA_ORCAMENTO,
+        (produto_id, data_str, produto_id, data_str, produto_id, produto_id, data_str),
+        fetch_all=True
+    )
+    return render_template('admin/orcamento_produto.html',
+        produto=produto, orcamentos=orcamentos, data_selecionada=data_str)
+
+
+@admin_bp.route('/produto/<int:produto_id>/orcamento/salvar', methods=['POST'])
+@requer_acesso_produto
+def salvar_orcamento(produto_id):
+    campaignid = request.form.get('campaignid', '').strip()
+    data_str   = request.form.get('data', '').strip()
+    valor_str  = request.form.get('valor_investido', '').strip()
+    if not campaignid or not data_str or not valor_str:
+        flash('Informe campanha, data e valor.', 'warning')
+        return redirect(url_for('admin.orcamento_produto', produto_id=produto_id, data=data_str))
+    try:
+        valor = float(valor_str)
+        if valor < 0:
+            raise ValueError
+    except ValueError:
+        flash('Valor inválido.', 'warning')
+        return redirect(url_for('admin.orcamento_produto', produto_id=produto_id, data=data_str))
+    try:
+        db.execute_query(
+            """INSERT INTO orcamento_campanha (produto_id, campaignid, data, valor_investido)
+               VALUES (%s, %s, %s, %s)
+               ON DUPLICATE KEY UPDATE valor_investido = VALUES(valor_investido)""",
+            (produto_id, campaignid, data_str, valor)
+        )
+        flash(f'Investimento de R$ {valor:.2f} salvo para {data_str}.', 'success')
+        logger.info(f"[ADMIN] ✅ Orçamento {campaignid} {data_str} R${valor:.2f} salvo no produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao salvar orçamento: {e}")
+        flash(f'Erro ao salvar: {e}', 'danger')
+    return redirect(url_for('admin.orcamento_produto', produto_id=produto_id, data=data_str))
+
+
+@admin_bp.route('/produto/<int:produto_id>/orcamento/remover', methods=['POST'])
+@requer_acesso_produto
+def remover_orcamento(produto_id):
+    campaignid = request.form.get('campaignid', '').strip()
+    data_str   = request.form.get('data', '').strip()
+    if not campaignid or not data_str:
+        flash('Dados insuficientes.', 'warning')
+        return redirect(url_for('admin.orcamento_produto', produto_id=produto_id))
+    try:
+        db.execute_query(
+            "DELETE FROM orcamento_campanha WHERE produto_id = %s AND campaignid = %s AND data = %s",
+            (produto_id, campaignid, data_str)
+        )
+        flash('Investimento removido.', 'success')
+        logger.info(f"[ADMIN] ✅ Orçamento {campaignid} {data_str} removido do produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao remover orçamento: {e}")
+        flash(f'Erro ao remover: {e}', 'danger')
+    return redirect(url_for('admin.orcamento_produto', produto_id=produto_id, data=data_str))
+
+
+@admin_bp.route('/produto/<int:produto_id>/roi')
+@requer_acesso_produto
+def roi_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    hoje = _hoje_sao_paulo()
+    data_ini_str = request.args.get('data_ini', hoje.isoformat())
+    data_fim_str = request.args.get('data_fim', hoje.isoformat())
+
+    try:
+        data_ini = datetime.datetime.fromisoformat(data_ini_str)
+        data_fim = datetime.datetime.fromisoformat(data_fim_str) + datetime.timedelta(days=1, seconds=-1)
+    except ValueError:
+        data_ini = datetime.datetime.combine(hoje, datetime.time.min)
+        data_fim  = datetime.datetime.combine(hoje, datetime.time.max)
+        data_ini_str = data_fim_str = hoje.isoformat()
+
+    data_ini_date = data_ini.date().isoformat()
+    data_fim_date = data_fim.date().isoformat()
+
+    try:
+        rows = db.execute_query(
+            _SQL_ROI,
+            (produto_id, data_ini, data_fim,
+             produto_id, data_ini_date, data_fim_date,
+             produto_id, data_ini, data_fim,
+             produto_id, data_ini_date, data_fim_date,
+             produto_id),
+            fetch_all=True
+        )
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro no ROI produto #{produto_id}: {e}")
+        flash('Erro ao carregar ROI.', 'danger')
+        rows = []
+
+    return render_template('admin/roi_produto.html',
+        produto=produto, rows=rows,
+        data_ini=data_ini_str, data_fim=data_fim_str)
+
+
 # ── Chaves PIX ────────────────────────────────────────────────────────────────
 
 @admin_bp.route('/produto/<int:produto_id>/chaves-pix')

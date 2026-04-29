@@ -1,0 +1,133 @@
+{% extends "admin/base.html" %}
+{% block title %}ROI — {{ produto.nome }}{% endblock %}
+
+{% block extra_css %}
+{% include 'admin/includes/_filtro_periodo_styles.html' %}
+<style>
+    .roi-red    { color: #c0392b; font-weight: 600; }
+    .roi-yellow { color: #e67e22; font-weight: 600; }
+    .roi-green  { color: #27ae60; font-weight: 600; }
+    .roi-muted  { color: var(--muted); }
+    tfoot td    { font-weight: 700; border-top: 2px solid var(--border); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">ROI por Campanha</h1>
+        <p class="page-subtitle">{{ produto.nome }}</p>
+    </div>
+</div>
+
+{% include 'admin/includes/_filtro_periodo.html' %}
+
+{% if rows %}
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Campanha</th>
+                    <th style="text-align:right;">Investido</th>
+                    <th style="text-align:right;">Vendido</th>
+                    <th style="text-align:right;">ROI</th>
+                    <th style="text-align:right;">Resultado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                {% set investido = r.valor_investido | float %}
+                {% set vendido   = r.valor_vendido   | float %}
+                {% set resultado = vendido - investido %}
+
+                <tr>
+                    <td style="font-size: 13px;">{{ r.campanha }}</td>
+
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        R$ {{ '%.2f'|format(investido) }}
+                    </td>
+
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        R$ {{ '%.2f'|format(vendido) }}
+                    </td>
+
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        {% if investido > 0 %}
+                            {% set roi = vendido / investido %}
+                            {% if roi < 1 %}
+                                <span class="roi-red">{{ '%.2f'|format(roi) }}×</span>
+                            {% elif roi <= 1.005 %}
+                                <span class="roi-yellow">{{ '%.2f'|format(roi) }}×</span>
+                            {% else %}
+                                <span class="roi-green">{{ '%.2f'|format(roi) }}×</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="roi-muted">—</span>
+                        {% endif %}
+                    </td>
+
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        {% if resultado < -0.005 %}
+                            <span class="roi-red">R$ {{ '%.2f'|format(resultado) }}</span>
+                        {% elif resultado < 0.005 %}
+                            <span class="roi-muted">R$ 0.00</span>
+                        {% else %}
+                            <span class="roi-green">R$ {{ '%.2f'|format(resultado) }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% set total_investido = rows | sum(attribute='valor_investido') | float %}
+            {% set total_vendido   = rows | sum(attribute='valor_vendido')   | float %}
+            {% set total_resultado = total_vendido - total_investido %}
+            <tfoot>
+                <tr>
+                    <td>Total</td>
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        R$ {{ '%.2f'|format(total_investido) }}
+                    </td>
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        R$ {{ '%.2f'|format(total_vendido) }}
+                    </td>
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        {% if total_investido > 0 %}
+                            {% set roi_total = total_vendido / total_investido %}
+                            {% if roi_total < 1 %}
+                                <span class="roi-red">{{ '%.2f'|format(roi_total) }}×</span>
+                            {% elif roi_total <= 1.005 %}
+                                <span class="roi-yellow">{{ '%.2f'|format(roi_total) }}×</span>
+                            {% else %}
+                                <span class="roi-green">{{ '%.2f'|format(roi_total) }}×</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="roi-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        {% if total_resultado < -0.005 %}
+                            <span class="roi-red">R$ {{ '%.2f'|format(total_resultado) }}</span>
+                        {% elif total_resultado < 0.005 %}
+                            <span class="roi-muted">R$ 0.00</span>
+                        {% else %}
+                            <span class="roi-green">R$ {{ '%.2f'|format(total_resultado) }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        Nenhum dado encontrado para o período selecionado.
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% include 'admin/includes/_filtro_periodo_js.html' %}
+{% endblock %}

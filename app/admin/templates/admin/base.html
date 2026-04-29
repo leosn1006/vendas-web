@@ -572,6 +572,14 @@
            class="nav-link {% if request.endpoint in ['admin.campanhas_produto','admin.salvar_campanha','admin.remover_campanha'] %}active{% endif %}">
             <span class="icon">📢</span> Campanhas
         </a>
+        <a href="{{ url_for('admin.orcamento_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint in ['admin.orcamento_produto','admin.salvar_orcamento','admin.remover_orcamento'] %}active{% endif %}">
+            <span class="icon">💰</span> Orçamento
+        </a>
+        <a href="{{ url_for('admin.roi_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.roi_produto' %}active{% endif %}">
+            <span class="icon">📈</span> ROI
+        </a>
         <a href="{{ url_for('admin.fluxos_overview', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint in ['admin.fluxos_overview','admin.fluxo_acoes','admin.editar_acao_fluxo'] %}active{% endif %}">
             <span class="icon">⚙️</span> Fluxos
