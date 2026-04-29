@@ -9,6 +9,10 @@ from database import Pedido, get_whatsapp_token
 logger = logging.getLogger(__name__)
 
 
+class ErroTransienteWhatsApp(Exception):
+    pass
+
+
 
 def marcar_como_lida(message_id: str, phone_number_id: str = None):
 
@@ -108,7 +112,16 @@ def enviar_mensagem(pedido: Pedido, mensagem: str):
         logger.info(f"[MENSAGEM-ENVIAR] Mensagem enviada com sucesso! ID da mensagem: {id_message}")
         return id_message
 
-    raise ValueError(f"[MENSAGEM-ENVIAR] ❌ Erro ao enviar mensagem: status={response.status_code} body={response.text}")
+    try:
+        body = response.json()
+        is_transient = body.get('error', {}).get('is_transient', False)
+    except Exception:
+        is_transient = False
+
+    msg = f"[MENSAGEM-ENVIAR] ❌ Erro ao enviar mensagem: status={response.status_code} body={response.text}"
+    if is_transient:
+        raise ErroTransienteWhatsApp(msg)
+    raise ValueError(msg)
 
 def enviar_mensagem_digitando(message_id: str, phone_number_id: str = None):
     if message_id is None:
