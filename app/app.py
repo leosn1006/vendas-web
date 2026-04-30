@@ -111,6 +111,10 @@ def _is_lsfb():
     host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
     return 'lsfb-livros.com.br' in host
 
+def _is_rc_livros():
+    host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return 'rc-livros.com.br' in host
+
 @app.get("/")
 def index():
     produtos = busca_produtos_disponiveis_web()
@@ -118,6 +122,8 @@ def index():
         tmpl = 'portifolio-lssolucoes.html'
     elif _is_lsfb():
         tmpl = 'portifolio-lsfb.html'
+    elif _is_rc_livros():
+        tmpl = 'portifolio-rc.html'
     else:
         tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
@@ -125,7 +131,15 @@ def index():
 @app.get("/portifolio")
 def portifolio():
     produtos = busca_produtos_disponiveis_web()
-    return render_template('portifolio.html', produtos=produtos)
+    if _is_lssolucoes():
+        tmpl = 'portifolio-lssolucoes.html'
+    elif _is_lsfb():
+        tmpl = 'portifolio-lsfb.html'
+    elif _is_rc_livros():
+        tmpl = 'portifolio-rc.html'
+    else:
+        tmpl = 'portifolio.html'
+    return render_template(tmpl, produtos=produtos)
 
 @app.get("/politica-privacidade")
 def politica_privacidade():
@@ -133,6 +147,8 @@ def politica_privacidade():
         tmpl = 'politica-privacidade-lssolucoes.html'
     elif _is_lsfb():
         tmpl = 'politica-privacidade-lsfb.html'
+    elif _is_rc_livros():
+        tmpl = 'politica-privacidade-rc.html'
     else:
         tmpl = 'politica-privacidade.html'
     return render_template(tmpl)
@@ -143,6 +159,8 @@ def termos_de_uso():
         tmpl = 'termos-de-uso-lssolucoes.html'
     elif _is_lsfb():
         tmpl = 'termos-de-uso-lsfb.html'
+    elif _is_rc_livros():
+        tmpl = 'termos-de-uso-rc.html'
     else:
         tmpl = 'termos-de-uso.html'
     return render_template(tmpl)
@@ -153,6 +171,8 @@ def contato():
         tmpl = 'contato-lssolucoes.html'
     elif _is_lsfb():
         tmpl = 'contato-lsfb.html'
+    elif _is_rc_livros():
+        tmpl = 'contato-rc.html'
     else:
         tmpl = 'contato.html'
     return render_template(tmpl)

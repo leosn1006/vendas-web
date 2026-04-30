@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termos de Uso — RC Livros</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --azul:       #1e3a5f;
+            --azul-med:   #2d6a9f;
+            --azul-claro: #5a9fd4;
+            --dourado:    #c9a227;
+            --creme:      #f5f0e8;
+            --escuro:     #1a2a3a;
+            --texto:      #2c2c2c;
+            --cinza:      #666;
+            --branco:     #ffffff;
+            --sombra:     0 4px 24px rgba(0,0,0,0.10);
+        }
+
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Lato', sans-serif; background: var(--creme); color: var(--texto); }
+
+        .site-header { background: linear-gradient(135deg, var(--azul), #2d5080); padding: 0 24px; }
+
+        .header-inner {
+            max-width: 900px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 0;
+        }
+
+        .logo-link { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+
+        .logo-icon {
+            width: 36px; height: 36px;
+            background: rgba(255,255,255,0.2); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; font-size: 18px;
+        }
+
+        .logo-text { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; color: #fff; }
+
+        .header-nav { display: flex; gap: 20px; }
+        .header-nav a { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 13px; font-weight: 700; transition: color 0.2s; }
+        .header-nav a:hover { color: #fff; }
+
+        .page-hero { background: linear-gradient(135deg, var(--azul), #2d5080); padding: 48px 24px 56px; text-align: center; }
+
+        .page-hero-tag {
+            display: inline-block;
+            background: rgba(255,255,255,0.18); color: #fff;
+            font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+            padding: 5px 14px; border-radius: 20px; margin-bottom: 14px;
+        }
+
+        .page-hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 900; color: #fff; margin-bottom: 10px; }
+        .page-hero p { color: rgba(255,255,255,0.8); font-size: 14px; }
+
+        .page-content { max-width: 900px; margin: 0 auto; padding: 40px 24px 60px; }
+
+        .content-grid { display: grid; gap: 20px; }
+
+        @media (min-width: 768px) { .content-grid { grid-template-columns: 1fr 280px; align-items: start; } }
+
+        .card { background: var(--branco); border-radius: 16px; padding: 32px; box-shadow: var(--sombra); }
+
+        .card-section { margin-bottom: 28px; padding-bottom: 28px; border-bottom: 1px solid #dde5f0; }
+        .card-section:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+
+        .section-num {
+            display: inline-block;
+            background: var(--dourado); color: var(--branco);
+            font-size: 11px; font-weight: 700;
+            width: 24px; height: 24px; border-radius: 50%;
+            text-align: center; line-height: 24px; margin-bottom: 8px;
+        }
+
+        .card h2 { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; color: var(--escuro); margin-bottom: 10px; }
+        .card p { font-size: 14px; color: var(--cinza); line-height: 1.7; margin-bottom: 8px; }
+        .card a { color: var(--azul-med); text-decoration: none; font-weight: 700; }
+        .card a:hover { text-decoration: underline; }
+
+        .aside-card { background: var(--branco); border-radius: 16px; padding: 24px; box-shadow: var(--sombra); }
+        .aside-card + .aside-card { margin-top: 16px; }
+
+        .aside-card h3 { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; color: var(--escuro); margin-bottom: 16px; }
+
+        .aside-nav { display: flex; flex-direction: column; gap: 6px; }
+
+        .aside-nav a {
+            display: block; padding: 8px 12px; border-radius: 8px;
+            font-size: 13px; color: var(--cinza); text-decoration: none;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .aside-nav a:hover { background: var(--creme); color: var(--escuro); }
+
+        .resumo-lista { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+
+        .resumo-lista li { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--cinza); line-height: 1.5; }
+        .resumo-lista li::before { content: '📌'; flex-shrink: 0; font-size: 13px; }
+
+        .empresa-info { margin-top: 20px; padding-top: 16px; border-top: 1px solid #dde5f0; }
+        .empresa-info p { font-size: 12px; color: var(--cinza); line-height: 1.7; }
+        .empresa-info strong { color: var(--escuro); }
+
+        footer { background: var(--azul); padding: 32px 24px; text-align: center; }
+
+        .footer-inner { max-width: 900px; margin: 0 auto; }
+        footer p { color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 12px; }
+
+        .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+        .footer-links a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 12px; padding: 4px 8px; border-radius: 4px; transition: color 0.2s; }
+        .footer-links a:hover { color: #fff; }
+        .footer-links span { color: rgba(255,255,255,0.3); font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<header class="site-header">
+    <div class="header-inner">
+        <a href="/" class="logo-link">
+            <div class="logo-icon">📚</div>
+            <span class="logo-text">RC Livros</span>
+        </a>
+        <nav class="header-nav">
+            <a href="/politica-privacidade">Privacidade</a>
+            <a href="/termos-de-uso">Termos</a>
+            <a href="/contato">Contato</a>
+        </nav>
+    </div>
+</header>
+
+<div class="page-hero">
+    <span class="page-hero-tag">Legal</span>
+    <h1>Termos de Uso</h1>
+    <p>RC Livros — Venda de E-Books &nbsp;·&nbsp; Última atualização: 30/04/2026</p>
+</div>
+
+<div class="page-content">
+    <div class="content-grid">
+
+        <div class="card">
+
+            <div class="card-section" id="aceite">
+                <div class="section-num">1</div>
+                <h2>Aceite dos Termos</h2>
+                <p>Ao acessar este site e/ou comprar e-books da <strong>RC Livros</strong>, você concorda com estes Termos de Uso. Se não concordar com alguma disposição, não utilize a plataforma.</p>
+            </div>
+
+            <div class="card-section" id="uso">
+                <div class="section-num">2</div>
+                <h2>Conta e Uso Responsável</h2>
+                <p>Você é responsável pelas informações fornecidas e pela segurança do seu acesso. É expressamente proibido usar o site para fins ilegais, tentativas de fraude, ataques ou qualquer forma de abuso.</p>
+            </div>
+
+            <div class="card-section" id="compra">
+                <div class="section-num">3</div>
+                <h2>Compra e Entrega</h2>
+                <p>Os e-books são <strong>produtos digitais</strong> entregues via WhatsApp após confirmação do pagamento. O acesso pode depender de conexão à internet e da compatibilidade do seu dispositivo para leitura de arquivos PDF.</p>
+            </div>
+
+            <div class="card-section" id="licenca">
+                <div class="section-num">4</div>
+                <h2>Licença e Restrições</h2>
+                <p>A compra concede uma <strong>licença pessoal, não exclusiva e intransferível</strong> para uso próprio. São proibidos o compartilhamento, a revenda, a publicação, a distribuição em massa ou a remoção de avisos de direitos autorais.</p>
+            </div>
+
+            <div class="card-section" id="reembolso">
+                <div class="section-num">5</div>
+                <h2>Reembolsos</h2>
+                <p>Solicitações de cancelamento e reembolso serão analisadas conforme a legislação vigente e as condições informadas no momento da compra. Em caso de dúvida, entre em contato conosco pelo e-mail ou WhatsApp.</p>
+            </div>
+
+            <div class="card-section" id="alteracoes">
+                <div class="section-num">6</div>
+                <h2>Alterações dos Termos</h2>
+                <p>Podemos atualizar estes Termos a qualquer momento. A versão vigente sempre ficará disponível nesta página, com a respectiva data de atualização.</p>
+            </div>
+
+            <div class="card-section" id="privacidade">
+                <div class="section-num">7</div>
+                <h2>Privacidade</h2>
+                <p>O tratamento de dados pessoais segue nossa <a href="/politica-privacidade">Política de Privacidade</a>, em conformidade com a LGPD.</p>
+            </div>
+
+            <div class="card-section" id="contato">
+                <div class="section-num">8</div>
+                <h2>Contato</h2>
+                <p><strong>RC Livros — BARREIROS RESTAURANTE LTDA</strong></p>
+                <p>CNPJ: 28.953.473/0001-22</p>
+                <p>E-mail: <a href="mailto:farias.barreiros@gmail.com">farias.barreiros@gmail.com</a></p>
+                <p>Porto Velho — Rondônia (RO)</p>
+            </div>
+
+        </div>
+
+        <div>
+            <div class="aside-card">
+                <h3>Navegação rápida</h3>
+                <nav class="aside-nav">
+                    <a href="#aceite">1. Aceite dos termos</a>
+                    <a href="#uso">2. Uso responsável</a>
+                    <a href="#compra">3. Compra e entrega</a>
+                    <a href="#licenca">4. Licença</a>
+                    <a href="#reembolso">5. Reembolsos</a>
+                    <a href="#alteracoes">6. Alterações</a>
+                    <a href="#privacidade">7. Privacidade</a>
+                    <a href="#contato">8. Contato</a>
+                </nav>
+            </div>
+
+            <div class="aside-card" style="margin-top: 16px;">
+                <h3>Resumo rápido</h3>
+                <ul class="resumo-lista">
+                    <li>E-books digitais entregues via WhatsApp.</li>
+                    <li>Uso pessoal — não compartilhar nem revender.</li>
+                    <li>Cuide do seu acesso e informações.</li>
+                    <li>Reembolsos conforme regras e legislação.</li>
+                </ul>
+
+                <div class="empresa-info">
+                    <p><strong>RC Livros</strong></p>
+                    <p>BARREIROS RESTAURANTE LTDA</p>
+                    <p>CNPJ: 28.953.473/0001-22</p>
+                    <p>Porto Velho — RO</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<footer>
+    <div class="footer-inner">
+        <p><strong style="color:rgba(255,255,255,0.9);">RC Livros</strong> &nbsp;·&nbsp; © 2026. Todos os direitos reservados.</p>
+        <div class="footer-links">
+            <a href="/politica-privacidade">Política de Privacidade</a>
+            <span>|</span>
+            <a href="/termos-de-uso">Termos de Uso</a>
+            <span>|</span>
+            <a href="/contato">Contato</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>
