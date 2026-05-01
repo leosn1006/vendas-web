@@ -6,7 +6,7 @@ import hmac
 import hashlib
 import logging
 from functools import wraps
-from flask import request, jsonify
+from flask import request, jsonify, has_request_context
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,14 @@ class WhatsAppSecurity:
         'lneditor.com.br': 'WHATSAPP_APP_SECRET',
         'lsnlivros.com.br': 'WHATSAPP_APP_SECRET_LSN',
         'lssolucoesdigitais.com.br': 'WHATSAPP_APP_SECRET_LSSD',
+        'rc-livros.com.br': 'WHATSAPP_APP_SECRET_RC',
+    }
+
+    _HOST_ACCESS_TOKEN_MAP = {
+        'lneditor.com.br': 'WHATSAPP_ACCESS_TOKEN',
+        'lsnlivros.com.br': 'WHATSAPP_ACCESS_TOKEN_LSN',
+        'lssolucoesdigitais.com.br': 'WHATSAPP_ACCESS_TOKEN_LSSD',
+        'rc-livros.com.br': 'WHATSAPP_ACCESS_TOKEN_RC',
     }
 
     def _secret_para_payload(self) -> str:
@@ -99,7 +107,20 @@ class WhatsAppSecurity:
         Returns:
             str: Access token configurado
         """
-        return self.access_token
+        if not has_request_context():
+            return self.access_token
+
+        host = request.host.split(':')[0].lower()
+        env_key = self._HOST_ACCESS_TOKEN_MAP.get(host)
+        if not env_key:
+            logger.error(f"[WEBHOOK] ❌ Host '{host}' não mapeado em _HOST_ACCESS_TOKEN_MAP — rejeitar requisição")
+            return ''
+
+        token = os.getenv(env_key, '')
+        if not token:
+            logger.error(f"[WEBHOOK] ❌ {env_key} não definido no .env para host '{host}' — rejeitar requisição")
+            return ''
+        return token
 
 
 # Instância global para uso nas rotas
