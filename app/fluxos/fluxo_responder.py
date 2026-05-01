@@ -56,6 +56,11 @@ def executar(pedido, mensagem_whatsapp):
         resposta_cliente = responder_cliente_com_historico_produto(mensagem_cliente, historico, produto, pedido)
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 🤖 Resposta gerada: {resposta_cliente}")
         # ============================================================================================
+        # None = IA decidiu escalar mas pedido já está em análise pelo admin
+        if resposta_cliente is None:
+            logger.info(f"[FLUXO-RESPONDER-MENSAGEM] 🔕 Pedido #{pedido_id} em análise pelo admin. IA silenciada.")
+            return
+        # ============================================================================================
         # envia digitando e delay humanizado
         try:
             enviar_mensagem_digitando(message_id, pedido.get('phone_number_id'))

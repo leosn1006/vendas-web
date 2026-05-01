@@ -41,10 +41,16 @@ def inject_produto_ativo():
         # (admins sempre têm acesso; para consulta, o produto precisa estar na lista filtrada)
         has_produto_acesso = produto_ativo is not None
 
+        badge_notificacoes = 0
+        if produto_ativo:
+            from database import contar_notificacoes_em_analise
+            badge_notificacoes = contar_notificacoes_em_analise(produto_ativo['id'])
+
         return dict(
             produtos_lista     = produtos,
             produto_ativo      = produto_ativo,
             has_produto_acesso = has_produto_acesso,
+            badge_notificacoes = badge_notificacoes,
         )
     except Exception:
-        return dict(produtos_lista=[], produto_ativo=None, has_produto_acesso=False)
+        return dict(produtos_lista=[], produto_ativo=None, has_produto_acesso=False, badge_notificacoes=0)

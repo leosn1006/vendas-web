@@ -521,6 +521,14 @@
         <div class="nav-produto-nome">{{ produto_ativo.nome }}</div>
 
         {% if current_user.is_admin() or has_produto_acesso %}
+        <a href="{{ url_for('admin.notificacoes_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.notificacoes_produto' %}active{% endif %}"
+           style="display:flex;align-items:center;justify-content:space-between">
+            <span><span class="icon">🔔</span> Notificações</span>
+            {% if badge_notificacoes > 0 %}
+            <span class="badge badge-red">{{ badge_notificacoes }}</span>
+            {% endif %}
+        </a>
         <a href="{{ url_for('admin.analytics_produto', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint == 'admin.analytics_produto' %}active{% endif %}">
             <span class="icon">📊</span> Analytics

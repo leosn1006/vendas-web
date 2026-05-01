@@ -20,7 +20,8 @@ from database import (db,
     buscar_pedido_por_nome, acertar_valor_pedido,
     listar_chaves_pix_produto, adicionar_chave_pix_produto, desativar_chave_pix_produto,
     busca_financeiro_pix,
-    listar_planilhas_dns_produto, adicionar_planilha_dns, atualizar_planilha_dns, remover_planilha_dns)
+    listar_planilhas_dns_produto, adicionar_planilha_dns, atualizar_planilha_dns, remover_planilha_dns,
+    listar_notificacoes_em_analise, marcar_notificacao_respondida)
 
 _FLUXOS = ['introducao', 'pedido', 'comprovante', 'responder', 'followup', 'confirmacao_web']
 _FLUXOS_READONLY = {'responder'}
@@ -626,6 +627,28 @@ def clonar_produto(produto_id):
         logger.error(f"[ADMIN] ❌ Erro ao clonar produto: {e}")
         flash(f'Erro ao clonar produto: {e}', 'danger')
         return redirect(url_for('admin.listar_produtos'))
+
+
+# ============================================================
+# Notificações de pedido
+# ============================================================
+@admin_bp.route('/produto/<int:produto_id>/notificacoes')
+@requer_acesso_produto
+def notificacoes_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = db.execute_query("SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True)
+    if produto is None:
+        flash('Produto não encontrado.', 'danger')
+        return redirect(url_for('admin.listar_produtos'))
+    notificacoes = listar_notificacoes_em_analise(produto_id)
+    return render_template('admin/produto_notificacoes.html', produto=produto, notificacoes=notificacoes)
+
+
+@admin_bp.route('/produto/<int:produto_id>/notificacoes/<int:notificacao_id>/responder', methods=['POST'])
+@requer_acesso_produto
+def responder_notificacao(produto_id, notificacao_id):
+    marcar_notificacao_respondida(notificacao_id, produto_id)
+    return redirect(url_for('admin.notificacoes_produto', produto_id=produto_id))
 
 
 # ============================================================

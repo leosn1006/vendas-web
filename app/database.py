@@ -1224,3 +1224,64 @@ def salvar_pagamento_pix(pix: dict, produto_id) -> bool:
             ),
         )
         return cursor.rowcount > 0
+
+
+# ============================================================
+# Notificações de pedido (substitui WhatsApp ao admin)
+# ============================================================
+
+def criar_notificacao_pedido(pedido_id: int, produto_id: int, motivo: str, mensagem: str = '') -> bool:
+    """Cria notificação se não houver uma em_analise para o pedido. Retorna True se inseriu."""
+    with db.get_cursor() as cursor:
+        cursor.execute(
+            """INSERT INTO notificacoes_pedido (pedido_id, produto_id, motivo, mensagem)
+               SELECT %s, %s, %s, %s
+               WHERE NOT EXISTS (
+                   SELECT 1 FROM notificacoes_pedido
+                   WHERE pedido_id = %s AND estado = 'em_analise'
+               )""",
+            (pedido_id, produto_id, motivo, mensagem, pedido_id),
+        )
+        return cursor.rowcount > 0
+
+
+def tem_notificacao_em_analise(pedido_id: int) -> bool:
+    """Retorna True se houver notificação em_analise para o pedido."""
+    row = db.execute_query(
+        "SELECT 1 FROM notificacoes_pedido WHERE pedido_id = %s AND estado = 'em_analise' LIMIT 1",
+        (pedido_id,),
+        fetch_one=True,
+    )
+    return row is not None
+
+
+def contar_notificacoes_em_analise(produto_id: int) -> int:
+    """Retorna quantidade de notificações em_analise para o produto (usado no badge)."""
+    row = db.execute_query(
+        "SELECT COUNT(*) AS total FROM notificacoes_pedido WHERE produto_id = %s AND estado = 'em_analise'",
+        (produto_id,),
+        fetch_one=True,
+    )
+    return int(row['total']) if row else 0
+
+
+def listar_notificacoes_em_analise(produto_id: int) -> list:
+    """Lista notificações em_analise do produto, mais antigas primeiro, com dados do pedido."""
+    return db.execute_query(
+        """SELECT n.id, n.pedido_id, n.motivo, n.mensagem, n.created_at,
+                  p.contact_name, p.contact_phone
+           FROM notificacoes_pedido n
+           JOIN pedidos p ON p.id = n.pedido_id
+           WHERE n.produto_id = %s AND n.estado = 'em_analise'
+           ORDER BY n.created_at ASC""",
+        (produto_id,),
+        fetch_all=True,
+    ) or []
+
+
+def marcar_notificacao_respondida(notificacao_id: int, produto_id: int) -> None:
+    """Marca a notificação como respondida, garantindo que pertence ao produto."""
+    db.execute_query(
+        "UPDATE notificacoes_pedido SET estado = 'respondido' WHERE id = %s AND produto_id = %s",
+        (notificacao_id, produto_id),
+    )

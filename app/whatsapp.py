@@ -412,3 +412,16 @@ def notificar_admin_erro_sistema(descricao: str, log: str = "log_worker"):
             logger.error(f"[NOTIF-ADMIN-ERRO-SISTEMA] ❌ Erro {response.status_code}: {response.text}")
     except Exception as e:
         logger.error(f"[NOTIF-ADMIN-ERRO-SISTEMA] ❌ Exceção: {e}")
+
+
+def criar_notificacao_admin(pedido_id: int, produto_id: int, motivo: str, mensagem: str = '') -> None:
+    """Persiste notificação para o admin no banco em vez de enviar WhatsApp."""
+    from database import criar_notificacao_pedido
+    try:
+        criada = criar_notificacao_pedido(pedido_id, produto_id, motivo, mensagem)
+        if criada:
+            logger.info(f"[NOTIF-ADMIN] 📋 Notificação criada — pedido #{pedido_id} | motivo: {motivo}")
+        else:
+            logger.info(f"[NOTIF-ADMIN] ℹ️ Pedido #{pedido_id} já em análise; notificação ignorada")
+    except Exception as e:
+        logger.error(f"[NOTIF-ADMIN] ❌ Erro ao criar notificação: {e}")

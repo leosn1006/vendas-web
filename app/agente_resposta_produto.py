@@ -127,16 +127,22 @@ def responder_cliente_com_historico_produto(
         logger.info(f"[AGENTE] 🔧 Tool chamada: notificar_admin | motivo={motivo} | resumo={resumo[:80]}")
 
         if pedido:
-            from whatsapp import notificar_admin_via_template
-            nome_produto = produto.get('nome', 'Desconhecido') if produto else 'Desconhecido'
-            notificar_admin_via_template(
-                pedido,
-                nome_produto,
-                f"Agente escalou. Motivo: {motivo}. Cliente: {pedido.get('contact_name')} ({pedido.get('contact_phone')}). Resumo: {resumo}"
+            from database import tem_notificacao_em_analise
+            from whatsapp import criar_notificacao_admin
+            produto_id = produto.get('id') if produto else pedido.get('produto_id')
+            ja_em_analise = tem_notificacao_em_analise(pedido['id'])
+            if ja_em_analise:
+                logger.info(f"[AGENTE] 🔕 Pedido #{pedido['id']} já em análise — IA silencia, não cria notificação duplicada")
+                return None
+            criar_notificacao_admin(
+                pedido['id'],
+                produto_id,
+                motivo,
+                f"Agente escalou. Motivo: {motivo}. Cliente: {pedido.get('contact_name')} ({pedido.get('contact_phone')}). Resumo: {resumo}",
             )
-            logger.info(f"[AGENTE] 📲 Admin notificado via template — motivo: {motivo}")
+            logger.info(f"[AGENTE] 📋 Notificação criada para admin — motivo: {motivo}")
 
-        return "Vou verificar com nossa equipe e te retorno em breve 🙏"
+        return "Vou verificar e te retorno em breve 🙏"
 
     resposta = (choice.message.content or "").strip()
     if not resposta:

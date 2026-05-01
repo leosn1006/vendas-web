@@ -7,7 +7,7 @@ from database import (
     get_produto_by_id,
 )
 from whatsapp_upload import receber_comprovante
-from whatsapp import notificar_admin_pedido
+from whatsapp import criar_notificacao_admin
 from agente_valida_comprovante import validar_comprovante_com_ia
 from fluxos._executor_acao import executar_acao, filtrar_e_ordenar
 
@@ -150,14 +150,17 @@ def executar(pedido, mensagem_whatsapp):
 
         # ── Notificações ao admin ─────────────────────────────────────────
         if preco_produto > 0 and valor_pago > preco_produto * 3:
-            notificar_admin_pedido(pedido, (
-                f"⚠️ *Pagamento alto* — Pedido #{pedido_id}\n\n"
-                f"Cliente: #{pedido_id} — {pedido.get('contact_name')} ({pedido.get('contact_phone')})\n"
-                f"Valor pago: *R$ {valor_pago:.2f}* | Preço produto: R$ {preco_produto:.2f}\n"
+            criar_notificacao_admin(
+                pedido_id,
+                produto_id,
+                'pagamento_alto',
+                f"Pagamento alto — Pedido #{pedido_id}\n"
+                f"Cliente: {pedido.get('contact_name')} ({pedido.get('contact_phone')})\n"
+                f"Valor pago: R$ {valor_pago:.2f} | Preço produto: R$ {preco_produto:.2f}\n"
                 f"Pagador: {resultado.get('nome_pagador') or '—'}\n"
-                f"Banco: {resultado.get('nome_banco') or '—'}"
-            ))
-            logger.info(f"[{_TAG}] 📲 Admin notificado — pagamento alto (R$ {valor_pago:.2f})")
+                f"Banco: {resultado.get('nome_banco') or '—'}",
+            )
+            logger.info(f"[{_TAG}] 📋 Notificação criada — pagamento alto (R$ {valor_pago:.2f})")
 
         # ── Executa ações dinâmicas ───────────────────────────────────────
         todas_acoes = listar_acoes_fluxo(produto_id, 'comprovante')
