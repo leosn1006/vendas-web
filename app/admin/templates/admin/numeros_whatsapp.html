@@ -171,11 +171,13 @@
 
 {% block extra_js %}
 <script>
+const PRODUTO_ID = {{ produto.id }};
+
 function abrirModalEditar(id, telefone, apiPhone, tokenEnv) {
     document.getElementById('edit-telefone').value  = telefone;
     document.getElementById('edit-api-phone').value = apiPhone;
     document.getElementById('edit-token-env').value = tokenEnv;
-    document.getElementById('form-editar').action   = '/admin/produto/{{ produto.id }}/numeros-whatsapp/' + id + '/editar';
+    document.getElementById('form-editar').action   = '/admin/produto/' + PRODUTO_ID + '/numeros-whatsapp/' + id + '/editar';
     document.getElementById('modal-editar').classList.add('open');
 }
 
