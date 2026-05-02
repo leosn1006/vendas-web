@@ -43,27 +43,49 @@ def consultar_todos_pix(inicio: datetime, fim: datetime) -> list:
     Retorna lista de dicts com os campos do PIX (endToEndId, valor, chave, etc.).
     """
     token = _get_token()
-    resp = requests.get(
-        f'{_API_URL}/pix',
-        params={
-            'inicio':         inicio.isoformat(),
-            'fim':            fim.isoformat(),
-            'gw-dev-app-key': _APP_KEY,
-        },
-        headers={
-            'Authorization': f'Bearer {token}',
-        },
-        cert=(_CERT_PEM, _CERT_KEY),
-        timeout=15,
-    )
-    if resp.status_code == 404:
-        logger.info(f'[BB-PIX] Nenhuma transação encontrada de {inicio.date()} a {fim.date()}')
-        return []
-    if not resp.ok:
-        logger.error(f'[BB-PIX] Erro ao consultar PIX {resp.status_code}: {resp.text}')
-        resp.raise_for_status()
+    todos = []
+    pagina = 0
 
-    data = resp.json()
-    pix_list = data.get('pix', [])
-    logger.info(f'[BB-PIX] {len(pix_list)} transação(ões) recebida(s) de {inicio.date()} a {fim.date()}')
-    return pix_list
+    while True:
+        resp = requests.get(
+            f'{_API_URL}/pix',
+            params={
+                'inicio':                   inicio.isoformat(),
+                'fim':                      fim.isoformat(),
+                'gw-dev-app-key':           _APP_KEY,
+                'paginacao.paginaAtual':    pagina,
+                'paginacao.itensPorPagina': 100,
+            },
+            headers={
+                'Authorization': f'Bearer {token}',
+            },
+            cert=(_CERT_PEM, _CERT_KEY),
+            timeout=15,
+        )
+        if resp.status_code == 404:
+            logger.info(f'[BB-PIX] Nenhuma transação encontrada de {inicio.date()} a {fim.date()}')
+            break
+        if not resp.ok:
+            logger.error(f'[BB-PIX] Erro ao consultar PIX {resp.status_code}: {resp.text}')
+            resp.raise_for_status()
+
+        data = resp.json()
+        paginacao = data.get('parametros', {}).get('paginacao', {})
+        total_paginas = paginacao.get('quantidadeDePaginas', 1)
+        total_itens = paginacao.get('quantidadeTotalDeItens', 0)
+        pagina_atual = paginacao.get('paginaAtual', pagina)
+
+        pix_pagina = data.get('pix', [])
+        todos.extend(pix_pagina)
+
+        logger.info(
+            f'[BB-PIX] Página {pagina_atual + 1}/{total_paginas} — '
+            f'{len(pix_pagina)} transação(ões) (total esperado: {total_itens})'
+        )
+
+        if pagina_atual >= total_paginas - 1:
+            break
+        pagina += 1
+
+    logger.info(f'[BB-PIX] ✅ {len(todos)} transação(ões) recebida(s) de {inicio.date()} a {fim.date()}')
+    return todos
