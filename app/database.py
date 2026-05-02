@@ -772,13 +772,13 @@ def listar_telefones_produto(produto_id):
     return db.execute_query(query, (produto_id,), fetch_all=True) or []
 
 
-def atualizar_telefone_produto(telefone_id, produto_id, telefone, api_phone_number_id, token_env_key):
+def atualizar_telefone_produto(telefone_id, produto_id, telefone, api_phone_number_id, token_env_key, contador_uso=0):
     query = """
         UPDATE telefones_produto
-        SET telefone = %s, api_phone_number_id = %s, token_env_key = %s
+        SET telefone = %s, api_phone_number_id = %s, token_env_key = %s, contador_uso = %s
         WHERE id = %s AND produto_id = %s
     """
-    db.execute_query(query, (telefone, api_phone_number_id or None, token_env_key or 'WHATSAPP_ACCESS_TOKEN', telefone_id, produto_id))
+    db.execute_query(query, (telefone, api_phone_number_id or None, token_env_key or 'WHATSAPP_ACCESS_TOKEN', contador_uso, telefone_id, produto_id))
 
 
 def selecionar_telefone_produto(produto_id):
@@ -824,15 +824,9 @@ def adicionar_telefone_produto(telefone, produto_id, api_phone_number_id=None, t
     return db.execute_query(query, (telefone, produto_id, api_phone_number_id, token_env_key))
 
 
-def remover_telefone_produto(telefone_id):
-    """
-    Remove um mapeamento telefone → produto pelo ID do registro.
-
-    Args:
-        telefone_id: ID do registro em telefones_produto
-    """
-    query = "DELETE FROM telefones_produto WHERE id = %s"
-    db.execute_query(query, (telefone_id,))
+def remover_telefone_produto(telefone_id, produto_id):
+    query = "DELETE FROM telefones_produto WHERE id = %s AND produto_id = %s"
+    db.execute_query(query, (telefone_id, produto_id))
 
 
 # ── mensagens_sugeridas_produto ───────────────────────────────────────────────

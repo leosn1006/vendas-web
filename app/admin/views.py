@@ -824,7 +824,7 @@ def selecionar_produto():
 # Números WhatsApp por produto
 # ============================================================
 @admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp')
-@requer_login
+@requer_admin
 def numeros_whatsapp(produto_id):
     session['produto_ativo_id'] = produto_id
     produto = db.execute_query(
@@ -860,7 +860,7 @@ def adicionar_numero_whatsapp(produto_id):
 @requer_admin
 def remover_numero_whatsapp(produto_id, telefone_id):
     try:
-        remover_telefone_produto(telefone_id)
+        remover_telefone_produto(telefone_id, produto_id)
         flash('Número removido.', 'success')
         logger.info(f"[ADMIN] ✅ Telefone #{telefone_id} removido do produto #{produto_id} por {current_user.email}")
     except Exception as e:
@@ -879,7 +879,11 @@ def editar_numero_whatsapp(produto_id, telefone_id):
     api_phone_number_id = request.form.get('api_phone_number_id', '').strip() or None
     token_env_key = request.form.get('token_env_key', '').strip() or 'WHATSAPP_ACCESS_TOKEN'
     try:
-        atualizar_telefone_produto(telefone_id, produto_id, telefone, api_phone_number_id, token_env_key)
+        contador_uso = max(0, int(request.form.get('contador_uso', 0) or 0))
+    except (ValueError, TypeError):
+        contador_uso = 0
+    try:
+        atualizar_telefone_produto(telefone_id, produto_id, telefone, api_phone_number_id, token_env_key, contador_uso)
         flash(f'Número {telefone} atualizado com sucesso!', 'success')
         logger.info(f"[ADMIN] ✅ Telefone #{telefone_id} atualizado por {current_user.email}")
     except Exception as e:
