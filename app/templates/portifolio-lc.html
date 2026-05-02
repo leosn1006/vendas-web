@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LC Livros — LUIZ CARLOS NEGREIROS REIS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --azul:       #1e3a5f;
+            --azul-med:   #2d6a9f;
+            --azul-claro: #5a9fd4;
+            --dourado:    #c9a227;
+            --dourado-cl: #e8c55a;
+            --creme:      #f5f0e8;
+            --escuro:     #1a2a3a;
+            --texto:      #2c2c2c;
+            --cinza:      #555;
+            --branco:     #ffffff;
+            --sombra:     0 4px 24px rgba(0,0,0,0.10);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--creme);
+            color: var(--texto);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: var(--branco);
+            border-bottom: 1px solid #dde5f0;
+            box-shadow: 0 1px 8px rgba(30,58,95,0.08);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--azul-med), var(--dourado));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--azul);
+        }
+
+        nav { display: none; gap: 28px; }
+        nav a {
+            color: var(--cinza);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 700;
+            transition: color 0.2s;
+        }
+        nav a:hover { color: var(--azul); }
+        @media (min-width: 768px) { nav { display: flex; } }
+
+        .hero {
+            background: linear-gradient(135deg, var(--azul) 0%, #2d5080 60%, #3a6090 100%);
+            padding: 80px 0 90px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -40px;
+            left: 0; right: 0;
+            height: 80px;
+            background: var(--creme);
+            clip-path: ellipse(55% 100% at 50% 100%);
+        }
+
+        .hero-grid {
+            display: grid;
+            gap: 40px;
+            align-items: center;
+        }
+
+        @media (min-width: 768px) {
+            .hero-grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 18px;
+        }
+
+        .hero h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+            font-weight: 900;
+            color: #fff;
+            line-height: 1.2;
+            margin-bottom: 16px;
+        }
+
+        .hero p {
+            font-size: 15px;
+            color: rgba(255,255,255,0.85);
+            line-height: 1.8;
+            margin-bottom: 28px;
+        }
+
+        .button-group { display: flex; gap: 12px; flex-wrap: wrap; }
+
+        .btn {
+            padding: 14px 28px;
+            font-size: 14px;
+            font-family: 'Lato', sans-serif;
+            font-weight: 700;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: var(--dourado);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(201,162,39,0.4);
+        }
+
+        .btn-primary:hover {
+            background: #b08a1a;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(201,162,39,0.5);
+        }
+
+        .btn-outline {
+            border: 2px solid rgba(255,255,255,0.7);
+            color: #fff;
+            background: transparent;
+        }
+
+        .btn-outline:hover { background: rgba(255,255,255,0.15); }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 40px;
+        }
+
+        .stat-box {
+            background: rgba(255,255,255,0.15);
+            border-radius: 14px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-num {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            font-weight: 900;
+            color: #fff;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.75);
+            margin-top: 4px;
+        }
+
+        section { padding: 64px 0; }
+
+        .section-label {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--azul-med);
+            margin-bottom: 8px;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            font-weight: 700;
+            color: var(--escuro);
+            margin-bottom: 16px;
+        }
+
+        .section-sub {
+            font-size: 15px;
+            color: var(--cinza);
+            max-width: 560px;
+            line-height: 1.7;
+        }
+
+        .section-header { text-align: center; margin-bottom: 48px; }
+        .section-header .section-sub { margin: 0 auto; }
+
+        .services { background: var(--branco); }
+
+        .services-grid { display: grid; gap: 24px; }
+
+        @media (min-width: 640px) { .services-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 900px) { .services-grid { grid-template-columns: repeat(3, 1fr); } }
+
+        .card {
+            background: var(--branco);
+            border-radius: 16px;
+            box-shadow: var(--sombra);
+            padding: 28px;
+            transition: all 0.25s;
+            border: 1px solid #dde5f0;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 36px rgba(0,0,0,0.12);
+        }
+
+        .card-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 18px;
+            font-size: 24px;
+        }
+
+        .icon-azul-bg  { background: #ddeaf8; }
+        .icon-dourado-bg { background: #fdf5dc; }
+        .icon-creme-bg  { background: var(--creme); }
+
+        .card h4 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--escuro);
+            margin-bottom: 10px;
+        }
+
+        .card p { color: var(--cinza); font-size: 14px; line-height: 1.7; }
+
+        .ebooks { background: var(--creme); }
+
+        .ebooks-grid { display: grid; gap: 48px; align-items: center; }
+
+        @media (min-width: 768px) { .ebooks-grid { grid-template-columns: 1fr 1fr; } }
+
+        .ebooks-content h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.4rem, 2.5vw, 1.8rem);
+            font-weight: 700;
+            color: var(--escuro);
+            margin-bottom: 14px;
+        }
+
+        .ebooks-content p {
+            font-size: 14px;
+            color: var(--cinza);
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+
+        .checklist {
+            list-style: none;
+            margin-bottom: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .checklist li {
+            display: flex;
+            gap: 12px;
+            font-size: 14px;
+            color: var(--texto);
+            align-items: flex-start;
+        }
+
+        .checklist-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--azul-med);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 1px;
+        }
+
+        .btn-dourado {
+            background: var(--dourado);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(201,162,39,0.35);
+        }
+
+        .btn-dourado:hover {
+            background: #b08a1a;
+            transform: translateY(-2px);
+        }
+
+        .ebooks-visual {
+            background: linear-gradient(135deg, var(--azul-med), var(--azul));
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            color: #fff;
+        }
+
+        .ebooks-visual .big-num {
+            font-family: 'Playfair Display', serif;
+            font-size: 5rem;
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .ebooks-visual p { font-size: 14px; opacity: 0.85; }
+
+        .verification { background: var(--branco); }
+
+        .verification-grid { display: grid; gap: 24px; margin-bottom: 24px; }
+
+        @media (min-width: 768px) { .verification-grid { grid-template-columns: 1fr 1fr; } }
+
+        .verification-card {
+            background: var(--creme);
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid #dde5f0;
+        }
+
+        .verification-card h4 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--escuro);
+            margin-bottom: 20px;
+        }
+
+        .info-item { padding: 12px 0; border-bottom: 1px solid #cdd8e8; }
+        .info-item:last-child { border-bottom: none; }
+
+        .info-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--cinza);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .info-value { font-size: 15px; font-weight: 700; color: var(--escuro); }
+
+        .contact-row {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .contact-row:last-child { margin-bottom: 0; }
+
+        .contact-emoji { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+
+        .contact-row h5 {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--cinza);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 3px;
+        }
+
+        .contact-row p, .contact-row a {
+            font-size: 14px;
+            color: var(--texto);
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        .contact-row a:hover { color: var(--azul); }
+
+        .compliance-card {
+            background: linear-gradient(135deg, #ddeaf8, #f5f0e8);
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid #c5d8ee;
+        }
+
+        .compliance-card h4 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--escuro);
+            margin-bottom: 10px;
+        }
+
+        .compliance-card > p {
+            font-size: 14px;
+            color: var(--cinza);
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+
+        .compliance-grid { display: grid; gap: 12px; }
+
+        @media (min-width: 640px) { .compliance-grid { grid-template-columns: repeat(3, 1fr); } }
+
+        .compliance-item { background: var(--branco); border-radius: 10px; padding: 14px; }
+        .compliance-item .ci-title { font-size: 13px; font-weight: 700; color: var(--azul-med); margin-bottom: 4px; }
+        .compliance-item .ci-sub { font-size: 12px; color: var(--cinza); }
+
+        .products-grid { display: grid; gap: 24px; margin-top: 40px; }
+
+        @media (min-width: 540px) { .products-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 900px) { .products-grid { grid-template-columns: repeat(3, 1fr); } }
+
+        .product-card {
+            background: var(--branco);
+            border-radius: 16px;
+            box-shadow: var(--sombra);
+            border: 1px solid #dde5f0;
+            overflow: hidden;
+            text-decoration: none;
+            color: var(--texto);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.25s;
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 36px rgba(0,0,0,0.13);
+        }
+
+        .product-card-img {
+            height: 160px;
+            background: linear-gradient(135deg, var(--azul-med), var(--azul));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            overflow: hidden;
+        }
+
+        .product-card-img img { width: 100%; height: 100%; object-fit: cover; }
+
+        .product-card-body {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-card-body h4 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--escuro);
+            margin-bottom: 8px;
+        }
+
+        .product-card-body p {
+            font-size: 13px;
+            color: var(--cinza);
+            line-height: 1.6;
+            flex: 1;
+            margin-bottom: 16px;
+        }
+
+        .product-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: auto;
+        }
+
+        .product-price {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: var(--azul);
+        }
+
+        .btn-sm { padding: 8px 18px; font-size: 13px; }
+
+        .catalog-empty {
+            text-align: center;
+            padding: 40px;
+            color: var(--cinza);
+            font-size: 14px;
+        }
+
+        .cta-section {
+            background: linear-gradient(135deg, var(--azul), #0f2040);
+            padding: 64px 0;
+            text-align: center;
+        }
+
+        .cta-section h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 16px;
+        }
+
+        .cta-section p {
+            font-size: 15px;
+            color: rgba(255,255,255,0.75);
+            margin-bottom: 32px;
+            max-width: 480px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.7;
+        }
+
+        .cta-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+        .btn-white { background: #fff; color: var(--azul); }
+        .btn-white:hover { background: var(--creme); transform: translateY(-2px); }
+
+        .btn-outline-white {
+            border: 2px solid rgba(255,255,255,0.6);
+            color: #fff;
+            background: transparent;
+        }
+
+        .btn-outline-white:hover { background: rgba(255,255,255,0.1); }
+
+        footer { background: var(--azul); padding: 48px 0 24px; }
+
+        .footer-grid { display: grid; gap: 32px; margin-bottom: 32px; }
+
+        @media (min-width: 640px) { .footer-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 900px) { .footer-grid { grid-template-columns: 2fr 1fr 1fr 1fr; } }
+
+        .footer-section h5 {
+            font-family: 'Lato', sans-serif;
+            font-weight: 700;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 14px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .footer-section ul { list-style: none; }
+        .footer-section ul li { margin-bottom: 8px; font-size: 13px; }
+        .footer-section ul li a { color: rgba(255,255,255,0.65); text-decoration: none; transition: color 0.2s; }
+        .footer-section ul li a:hover { color: #fff; }
+        .footer-section > p { font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.7; }
+
+        .footer-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+
+        .footer-logo-icon {
+            width: 28px;
+            height: 28px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .footer-logo-text { font-family: 'Playfair Display', serif; font-weight: 700; color: #fff; font-size: 15px; }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255,255,255,0.15);
+            padding-top: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+    <div class="container">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <div class="logo-icon">📚</div>
+                <span class="logo-text">LC Livros</span>
+            </a>
+            <nav>
+                <a href="#servicos">Serviços</a>
+                <a href="#catalogo">E-books</a>
+                <a href="#verificacao">Verificação</a>
+                <a href="/contato">Contato</a>
+            </nav>
+        </div>
+    </div>
+</header>
+
+<!-- ── HERO ── -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-grid">
+            <div>
+                <span class="badge">Bem-vindo à LC Livros</span>
+                <h2>E-books de Qualidade para Você</h2>
+                <p>E-books cuidadosamente elaborados para enriquecer seu conhecimento e sua vida. Conteúdo selecionado, entrega imediata pelo WhatsApp.</p>
+                <div class="button-group">
+                    <a href="#catalogo" class="btn btn-primary">Conheça nossos e-books</a>
+                    <a href="#verificacao" class="btn btn-outline">Sobre a empresa</a>
+                </div>
+            </div>
+            <div>
+                <div class="hero-stats">
+                    <div class="stat-box">
+                        <div class="stat-num">50+</div>
+                        <div class="stat-label">Conteúdos por e-book</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-num">★4.9</div>
+                        <div class="stat-label">Avaliação média</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-num">1k+</div>
+                        <div class="stat-label">Clientes atendidos</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── SERVIÇOS ── -->
+<section class="services" id="servicos">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-label">O que oferecemos</span>
+            <h2 class="section-title">Nossos Serviços</h2>
+            <p class="section-sub">Soluções digitais práticas para quem busca conhecimento de qualidade com facilidade.</p>
+        </div>
+
+        <div class="services-grid">
+            <div class="card">
+                <div class="card-icon icon-azul-bg">📚</div>
+                <h4>E-books Especializados</h4>
+                <p>Conteúdo selecionado e bem estruturado, do básico ao avançado, pronto para transformar seu aprendizado.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon icon-dourado-bg">⚡</div>
+                <h4>Entrega Imediata</h4>
+                <p>Após o pagamento, você recebe o e-book diretamente no seu WhatsApp. Simples e sem complicação.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon icon-creme-bg">🌟</div>
+                <h4>Conteúdo de Qualidade</h4>
+                <p>Materiais cuidadosamente preparados para oferecer valor real e aplicação prática no seu dia a dia.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── EBOOKS ── -->
+<section class="ebooks" id="ebooks">
+    <div class="container">
+        <div class="ebooks-grid">
+            <div class="ebooks-content">
+                <span class="section-label">Conteúdo digital</span>
+                <h3>Nossos E-books</h3>
+                <p>Cada e-book é desenvolvido com cuidado para oferecer conteúdo de valor real, com linguagem acessível e resultados práticos para sua vida.</p>
+                <ul class="checklist">
+                    <li>
+                        <div class="checklist-icon">✓</div>
+                        <span>Conteúdo testado e aprovado pelos nossos leitores</span>
+                    </li>
+                    <li>
+                        <div class="checklist-icon">✓</div>
+                        <span>Linguagem clara e direta ao ponto</span>
+                    </li>
+                    <li>
+                        <div class="checklist-icon">✓</div>
+                        <span>Entrega imediata em PDF pelo WhatsApp</span>
+                    </li>
+                    <li>
+                        <div class="checklist-icon">✓</div>
+                        <span>Preço acessível com qualidade garantida</span>
+                    </li>
+                </ul>
+                <a href="#catalogo" class="btn btn-dourado">Ver nossos e-books</a>
+            </div>
+            <div class="ebooks-visual">
+                <div class="big-num">100%</div>
+                <p>conteúdo digital<br>entregue via <strong>WhatsApp</strong></p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── CATÁLOGO DE PRODUTOS ── -->
+<section class="ebooks" id="catalogo" style="background: var(--branco); padding-top: 0;">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-label">Escolha o seu</span>
+            <h2 class="section-title">Nossos E-books Disponíveis</h2>
+            <p class="section-sub">Clique em qualquer e-book para conhecer mais e adquirir pelo WhatsApp.</p>
+        </div>
+
+        {% if produtos %}
+        <div class="products-grid">
+            {% for produto in produtos %}
+            <a href="{{ produto.url_pagina_vendas }}" class="product-card">
+                <div class="product-card-img">
+                    {% if produto.url_imagem_complementar %}
+                    <img src="{{ produto.url_imagem_complementar }}" alt="{{ produto.nome }}">
+                    {% else %}
+                    📚
+                    {% endif %}
+                </div>
+                <div class="product-card-body">
+                    <h4>{{ produto.nome }}</h4>
+                    <p>{{ (produto.descricao or '')[:100] }}{% if (produto.descricao or '')|length > 100 %}…{% endif %}</p>
+                    <div class="product-card-footer">
+                        <span class="product-price">R$ {{ "%.2f"|format(produto.preco) }}</span>
+                        <span class="btn btn-dourado btn-sm">Ver e-book →</span>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="catalog-empty">Em breve novos e-books disponíveis. <a href="/contato">Entre em contato</a>.</p>
+        {% endif %}
+    </div>
+</section>
+
+<!-- ── VERIFICAÇÃO ── -->
+<section class="verification" id="verificacao">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-label">Transparência</span>
+            <h2 class="section-title">Informações da Empresa</h2>
+            <p class="section-sub">Empresa registrada e verificada para operações comerciais legítimas no Brasil.</p>
+        </div>
+
+        <div class="verification-grid">
+            <div class="verification-card">
+                <h4>Dados Empresariais</h4>
+                <div class="info-item">
+                    <div class="info-label">CNPJ</div>
+                    <div class="info-value">46.605.258/0001-12</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Razão Social</div>
+                    <div class="info-value">LUIZ CARLOS NEGREIROS REIS</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Segmento</div>
+                    <div class="info-value">Venda de E-books Digitais</div>
+                </div>
+            </div>
+
+            <div class="verification-card">
+                <h4>Endereço &amp; Contato</h4>
+                <div class="contact-row">
+                    <span class="contact-emoji">📍</span>
+                    <div>
+                        <h5>Endereço</h5>
+                        <p>Quadra 1 Conjunto 13, Setor Habitacional Vicente Pires<br>Cond. Residencial Fênix — Brasília, DF</p>
+                    </div>
+                </div>
+                <div class="contact-row">
+                    <span class="contact-emoji">✉️</span>
+                    <div>
+                        <h5>E-mail</h5>
+                        <a href="mailto:luiz.reis1964@gmail.com">luiz.reis1964@gmail.com</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="compliance-card">
+            <h4>Conformidade &amp; Segurança</h4>
+            <p>A LC Livros opera em conformidade com todas as regulamentações brasileiras de comércio eletrônico e proteção de dados. Nossas operações são transparentes e verificáveis, garantindo segurança e confiança para todos os clientes.</p>
+            <div class="compliance-grid">
+                <div class="compliance-item">
+                    <p class="ci-title">✓ CNPJ Ativo</p>
+                    <p class="ci-sub">Pessoa Física — CNPJ Regular</p>
+                </div>
+                <div class="compliance-item">
+                    <p class="ci-title">✓ Dados Protegidos</p>
+                    <p class="ci-sub">Conformidade com a LGPD</p>
+                </div>
+                <div class="compliance-item">
+                    <p class="ci-title">✓ Transações Seguras</p>
+                    <p class="ci-sub">SSL e pagamento via PIX</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── CTA ── -->
+<section class="cta-section" id="contato-cta">
+    <div class="container">
+        <h3>Pronto para adquirir seu e-book?</h3>
+        <p>Entre em contato pelo WhatsApp ou e-mail. Nossa equipe responde rápido e entrega o e-book na hora.</p>
+        <div class="cta-buttons">
+            <a href="/contato" class="btn btn-white">Fale Conosco</a>
+            <a href="#catalogo" class="btn btn-outline-white">Ver E-books</a>
+        </div>
+    </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-section">
+                <div class="footer-logo">
+                    <div class="footer-logo-icon">📚</div>
+                    <span class="footer-logo-text">LC Livros</span>
+                </div>
+                <p>E-books digitais de qualidade, entregues diretamente no seu WhatsApp.</p>
+            </div>
+            <div class="footer-section">
+                <h5>Empresa</h5>
+                <ul>
+                    <li><a href="#servicos">Serviços</a></li>
+                    <li><a href="#catalogo">E-books</a></li>
+                    <li><a href="#verificacao">Verificação</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h5>Contato</h5>
+                <ul>
+                    <li><a href="mailto:luiz.reis1964@gmail.com">luiz.reis1964@gmail.com</a></li>
+                    <li>Brasília — DF</li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h5>Legal</h5>
+                <ul>
+                    <li><a href="/politica-privacidade">Política de Privacidade</a></li>
+                    <li><a href="/termos-de-uso">Termos de Uso</a></li>
+                    <li><a href="/contato">Contato</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 LUIZ CARLOS NEGREIROS REIS — LC Livros. Todos os direitos reservados. | CNPJ: 46.605.258/0001-12</p>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>
