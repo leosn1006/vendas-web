@@ -74,7 +74,11 @@
                     {% if current_user.is_admin() %}
                     <td style="text-align: right; white-space: nowrap;">
                         <button type="button" class="btn btn-secondary btn-sm"
-                                onclick="abrirModalEditar({{ t.id }}, {{ t.telefone|tojson }}, {{ (t.api_phone_number_id or '')|tojson }}, {{ (t.token_env_key or 'WHATSAPP_ACCESS_TOKEN')|tojson }})">
+                                data-id="{{ t.id }}"
+                                data-telefone="{{ t.telefone }}"
+                                data-api="{{ t.api_phone_number_id or '' }}"
+                                data-token="{{ t.token_env_key or 'WHATSAPP_ACCESS_TOKEN' }}"
+                                onclick="abrirModalEditar(this)">
                             Alterar
                         </button>
                         <form method="POST" style="display: inline;"
@@ -173,11 +177,11 @@
 <script>
 const PRODUTO_ID = {{ produto.id }};
 
-function abrirModalEditar(id, telefone, apiPhone, tokenEnv) {
-    document.getElementById('edit-telefone').value  = telefone;
-    document.getElementById('edit-api-phone').value = apiPhone;
-    document.getElementById('edit-token-env').value = tokenEnv;
-    document.getElementById('form-editar').action   = '/admin/produto/' + PRODUTO_ID + '/numeros-whatsapp/' + id + '/editar';
+function abrirModalEditar(btn) {
+    document.getElementById('edit-telefone').value  = btn.dataset.telefone;
+    document.getElementById('edit-api-phone').value = btn.dataset.api;
+    document.getElementById('edit-token-env').value = btn.dataset.token;
+    document.getElementById('form-editar').action   = '/admin/produto/' + PRODUTO_ID + '/numeros-whatsapp/' + btn.dataset.id + '/editar';
     document.getElementById('modal-editar').classList.add('open');
 }
 
