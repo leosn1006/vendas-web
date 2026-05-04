@@ -50,7 +50,7 @@
                     <th>Token env key</th>
                     <th>Cadastrado em</th>
                     <th style="text-align: right;">Usos</th>
-                    {% if current_user.is_admin() %}<th></th>{% endif %}
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -71,7 +71,6 @@
                     <td style="text-align: right; font-family: var(--mono); font-size: 14px;">
                         {{ t.contador_uso or 0 }}
                     </td>
-                    {% if current_user.is_admin() %}
                     <td style="text-align: right; white-space: nowrap;">
                         <button type="button" class="btn btn-secondary btn-sm"
                                 data-id="{{ t.id }}"
@@ -88,7 +87,6 @@
                             <button type="submit" class="btn btn-danger btn-sm">Remover</button>
                         </form>
                     </td>
-                    {% endif %}
                 </tr>
                 {% endfor %}
             </tbody>
@@ -101,7 +99,6 @@
     {% endif %}
 
     <!-- Formulário de adição -->
-    {% if current_user.is_admin() %}
     <div style="margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border);">
         <p style="font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
                   color: var(--muted); font-family: var(--mono); margin-bottom: 12px;">
@@ -132,11 +129,13 @@
             <button type="submit" class="btn btn-primary" style="white-space: nowrap; margin-bottom: 0;">
                 + Adicionar
             </button>
+            {% if current_user.is_admin() %}
             <button type="submit"
                     formaction="{{ url_for('admin.ativar_numero_whatsapp', produto_id=produto.id) }}"
                     class="btn btn-secondary" style="white-space: nowrap; margin-bottom: 0;">
                 Ativar
             </button>
+            {% endif %}
         </form>
         <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">
             <b>Display phone:</b> número visível no WhatsApp, usado para identificar o produto e gerar o link wa.me.<br>
@@ -144,7 +143,6 @@
             <b>Token env key:</b> nome da variável no .env que contém o token desta conta (ex: WHATSAPP_ACCESS_TOKEN ou WHATSAPP_ACCESS_TOKEN_2).
         </p>
     </div>
-    {% endif %}
 </div>
 
 <!-- Modal: Alterar Número -->

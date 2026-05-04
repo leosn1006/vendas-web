@@ -569,13 +569,13 @@
            class="nav-link {% if request.endpoint == 'admin.roi_produto' %}active{% endif %}">
             <span class="icon">📈</span> ROI
         </a>
-        {% endif %}
-
-        {% if current_user.is_admin() %}
         <a href="{{ url_for('admin.numeros_whatsapp', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint == 'admin.numeros_whatsapp' %}active{% endif %}">
             <span class="icon">📞</span> Números WhatsApp
         </a>
+        {% endif %}
+
+        {% if current_user.is_admin() %}
         <a href="{{ url_for('admin.chaves_pix_produto', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint in ['admin.chaves_pix_produto','admin.adicionar_chave_pix','admin.desativar_chave_pix'] %}active{% endif %}">
             <span class="icon">🔑</span> Chaves PIX

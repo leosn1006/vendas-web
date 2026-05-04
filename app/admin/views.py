@@ -824,7 +824,7 @@ def selecionar_produto():
 # Números WhatsApp por produto
 # ============================================================
 @admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp')
-@requer_admin
+@requer_acesso_produto
 def numeros_whatsapp(produto_id):
     session['produto_ativo_id'] = produto_id
     produto = db.execute_query(
@@ -838,7 +838,7 @@ def numeros_whatsapp(produto_id):
 
 
 @admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/adicionar', methods=['POST'])
-@requer_admin
+@requer_acesso_produto
 def adicionar_numero_whatsapp(produto_id):
     telefone = request.form.get('telefone', '').strip()
     if not telefone:
@@ -857,7 +857,7 @@ def adicionar_numero_whatsapp(produto_id):
 
 
 @admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/<int:telefone_id>/remover', methods=['POST'])
-@requer_admin
+@requer_acesso_produto
 def remover_numero_whatsapp(produto_id, telefone_id):
     try:
         remover_telefone_produto(telefone_id, produto_id)
@@ -870,7 +870,7 @@ def remover_numero_whatsapp(produto_id, telefone_id):
 
 
 @admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/<int:telefone_id>/editar', methods=['POST'])
-@requer_admin
+@requer_acesso_produto
 def editar_numero_whatsapp(produto_id, telefone_id):
     telefone = request.form.get('telefone', '').strip()
     if not telefone:
