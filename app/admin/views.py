@@ -1707,6 +1707,22 @@ _SQL_ROI = """
     ORDER BY valor_vendido DESC
 """
 
+_SQL_ROI_REAL = """
+    SELECT
+        COALESCE((
+            SELECT SUM(pp.valor)
+            FROM pagamento_pix pp
+            WHERE pp.produto_id = %s
+              AND pp.horario BETWEEN %s AND %s
+        ), 0) AS total_pix,
+        COALESCE((
+            SELECT SUM(oc.valor_investido)
+            FROM orcamento_campanha oc
+            WHERE oc.produto_id = %s
+              AND oc.data BETWEEN %s AND %s
+        ), 0) AS total_investido
+"""
+
 
 @admin_bp.route('/produto/<int:produto_id>/orcamento')
 @requer_acesso_produto
@@ -1807,6 +1823,22 @@ def roi_produto(produto_id):
     data_ini_date = data_ini.date().isoformat()
     data_fim_date = data_fim.date().isoformat()
 
+    roi_real = {'total_pix': 0, 'total_investido': 0}
+    roi_real_erro = False
+    try:
+        roi_real_row = db.execute_query(
+            _SQL_ROI_REAL,
+            (produto_id, data_ini, data_fim,
+             produto_id, data_ini_date, data_fim_date),
+            fetch_one=True
+        )
+        if roi_real_row:
+            roi_real = roi_real_row
+    except Exception as e:
+        roi_real_erro = True
+        roi_real = None
+        logger.error(f"[ADMIN] ❌ Erro ao calcular ROI real do produto #{produto_id}: {e}")
+
     try:
         rows = db.execute_query(
             _SQL_ROI,
@@ -1823,7 +1855,7 @@ def roi_produto(produto_id):
         rows = []
 
     return render_template('admin/roi_produto.html',
-        produto=produto, rows=rows,
+        produto=produto, rows=rows, roi_real=roi_real, roi_real_erro=roi_real_erro,
         data_ini=data_ini_str, data_fim=data_fim_str)
 
 

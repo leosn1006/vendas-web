@@ -7,8 +7,46 @@
     .roi-red    { color: #c0392b; font-weight: 600; }
     .roi-yellow { color: #e67e22; font-weight: 600; }
     .roi-green  { color: #27ae60; font-weight: 600; }
+    .roi-blue   { color: #2f6fed; font-weight: 600; }
     .roi-muted  { color: var(--muted); }
     tfoot td    { font-weight: 700; border-top: 2px solid var(--border); }
+
+    .roi-summary-card { margin-bottom: 16px; }
+    .roi-summary-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+    }
+    .roi-summary-title { font-size: 15px; font-weight: 700; }
+    .roi-summary-sub { font-size: 12px; color: var(--muted); }
+    .roi-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+    }
+    .roi-summary-item {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        background: var(--surface-2, #fafafa);
+    }
+    .roi-summary-label {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+    }
+    .roi-summary-value {
+        font-family: var(--mono);
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    @media (max-width: 900px) {
+        .roi-summary-grid { grid-template-columns: 1fr; }
+    }
 </style>
 {% endblock %}
 
@@ -21,6 +59,63 @@
 </div>
 
 {% include 'admin/includes/_filtro_periodo.html' %}
+
+<div class="card roi-summary-card">
+    {% if roi_real_erro %}
+        <div class="roi-summary-head">
+            <div class="roi-summary-title">ROI Real (PIX)</div>
+            <div class="roi-summary-sub">Não foi possível carregar os dados agora</div>
+        </div>
+        <div class="empty-state">Dados indisponíveis no momento. Tente novamente em instantes.</div>
+    {% else %}
+        {% set total_pix_real = roi_real.total_pix | float %}
+        {% set total_investido_real = roi_real.total_investido | float %}
+        {% set total_resultado_real = total_pix_real - total_investido_real %}
+        <div class="roi-summary-head">
+            <div class="roi-summary-title">ROI Real (PIX)</div>
+            <div class="roi-summary-sub">Todos os pagamentos PIX recebidos no período</div>
+        </div>
+        <div class="roi-summary-grid">
+            <div class="roi-summary-item">
+                <div class="roi-summary-label">Investido no período</div>
+                <div class="roi-summary-value">R$ {{ '%.2f'|format(total_investido_real) }}</div>
+            </div>
+            <div class="roi-summary-item">
+                <div class="roi-summary-label">Recebido via PIX</div>
+                <div class="roi-summary-value">R$ {{ '%.2f'|format(total_pix_real) }}</div>
+            </div>
+            <div class="roi-summary-item">
+                <div class="roi-summary-label">ROI Real</div>
+                <div class="roi-summary-value">
+                    {% if total_investido_real > 0 %}
+                        {% set roi_real_val = total_pix_real / total_investido_real %}
+                        {% if roi_real_val < 1 %}
+                            <span class="roi-red">{{ '%.2f'|format(roi_real_val) }}×</span>
+                        {% elif roi_real_val <= 1.005 %}
+                            <span class="roi-yellow">{{ '%.2f'|format(roi_real_val) }}×</span>
+                        {% else %}
+                            <span class="roi-green">{{ '%.2f'|format(roi_real_val) }}×</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="roi-muted" style="font-family:inherit; font-size:14px;">Sem Orçamento para o período</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="roi-summary-item">
+                <div class="roi-summary-label">Resultado Real</div>
+                <div class="roi-summary-value">
+                    {% if total_resultado_real < -0.005 %}
+                        <span class="roi-red">R$ {{ '%.2f'|format(total_resultado_real) }}</span>
+                    {% elif total_resultado_real < 0.005 %}
+                        <span class="roi-muted" style="font-family:inherit;">R$ 0.00</span>
+                    {% else %}
+                        <span class="roi-blue">+R$ {{ '%.2f'|format(total_resultado_real) }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
 
 {% if rows %}
 <div class="card">
