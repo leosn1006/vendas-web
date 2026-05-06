@@ -537,6 +537,10 @@
            class="nav-link {% if request.endpoint == 'admin.analytics_web_produto' %}active{% endif %}">
             <span class="icon">🌐</span> Analytics Web
         </a>
+        <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.pagamentos_produto' %}active{% endif %}">
+            <span class="icon">💰</span> Pagamentos
+        </a>
         <a href="{{ url_for('admin.financeiro_produto', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint == 'admin.financeiro_produto' %}active{% endif %}">
             <span class="icon">💳</span> Financeiro

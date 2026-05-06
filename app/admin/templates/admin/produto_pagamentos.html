@@ -1,0 +1,350 @@
+{% extends "admin/base.html" %}
+{% block title %}Pagamentos — {{ produto.nome }}{% endblock %}
+
+{% block extra_css %}
+{% include 'admin/includes/_filtro_periodo_styles.html' %}
+<style>
+    .section-title {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-family: var(--mono);
+        margin: 28px 0 12px;
+    }
+
+    .pagamentos-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .pagamentos-stats {
+        display: flex;
+        gap: 20px;
+    }
+
+    .stat-badge {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px 18px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+    }
+
+    .stat-value {
+        font-size: 20px;
+        font-weight: 700;
+        font-family: var(--mono);
+        color: var(--accent);
+    }
+
+    .stat-label {
+        font-size: 10px;
+        color: var(--muted);
+        font-weight: 600;
+        margin-top: 4px;
+        letter-spacing: 0.5px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 48px 20px;
+        color: var(--muted);
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+    }
+
+    .empty-state-text {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .pedido-row {
+        display: table-row;
+        border-bottom: 1px solid var(--border);
+        transition: background-color 0.2s ease;
+    }
+
+    .pedido-row:hover {
+        background-color: rgba(74, 144, 217, 0.05);
+    }
+
+    .btn-comprovante {
+        padding: 6px 12px;
+        font-size: 12px;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-comprovante:hover {
+        background: var(--accent-dark);
+        transform: scale(1.02);
+    }
+
+    .btn-comprovante:disabled {
+        background: var(--border);
+        color: var(--muted);
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .tooltip {
+        position: relative;
+    }
+
+    .tooltip:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #333;
+        color: white;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+        white-space: nowrap;
+        z-index: 1000;
+    }
+
+    .time-text {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+    .date-text {
+        font-weight: 600;
+        color: var(--text);
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">💳 Pagamentos</h1>
+        <p class="page-subtitle">{{ produto.nome }}</p>
+    </div>
+</div>
+
+{% include 'admin/includes/_filtro_periodo.html' %}
+
+{% if pedidos %}
+
+<div class="pagamentos-header">
+    <div class="section-title">Pagamentos Confirmados</div>
+    <div class="pagamentos-stats">
+        <div class="stat-badge">
+            <div class="stat-value">{{ total_registros }}</div>
+            <div class="stat-label">Pagamentos</div>
+        </div>
+        <div class="stat-badge">
+            <div class="stat-value">R$ {{ '%.2f'|format(receita_total) }}</div>
+            <div class="stat-label">Total</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 60px;">ID</th>
+                    <th style="width: 150px;">Data Pagamento</th>
+                    <th style="width: 180px;">Pagador</th>
+                    <th style="width: 150px;">Data Contato</th>
+                    <th style="width: 150px;">Follow-up</th>
+                    <th style="width: 120px;">Comprovante</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pedido in pedidos %}
+                <tr class="pedido-row" id="pedido-{{ pedido.id }}">
+                    <td style="font-family: var(--mono); font-weight: 600;">{{ pedido.id }}</td>
+
+                    <td>
+                        <div class="date-text">
+                            {% if pedido.data_pagamento %}
+                                {{ pedido.data_pagamento.strftime('%d/%m/%Y') }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </div>
+                        <div class="time-text">
+                            {% if pedido.data_pagamento %}
+                                {{ pedido.data_pagamento.strftime('%H:%M') }}
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <td style="font-size: 13px; color: var(--text);">
+                        {{ pedido.nome_pagador or pedido.contact_name or '—' }}
+                    </td>
+
+                    <td>
+                        <div class="date-text">
+                            {% if pedido.data_contato_site %}
+                                {{ pedido.data_contato_site.strftime('%d/%m/%Y') }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </div>
+                        <div class="time-text">
+                            {% if pedido.data_contato_site %}
+                                {{ pedido.data_contato_site.strftime('%H:%M') }}
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <td>
+                        <div class="date-text">
+                            {% if pedido.data_followup %}
+                                {{ pedido.data_followup.strftime('%d/%m/%Y') }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </div>
+                        <div class="time-text">
+                            {% if pedido.data_followup %}
+                                {{ pedido.data_followup.strftime('%H:%M') }}
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <td style="text-align: center;">
+                        {% if pedido.path_comprovante %}
+                            <button class="btn-comprovante" onclick="abrirModalComprovante(this)" data-pedido-id="{{ pedido.id }}">
+                                Ver
+                            </button>
+                        {% else %}
+                            <button class="btn-comprovante tooltip" disabled data-tooltip="Não enviado">
+                                Ver
+                            </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginação -->
+    {% if total_registros > pagamentos_por_pagina %}
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-top: 1px solid var(--border); background: var(--surface);">
+        <div style="font-size: 12px; color: var(--muted);">
+            Página <strong>{{ pagina_atual }}</strong> de <strong>{{ total_paginas }}</strong>
+            • {{ total_registros }} registro{{ 's' if total_registros != 1 else '' }} no período
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+            <!-- Botão Anterior -->
+            {% if pagina_atual > 1 %}
+                <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, page=pagina_atual-1) }}"
+                   class="btn btn-sm btn-outline-secondary">
+                    ← Anterior
+                </a>
+            {% else %}
+                <button class="btn btn-sm btn-outline-secondary" disabled>← Anterior</button>
+            {% endif %}
+
+            <!-- Números das páginas (mostrar até 5 páginas) -->
+            {% set start_page = [1, pagina_atual - 2]|max %}
+            {% set end_page = [total_paginas, pagina_atual + 2]|min %}
+
+            {% if start_page > 1 %}
+                <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, page=1) }}"
+                   class="btn btn-sm btn-outline-secondary">1</a>
+                {% if start_page > 2 %}<span class="btn btn-sm" style="pointer-events: none; color: var(--muted);">...</span>{% endif %}
+            {% endif %}
+
+            {% for p in range(start_page, end_page + 1) %}
+                {% if p == pagina_atual %}
+                    <button class="btn btn-sm btn-primary" disabled>{{ p }}</button>
+                {% else %}
+                    <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, page=p) }}"
+                       class="btn btn-sm btn-outline-secondary">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if end_page < total_paginas %}
+                {% if end_page < total_paginas - 1 %}<span class="btn btn-sm" style="pointer-events: none; color: var(--muted);">...</span>{% endif %}
+                <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, page=total_paginas) }}"
+                   class="btn btn-sm btn-outline-secondary">{{ total_paginas }}</a>
+            {% endif %}
+
+            <!-- Botão Próximo -->
+            {% if pagina_atual < total_paginas %}
+                <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, page=pagina_atual+1) }}"
+                   class="btn btn-sm btn-outline-secondary">
+                    Próximo →
+                </a>
+            {% else %}
+                <button class="btn btn-sm btn-outline-secondary" disabled>Próximo →</button>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
+
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-state-icon">📭</div>
+        <div class="empty-state-text">Nenhum pagamento encontrado para o período selecionado.</div>
+    </div>
+</div>
+
+{% endif %}
+
+<!-- Modal de Visualização de Comprovante -->
+<div id="comprovanteModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="comprovanteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="comprovanteModalLabel">
+                    Comprovante — Pedido <span id="pedidoModalId"></span>
+                </h5>
+                <button type="button" class="close" aria-label="Close" onclick="fecharModal()">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="comprovanteViewer" style="max-height: 600px; overflow: auto; text-align: center;">
+                <div style="display: flex; justify-content: center; align-items: center; height: 300px;">
+                    <div style="text-align: center;">
+                        <div style="border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 12px;"></div>
+                        <div style="font-size: 13px; color: var(--muted);">Carregando comprovante...</div>
+                    </div>
+                </div>
+            </div>
+            <style>
+                @keyframes spin { to { transform: rotate(360deg); } }
+            </style>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="fecharModal()">Voltar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{% include 'admin/includes/_filtro_periodo_js.html' %}
+<script src="{{ url_for('admin.static', filename='js/pagamentos.js') }}"></script>
+{% endblock %}

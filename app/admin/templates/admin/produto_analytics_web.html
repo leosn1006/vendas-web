@@ -131,6 +131,43 @@
         font-size: 14px;
     }
 
+    .action-card {
+        background: linear-gradient(135deg, var(--accent) 0%, rgba(74, 144, 217, 0.8) 100%);
+        border: 1px solid rgba(74, 144, 217, 0.3);
+        border-radius: 12px;
+        padding: 28px;
+        margin-bottom: 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .action-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(74, 144, 217, 0.2);
+        border-color: rgba(74, 144, 217, 0.6);
+    }
+    .action-card-content {
+        color: white;
+        display: flex;
+        align-items: center;
+    }
+    .action-card-title {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+    .action-card-subtitle {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+    }
+    .action-card-icon {
+        font-size: 32px;
+        margin-right: 16px;
+    }
+
 </style>
 {% endblock %}
 
@@ -199,6 +236,20 @@
 </div>
 {% endif %}
 
+<!-- ── Botão de Ação: Ver Pagamentos ────────────────────────────── -->
+{% if funil.pagos > 0 %}
+<div class="action-card" onclick="irParaPagamentos()">
+    <div class="action-card-content">
+        <div class="action-card-icon">💳</div>
+        <div>
+            <div class="action-card-title">Visualizar Lista Detalhada de Pagamentos</div>
+            <div class="action-card-subtitle">{{ funil.pagos }} pagamento{{ 's' if funil.pagos != 1 else '' }} no período — clique para ver comprovantes</div>
+        </div>
+    </div>
+    <div style="color: white; font-size: 20px;">→</div>
+</div>
+{% endif %}
+
 <!-- ── Por Campanha ────────────────────────────── -->
 {% if campanhas %}
 <div class="section-title">Receita por Campanha — por data_pagamento</div>
@@ -243,4 +294,19 @@
 
 {% block extra_js %}
 {% include 'admin/includes/_filtro_periodo_js.html' %}
+<script>
+    function irParaPagamentos() {
+        const dataIni = document.querySelector('input[name="data_ini"]')?.value || '';
+        const dataFim = document.querySelector('input[name="data_fim"]')?.value || '';
+
+        const produtoId = {{ produto.id }};
+        let url = `/admin/produto/${produtoId}/pagamentos`;
+
+        if (dataIni && dataFim) {
+            url += `?data_ini=${dataIni}&data_fim=${dataFim}`;
+        }
+
+        window.location.href = url;
+    }
+</script>
 {% endblock %}

@@ -2018,3 +2018,175 @@ def financeiro_atualizar_pix(produto_id):
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro ao disparar task PIX: {e}")
         return jsonify({'ok': False, 'msg': f'Erro ao iniciar busca: {e}'}), 500
+
+
+# ── Pagamentos ────────────────────────────────────────────────────────────
+
+PAGAMENTOS_POR_PAGINA = 50
+
+_SQL_PAGAMENTOS_TOTAL = """
+    SELECT COUNT(*) as total
+    FROM pedidos
+    WHERE produto_id = %s
+      AND estado_id = 0
+      AND data_pagamento BETWEEN %s AND %s
+"""
+
+_SQL_PAGAMENTOS_LISTA = """
+    SELECT
+        id,
+        data_contato_site,
+        data_pagamento,
+        data_followup,
+        path_comprovante,
+        contact_name,
+        contact_phone,
+        nome_pagador,
+        valor_pago
+    FROM pedidos
+    WHERE produto_id = %s
+      AND estado_id = 0
+      AND data_pagamento BETWEEN %s AND %s
+    ORDER BY data_pagamento DESC
+    LIMIT %s
+    OFFSET %s
+"""
+
+_SQL_PAGAMENTOS_RECEITA = """
+    SELECT SUM(valor_pago) AS receita_total
+    FROM pedidos
+    WHERE produto_id = %s
+      AND estado_id = 0
+      AND data_pagamento BETWEEN %s AND %s
+"""
+
+
+@admin_bp.route('/produto/<int:produto_id>/pagamentos')
+@requer_acesso_produto
+def pagamentos_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    hoje = _hoje_sao_paulo()
+    data_ini_str = request.args.get('data_ini', hoje.isoformat())
+    data_fim_str = request.args.get('data_fim', hoje.isoformat())
+    pagina_str = request.args.get('page', '1')
+
+    try:
+        data_ini = datetime.datetime.fromisoformat(data_ini_str)
+        data_fim = datetime.datetime.fromisoformat(data_fim_str) + datetime.timedelta(days=1, seconds=-1)
+
+        # Validar: data_ini não pode ser maior que data_fim
+        if data_ini > data_fim:
+            data_ini, data_fim = data_fim, data_ini
+    except ValueError:
+        data_ini = datetime.datetime.combine(hoje, datetime.time.min)
+        data_fim = datetime.datetime.combine(hoje, datetime.time.max)
+        data_ini_str = data_fim_str = hoje.isoformat()
+
+    # Validar página
+    try:
+        pagina_atual = max(1, int(pagina_str))
+    except (ValueError, TypeError):
+        pagina_atual = 1
+
+    try:
+        # Contar total de registros
+        total_result = db.execute_query(_SQL_PAGAMENTOS_TOTAL, (produto_id, data_ini, data_fim), fetch_one=True)
+        total_registros = total_result['total'] if total_result else 0
+        total_paginas = (total_registros + PAGAMENTOS_POR_PAGINA - 1) // PAGAMENTOS_POR_PAGINA or 1
+
+        # Validar página (se for > total, redirecionar para última)
+        if pagina_atual > total_paginas:
+            return redirect(url_for('admin.pagamentos_produto',
+                                  produto_id=produto_id,
+                                  data_ini=data_ini_str,
+                                  data_fim=data_fim_str,
+                                  page=total_paginas))
+
+        # Calcular offset
+        offset = (pagina_atual - 1) * PAGAMENTOS_POR_PAGINA
+
+        # Buscar pedidos da página
+        pedidos = db.execute_query(
+            _SQL_PAGAMENTOS_LISTA,
+            (produto_id, data_ini, data_fim, PAGAMENTOS_POR_PAGINA, offset),
+            fetch_all=True
+        )
+
+        # Buscar receita do período
+        receita_result = db.execute_query(_SQL_PAGAMENTOS_RECEITA, (produto_id, data_ini, data_fim), fetch_one=True)
+        receita_total = receita_result['receita_total'] or 0 if receita_result else 0
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao carregar pagamentos produto #{produto_id}: {e}")
+        flash('Erro ao carregar pagamentos.', 'danger')
+        pedidos = []
+        receita_total = 0
+        total_registros = 0
+        total_paginas = 1
+        pagina_atual = 1
+
+    return render_template('admin/produto_pagamentos.html',
+        produto=produto,
+        pedidos=pedidos,
+        data_ini=data_ini_str,
+        data_fim=data_fim_str,
+        receita_total=receita_total,
+        pagina_atual=pagina_atual,
+        total_paginas=total_paginas,
+        total_registros=total_registros,
+        pagamentos_por_pagina=PAGAMENTOS_POR_PAGINA,
+    )
+
+
+@admin_bp.route('/pedido/<int:pedido_id>/comprovante')
+@requer_login
+def visualizar_comprovante(pedido_id):
+    """AJAX endpoint: retorna info do comprovante para modal"""
+    try:
+        # Get pedido
+        pedido = get_pedido(pedido_id)
+        if not pedido:
+            return jsonify({'ok': False, 'msg': 'Pedido não encontrado'}), 404
+
+        # Verify user has access to produto
+        if not usuario_tem_acesso_produto(current_user.id, pedido['produto_id']):
+            return jsonify({'ok': False, 'msg': 'Acesso negado'}), 403
+
+        # Check se tem comprovante
+        path_comprovante = pedido.get('path_comprovante')
+        if not path_comprovante:
+            return jsonify({'ok': False, 'msg': 'Comprovante não disponível'}), 404
+
+        # Validate path (security: no path traversal)
+        if '..' in path_comprovante or path_comprovante.startswith('/'):
+            return jsonify({'ok': False, 'msg': 'Caminho inválido'}), 400
+
+        # Get extension
+        filename = os.path.basename(path_comprovante)
+        _, ext = os.path.splitext(filename)
+        ext = ext.lstrip('.').lower()
+
+        # Validate extension
+        allowed_extensions = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp']
+        if ext not in allowed_extensions:
+            return jsonify({'ok': False, 'msg': f'Tipo de arquivo não suportado: {ext}'}), 400
+
+        # Build URL
+        full_path = f'/static/{path_comprovante}'
+
+        # Log de auditoria: quem visualizou o comprovante
+        logger.info(f"[ADMIN] 👀 Usuário {current_user.email} visualizou comprovante do pedido #{pedido_id} (produto #{pedido['produto_id']})")
+
+        return jsonify({
+            'ok': True,
+            'path': full_path,
+            'extension': ext,
+            'filename': filename
+        })
+
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao visualizar comprovante pedido #{pedido_id}: {e}")
+        return jsonify({'ok': False, 'msg': f'Erro ao carregar comprovante: {e}'}), 500
