@@ -507,6 +507,10 @@
            class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
             <span class="icon">◈</span> Dashboard
         </a>
+        <a href="{{ url_for('admin.listar_pedidos_telefone', usuario_id=current_user.id) }}"
+           class="nav-link {% if request.endpoint in ['admin.listar_pedidos_telefone', 'admin.selecionar_usuario_pedidos_telefone'] %}active{% endif %}">
+            <span class="icon">🗑️</span> Limpar Pedidos
+        </a>
         <a href="{{ url_for('admin.listar_produtos') }}"
            class="nav-link {% if request.endpoint in ['admin.listar_produtos','admin.novo_produto','admin.editar_produto','admin.clonar_produto'] %}active{% endif %}">
             <span class="icon">◉</span> Produtos
