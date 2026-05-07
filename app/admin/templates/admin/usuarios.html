@@ -52,7 +52,20 @@
         <h1 class="page-title">Usuários</h1>
         <p class="page-subtitle">{{ usuarios|length }} usuário(s) cadastrado(s)</p>
     </div>
-    <button class="btn btn-primary" onclick="abrirModalNovo()">+ Novo Usuário</button>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <form method="GET" action="{{ url_for('admin.selecionar_usuario_pedidos_telefone') }}" style="display:flex; gap:8px; align-items:center;">
+            <select name="usuario_id" style="min-width: 280px;" required>
+                <option value="">Apagar pedidos por usuário...</option>
+                {% for u in usuarios %}
+                {% if u.telefone %}
+                <option value="{{ u.id }}">{{ u.nome }} ({{ u.telefone }})</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+            <button class="btn btn-ghost" type="submit">Ir</button>
+        </form>
+        <button class="btn btn-primary" onclick="abrirModalNovo()">+ Novo Usuário</button>
+    </div>
 </div>
 
 <div class="card">
@@ -63,6 +76,7 @@
                     <th>#</th>
                     <th>Nome</th>
                     <th>E-mail</th>
+                    <th>Telefone</th>
                     <th>Perfil</th>
                     <th>Status</th>
                     <th>Produtos vinculados</th>
@@ -80,6 +94,7 @@
                         {% endif %}
                     </td>
                     <td style="color: var(--muted);">{{ u.email }}</td>
+                    <td style="font-family: var(--mono); font-size: 13px; color: var(--muted);">{{ u.telefone or '—' }}</td>
                     <td>
                         {% if u.perfil == 'admin' %}
                         <span class="badge badge-blue">admin</span>
@@ -131,9 +146,16 @@
                     <td>
                         <div style="display:flex; gap:6px; flex-wrap:wrap;">
                             <button class="btn btn-ghost btn-sm"
-                                    onclick="abrirModalEditar({{ u.id }}, '{{ u.nome|e }}', '{{ u.email|e }}', '{{ u.perfil }}', {{ 1 if u.ativo else 0 }})">
+                                    onclick="abrirModalEditar({{ u.id }}, '{{ u.nome|e }}', '{{ u.email|e }}', '{{ u.perfil }}', {{ 1 if u.ativo else 0 }}, '{{ (u.telefone or '')|e }}')">
                                 Editar
                             </button>
+                            {% if u.telefone %}
+                            <a class="btn btn-ghost btn-sm"
+                               href="{{ url_for('admin.listar_pedidos_telefone', usuario_id=u.id) }}"
+                               style="color: var(--danger);">
+                                Apagar pedidos
+                            </a>
+                            {% endif %}
                             <form method="POST"
                                   action="{{ url_for('admin.resetar_senha_usuario', usuario_id=u.id) }}"
                                   onsubmit="return confirm('Resetar a senha de {{ u.nome|e }} para 1234?')">
@@ -151,7 +173,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" style="text-align:center; color: var(--muted); padding: 40px;">
+                    <td colspan="8" style="text-align:center; color: var(--muted); padding: 40px;">
                         Nenhum usuário cadastrado.
                     </td>
                 </tr>
@@ -224,6 +246,10 @@
                         <option value="0">Inativo</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label>Telefone WhatsApp <span style="font-weight:400; color:var(--muted);">(somente dígitos, ex: 556181163324)</span></label>
+                    <input type="text" name="telefone" id="edit-telefone" placeholder="556181163324" maxlength="20" pattern="[0-9]*" inputmode="numeric">
+                </div>
             </div>
             <div class="form-actions">
                 <button type="button" class="btn btn-ghost" onclick="fecharModal('modal-editar')">Cancelar</button>
@@ -240,11 +266,12 @@ function abrirModalNovo() {
     document.getElementById('modal-novo').classList.add('open');
 }
 
-function abrirModalEditar(id, nome, email, perfil, ativo) {
-    document.getElementById('edit-nome').value   = nome;
-    document.getElementById('edit-email').value  = email;
-    document.getElementById('edit-perfil').value = perfil;
-    document.getElementById('edit-ativo').value  = ativo;
+function abrirModalEditar(id, nome, email, perfil, ativo, telefone) {
+    document.getElementById('edit-nome').value     = nome;
+    document.getElementById('edit-email').value    = email;
+    document.getElementById('edit-perfil').value   = perfil;
+    document.getElementById('edit-ativo').value    = ativo;
+    document.getElementById('edit-telefone').value = telefone || '';
     document.getElementById('form-editar').action = '/admin/usuarios/' + id + '/editar';
     document.getElementById('modal-editar').classList.add('open');
 }

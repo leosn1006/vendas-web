@@ -352,7 +352,7 @@ def desativar_produto(produto_id):
 def listar_usuarios():
     try:
         usuarios = db.execute_query(
-            "SELECT id, email, nome, perfil, ativo, primeiro_acesso, created_at FROM usuarios ORDER BY nome",
+            "SELECT id, email, nome, perfil, ativo, primeiro_acesso, telefone, created_at FROM usuarios ORDER BY nome",
             fetch_all=True
         ) or []
         todos_produtos = db.execute_query(
@@ -412,10 +412,11 @@ def criar_usuario():
 @admin_bp.route('/usuarios/<int:usuario_id>/editar', methods=['POST'])
 @requer_admin
 def editar_usuario(usuario_id):
-    nome   = request.form.get('nome', '').strip()
-    email  = request.form.get('email', '').strip().lower()
-    perfil = request.form.get('perfil', 'consulta')
-    ativo  = request.form.get('ativo') == '1'
+    nome     = request.form.get('nome', '').strip()
+    email    = request.form.get('email', '').strip().lower()
+    perfil   = request.form.get('perfil', 'consulta')
+    ativo    = request.form.get('ativo') == '1'
+    telefone = request.form.get('telefone', '').strip() or None
 
     if not nome or not email:
         flash('Nome e e-mail são obrigatórios.', 'danger')
@@ -423,11 +424,23 @@ def editar_usuario(usuario_id):
     if perfil not in ('admin', 'consulta'):
         flash('Perfil inválido.', 'danger')
         return redirect(url_for('admin.listar_usuarios'))
+    if telefone and (not telefone.isdigit() or len(telefone) > 20):
+        flash('Telefone inválido. Use apenas dígitos (ex: 556181163324).', 'danger')
+        return redirect(url_for('admin.listar_usuarios'))
+    if telefone:
+        telefone_ja_em_uso = db.execute_query(
+            "SELECT id FROM usuarios WHERE telefone = %s AND id <> %s LIMIT 1",
+            (telefone, usuario_id),
+            fetch_one=True
+        )
+        if telefone_ja_em_uso:
+            flash('Telefone já cadastrado para outro usuário.', 'danger')
+            return redirect(url_for('admin.listar_usuarios'))
 
     try:
         db.execute_query(
-            "UPDATE usuarios SET nome = %s, email = %s, perfil = %s, ativo = %s WHERE id = %s",
-            (nome, email, perfil, ativo, usuario_id)
+            "UPDATE usuarios SET nome = %s, email = %s, perfil = %s, ativo = %s, telefone = %s WHERE id = %s",
+            (nome, email, perfil, ativo, telefone, usuario_id)
         )
         flash('Usuário atualizado com sucesso.', 'success')
         logger.info(f"[ADMIN] ✅ Usuário #{usuario_id} editado por {current_user.email}")
@@ -507,6 +520,102 @@ def desvincular_produto_usuario(usuario_id, produto_id):
         logger.error(f"[ADMIN] ❌ Erro ao desvincular produto: {e}")
         flash(f'Erro ao desvincular produto: {e}', 'danger')
     return redirect(url_for('admin.listar_usuarios'))
+
+@admin_bp.route('/usuarios/<int:usuario_id>/pedidos-telefone')
+@requer_login
+def listar_pedidos_telefone(usuario_id):
+    try:
+        fallback_url = url_for('admin.listar_usuarios') if current_user.is_admin() else url_for('admin.dashboard')
+
+        if not current_user.is_admin() and usuario_id != current_user.id:
+            flash('Você só pode visualizar pedidos do seu próprio usuário.', 'danger')
+            return redirect(url_for('admin.listar_pedidos_telefone', usuario_id=current_user.id))
+
+        usuario = db.execute_query(
+            "SELECT id, nome, telefone FROM usuarios WHERE id = %s",
+            (usuario_id,), fetch_one=True
+        )
+        if not usuario:
+            flash('Usuário não encontrado.', 'danger')
+            return redirect(fallback_url)
+        if not usuario.get('telefone'):
+            flash('Este usuário não tem telefone cadastrado.', 'warning')
+            return redirect(fallback_url)
+
+        pedidos = db.execute_query(
+            """SELECT p.id, p.contact_name, ep.descricao AS estado, p.data_contato_site
+               FROM pedidos p
+               JOIN estado_pedidos ep ON ep.id = p.estado_id
+               WHERE p.contact_phone = %s
+               ORDER BY p.data_contato_site DESC""",
+            (usuario['telefone'],), fetch_all=True
+        ) or []
+
+        usuarios_dropdown = []
+        if current_user.is_admin():
+            usuarios_dropdown = db.execute_query(
+                "SELECT id, nome, telefone FROM usuarios WHERE ativo = TRUE ORDER BY nome",
+                fetch_all=True
+            ) or []
+
+        return render_template(
+            'admin/pedidos_telefone.html',
+            usuario           = usuario,
+            pedidos           = pedidos,
+            usuarios_dropdown = usuarios_dropdown,
+            pode_gerenciar_outros = current_user.is_admin(),
+        )
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao listar pedidos do telefone do usuário #{usuario_id}: {e}")
+        flash('Erro ao carregar pedidos.', 'danger')
+        return redirect(fallback_url)
+
+
+@admin_bp.route('/usuarios/pedidos-telefone', methods=['GET'])
+@requer_admin
+def selecionar_usuario_pedidos_telefone():
+    usuario_id = request.args.get('usuario_id', type=int)
+    if not usuario_id:
+        flash('Selecione um usuário válido.', 'warning')
+        return redirect(url_for('admin.listar_usuarios'))
+    return redirect(url_for('admin.listar_pedidos_telefone', usuario_id=usuario_id))
+
+
+@admin_bp.route('/usuarios/<int:usuario_id>/pedidos/<int:pedido_id>/apagar', methods=['POST'])
+@requer_login
+def apagar_pedido_usuario(usuario_id, pedido_id):
+    try:
+        if not current_user.is_admin() and usuario_id != current_user.id:
+            flash('Você só pode apagar pedidos do seu próprio usuário.', 'danger')
+            return redirect(url_for('admin.listar_pedidos_telefone', usuario_id=current_user.id))
+
+        usuario = db.execute_query(
+            "SELECT id, nome, telefone FROM usuarios WHERE id = %s",
+            (usuario_id,), fetch_one=True
+        )
+        if not usuario or not usuario.get('telefone'):
+            flash('Usuário ou telefone não encontrado.', 'danger')
+            if current_user.is_admin():
+                return redirect(url_for('admin.listar_usuarios'))
+            return redirect(url_for('admin.dashboard'))
+
+        # Segurança: verifica se o pedido pertence ao telefone deste usuário
+        pedido = db.execute_query(
+            "SELECT id FROM pedidos WHERE id = %s AND contact_phone = %s",
+            (pedido_id, usuario['telefone']), fetch_one=True
+        )
+        if not pedido:
+            flash('Pedido não encontrado ou não pertence ao telefone deste usuário.', 'danger')
+            return redirect(url_for('admin.listar_pedidos_telefone', usuario_id=usuario_id))
+
+        db.execute_query("DELETE FROM pedidos WHERE id = %s", (pedido_id,))
+        flash(f'Pedido #{pedido_id} apagado com sucesso.', 'success')
+        logger.info(f"[ADMIN] ✅ Pedido #{pedido_id} apagado por {current_user.email} (telefone {usuario['telefone']})")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao apagar pedido #{pedido_id}: {e}")
+        flash(f'Erro ao apagar pedido: {e}', 'danger')
+    return redirect(url_for('admin.listar_pedidos_telefone', usuario_id=usuario_id))
+
 
 #criar produto a partir de um outro produto, para facilitar a criação de variações
 @admin_bp.route('/produtos/<int:produto_id>/clonar', methods=['POST'])

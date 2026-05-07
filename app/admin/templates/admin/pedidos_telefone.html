@@ -1,0 +1,89 @@
+{% extends "admin/base.html" %}
+{% block title %}Pedidos do Telefone — {{ usuario.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Apagar pedidos do telefone</h1>
+        <p class="page-subtitle">
+            Usuário: <strong>{{ usuario.nome }}</strong> &nbsp;|&nbsp;
+            Telefone: <strong style="font-family: var(--mono);">{{ usuario.telefone }}</strong> &nbsp;|&nbsp;
+            {{ pedidos|length }} pedido(s) encontrado(s)
+        </p>
+    </div>
+    {% if current_user.is_admin() %}
+    <a href="{{ url_for('admin.listar_usuarios') }}" class="btn btn-ghost">← Voltar</a>
+    {% else %}
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-ghost">← Voltar</a>
+    {% endif %}
+</div>
+
+{% if pode_gerenciar_outros %}
+<div class="card" style="margin-bottom: 18px;">
+    <form method="GET" action="{{ url_for('admin.selecionar_usuario_pedidos_telefone') }}" class="form-grid" style="padding: 18px;">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>Selecionar usuário</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+            <select name="usuario_id" onchange="if(this.value){window.location.href='{{ url_for('admin.listar_pedidos_telefone', usuario_id=0) }}'.replace('/0/', '/' + this.value + '/')}">
+                {% for u in usuarios_dropdown %}
+                <option value="{{ u.id }}" {{ 'selected' if u.id == usuario.id else '' }}>
+                    {{ u.nome }}{% if u.telefone %} ({{ u.telefone }}){% else %} (sem telefone){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-ghost" type="submit">Ir</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Contact Nome</th>
+                    <th>Estado</th>
+                    <th>Data Contato Site</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pedidos %}
+                <tr>
+                    <td style="font-family: var(--mono); color: var(--muted);">{{ p.id }}</td>
+                    <td style="font-weight: 500;">{{ p.contact_name or '—' }}</td>
+                    <td>
+                        <span class="badge badge-yellow" style="font-size: 11px; max-width: 280px; white-space: normal; line-height: 1.4;">
+                            {{ p.estado }}
+                        </span>
+                    </td>
+                    <td style="font-family: var(--mono); font-size: 13px; color: var(--muted);">
+                        {% if p.data_contato_site %}
+                            {{ p.data_contato_site.strftime('%d/%m/%Y %H:%M') }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST"
+                              action="{{ url_for('admin.apagar_pedido_usuario', usuario_id=usuario.id, pedido_id=p.id) }}"
+                              onsubmit="return confirm('Apagar pedido #{{ p.id }} de {{ (p.contact_name or 'sem nome')|e }}? Esta ação não pode ser desfeita.')">
+                            <button class="btn btn-danger btn-sm" type="submit">Apagar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align:center; color: var(--muted); padding: 40px;">
+                        Nenhum pedido encontrado para o telefone <strong>{{ usuario.telefone }}</strong>.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
