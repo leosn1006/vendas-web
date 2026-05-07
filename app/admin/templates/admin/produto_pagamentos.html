@@ -251,6 +251,7 @@
             <thead>
                 <tr>
                     <th style="width: 60px;">ID</th>
+                    <th style="width: 100px; text-align: right;">Valor</th>
                     <th style="width: 150px;">Data Pagamento</th>
                     <th style="width: 180px;">Pagador</th>
                     <th style="width: 150px;">Data Contato</th>
@@ -262,6 +263,10 @@
                 {% for pedido in pedidos %}
                 <tr class="pedido-row" id="pedido-{{ pedido.id }}">
                     <td style="font-family: var(--mono); font-weight: 600;">{{ pedido.id }}</td>
+
+                    <td style="font-family: var(--mono); font-weight: 600; text-align: right; white-space: nowrap;">
+                        {% if pedido.valor_pago %}R$ {{ '%.2f'|format(pedido.valor_pago) }}{% else %}—{% endif %}
+                    </td>
 
                     <td>
                         <div class="date-text">

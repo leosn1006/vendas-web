@@ -2118,7 +2118,7 @@ def financeiro_produto(produto_id):
 
 
 @admin_bp.route('/produto/<int:produto_id>/financeiro/atualizar-pix', methods=['POST'])
-@requer_acesso_produto
+@requer_admin
 def financeiro_atualizar_pix(produto_id):
     try:
         from celery_app import celery_app

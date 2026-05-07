@@ -67,9 +67,11 @@
         <h1 class="page-title">💳 Financeiro</h1>
         <p class="page-subtitle">{{ produto.nome }}</p>
     </div>
+    {% if current_user.is_admin() %}
     <button id="btn-atualizar-pix" class="btn btn-secondary" onclick="atualizarPix()">
         ↻ Buscar PIX agora
     </button>
+    {% endif %}
 </div>
 
 {% include 'admin/includes/_filtro_periodo.html' %}
