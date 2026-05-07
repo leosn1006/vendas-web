@@ -63,8 +63,15 @@ async function abrirComprovanteNovaAba(button) {
         mostrarErroModal(error.message || 'Erro ao abrir comprovante');
         const modal = document.getElementById('comprovanteModal');
         modal.classList.add('show');
-        modal.style.display = 'block';
+        modal.style.display = 'flex';
         document.body.classList.add('modal-open');
+
+        let backdrop = document.querySelector('.modal-backdrop');
+        if (!backdrop) {
+            backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop fade show';
+            document.body.appendChild(backdrop);
+        }
     }
 }
 
@@ -92,7 +99,7 @@ async function abrirModalComprovante(button) {
         </div>
     `;
     modal.classList.add('show');
-    modal.style.display = 'block';
+    modal.style.display = 'flex';
     document.body.classList.add('modal-open');
 
     let backdrop = document.querySelector('.modal-backdrop');

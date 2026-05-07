@@ -157,6 +157,64 @@
         color: var(--text);
     }
 
+    body.modal-open {
+        overflow: hidden;
+    }
+
+    #comprovanteModal {
+        position: fixed;
+        inset: 0;
+        z-index: 1060;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    #comprovanteModal.show {
+        display: flex;
+    }
+
+    #comprovanteModal .modal-dialog {
+        width: min(1120px, 96vw);
+        max-width: 1120px;
+        margin: 0;
+    }
+
+    #comprovanteModal .modal-content {
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        border-radius: 10px;
+    }
+
+    #comprovanteModal .modal-header,
+    #comprovanteModal .modal-footer {
+        flex: 0 0 auto;
+    }
+
+    #comprovanteModal .modal-body {
+        flex: 1 1 auto;
+        overflow: auto;
+    }
+
+    .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 10, 6, 0.55);
+        z-index: 1050;
+    }
+
+    @media (max-width: 768px) {
+        #comprovanteModal {
+            padding: 10px;
+        }
+
+        #comprovanteModal .modal-content {
+            max-height: 94vh;
+        }
+    }
+
 </style>
 {% endblock %}
 
@@ -384,5 +442,5 @@
 
 {% block extra_js %}
 {% include 'admin/includes/_filtro_periodo_js.html' %}
-<script src="{{ url_for('static', filename='js/pagamentos.js', v='20260506-2') }}"></script>
+<script src="{{ url_for('static', filename='js/pagamentos.js', v='20260507-1') }}"></script>
 {% endblock %}
