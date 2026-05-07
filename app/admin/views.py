@@ -2261,8 +2261,8 @@ def visualizar_comprovante(pedido_id):
             logger.warning(f"[ADMIN] ⚠️ Pedido não encontrado para visualização de comprovante: pedido_id={pedido_id}")
             return jsonify({'ok': False, 'msg': 'Pedido não encontrado'}), 404
 
-        # Verify user has access to produto
-        if not usuario_tem_acesso_produto(current_user.id, pedido['produto_id']):
+        # Verify user has access to produto (admin sempre pode)
+        if (not current_user.is_admin()) and (not usuario_tem_acesso_produto(current_user.id, pedido['produto_id'])):
             logger.warning(f"[ADMIN] ⚠️ Acesso negado ao comprovante: user={current_user.email} pedido_id={pedido_id} produto_id={pedido['produto_id']}")
             return jsonify({'ok': False, 'msg': 'Acesso negado'}), 403
 
@@ -2326,7 +2326,7 @@ def visualizar_comprovante_arquivo(pedido_id):
         if not pedido:
             return jsonify({'ok': False, 'msg': 'Pedido não encontrado'}), 404
 
-        if not usuario_tem_acesso_produto(current_user.id, pedido['produto_id']):
+        if (not current_user.is_admin()) and (not usuario_tem_acesso_produto(current_user.id, pedido['produto_id'])):
             return jsonify({'ok': False, 'msg': 'Acesso negado'}), 403
 
         path_comprovante = pedido.get('path_comprovante')
