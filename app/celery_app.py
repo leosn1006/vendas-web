@@ -86,6 +86,7 @@ celery_app.conf.update(
         "tasks.transcrever_audio":                  {"queue": "urgente"},
         # NORMAL — conversas e entrega
         "tasks.responder_mensagem":                 {"queue": "normal"},
+        "tasks.enviar_resposta_cliente":            {"queue": "normal"},
         "tasks.enviar_confirmacao_web":             {"queue": "normal"},
         "tasks.enviar_email_entrega":               {"queue": "normal"},
         # BAIXA — background/agendados

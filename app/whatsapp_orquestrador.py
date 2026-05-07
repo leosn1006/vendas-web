@@ -5,6 +5,8 @@ from datetime import datetime
 from database import (get_ultimo_pedido_by_phone, get_ultimo_pedido_por_mensagem_sugerida,
                       vincula_pedido_com_contato, Pedido, criar_pedido, get_pedido,
                       get_produto_by_phone_number_id)
+from whatsapp_upload import receber_audio
+from whatsapp import notificar_admin_erro_sistema
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +75,19 @@ def recebe_webhook(mensagem_whatsapp):
                 logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 áudio de cliente web (estado 1000) → responder_mensagem")
                 celery_app.send_task("tasks.responder_mensagem", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
             else:
-                logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de transcrever áudio: {mensagem_whatsapp}")
-                celery_app.send_task("tasks.transcrever_audio", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                dados_audio = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['audio']
+                try:
+                    path_audio = receber_audio(
+                        'audio', dados_audio['id'], dados_audio['mime_type'],
+                        pedido.get('id'), phone_number_id=pedido.get('phone_number_id')
+                    )
+                    logger.info(f"[ORQUESTRADOR-WEBHOOK] 🎤 Áudio baixado imediatamente: {path_audio}")
+                except Exception as e:
+                    logger.error(f"[ORQUESTRADOR-WEBHOOK] ❌ Falha ao baixar áudio no webhook, abortando: {e}")
+                    notificar_admin_erro_sistema(f"ORQUESTRADOR | falha download audio | pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | {type(e).__name__}")
+                    return "Erro ao baixar áudio"
+                logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de transcrever áudio")
+                celery_app.send_task("tasks.transcrever_audio", args=[pedido, mensagem_whatsapp], kwargs={"path_audio": path_audio}, countdown=tempo_espera)
             return "Mensagem de áudio recebida"
 
         match pedido.get('estado_id'):

@@ -1,9 +1,9 @@
 import logging
-import time
 import random
 from whatsapp import marcar_como_lida, enviar_mensagem, enviar_mensagem_digitando
 from database import salvar_mensagem_pedido, buscar_historico_conversa, get_produto_by_id
 from agente_resposta_produto import responder_cliente_com_historico_produto
+from celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -61,20 +61,20 @@ def executar(pedido, mensagem_whatsapp):
             logger.info(f"[FLUXO-RESPONDER-MENSAGEM] 🔕 Pedido #{pedido_id} em análise pelo admin. IA silenciada.")
             return
         # ============================================================================================
-        # envia digitando e delay humanizado
+        # envia digitando e agenda envio da resposta com delay humanizado (worker liberado durante a espera)
         try:
             enviar_mensagem_digitando(message_id, pedido.get('phone_number_id'))
         except Exception as exc_digitando:
             logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] ⚠️ Falha ao enviar digitando (não crítico): {exc_digitando}")
         delay = random.uniform(5.0, 8.0)
-        logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] ⏳ Aguardando {delay:.1f}s...")
-        time.sleep(delay)
+        logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] ⏳ Enviando resposta em {delay:.1f}s via task...")
+        celery_app.send_task(
+            "tasks.enviar_resposta_cliente",
+            args=[pedido, resposta_cliente, pedido_id],
+            countdown=delay,
+        )
         # ============================================================================================
-        # envia resposta e grava no banco
-        message_id_resposta = enviar_mensagem(pedido, resposta_cliente)
-        salvar_mensagem_pedido(message_id_resposta, pedido_id, resposta_cliente, tipo_mensagem='enviada')
-        # ============================================================================================
-        logger.info("[FLUXO-RESPONDER-MENSAGEM] ✅ Mensagem processada com sucesso!")
+        logger.info("[FLUXO-RESPONDER-MENSAGEM] ✅ Resposta gerada e agendada com sucesso!")
         logger.info("=" * 120)
 
     except Exception as exc:
@@ -91,3 +91,9 @@ def executar(pedido, mensagem_whatsapp):
             logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] ⚠️ Falha ao notificar admin: {exc_notif}")
         logger.info("=" * 120)
         raise exc
+
+
+def enviar_resposta(pedido, resposta_cliente, pedido_id):
+    message_id_resposta = enviar_mensagem(pedido, resposta_cliente)
+    salvar_mensagem_pedido(message_id_resposta, pedido_id, resposta_cliente, tipo_mensagem='enviada')
+    logger.info(f"[FLUXO-RESPONDER-MENSAGEM] ✅ Resposta enviada ao cliente | pedido #{pedido_id}")

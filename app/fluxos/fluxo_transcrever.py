@@ -7,7 +7,7 @@ from celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
-def executar(pedido, mensagem_whatsapp):
+def executar(pedido, mensagem_whatsapp, path_audio=None):
     try:
         logger.debug("=" * 120)
         logger.debug(f"[FLUXO-TRANSCREVER] 📦 Dados recebidos para responder mensagem: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
@@ -31,7 +31,8 @@ def executar(pedido, mensagem_whatsapp):
         else:
             raise ValueError(f"[FLUXO-TRANSCREVER] ❌ Tipo de mensagem não suportado para transcrição: {tipo}")
 
-        path_audio = receber_audio(tipo, id_audio, mime, pedido_id, phone_number_id=pedido.get('phone_number_id'))
+        if path_audio is None:
+            path_audio = receber_audio(tipo, id_audio, mime, pedido_id, phone_number_id=pedido.get('phone_number_id'))
         texto_transcricao = transcrever_audio(path_audio)
 
         # Adiciona o texto transcrito no objeto mensagem_whatsapp para os fluxos subsequentes

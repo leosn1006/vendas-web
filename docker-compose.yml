@@ -118,7 +118,7 @@ services:
     build: .
     container_name: vendas-worker-urgente
     restart: unless-stopped
-    command: celery -A celery_app worker --loglevel=warning --concurrency=4 --queues=urgente --hostname=urgente@%h
+    command: celery -A celery_app worker --loglevel=warning --concurrency=8 --queues=urgente --hostname=urgente@%h
     depends_on:
       db:
         condition: service_healthy
@@ -179,7 +179,7 @@ services:
     build: .
     container_name: vendas-worker-normal
     restart: unless-stopped
-    command: celery -A celery_app worker --loglevel=warning --concurrency=2 --queues=normal --hostname=normal@%h
+    command: celery -A celery_app worker --loglevel=warning --concurrency=4 --queues=normal --hostname=normal@%h
     depends_on:
       db:
         condition: service_healthy

@@ -63,20 +63,32 @@ def fluxo_responder_mensagem(self, pedido, mensagem_whatsapp):
     logger.info("=" * 120)
     logger.info(f"[TASK-RESPONDER-MENSAGEM] 📦 Dados recebidos para responder mensagem: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
     from fluxos.fluxo_responder import executar
-    from whatsapp import ErroTransienteWhatsApp
     try:
         executar(pedido, mensagem_whatsapp)
         logger.info(f"[TASK-RESPONDER-MENSAGEM] ✅ Mensagem processada com sucesso!")
         logger.info("=" * 120)
-    except ErroTransienteWhatsApp as exc:
-        msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
-        logger.warning(f"[TASK-RESPONDER-MENSAGEM] ⚠️ Erro transiente, reagendando | pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
-        raise self.retry(exc=exc, countdown=60)
     except Exception as exc:
         msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
         logger.exception(f"[TASK-RESPONDER-MENSAGEM] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
         notificar_admin_erro_sistema(f"TASK-RESPONDER-MENSAGEM | pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")
         raise
+
+@shared_task(name="tasks.enviar_resposta_cliente", bind=True, max_retries=2)
+def fluxo_enviar_resposta_cliente(self, pedido, resposta_cliente, pedido_id):
+    logger.info(f"[TASK-ENVIAR-RESPOSTA] 📤 pedido #{pedido_id} | tel: {pedido.get('contact_phone')}")
+    from fluxos.fluxo_responder import enviar_resposta
+    from whatsapp import ErroTransienteWhatsApp
+    try:
+        enviar_resposta(pedido, resposta_cliente, pedido_id)
+        logger.info(f"[TASK-ENVIAR-RESPOSTA] ✅ pedido #{pedido_id}")
+    except ErroTransienteWhatsApp as exc:
+        logger.warning(f"[TASK-ENVIAR-RESPOSTA] ⚠️ Erro transiente, reagendando | pedido #{pedido_id} | Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        raise self.retry(exc=exc, countdown=60)
+    except Exception as exc:
+        logger.exception(f"[TASK-ENVIAR-RESPOSTA] ❌ pedido #{pedido_id} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
+        notificar_admin_erro_sistema(f"TASK-ENVIAR-RESPOSTA | pedido #{pedido_id} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")
+        raise
+
 
 @shared_task(name="tasks.conferir_comprovante_dinamico", bind=True, max_retries=0)
 def fluxo_conferir_comprovante_dinamico(self, pedido, mensagem_whatsapp):
@@ -95,12 +107,12 @@ def fluxo_conferir_comprovante_dinamico(self, pedido, mensagem_whatsapp):
 
 
 @shared_task(name="tasks.transcrever_audio", bind=True, max_retries=0)
-def fluxo_transcrever_audio(self, pedido, mensagem_whatsapp):
+def fluxo_transcrever_audio(self, pedido, mensagem_whatsapp, path_audio=None):
     logger.info("=" * 120)
     logger.info(f"[TASK-TRANSCRIBIR-AUDIO] 📦 Dados recebidos para transcrever áudio: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
     from fluxos.fluxo_transcrever import executar
     try:
-        executar(pedido, mensagem_whatsapp)
+        executar(pedido, mensagem_whatsapp, path_audio=path_audio)
         logger.info(f"[TASK-TRANSCRIBIR-AUDIO] ✅ Mensagem processada com sucesso!")
         logger.info("=" * 120)
     except Exception as exc:
