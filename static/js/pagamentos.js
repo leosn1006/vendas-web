@@ -3,20 +3,85 @@
  */
 
 let comprovanteModalAtual = null;
+let comprovantePathAtual = null;
+
+function extrairPedidoId(button) {
+    const pedidoId = button && button.dataset ? button.dataset.pedidoId : null;
+    if (!pedidoId || isNaN(pedidoId)) {
+        throw new Error('ID de pedido inválido');
+    }
+    return parseInt(pedidoId, 10);
+}
+
+async function buscarDadosComprovante(pedidoId) {
+    const response = await fetch(`/admin/pedido/${pedidoId}/comprovante`, {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+    });
+
+    const rawBody = await response.text();
+    let data = null;
+    try {
+        data = rawBody ? JSON.parse(rawBody) : null;
+    } catch (parseError) {
+        data = null;
+    }
+
+    if (!response.ok || !data || data.ok === false) {
+        const htmlResponse = (rawBody || '').trim().toLowerCase().startsWith('<!doctype') || (rawBody || '').trim().toLowerCase().startsWith('<html');
+        const msg = data && data.msg
+            ? data.msg
+            : htmlResponse
+                ? 'Sessão expirada ou resposta inválida do servidor. Atualize a página e tente novamente.'
+                : `Falha ao carregar comprovante (HTTP ${response.status})`;
+
+        console.error('Falha na API de comprovante', {
+            pedidoId,
+            status: response.status,
+            statusText: response.statusText,
+            bodyPreview: (rawBody || '').slice(0, 300)
+        });
+        throw new Error(msg);
+    }
+
+    return data;
+}
+
+/**
+ * Ação principal: abrir comprovante em nova aba
+ */
+async function abrirComprovanteNovaAba(button) {
+    try {
+        const pedidoId = extrairPedidoId(button);
+        const data = await buscarDadosComprovante(pedidoId);
+        const novaAba = window.open(data.path, '_blank', 'noopener,noreferrer');
+        if (!novaAba) {
+            window.location.href = data.path;
+        }
+    } catch (error) {
+        console.error('Erro ao abrir comprovante em nova aba:', error);
+        mostrarErroModal(error.message || 'Erro ao abrir comprovante');
+        const modal = document.getElementById('comprovanteModal');
+        modal.classList.add('show');
+        modal.style.display = 'block';
+        document.body.classList.add('modal-open');
+    }
+}
 
 /**
  * Abre modal com comprovante
  */
 async function abrirModalComprovante(button) {
-    // Extrair ID do data-attribute (seguro contra injeção)
-    const pedidoId = button.dataset.pedidoId;
-    if (!pedidoId || isNaN(pedidoId)) {
-        console.error('Pedido ID inválido:', pedidoId);
+    let pedidoId;
+    try {
+        pedidoId = extrairPedidoId(button);
+    } catch (error) {
+        console.error('Pedido ID inválido:', error);
         mostrarErroModal('ID de pedido inválido');
         return;
     }
 
-    comprovanteModalAtual = parseInt(pedidoId);
+    comprovanteModalAtual = pedidoId;
 
     // Abre modal imediatamente para mostrar estado de carregamento
     const modal = document.getElementById('comprovanteModal');
@@ -38,46 +103,24 @@ async function abrirModalComprovante(button) {
     }
 
     try {
-        // Fetch comprovante info
-        const response = await fetch(`/admin/pedido/${pedidoId}/comprovante`, {
-            headers: { 'Accept': 'application/json' },
-            credentials: 'same-origin'
-        });
-
-        const rawBody = await response.text();
-        let data = null;
-        try {
-            data = rawBody ? JSON.parse(rawBody) : null;
-        } catch (parseError) {
-            // Resposta pode ser HTML (ex.: redirect/login) ou texto simples
-            data = null;
-        }
-
-        if (!response.ok || !data || data.ok === false) {
-            const htmlResponse = (rawBody || '').trim().toLowerCase().startsWith('<!doctype') || (rawBody || '').trim().toLowerCase().startsWith('<html');
-            const msg = data && data.msg
-                ? data.msg
-                : htmlResponse
-                    ? 'Sessão expirada ou resposta inválida do servidor. Atualize a página e tente novamente.'
-                    : `Falha ao carregar comprovante (HTTP ${response.status})`;
-
-            console.error('Falha na API de comprovante', {
-                pedidoId,
-                status: response.status,
-                statusText: response.statusText,
-                bodyPreview: (rawBody || '').slice(0, 300)
-            });
-
-            mostrarErroModal(msg);
-            return;
-        }
+        const data = await buscarDadosComprovante(pedidoId);
 
         // Renderiza arquivo no viewer
         renderizarComprovante(data.path, data.extension);
 
     } catch (error) {
         console.error('Erro ao abrir modal:', error);
-        mostrarErroModal('Erro ao abrir comprovante');
+        mostrarErroModal(error.message || 'Erro ao abrir comprovante');
+    }
+}
+
+function abrirComprovanteDoModalEmNovaAba() {
+    if (!comprovantePathAtual) {
+        return;
+    }
+    const novaAba = window.open(comprovantePathAtual, '_blank', 'noopener,noreferrer');
+    if (!novaAba) {
+        window.location.href = comprovantePathAtual;
     }
 }
 
@@ -87,6 +130,7 @@ async function abrirModalComprovante(button) {
 function renderizarComprovante(path, extension) {
     const viewer = document.getElementById('comprovanteViewer');
     const ext = extension.toLowerCase();
+    comprovantePathAtual = path;
 
     // Limpar conteúdo anterior
     viewer.innerHTML = '';
@@ -155,6 +199,7 @@ function fecharModal() {
     // Limpar conteúdo do modal
     document.getElementById('pedidoModalId').textContent = '';
     document.getElementById('comprovanteViewer').innerHTML = '';
+    comprovantePathAtual = null;
 
     // Scroll para pedido
     if (comprovanteModalAtual) {

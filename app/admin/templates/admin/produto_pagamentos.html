@@ -100,6 +100,33 @@
         transform: none;
     }
 
+    .comprovante-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-comprovante-sec {
+        padding: 6px 10px;
+        font-size: 12px;
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-comprovante-sec:hover {
+        color: var(--text);
+        border-color: var(--accent);
+    }
+
+    .btn-comprovante-sec:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
+
     .tooltip {
         position: relative;
     }
@@ -228,13 +255,23 @@
 
                     <td style="text-align: center;">
                         {% if pedido.path_comprovante %}
-                            <button type="button" class="btn-comprovante" onclick="abrirModalComprovante(this)" data-pedido-id="{{ pedido.id }}">
-                                Ver
-                            </button>
+                            <div class="comprovante-actions">
+                                <button type="button" class="btn-comprovante" onclick="abrirComprovanteNovaAba(this)" data-pedido-id="{{ pedido.id }}">
+                                    Abrir
+                                </button>
+                                <button type="button" class="btn-comprovante-sec" onclick="abrirModalComprovante(this)" data-pedido-id="{{ pedido.id }}" title="Pré-visualizar comprovante" aria-label="Pré-visualizar comprovante">
+                                    &#128269;
+                                </button>
+                            </div>
                         {% else %}
-                            <button type="button" class="btn-comprovante tooltip" disabled data-tooltip="Não enviado">
-                                Ver
-                            </button>
+                            <div class="comprovante-actions">
+                                <button type="button" class="btn-comprovante tooltip" disabled data-tooltip="Não enviado">
+                                    Abrir
+                                </button>
+                                <button type="button" class="btn-comprovante-sec" disabled title="Pré-visualização indisponível" aria-label="Pré-visualização indisponível">
+                                    &#128269;
+                                </button>
+                            </div>
                         {% endif %}
                     </td>
                 </tr>
@@ -336,6 +373,7 @@
                 @keyframes spin { to { transform: rotate(360deg); } }
             </style>
             <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" onclick="abrirComprovanteDoModalEmNovaAba()">Abrir em nova aba</button>
                 <button type="button" class="btn btn-secondary" onclick="fecharModal()">Voltar</button>
             </div>
         </div>
@@ -346,5 +384,5 @@
 
 {% block extra_js %}
 {% include 'admin/includes/_filtro_periodo_js.html' %}
-<script src="{{ url_for('static', filename='js/pagamentos.js', v='20260506-1') }}"></script>
+<script src="{{ url_for('static', filename='js/pagamentos.js', v='20260506-2') }}"></script>
 {% endblock %}
