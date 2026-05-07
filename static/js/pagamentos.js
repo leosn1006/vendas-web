@@ -51,14 +51,21 @@ async function buscarDadosComprovante(pedidoId) {
  * Ação principal: abrir comprovante em nova aba
  */
 async function abrirComprovanteNovaAba(button) {
+    let novaAba = null;
     try {
         const pedidoId = extrairPedidoId(button);
-        const data = await buscarDadosComprovante(pedidoId);
-        const novaAba = window.open(data.path, '_blank', 'noopener,noreferrer');
+        novaAba = window.open('', '_blank');
         if (!novaAba) {
-            window.location.href = data.path;
+            throw new Error('Pop-up bloqueado pelo navegador. Libere pop-ups para abrir o comprovante em nova aba.');
         }
+        novaAba.opener = null;
+        novaAba.document.title = 'Carregando comprovante...';
+        const data = await buscarDadosComprovante(pedidoId);
+        novaAba.location.href = data.path;
     } catch (error) {
+        if (novaAba && !novaAba.closed) {
+            novaAba.close();
+        }
         console.error('Erro ao abrir comprovante em nova aba:', error);
         mostrarErroModal(error.message || 'Erro ao abrir comprovante');
         const modal = document.getElementById('comprovanteModal');
@@ -125,9 +132,11 @@ function abrirComprovanteDoModalEmNovaAba() {
     if (!comprovantePathAtual) {
         return;
     }
-    const novaAba = window.open(comprovantePathAtual, '_blank', 'noopener,noreferrer');
-    if (!novaAba) {
-        window.location.href = comprovantePathAtual;
+    const novaAba = window.open(comprovantePathAtual, '_blank');
+    if (novaAba) {
+        novaAba.opener = null;
+    } else {
+        mostrarErroModal('Pop-up bloqueado pelo navegador. Libere pop-ups para abrir em nova aba.');
     }
 }
 
@@ -148,14 +157,14 @@ function renderizarComprovante(path, extension) {
         embed.src = path;
         embed.type = 'application/pdf';
         embed.width = '100%';
-        embed.height = '600px';
+        embed.height = '78vh';
         viewer.appendChild(embed);
     } else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
         // Imagem: usar createElement
         const img = document.createElement('img');
         img.src = path;
         img.alt = 'Comprovante';
-        img.style.cssText = 'max-width: 100%; max-height: 600px; border-radius: 4px;';
+        img.style.cssText = 'max-width: 100%; max-height: 78vh; width: auto; height: auto; border-radius: 4px;';
         viewer.appendChild(img);
     } else {
         // Tipo desconhecido: usar DOM seguro

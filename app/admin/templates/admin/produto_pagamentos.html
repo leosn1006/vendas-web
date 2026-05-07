@@ -176,13 +176,13 @@
     }
 
     #comprovanteModal .modal-dialog {
-        width: min(1120px, 96vw);
-        max-width: 1120px;
+        width: min(1240px, 97vw);
+        max-width: 1240px;
         margin: 0;
     }
 
     #comprovanteModal .modal-content {
-        max-height: 90vh;
+        max-height: 94vh;
         display: flex;
         flex-direction: column;
         border-radius: 10px;
@@ -196,6 +196,7 @@
     #comprovanteModal .modal-body {
         flex: 1 1 auto;
         overflow: auto;
+        padding: 12px;
     }
 
     .modal-backdrop {
@@ -442,5 +443,5 @@
 
 {% block extra_js %}
 {% include 'admin/includes/_filtro_periodo_js.html' %}
-<script src="{{ url_for('static', filename='js/pagamentos.js', v='20260507-1') }}"></script>
+<script src="{{ url_for('static', filename='js/pagamentos.js', v='20260507-2') }}"></script>
 {% endblock %}
