@@ -39,11 +39,36 @@ async function abrirModalComprovante(button) {
 
     try {
         // Fetch comprovante info
-        const response = await fetch(`/admin/pedido/${pedidoId}/comprovante`);
-        const data = await response.json();
+        const response = await fetch(`/admin/pedido/${pedidoId}/comprovante`, {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin'
+        });
 
-        if (!response.ok || !data.ok) {
-            mostrarErroModal((data && data.msg) ? data.msg : 'Erro ao carregar comprovante');
+        const rawBody = await response.text();
+        let data = null;
+        try {
+            data = rawBody ? JSON.parse(rawBody) : null;
+        } catch (parseError) {
+            // Resposta pode ser HTML (ex.: redirect/login) ou texto simples
+            data = null;
+        }
+
+        if (!response.ok || !data || data.ok === false) {
+            const htmlResponse = (rawBody || '').trim().toLowerCase().startsWith('<!doctype') || (rawBody || '').trim().toLowerCase().startsWith('<html');
+            const msg = data && data.msg
+                ? data.msg
+                : htmlResponse
+                    ? 'Sessão expirada ou resposta inválida do servidor. Atualize a página e tente novamente.'
+                    : `Falha ao carregar comprovante (HTTP ${response.status})`;
+
+            console.error('Falha na API de comprovante', {
+                pedidoId,
+                status: response.status,
+                statusText: response.statusText,
+                bodyPreview: (rawBody || '').slice(0, 300)
+            });
+
+            mostrarErroModal(msg);
             return;
         }
 

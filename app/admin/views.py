@@ -2258,20 +2258,24 @@ def visualizar_comprovante(pedido_id):
         # Get pedido
         pedido = get_pedido(pedido_id)
         if not pedido:
+            logger.warning(f"[ADMIN] ⚠️ Pedido não encontrado para visualização de comprovante: pedido_id={pedido_id}")
             return jsonify({'ok': False, 'msg': 'Pedido não encontrado'}), 404
 
         # Verify user has access to produto
         if not usuario_tem_acesso_produto(current_user.id, pedido['produto_id']):
+            logger.warning(f"[ADMIN] ⚠️ Acesso negado ao comprovante: user={current_user.email} pedido_id={pedido_id} produto_id={pedido['produto_id']}")
             return jsonify({'ok': False, 'msg': 'Acesso negado'}), 403
 
         # Check se tem comprovante
         path_comprovante = pedido.get('path_comprovante')
         if not path_comprovante:
+            logger.warning(f"[ADMIN] ⚠️ Pedido sem path_comprovante: pedido_id={pedido_id}")
             return jsonify({'ok': False, 'msg': 'Comprovante não disponível'}), 404
 
         # Validate path (security: no path traversal)
         path_normalizado = str(path_comprovante).strip().lstrip('/')
         if '..' in path_normalizado:
+            logger.warning(f"[ADMIN] ⚠️ Caminho inválido em path_comprovante: pedido_id={pedido_id} path={path_normalizado}")
             return jsonify({'ok': False, 'msg': 'Caminho inválido'}), 400
 
         # Get extension
@@ -2282,6 +2286,7 @@ def visualizar_comprovante(pedido_id):
         # Validate extension
         allowed_extensions = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp']
         if ext not in allowed_extensions:
+            logger.warning(f"[ADMIN] ⚠️ Extensão não suportada no comprovante: pedido_id={pedido_id} ext={ext} path={path_normalizado}")
             return jsonify({'ok': False, 'msg': f'Tipo de arquivo não suportado: {ext}'}), 400
 
         # Verifica se o arquivo existe em local esperado (storage ou static)
@@ -2294,7 +2299,7 @@ def visualizar_comprovante(pedido_id):
 
         caminho_absoluto = next((c for c in caminhos_candidatos if os.path.isfile(c)), None)
         if not caminho_absoluto:
-            logger.warning(f"[ADMIN] ⚠️ Comprovante não encontrado para pedido #{pedido_id}: {path_normalizado}")
+            logger.warning(f"[ADMIN] ⚠️ Comprovante não encontrado para pedido #{pedido_id}: path={path_normalizado} candidatos={caminhos_candidatos}")
             return jsonify({'ok': False, 'msg': 'Arquivo de comprovante não encontrado'}), 404
 
         # Log de auditoria: quem visualizou o comprovante
