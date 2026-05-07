@@ -18,36 +18,37 @@ async function abrirModalComprovante(button) {
 
     comprovanteModalAtual = parseInt(pedidoId);
 
+    // Abre modal imediatamente para mostrar estado de carregamento
+    const modal = document.getElementById('comprovanteModal');
+    document.getElementById('pedidoModalId').textContent = pedidoId;
+    document.getElementById('comprovanteViewer').innerHTML = `
+        <div style="display: flex; justify-content: center; align-items: center; height: 300px;">
+            <div style="text-align: center; color: var(--muted); font-size: 13px;">Carregando comprovante...</div>
+        </div>
+    `;
+    modal.classList.add('show');
+    modal.style.display = 'block';
+    document.body.classList.add('modal-open');
+
+    let backdrop = document.querySelector('.modal-backdrop');
+    if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop fade show';
+        document.body.appendChild(backdrop);
+    }
+
     try {
         // Fetch comprovante info
         const response = await fetch(`/admin/pedido/${pedidoId}/comprovante`);
+        const data = await response.json();
 
-        if (!response.ok) {
-            mostrarErroModal('Erro ao carregar comprovante');
+        if (!response.ok || !data.ok) {
+            mostrarErroModal((data && data.msg) ? data.msg : 'Erro ao carregar comprovante');
             return;
         }
 
-        const data = await response.json();
-
-        // Atualiza ID no modal
-        document.getElementById('pedidoModalId').textContent = pedidoId;
-
         // Renderiza arquivo no viewer
         renderizarComprovante(data.path, data.extension);
-
-        // Abre modal
-        const modal = document.getElementById('comprovanteModal');
-        modal.classList.add('show');
-        modal.style.display = 'block';
-        document.body.classList.add('modal-open');
-
-        // Adiciona backdrop
-        let backdrop = document.querySelector('.modal-backdrop');
-        if (!backdrop) {
-            backdrop = document.createElement('div');
-            backdrop.className = 'modal-backdrop fade show';
-            document.body.appendChild(backdrop);
-        }
 
     } catch (error) {
         console.error('Erro ao abrir modal:', error);

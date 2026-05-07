@@ -4,7 +4,7 @@ import datetime
 import subprocess
 import tempfile
 from zoneinfo import ZoneInfo
-from flask import render_template, redirect, url_for, request, flash, session, current_app, jsonify
+from flask import render_template, redirect, url_for, request, flash, session, current_app, jsonify, send_file
 from flask_login import current_user
 from werkzeug.utils import secure_filename
 from admin import admin_bp
@@ -2270,11 +2270,12 @@ def visualizar_comprovante(pedido_id):
             return jsonify({'ok': False, 'msg': 'Comprovante não disponível'}), 404
 
         # Validate path (security: no path traversal)
-        if '..' in path_comprovante or path_comprovante.startswith('/'):
+        path_normalizado = str(path_comprovante).strip().lstrip('/')
+        if '..' in path_normalizado:
             return jsonify({'ok': False, 'msg': 'Caminho inválido'}), 400
 
         # Get extension
-        filename = os.path.basename(path_comprovante)
+        filename = os.path.basename(path_normalizado)
         _, ext = os.path.splitext(filename)
         ext = ext.lstrip('.').lower()
 
@@ -2283,15 +2284,25 @@ def visualizar_comprovante(pedido_id):
         if ext not in allowed_extensions:
             return jsonify({'ok': False, 'msg': f'Tipo de arquivo não suportado: {ext}'}), 400
 
-        # Build URL
-        full_path = f'/static/{path_comprovante}'
+        # Verifica se o arquivo existe em local esperado (storage ou static)
+        caminhos_candidatos = []
+        if path_normalizado.startswith('storage/'):
+            caminhos_candidatos.append(os.path.join(current_app.root_path, path_normalizado))
+        if path_normalizado.startswith('static/'):
+            caminhos_candidatos.append(os.path.join(current_app.root_path, path_normalizado))
+        caminhos_candidatos.append(os.path.join(current_app.static_folder, path_normalizado))
+
+        caminho_absoluto = next((c for c in caminhos_candidatos if os.path.isfile(c)), None)
+        if not caminho_absoluto:
+            logger.warning(f"[ADMIN] ⚠️ Comprovante não encontrado para pedido #{pedido_id}: {path_normalizado}")
+            return jsonify({'ok': False, 'msg': 'Arquivo de comprovante não encontrado'}), 404
 
         # Log de auditoria: quem visualizou o comprovante
-        logger.info(f"[ADMIN] 👀 Usuário {current_user.email} visualizou comprovante do pedido #{pedido_id} (produto #{pedido['produto_id']})")
+        logger.info(f"[ADMIN] 👀 Usuário {current_user.email} solicitou visualização do comprovante do pedido #{pedido_id} (produto #{pedido['produto_id']}) path={path_normalizado}")
 
         return jsonify({
             'ok': True,
-            'path': full_path,
+            'path': url_for('admin.visualizar_comprovante_arquivo', pedido_id=pedido_id),
             'extension': ext,
             'filename': filename
         })
@@ -2299,3 +2310,40 @@ def visualizar_comprovante(pedido_id):
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro ao visualizar comprovante pedido #{pedido_id}: {e}")
         return jsonify({'ok': False, 'msg': f'Erro ao carregar comprovante: {e}'}), 500
+
+
+@admin_bp.route('/pedido/<int:pedido_id>/comprovante/arquivo')
+@requer_login
+def visualizar_comprovante_arquivo(pedido_id):
+    """Entrega o arquivo do comprovante com validação de acesso ao pedido."""
+    try:
+        pedido = get_pedido(pedido_id)
+        if not pedido:
+            return jsonify({'ok': False, 'msg': 'Pedido não encontrado'}), 404
+
+        if not usuario_tem_acesso_produto(current_user.id, pedido['produto_id']):
+            return jsonify({'ok': False, 'msg': 'Acesso negado'}), 403
+
+        path_comprovante = pedido.get('path_comprovante')
+        if not path_comprovante:
+            return jsonify({'ok': False, 'msg': 'Comprovante não disponível'}), 404
+
+        path_normalizado = str(path_comprovante).strip().lstrip('/')
+        if '..' in path_normalizado:
+            return jsonify({'ok': False, 'msg': 'Caminho inválido'}), 400
+
+        caminhos_candidatos = []
+        if path_normalizado.startswith('storage/'):
+            caminhos_candidatos.append(os.path.join(current_app.root_path, path_normalizado))
+        if path_normalizado.startswith('static/'):
+            caminhos_candidatos.append(os.path.join(current_app.root_path, path_normalizado))
+        caminhos_candidatos.append(os.path.join(current_app.static_folder, path_normalizado))
+
+        caminho_absoluto = next((c for c in caminhos_candidatos if os.path.isfile(c)), None)
+        if not caminho_absoluto:
+            return jsonify({'ok': False, 'msg': 'Arquivo de comprovante não encontrado'}), 404
+
+        return send_file(caminho_absoluto, conditional=True)
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao entregar comprovante do pedido #{pedido_id}: {e}")
+        return jsonify({'ok': False, 'msg': 'Erro ao entregar comprovante'}), 500

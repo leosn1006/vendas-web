@@ -228,11 +228,11 @@
 
                     <td style="text-align: center;">
                         {% if pedido.path_comprovante %}
-                            <button class="btn-comprovante" onclick="abrirModalComprovante(this)" data-pedido-id="{{ pedido.id }}">
+                            <button type="button" class="btn-comprovante" onclick="abrirModalComprovante(this)" data-pedido-id="{{ pedido.id }}">
                                 Ver
                             </button>
                         {% else %}
-                            <button class="btn-comprovante tooltip" disabled data-tooltip="Não enviado">
+                            <button type="button" class="btn-comprovante tooltip" disabled data-tooltip="Não enviado">
                                 Ver
                             </button>
                         {% endif %}
