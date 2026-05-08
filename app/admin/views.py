@@ -1777,6 +1777,9 @@ _SQL_LISTA_ORCAMENTO = """
         UNION
         SELECT campaignid FROM orcamento_campanha
         WHERE produto_id = %s AND data = %s
+        UNION
+        SELECT campaignid FROM campanhas
+        WHERE produto_id = %s
     ) base
     LEFT JOIN campanhas cam
         ON cam.produto_id = %s AND cam.campaignid = base.campaignid
@@ -1850,7 +1853,7 @@ def orcamento_produto(produto_id):
 
     orcamentos = db.execute_query(
         _SQL_LISTA_ORCAMENTO,
-        (produto_id, data_str, produto_id, data_str, produto_id, produto_id, data_str),
+        (produto_id, data_str, produto_id, data_str, produto_id, produto_id, produto_id, data_str),
         fetch_all=True
     )
     return render_template('admin/orcamento_produto.html',
