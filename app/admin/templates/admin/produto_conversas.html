@@ -176,7 +176,14 @@
         </span>
         <span>
             <span class="label">Pago</span>
-            {% if pedido.valor_pago and pedido.valor_pago > 0 %}R$ {{ "%.2f"|format(pedido.valor_pago) }}{% else %}—{% endif %}
+            <span style="display:flex;align-items:center;gap:8px;">
+                {% if pedido.valor_pago and pedido.valor_pago > 0 %}R$ {{ "%.2f"|format(pedido.valor_pago) }}{% else %}—{% endif %}
+                {% if pedido.path_comprovante %}
+                <a href="{{ url_for('admin.visualizar_comprovante_arquivo', pedido_id=pedido.id) }}"
+                   target="_blank" rel="noopener noreferrer"
+                   title="Visualizar comprovante" style="font-size:16px;text-decoration:none;">&#128269;</a>
+                {% endif %}
+            </span>
         </span>
     </div>
 </div>
