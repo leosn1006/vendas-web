@@ -3,7 +3,7 @@ import logging
 import fitz  # pymupdf
 from pathlib import Path
 import requests
-from openai import OpenAI
+from openai import OpenAI, RateLimitError, AuthenticationError, APIConnectionError, APITimeoutError
 
 logger = logging.getLogger(__name__)
 client = OpenAI()
@@ -46,8 +46,20 @@ _INSTRUCOES_ESCALAMENTO = (
     "Use a ferramenta notificar_admin APENAS se o cliente pedir estorno, reembolso ou devolução.\n"
     "Para qualquer dúvida sobre o produto, conteúdo ou receitas, responda com base no contexto fornecido.\n"
     "Se o conteúdo não estiver no material, diga claramente que não está incluso.\n"
-    "Após acionar a ferramenta, responda: \"Vou verificar e te retorno em breve 🙏\""
+    "Após acionar a ferramenta, NÃO envie nenhuma mensagem ao cliente."
 )
+
+
+def _notificar_se_necessario(pedido, produto, motivo, mensagem):
+    if not pedido:
+        return
+    from database import tem_notificacao_em_analise
+    from whatsapp import criar_notificacao_admin
+    if tem_notificacao_em_analise(pedido['id']):
+        return
+    produto_id = produto.get('id') if produto else pedido.get('produto_id')
+    criar_notificacao_admin(pedido['id'], produto_id, motivo, mensagem)
+    logger.info(f"[AGENTE] 📋 Notificação criada para admin — motivo: {motivo}")
 
 
 def _ler_pdf_fonte(fonte: str) -> str:
@@ -108,14 +120,20 @@ def responder_cliente_com_historico_produto(
 #        print(f"{msg['role'].upper()}: {msg['content'][:500]}{'...' if len(msg['content']) > 500 else ''}")
 #    print("=== FIM DAS MENSAGENS ===")
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=messages,
-        temperature=0.3,
-        max_tokens=300,
-        tools=[_TOOL_NOTIFICAR_ADMIN],
-        tool_choice="auto",
-    )
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            temperature=0.3,
+            max_tokens=300,
+            tools=[_TOOL_NOTIFICAR_ADMIN],
+            tool_choice="auto",
+        )
+    except (RateLimitError, AuthenticationError, APIConnectionError, APITimeoutError) as exc:
+        logger.error(f"[AGENTE] ❌ Erro OpenAI ({type(exc).__name__}): {exc}")
+        _notificar_se_necessario(pedido, produto, 'pergunta_sem_resposta',
+                                 f"Falha na API OpenAI ({type(exc).__name__}). Cliente não recebeu resposta.")
+        return None
 
     choice = response.choices[0]
 
@@ -125,28 +143,17 @@ def responder_cliente_com_historico_produto(
         motivo = args.get('motivo', 'pergunta_sem_resposta')
         resumo = args.get('resumo', '')
         logger.info(f"[AGENTE] 🔧 Tool chamada: notificar_admin | motivo={motivo} | resumo={resumo[:80]}")
-
-        if pedido:
-            from database import tem_notificacao_em_analise
-            from whatsapp import criar_notificacao_admin
-            produto_id = produto.get('id') if produto else pedido.get('produto_id')
-            ja_em_analise = tem_notificacao_em_analise(pedido['id'])
-            if ja_em_analise:
-                logger.info(f"[AGENTE] 🔕 Pedido #{pedido['id']} já em análise — IA silencia, não cria notificação duplicada")
-                return None
-            criar_notificacao_admin(
-                pedido['id'],
-                produto_id,
-                motivo,
-                f"Agente escalou. Motivo: {motivo}. Cliente: {pedido.get('contact_name')} ({pedido.get('contact_phone')}). Resumo: {resumo}",
-            )
-            logger.info(f"[AGENTE] 📋 Notificação criada para admin — motivo: {motivo}")
-
-        return "Vou verificar e te retorno em breve 🙏"
+        _notificar_se_necessario(
+            pedido, produto, motivo,
+            f"Agente escalou. Motivo: {motivo}. Cliente: {pedido.get('contact_name')} ({pedido.get('contact_phone')}). Resumo: {resumo}" if pedido else f"Agente escalou. Motivo: {motivo}. Resumo: {resumo}",
+        )
+        return None
 
     resposta = (choice.message.content or "").strip()
     if not resposta:
-        logger.warning("[AGENTE] Resposta vazia da OpenAI. Retornando mensagem de contingência.")
-        return "Perfeito! Vou verificar direitinho e já te respondo 🙏"
+        logger.warning("[AGENTE] Resposta vazia da OpenAI.")
+        _notificar_se_necessario(pedido, produto, 'pergunta_sem_resposta',
+                                 f"Agente retornou resposta vazia. Cliente: {pedido.get('contact_name')} ({pedido.get('contact_phone')})" if pedido else "Agente retornou resposta vazia.")
+        return None
 
     return resposta
