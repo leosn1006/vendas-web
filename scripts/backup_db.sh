@@ -29,6 +29,7 @@ docker compose -f "$PROJECT_DIR/docker-compose.yml" exec -T -e MYSQL_PWD="$DB_PA
   mysqldump \
   -u"$DB_USER" \
   --single-transaction \
+  --no-tablespaces \
   --routines \
   "$DB_NAME" \
   | gzip > "$BACKUP_DIR/$FILENAME"
