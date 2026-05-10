@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@400;700&display=swap" rel="stylesheet">
-<link rel="preload" as="image" href="/static/images/sem-acucar-10.jpg">
+<link rel="preload" as="image" href="/static/images/sem-acucar-capa.jpg">
 <style>
 :root{--verde:#25D366;--verde-escuro:#128C7E;--verde-claro:#f0fdf4;--verde-borda:#bbf7d0;--verde-texto:#15803d;--verde-texto-escuro:#16a34a}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -16,9 +16,6 @@ body{font-family:Lato,sans-serif;background:#fff;color:#222;max-width:480px;marg
 .badge{display:block;background:linear-gradient(135deg,var(--verde),var(--verde-escuro));color:#fff;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:6px 14px;border-radius:20px;width:fit-content;margin:16px auto 0}
 .hero{width:100%;cursor:pointer;position:relative}
 .hero img{width:100%;display:block}
-.hero-titulo{position:absolute;top:0;left:0;right:0;padding:22px 20px 40px;background:linear-gradient(to bottom,rgba(0,0,0,0.62) 0%,rgba(0,0,0,0) 100%);text-align:center;pointer-events:none}
-.hero-titulo p{font-family:"Playfair Display",serif;font-size:26px;font-weight:900;color:#fff;line-height:1.25;text-shadow:0 2px 8px rgba(0,0,0,0.5)}
-.hero-titulo p span{color:#a8e6b8}
 .titulo{text-align:center;padding:16px 20px 8px}
 .titulo h1{font-family:"Playfair Display",serif;font-size:26px;font-weight:900;color:#1a1a1a;line-height:1.2}
 .titulo h1 span{color:var(--verde)}
@@ -65,8 +62,6 @@ body{font-family:Lato,sans-serif;background:#fff;color:#222;max-width:480px;marg
 footer{background:#f1f5f9;padding:16px;text-align:center;border-top:1px solid #e2e8f0}
 footer p{font-size:11px;color:#888;margin-bottom:6px}
 footer a{color:var(--verde);text-decoration:none;font-size:11px;margin:0 6px}
-.hero-btn{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--verde),var(--verde-escuro));color:#fff;border:3px solid rgba(255,255,255,0.6);padding:20px 40px;border-radius:50px;font-size:20px;font-weight:900;cursor:pointer;white-space:nowrap;box-shadow:0 6px 30px rgba(0,0,0,0.5),0 0 20px rgba(37,211,102,0.4);animation:pulse-btn 1.5s infinite;font-family:Lato,sans-serif;z-index:10;text-transform:uppercase;letter-spacing:1px;width:85%;text-align:center}
-@keyframes pulse-btn{0%,100%{transform:translateX(-50%) scale(1);box-shadow:0 6px 30px rgba(0,0,0,0.5),0 0 20px rgba(37,211,102,0.4)}50%{transform:translateX(-50%) scale(1.05);box-shadow:0 8px 40px rgba(0,0,0,0.6),0 0 35px rgba(37,211,102,0.7)}}
 #loader{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;justify-content:center;align-items:center}
 #loader.active{display:flex}
 #loader-box{background:#fff;border-radius:16px;padding:28px 36px;text-align:center;font-family:Lato,sans-serif}
@@ -78,12 +73,8 @@ footer a{color:var(--verde);text-decoration:none;font-size:11px;margin:0 6px}
 <body>
 <div id="loader"><div id="loader-box"><div id="spinner"></div><p>Aguarde...</p></div></div>
 <span class="badge">🌿 Ebook Digital</span>
-<div class="hero">
-  <img src="/static/images/sem-acucar-10.jpg" alt="Receitas Sem Açúcar" width="447" height="800">
-  <div class="hero-titulo">
-    <p>50 Receitas Caseiras<br><span>Sem Açúcar</span><br>que Toda a Família Vai Amar</p>
-  </div>
-  <button class="hero-btn" onclick="irParaWhatsApp()">Quero Receber Agora</button>
+<div class="hero" onclick="irParaWhatsApp()">
+  <img src="/static/images/sem-acucar-capa.jpg" alt="50 Receitas do Dia a Dia Sem Açúcar" width="447" height="800">
 </div>
 <div class="titulo">
   <h1>50 Receitas Caseiras <span>Sem Açúcar</span> que Toda a Família Vai Amar</h1>
@@ -107,6 +98,7 @@ footer a{color:var(--verde);text-decoration:none;font-size:11px;margin:0 6px}
     <div class="ci"><img src="/static/images/sem-acucar-07.jpg" alt="Frango com Quiabo ao Molho" loading="lazy" width="140" height="110"><span>Frango com Quiabo</span></div>
     <div class="ci"><img src="/static/images/sem-acucar-08.jpg" alt="Carne Cozida com Cenoura" loading="lazy" width="140" height="110"><span>Carne Cozida com Cenoura</span></div>
     <div class="ci"><img src="/static/images/sem-acucar-09.jpg" alt="Omelete com Tomate" loading="lazy" width="140" height="110"><span>Omelete com Tomate</span></div>
+    <div class="ci"><img src="/static/images/sem-acucar-10.jpg" alt="Berinjela Assada" loading="lazy" width="140" height="110"><span>Berinjela Assada</span></div>
     <div class="ci"><img src="/static/images/sem-acucar-11.jpg" alt="Salada de Atum com Abacate" loading="lazy" width="140" height="110"><span>Salada de Atum com Abacate</span></div>
     <div class="ci"><img src="/static/images/sem-acucar-12.jpg" alt="Frango Desfiado com Brócolis" loading="lazy" width="140" height="110"><span>Frango Desfiado com Brócolis</span></div>
     <div class="ci"><img src="/static/images/sem-acucar-13.jpg" alt="Salmão Grelhado com Salada" loading="lazy" width="140" height="110"><span>Salmão Grelhado com Salada</span></div>
@@ -122,6 +114,7 @@ footer a{color:var(--verde);text-decoration:none;font-size:11px;margin:0 6px}
     <div class="ci"><img src="/static/images/sem-acucar-07.jpg" alt="Camarão Grelhado com Ervas" loading="lazy" width="140" height="110"><span>Camarão Grelhado com Ervas</span></div>
     <div class="ci"><img src="/static/images/sem-acucar-08.jpg" alt="Abobrinha Recheada" loading="lazy" width="140" height="110"><span>Abobrinha Recheada</span></div>
     <div class="ci"><img src="/static/images/sem-acucar-09.jpg" alt="Salada de Salmão Grelhado" loading="lazy" width="140" height="110"><span>Salada de Salmão Grelhado</span></div>
+    <div class="ci"><img src="/static/images/sem-acucar-10.jpg" alt="Berinjela Assada" loading="lazy" width="140" height="110"><span>Berinjela Assada</span></div>
     <div class="ci"><img src="/static/images/sem-acucar-11.jpg" alt="Almôndegas Assadas" loading="lazy" width="140" height="110"><span>Almôndegas Assadas</span></div>
     <div class="ci"><img src="/static/images/sem-acucar-12.jpg" alt="Canelone de Berinjela" loading="lazy" width="140" height="110"><span>Canelone de Berinjela</span></div>
     <div class="ci"><img src="/static/images/sem-acucar-13.jpg" alt="Biscoito de Aveia e Nozes" loading="lazy" width="140" height="110"><span>Biscoito de Aveia e Nozes</span></div>
