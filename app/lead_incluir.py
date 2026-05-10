@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 FALLBACK_TELEFONE = {
-    1: "556182155687",
+    1: "556981058726",
     6: "556181256294",
     7: "556182364563",
-    8: "556198824782",
+    8: "556182412066",
     9: "556182402494",
-    10: "556184022952",
+    10: "556182410466",
 }
 
 def persistir_lead(body):
