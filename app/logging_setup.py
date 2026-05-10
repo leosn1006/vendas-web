@@ -1,6 +1,8 @@
+import datetime
+import glob
 import logging
 import os
-from logging.handlers import TimedRotatingFileHandler
+import time
 
 
 _VALID_LOG_LEVELS = {
@@ -12,19 +14,51 @@ _VALID_LOG_LEVELS = {
 }
 
 
-def _build_log_namer(service_name: str):
-    def _namer(default_name: str) -> str:
-        # default_name esperado: /path/log_app.log.2026-02-25
-        path_parts = default_name.rsplit(".", 1)
-        if len(path_parts) != 2:
-            return default_name
+class DailyFileHandler(logging.FileHandler):
+    """
+    Handler diário multiprocesso-safe: o arquivo ativo já tem a data no nome
+    (log_app_2026_05_10_001.log), sem precisar renomear na rotação.
+    """
 
-        base_path, date_part = path_parts
-        date_part = date_part.replace("-", "_")
-        directory = os.path.dirname(base_path)
-        return os.path.join(directory, f"log_{service_name}_{date_part}_001.log")
+    def __init__(self, service_name: str, log_dir: str, backup_count: int = 30):
+        self.service_name = service_name
+        self.log_dir = log_dir
+        self.backup_count = backup_count
+        super().__init__(filename=self._today_path(), mode="a", encoding="utf-8")
+        self._schedule_next_rollover()
 
-    return _namer
+    def _today_path(self) -> str:
+        date_str = datetime.date.today().strftime("%Y_%m_%d")
+        return os.path.join(self.log_dir, f"log_{self.service_name}_{date_str}_001.log")
+
+    def _schedule_next_rollover(self):
+        tomorrow = datetime.date.today() + datetime.timedelta(days=1)
+        self._rollover_at = time.mktime(
+            datetime.datetime(tomorrow.year, tomorrow.month, tomorrow.day).timetuple()
+        )
+
+    def emit(self, record: logging.LogRecord):
+        if time.time() >= self._rollover_at:
+            self._do_rollover()
+        super().emit(record)
+
+    def _do_rollover(self):
+        if self.stream:
+            self.stream.close()
+            self.stream = None
+        self.baseFilename = self._today_path()
+        self.stream = self._open()
+        self._schedule_next_rollover()
+        self._cleanup_old()
+
+    def _cleanup_old(self):
+        pattern = os.path.join(self.log_dir, f"log_{self.service_name}_[0-9][0-9][0-9][0-9]_*_001.log")
+        files = sorted(glob.glob(pattern))
+        while len(files) > self.backup_count:
+            try:
+                os.remove(files.pop(0))
+            except OSError:
+                pass
 
 
 def setup_rotating_file_logging(service_name: str) -> None:
@@ -39,16 +73,11 @@ def setup_rotating_file_logging(service_name: str) -> None:
     log_dir = os.getenv("LOG_DIR", "/app/storage/logs")
     os.makedirs(log_dir, exist_ok=True)
 
-    log_file = os.path.join(log_dir, f"log_{service_name}.log")
-    handler = TimedRotatingFileHandler(
-        filename=log_file,
-        when="midnight",
-        interval=1,
-        backupCount=int(os.getenv("LOG_RETENTION_DAYS", "30")),
-        encoding="utf-8",
+    handler = DailyFileHandler(
+        service_name=service_name,
+        log_dir=log_dir,
+        backup_count=int(os.getenv("LOG_RETENTION_DAYS", "30")),
     )
-    handler.suffix = "%Y-%m-%d"
-    handler.namer = _build_log_namer(service_name)
     handler.setLevel(logging.DEBUG)
     handler._vendas_file_logger = True
     handler.setFormatter(

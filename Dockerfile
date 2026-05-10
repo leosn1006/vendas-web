@@ -22,4 +22,4 @@ COPY app/ /app/
 COPY static/ /static/
 
 # Gunicorn em produção com filtro de logs do health check
-CMD ["gunicorn", "-c", "gunicorn_conf.py", "-w", "2", "-b", "0.0.0.0:8000", "app:app"]
+CMD ["gunicorn", "-c", "gunicorn_conf.py", "-w", "1", "-b", "0.0.0.0:8000", "app:app"]
