@@ -431,29 +431,28 @@ def get_pedido_by_txid(txid: str):
     )
 
 
-def get_ultimo_pedido_by_phone(contact_phone, produto_id, phone_number_id):
-    """
-    Busca o último pedido de um contato pelo telefone, produto e chip de recebimento.
-    Garante que a resposta sai sempre pelo mesmo chip que recebeu a mensagem.
+def get_ultimo_pedido_by_phone(contact_phone, produto_id, phone_number_id=None):
+    if phone_number_id is not None:
+        query = """
+            SELECT *
+            FROM pedidos p
+            WHERE p.contact_phone   = %s
+            AND   p.produto_id      = %s
+            AND   p.phone_number_id = %s
+            ORDER BY p.data_pedido DESC
+            LIMIT 1
+        """
+        return db.execute_query(query, (contact_phone, produto_id, phone_number_id), fetch_one=True)
 
-    Args:
-        contact_phone: Telefone do contato
-        produto_id: ID do produto
-        phone_number_id: ID do chip que recebeu a mensagem
-
-    Returns:
-        dict: Dados do pedido ou None
-    """
     query = """
         SELECT *
         FROM pedidos p
-        WHERE p.contact_phone   = %s
-        AND   p.produto_id      = %s
-        AND   p.phone_number_id = %s
+        WHERE p.contact_phone = %s
+        AND   p.produto_id    = %s
         ORDER BY p.data_pedido DESC
         LIMIT 1
     """
-    return db.execute_query(query, (contact_phone, produto_id, phone_number_id), fetch_one=True)
+    return db.execute_query(query, (contact_phone, produto_id), fetch_one=True)
 
 def get_ultimo_pedido_por_mensagem_sugerida(mensagem_sugerida, produto_id, phone_number_id):
     """
