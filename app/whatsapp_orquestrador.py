@@ -134,8 +134,8 @@ def buscar_pedido(dados):
 
     logger.info(f"[ORQUESTRADOR] 📱 Mensagem de {nome} ({numero_remetente}): {msg_enviado_cliente}")
 
-    # Verificar se já existe pedido para este telefone
-    pedido = get_ultimo_pedido_by_phone(numero_remetente, dados.get('produto'))
+    # Verificar se já existe pedido para este telefone no mesmo chip
+    pedido = get_ultimo_pedido_by_phone(numero_remetente, dados.get('produto'), phone_number_id)
     if pedido is not None:
         logger.info(f"[ORQUESTRADOR] 👤 Cliente existente: {nome} (Pedido #{pedido['id']})")
         return pedido
