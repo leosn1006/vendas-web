@@ -7,10 +7,15 @@ DATE=$(date +%Y%m%d_%H%M%S)
 FILENAME="vendasdb_${DATE}.sql.gz"
 RETAIN_DAYS=7
 
-# Carrega variáveis do .env (apenas linhas CHAVE=VALOR, ignora comentários e linhas soltas)
-set -a
-source <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$PROJECT_DIR/.env")
-set +a
+# Carrega variáveis do .env sem invocar o bash como interpretador
+while IFS= read -r line; do
+    [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] || continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    value="${value#\"}"; value="${value%\"}"
+    value="${value#\'}"; value="${value%\'}"
+    export "$key=$value"
+done < "$PROJECT_DIR/.env"
 
 mkdir -p "$BACKUP_DIR"
 
