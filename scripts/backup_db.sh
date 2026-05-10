@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# Garante que docker, gzip, etc. estão no PATH quando rodado pelo cron
+export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
+
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BACKUP_DIR="$PROJECT_DIR/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
@@ -22,7 +25,7 @@ mkdir -p "$BACKUP_DIR"
 # Limpa arquivo parcial caso o script aborte no meio do dump
 trap 'rm -f "$BACKUP_DIR/$FILENAME"' ERR
 
-MYSQL_PWD="$DB_PASSWORD" docker compose -f "$PROJECT_DIR/docker-compose.yml" exec -T db \
+docker compose -f "$PROJECT_DIR/docker-compose.yml" exec -T -e MYSQL_PWD="$DB_PASSWORD" db \
   mysqldump \
   -u"$DB_USER" \
   --single-transaction \
