@@ -7,10 +7,15 @@ DATE=$(date +%Y%m%d_%H%M%S)
 FILENAME="vendasdb_${DATE}.sql.gz"
 RETAIN_DAYS=7
 
-# Carrega variáveis do .env
-set -a; source "$PROJECT_DIR/.env"; set +a
+# Carrega variáveis do .env (apenas linhas CHAVE=VALOR, ignora comentários e linhas soltas)
+set -a
+source <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$PROJECT_DIR/.env")
+set +a
 
 mkdir -p "$BACKUP_DIR"
+
+# Limpa arquivo parcial caso o script aborte no meio do dump
+trap 'rm -f "$BACKUP_DIR/$FILENAME"' ERR
 
 MYSQL_PWD="$DB_PASSWORD" docker compose -f "$PROJECT_DIR/docker-compose.yml" exec -T db \
   mysqldump \
