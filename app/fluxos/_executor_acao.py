@@ -4,7 +4,7 @@ Executor genérico de ações de fluxo dinâmico.
 Cada ação está representada por um dict com os campos da tabela acoes_fluxo_produto:
   tipo  (acao), url, mensagem, caption, nome_arquivo, delay_inicial, delay_final
 
-O delay é aplicado ANTES de executar a ação.
+O delay é aplicado ANTES da ação (via sleep ou countdown Celery).
 O message_id_original é sempre o ID da mensagem recebida do cliente (usado em
 marcar_lida e digitando — nunca o ID de mensagens enviadas).
 """
@@ -21,7 +21,16 @@ from database import salvar_mensagem_pedido
 logger = logging.getLogger(__name__)
 
 
-def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id: int, tag: str = "FLUXO-DIN"):
+def calcular_delay(acao: dict) -> float:
+    """Sorteia o delay da ação (0.0 se não configurado)."""
+    delay_ini = float(acao.get('delay_inicial') or 0)
+    delay_fim = float(acao.get('delay_final')   or 0)
+    if delay_fim <= 0:
+        return 0.0
+    return random.uniform(delay_ini, delay_fim)
+
+
+def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id: int, tag: str = "FLUXO-DIN", aplicar_delay: bool = True):
     """
     Executa uma única ação de fluxo.
 
@@ -31,16 +40,15 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
         message_id_original: ID da mensagem recebida (para marcar_lida / digitando)
         pedido_id: ID do pedido (para salvar_mensagem_pedido)
         tag: prefixo para os logs (ex: 'FLUXO-PEDIDO-DIN')
+        aplicar_delay: False quando o delay já foi consumido como countdown Celery
     """
-    tipo      = acao['acao']
-    delay_ini = float(acao.get('delay_inicial') or 0)
-    delay_fim = float(acao.get('delay_final')   or 0)
+    tipo = acao['acao']
 
-    # Aplica delay antes da ação
-    if delay_fim > 0:
-        delay = random.uniform(delay_ini, delay_fim)
-        logger.debug(f"[{tag}] ⏳ Aguardando {delay:.1f}s antes de '{tipo}'...")
-        time.sleep(delay)
+    if aplicar_delay:
+        delay = calcular_delay(acao)
+        if delay > 0:
+            logger.debug(f"[{tag}] ⏳ Aguardando {delay:.1f}s antes de '{tipo}'...")
+            time.sleep(delay)
 
     if tipo == 'marcar_lida':
         try:

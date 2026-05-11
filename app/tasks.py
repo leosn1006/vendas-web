@@ -26,18 +26,64 @@ def processar_webhook(self, body):
 
 
 @shared_task(name="tasks.enviar_introducao_dinamico", bind=True, max_retries=0)
-def fluxo_enviar_introducao_dinamico(self, pedido, mensagem_whatsapp):
-    from fluxos.fluxo_introducao_dinamico import executar
+def fluxo_enviar_introducao_dinamico(self, pedido, mensagem_whatsapp=None, ordem=1, message_id=None):
+    from database import listar_acoes_fluxo, salvar_mensagem_pedido, atualizar_estado_pedido
+    from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, calcular_delay
+
+    _TAG = "TASK-INTRODUCAO-DIN"
+    produto_id = pedido['produto_id']
+    pedido_id  = pedido['id']
+
     try:
+        if ordem == 1:
+            logger.info("=" * 120)
+            logger.info(f"[{_TAG}] 📦 pedido #{pedido_id} | iniciando fluxo")
+            dados_msg    = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]
+            message_id   = dados_msg['id']
+            mensagem_txt = dados_msg.get('text', {}).get('body', '') or ''
+            salvar_mensagem_pedido(message_id, pedido_id, mensagem_txt, tipo_mensagem='recebida')
+        else:
+            logger.debug(f"[{_TAG}] ▶ pedido #{pedido_id} | retomando na ordem={ordem}")
+
+        todas_acoes = listar_acoes_fluxo(produto_id, 'introducao')
+        acoes = filtrar_e_ordenar(todas_acoes, ('sempre',))
+
+        if not acoes:
+            raise ValueError(f"[{_TAG}] Nenhuma ação configurada para 'introducao' do produto {produto_id}")
+
+        restantes = [a for a in acoes if a['ordem'] >= ordem]
+
+        i = 0
+        while i < len(restantes):
+            acao = restantes[i]
+            logger.debug(f"[{_TAG}] ▶ Executando #{acao['ordem']} [{acao['acao']}]")
+            executar_acao(acao, pedido, message_id, pedido_id, tag=_TAG, aplicar_delay=False)
+            i += 1
+
+            if i < len(restantes):
+                delay = calcular_delay(restantes[i])
+                if delay > 0:
+                    logger.debug(f"[{_TAG}] ⏳ Agendando #{restantes[i]['ordem']} em {delay:.1f}s")
+                    fluxo_enviar_introducao_dinamico.apply_async(
+                        kwargs={
+                            'pedido':      pedido,
+                            'ordem':       restantes[i]['ordem'],
+                            'message_id':  message_id,
+                        },
+                        countdown=delay,
+                    )
+                    return
+
+        atualizar_estado_pedido(pedido_id, 2)
+        logger.info(f"[{_TAG}] ✅ Fluxo concluído. Estado pedido #{pedido_id} → 2.")
         logger.info("=" * 120)
-        logger.info(f"[TASK-INTRODUCAO-DIN] 📦 Dados recebidos: \n Pedido: {pedido}")
-        executar(pedido, mensagem_whatsapp)
-        logger.info(f"[TASK-INTRODUCAO-DIN] ✅ Mensagem processada com sucesso")
-        logger.info("=" * 120)
+
     except Exception as exc:
-        msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
-        logger.exception(f"[TASK-INTRODUCAO-DIN] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
-        notificar_admin_erro_sistema(f"TASK-INTRODUCAO-DIN | pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")
+        msg_txt = '(sem texto)'
+        if mensagem_whatsapp:
+            msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
+        logger.exception(f"[{_TAG}] ❌ pedido #{pedido_id} | tel: {pedido.get('contact_phone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}")
+        notificar_admin_erro_sistema(f"TASK-INTRODUCAO-DIN | pedido #{pedido_id} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")
         raise self.retry(exc=exc, countdown=30)
 
 
