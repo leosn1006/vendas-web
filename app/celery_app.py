@@ -22,6 +22,11 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute='*/30', hour='7-22'),  # a cada 30min das 7h às 22h30
         'options': {'queue': 'baixa'},
     },
+    'followup-interesse-dinamico': {
+        'task': 'tasks.followup_interesse_dinamico',
+        'schedule': crontab(minute='*/5', hour='7-22'),  # a cada 5min das 7h às 22h55
+        'options': {'queue': 'normal'},
+    },
 #parar um por enquanto, certificado de acesso com problemas
 #    'upload-conversoes-google-ads': {
 #        'task': 'tasks.processar_uploads_google_ads',
@@ -89,6 +94,7 @@ celery_app.conf.update(
         "tasks.enviar_resposta_cliente":            {"queue": "normal"},
         "tasks.enviar_confirmacao_web":             {"queue": "normal"},
         "tasks.enviar_email_entrega":               {"queue": "normal"},
+        "tasks.followup_interesse_dinamico":             {"queue": "normal"},
         # BAIXA — background/agendados
         "tasks.followup_pagamento_dinamico":             {"queue": "baixa"},
         "tasks.processar_uploads_google_ads":            {"queue": "baixa"},

@@ -597,6 +597,37 @@ def buscar_pedidos_followup( horas_sem_atualizacao: int) -> list:
     """
     return db.execute_query(query, (horas_sem_atualizacao,), fetch_all=True)
 
+def buscar_pedidos_followup_interesse_1() -> list:
+    query = """
+        SELECT *
+        FROM pedidos
+        WHERE estado_id = 2
+          AND data_followup_interesse_1 IS NULL
+          AND data_ultima_atualizacao <= NOW() - INTERVAL 15 MINUTE
+          AND contact_phone IS NOT NULL
+    """
+    return db.execute_query(query, fetch_all=True)
+
+def buscar_pedidos_followup_interesse_2() -> list:
+    query = """
+        SELECT *
+        FROM pedidos
+        WHERE estado_id = 2
+          AND data_followup_interesse_1 IS NOT NULL
+          AND data_followup_interesse_2 IS NULL
+          AND data_followup_interesse_1 <= NOW() - INTERVAL 90 MINUTE
+          AND contact_phone IS NOT NULL
+    """
+    return db.execute_query(query, fetch_all=True)
+
+def marcar_followup_interesse_1(pedido_id):
+    query = "UPDATE pedidos SET data_followup_interesse_1 = NOW() WHERE id = %s"
+    db.execute_query(query, (pedido_id,))
+
+def marcar_followup_interesse_2(pedido_id):
+    query = "UPDATE pedidos SET data_followup_interesse_2 = NOW() WHERE id = %s"
+    db.execute_query(query, (pedido_id,))
+
 def buscar_pedidos_aguardando_bb_pay() -> list:
     """
     Retorna pedidos em estado 1002 (Aguardando BB Pay) com solicitação ainda não expirada.

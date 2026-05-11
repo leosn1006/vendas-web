@@ -134,6 +134,17 @@ def fluxo_followup_pagamento_dinamico(self):
         import traceback
         traceback.print_exc()
 
+@shared_task(name="tasks.followup_interesse_dinamico", bind=True, max_retries=0)
+def fluxo_followup_interesse_dinamico(self):
+    from fluxos.fluxo_followup_interesse_dinamico import executar
+    try:
+        executar()
+        logger.info(f"[TASK-FOLLOWUP-INT] ✅ rotina executada com sucesso!")
+    except Exception as exc:
+        logger.error(f"[TASK-FOLLOWUP-INT] ❌ Erro: {exc}")
+        import traceback
+        traceback.print_exc()
+
 @shared_task(name="tasks.enviar_confirmacao_web", bind=True, max_retries=2)
 def fluxo_enviar_confirmacao_web(self, pedido_id: int):
     logger.info("=" * 120)

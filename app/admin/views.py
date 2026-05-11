@@ -23,15 +23,17 @@ from database import (db,
     listar_planilhas_dns_produto, adicionar_planilha_dns, atualizar_planilha_dns, remover_planilha_dns,
     listar_notificacoes_em_analise, marcar_notificacao_respondida)
 
-_FLUXOS = ['introducao', 'pedido', 'comprovante', 'responder', 'followup', 'confirmacao_web']
+_FLUXOS = ['introducao', 'pedido', 'comprovante', 'responder', 'followup', 'confirmacao_web', 'followup_interesse_1', 'followup_interesse_2']
 _FLUXOS_READONLY = {'responder'}
 _FLUXOS_LABELS = {
-    'introducao':      '👋 Introdução',
-    'pedido':          '📦 Pedido',
-    'comprovante':     '🧾 Comprovante',
-    'responder':       '💬 Responder',
-    'followup':        '🔔 Follow-up',
-    'confirmacao_web': '🌐 Confirmação Web',
+    'introducao':           '👋 Introdução',
+    'pedido':               '📦 Pedido',
+    'comprovante':          '🧾 Comprovante',
+    'responder':            '💬 Responder',
+    'followup':             '🔔 Follow-up',
+    'confirmacao_web':      '🌐 Confirmação Web',
+    'followup_interesse_1': '⚡ Follow-up Interesse 1 (15 min)',
+    'followup_interesse_2': '🔄 Follow-up Interesse 2 (2h)',
 }
 
 logger = logging.getLogger(__name__)
