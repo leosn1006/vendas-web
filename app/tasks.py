@@ -88,18 +88,78 @@ def fluxo_enviar_introducao_dinamico(self, pedido, mensagem_whatsapp=None, ordem
 
 
 @shared_task(name="tasks.enviar_pedido_dinamico", bind=True, max_retries=0)
-def fluxo_enviar_pedido_dinamico(self, pedido, mensagem_whatsapp):
-    from fluxos.fluxo_pedido_dinamico import executar
+def fluxo_enviar_pedido_dinamico(self, pedido, mensagem_whatsapp=None, ordem=1, message_id=None, condicoes=None):
+    from database import (
+        listar_acoes_fluxo, salvar_mensagem_pedido, atualizar_estado_pedido,
+        atualizar_pedido_com_interesse_produto, atualizar_pedido_com_data_envio_pedido,
+    )
+    from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, calcular_delay
+    from agente_verifica_interesse import classificar_interesse_compra
+
+    _TAG = "TASK-PEDIDO-DIN"
+    produto_id = pedido['produto_id']
+    pedido_id  = pedido['id']
+
     try:
+        if ordem == 1:
+            logger.info("=" * 120)
+            logger.info(f"[{_TAG}] 📦 pedido #{pedido_id} | iniciando fluxo")
+            dados_msg    = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]
+            message_id   = dados_msg['id']
+            mensagem_txt = dados_msg.get('text', {}).get('body', '') or ''
+            salvar_mensagem_pedido(message_id, pedido_id, mensagem_txt, tipo_mensagem='recebida')
+
+            logger.debug(f"[{_TAG}] 🤖 Classificando interesse...")
+            interesse_raw  = classificar_interesse_compra(mensagem_txt)
+            interesse      = interesse_raw.strip().rstrip('.!?').lower() == 'sim'
+            condicao_ativa = 'interesse_sim' if interesse else 'interesse_nao'
+            logger.debug(f"[{_TAG}] 🤖 Interesse: {interesse} → condicao='{condicao_ativa}' (IA: '{interesse_raw}')")
+            atualizar_pedido_com_interesse_produto(pedido_id, interesse)
+            condicoes = ['sempre', condicao_ativa]
+        else:
+            logger.debug(f"[{_TAG}] ▶ pedido #{pedido_id} | retomando na ordem={ordem}")
+
+        todas_acoes = listar_acoes_fluxo(produto_id, 'pedido')
+        acoes = filtrar_e_ordenar(todas_acoes, tuple(condicoes))
+
+        if not acoes:
+            raise ValueError(f"[{_TAG}] Nenhuma ação configurada para 'pedido' do produto {produto_id}")
+
+        restantes = [a for a in acoes if a['ordem'] >= ordem]
+
+        i = 0
+        while i < len(restantes):
+            acao = restantes[i]
+            logger.debug(f"[{_TAG}] ▶ Executando #{acao['ordem']} [{acao['acao']}] ({acao['condicao']})")
+            executar_acao(acao, pedido, message_id, pedido_id, tag=_TAG, aplicar_delay=False)
+            i += 1
+
+            if i < len(restantes):
+                delay = calcular_delay(restantes[i])
+                if delay > 0:
+                    logger.debug(f"[{_TAG}] ⏳ Agendando #{restantes[i]['ordem']} em {delay:.1f}s")
+                    fluxo_enviar_pedido_dinamico.apply_async(
+                        kwargs={
+                            'pedido':     pedido,
+                            'ordem':      restantes[i]['ordem'],
+                            'message_id': message_id,
+                            'condicoes':  condicoes,
+                        },
+                        countdown=delay,
+                    )
+                    return
+
+        atualizar_estado_pedido(pedido_id, 3)
+        atualizar_pedido_com_data_envio_pedido(pedido_id)
+        logger.info(f"[{_TAG}] ✅ Fluxo concluído. Estado pedido #{pedido_id} → 3.")
         logger.info("=" * 120)
-        logger.info(f"[TASK-PEDIDO-DIN] 📦 Dados recebidos: \n Pedido: {pedido}")
-        executar(pedido, mensagem_whatsapp)
-        logger.info(f"[TASK-PEDIDO-DIN] ✅ Mensagem processada com sucesso")
-        logger.info("=" * 120)
+
     except Exception as exc:
-        msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
-        logger.exception(f"[TASK-PEDIDO-DIN] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
-        notificar_admin_erro_sistema(f"TASK-PEDIDO-DIN | pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")
+        msg_txt = '(sem texto)'
+        if mensagem_whatsapp:
+            msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
+        logger.exception(f"[{_TAG}] ❌ pedido #{pedido_id} | tel: {pedido.get('contact_phone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}")
+        notificar_admin_erro_sistema(f"TASK-PEDIDO-DIN | pedido #{pedido_id} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")
         raise self.retry(exc=exc, countdown=30)
 
 
