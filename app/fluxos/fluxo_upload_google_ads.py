@@ -1,8 +1,15 @@
 import os
+import json
 import logging
+import traceback
 from datetime import datetime
 from types import SimpleNamespace
+from collections import defaultdict
+
+import pytz
+import gspread
 from google.ads.googleads.client import GoogleAdsClient
+from google.oauth2.service_account import Credentials
 from database import busca_vendas_pendentes_google, busca_vendas_pendentes_google_por_dns, marcar_venda_como_enviada_ao_google_ads
 
 logger = logging.getLogger(__name__)
@@ -91,11 +98,6 @@ def enviar_gclid_ads(client, customer_id, conversion_action_id, gclid, conversio
 
 
 def exportar_para_google_sheets():
-    import gspread
-    import json as _json
-    from google.oauth2.service_account import Credentials
-    from collections import defaultdict
-
     logger.info("=" * 120)
     logger.info("[FLUXO-GOOGLE-SHEETS] 🎬 Iniciando exportação de GCLIDs para Google Sheets")
 
@@ -107,7 +109,6 @@ def exportar_para_google_sheets():
         logger.info("[FLUXO-GOOGLE-SHEETS] ✅ Nenhuma venda pendente.")
         return
 
-    # Agrupar por (produto_id, spreadsheet_id, sheet_name, conversion_name)
     grupos = defaultdict(list)
     for venda in vendas:
         if isinstance(venda, dict):
@@ -117,13 +118,16 @@ def exportar_para_google_sheets():
                venda.google_sa_env_var)
         grupos[key].append(venda)
 
+    sp_tz = pytz.timezone("America/Sao_Paulo")
+    now_sp = datetime.now(sp_tz)
+
     for (produto_id, spreadsheet_id, sheet_name, conversion_name, sa_env_var), grupo_vendas in grupos.items():
         sa_json = os.getenv(sa_env_var)
         if not sa_json:
             logger.error(f"[FLUXO-GOOGLE-SHEETS] ❌ {sa_env_var} não encontrada — produto {produto_id} ignorado")
             continue
         try:
-            creds = Credentials.from_service_account_info(_json.loads(sa_json), scopes=scopes)
+            creds = Credentials.from_service_account_info(json.loads(sa_json), scopes=scopes)
             gc = gspread.authorize(creds)
             ws = gc.open_by_key(spreadsheet_id).worksheet(sheet_name)
 
@@ -139,7 +143,12 @@ def exportar_para_google_sheets():
                     except ValueError:
                         venda.data_pagamento = datetime.strptime(venda.data_pagamento, "%Y-%m-%d %H:%M:%S")
 
-                conversion_time = venda.data_pagamento.strftime("%Y-%m-%d %H:%M:%S") + " America/Sao_Paulo"
+                dp = venda.data_pagamento
+                if dp.date() > now_sp.date():
+                    logger.info(f"[FLUXO-GOOGLE-SHEETS] 📅 venda {venda.id}: data_pagamento futura ({dp.date()}) ajustada para {now_sp.date()} (now_sp)")
+                    dp = now_sp
+
+                conversion_time = dp.strftime("%Y-%m-%d %H:%M:%S") + " America/Sao_Paulo"
                 rows.append([venda.gclid or '', conversion_name, conversion_time, "10.00", "BRL", getattr(venda, 'wbraid', '') or '', getattr(venda, 'gbraid', '') or ''])
                 ids.append(venda.id)
 
@@ -151,5 +160,4 @@ def exportar_para_google_sheets():
             logger.info(f"[FLUXO-GOOGLE-SHEETS] ✅ {len(rows)} GCLIDs exportados — produto {produto_id} / aba '{sheet_name}'")
 
         except Exception as e:
-            import traceback
             logger.error(f"[FLUXO-GOOGLE-SHEETS] ❌ Erro produto {produto_id} / planilha {spreadsheet_id}: {e}\n{traceback.format_exc()}")
