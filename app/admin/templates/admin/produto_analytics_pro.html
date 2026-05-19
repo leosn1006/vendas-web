@@ -669,6 +669,28 @@
 {# ══════════════════════════════════════════════════════ PERFORMANCE POR CAMPANHA #}
 {% if campanhas_pro %}
 <div class="section-title">Performance por Campanha</div>
+
+<div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+    <button id="btn-analisar" onclick="analisarCampanhas()"
+            class="btn btn-primary btn-sm"
+            style="display: flex; align-items: center; gap: 6px;">
+        <span id="btn-analisar-icon">🤖</span>
+        <span id="btn-analisar-texto">Analisar Campanhas</span>
+    </button>
+</div>
+
+<div id="analise-resultado" style="display:none; margin-bottom: 16px;">
+    <div class="card" style="padding: 24px;">
+        <div style="font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+                    color: var(--muted); font-family: var(--mono); margin-bottom: 16px;">
+            🤖 Análise das Campanhas
+        </div>
+        <div id="analise-texto"
+             style="font-size: 14px; line-height: 1.7; color: var(--text); white-space: pre-wrap;">
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="table-wrap">
         <table>
@@ -809,5 +831,44 @@
         }
     });
 })();
+</script>
+
+<script>
+function analisarCampanhas() {
+    const btn = document.getElementById('btn-analisar');
+    const icon = document.getElementById('btn-analisar-icon');
+    const texto = document.getElementById('btn-analisar-texto');
+    const resultado = document.getElementById('analise-resultado');
+    const analiseTexto = document.getElementById('analise-texto');
+
+    btn.disabled = true;
+    icon.textContent = '⏳';
+    texto.textContent = 'Analisando...';
+
+    const params = new URLSearchParams(window.location.search);
+    const body = new FormData();
+    body.append('data_ini', params.get('data_ini') || '');
+    body.append('data_fim', params.get('data_fim') || '');
+
+    fetch('{{ url_for("admin.analisar_campanhas_pro", produto_id=produto.id) }}', {
+        method: 'POST',
+        body: body,
+    })
+    .then(r => r.json())
+    .then(data => {
+        analiseTexto.textContent = data.analise || data.erro || 'Sem resposta.';
+        resultado.style.display = 'block';
+        requestAnimationFrame(() => resultado.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    })
+    .catch(() => {
+        analiseTexto.textContent = 'Erro de comunicação. Tente novamente.';
+        resultado.style.display = 'block';
+    })
+    .finally(() => {
+        btn.disabled = false;
+        icon.textContent = '🤖';
+        texto.textContent = 'Analisar Campanhas';
+    });
+}
 </script>
 {% endblock %}

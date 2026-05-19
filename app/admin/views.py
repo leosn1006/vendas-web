@@ -1786,6 +1786,106 @@ def analytics_pro_produto(produto_id):
     )
 
 
+@admin_bp.route('/produto/<int:produto_id>/analytics-pro/analisar', methods=['POST'])
+@requer_acesso_produto
+def analisar_campanhas_pro(produto_id):
+    from app.agente_analisa_campanhas import analisar as _analisar
+
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return {'erro': 'Produto não encontrado.'}, 404
+
+    ontem = (_hoje_sao_paulo() - datetime.timedelta(days=1)).isoformat()
+    data_ini_str = request.form.get('data_ini', ontem)
+    data_fim_str = request.form.get('data_fim', ontem)
+
+    try:
+        data_ini = datetime.datetime.fromisoformat(data_ini_str)
+        data_fim = datetime.datetime.fromisoformat(data_fim_str) + datetime.timedelta(days=1, seconds=-1)
+    except ValueError:
+        ontem_dt = _hoje_sao_paulo() - datetime.timedelta(days=1)
+        data_ini = datetime.datetime.combine(ontem_dt, datetime.time.min)
+        data_fim  = datetime.datetime.combine(ontem_dt, datetime.time.max)
+        data_ini_str = data_fim_str = ontem
+
+    data_ini_date = data_ini.date().isoformat()
+    data_fim_date = data_fim.date().isoformat()
+
+    try:
+        camp_inv   = db.execute_query(_SQL_PRO_CAMP_INV,   (produto_id, data_ini_date, data_fim_date), fetch_all=True)
+        camp_funil = db.execute_query(_SQL_PRO_CAMP_FUNIL, (produto_id, data_ini, data_fim), fetch_all=True)
+        camp_pag   = db.execute_query(_SQL_PRO_CAMP_PAG,   (produto_id, data_ini, data_fim), fetch_all=True)
+        camp_nomes = db.execute_query(_SQL_PRO_CAMP_NOMES, (produto_id,), fetch_all=True)
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro analisar campanhas #{produto_id}: {e}")
+        return {'erro': 'Erro ao buscar dados das campanhas.'}, 500
+
+    nomes  = {r['campaignid']: r['nome'] for r in (camp_nomes or [])}
+    merged = {}
+    for r in (camp_inv or []):
+        cid = r['campaignid'] or ''
+        merged.setdefault(cid, {})['valor_investido'] = float(r['valor_investido'] or 0)
+        merged[cid]['cliques']    = int(r['cliques']    or 0)
+        merged[cid]['impressoes'] = int(r['impressoes'] or 0)
+    for r in (camp_funil or []):
+        cid = r['campaignid'] or ''
+        merged.setdefault(cid, {}).update({
+            'visitantes':  int(r['visitantes']  or 0),
+            'whatsapp':    int(r['whatsapp']    or 0),
+            'responderam': int(r['responderam'] or 0),
+        })
+    for r in (camp_pag or []):
+        cid = r['campaignid'] or ''
+        merged.setdefault(cid, {}).update({
+            'pagaram': int(r['pagaram'] or 0),
+            'receita': float(r['receita'] or 0),
+        })
+
+    campanhas_completas = []
+    for cid, row in merged.items():
+        row['campanha']       = nomes.get(cid) or (cid if cid else 'Sem campanha')
+        row.setdefault('valor_investido', 0.0)
+        row.setdefault('cliques', 0)
+        row.setdefault('impressoes', 0)
+        row.setdefault('visitantes', 0)
+        row.setdefault('whatsapp', 0)
+        row.setdefault('responderam', 0)
+        row.setdefault('pagaram', 0)
+        row.setdefault('receita', 0.0)
+
+        if not (row['impressoes'] > 0 and row['cliques'] > 0
+                and row['visitantes'] > 0 and row['valor_investido'] > 0):
+            continue
+
+        inv = row['valor_investido']
+        imp = row['impressoes']
+        cli = row['cliques']
+        vis = row['visitantes']
+        wha = row['whatsapp']
+        res = row['responderam']
+        pag = row['pagaram']
+        rec = row['receita']
+
+        row['ctr']         = round(cli / imp * 100, 2) if imp >= cli else None
+        row['landing_pct'] = round(vis / cli * 100, 1) if cli > 0 else None
+        row['engaj_pct']   = round(wha / vis * 100, 1) if vis > 0 else None
+        row['resp_pct']    = round(res / wha * 100, 1) if wha > 0 else None
+        row['conv_pct']    = round(pag / res * 100, 1) if res > 0 else None
+        row['roas']        = round(rec / inv, 2) if inv > 0 else None
+        row['cpa']         = round(inv / pag, 2) if pag > 0 else None
+        row['cpm']         = round(inv / imp * 1000, 2) if imp > 0 else None
+        campanhas_completas.append(row)
+
+    if not campanhas_completas:
+        return {'analise': 'Nenhuma campanha tem dados completos (impressões + cliques + visitantes + investido) para o período selecionado. Preencha os dados em Orçamento.'}, 200
+
+    periodo_str = data_ini_str if data_ini_str == data_fim_str else f"{data_ini_str} a {data_fim_str}"
+    analise = _analisar(produto.nome, periodo_str, campanhas_completas)
+
+    logger.info(f"[ADMIN] ✅ Análise de campanhas gerada para produto #{produto_id} por {current_user.email}")
+    return {'analise': analise}, 200
+
+
 @admin_bp.route('/produto/<int:produto_id>/analytics')
 @requer_acesso_produto
 def analytics_produto(produto_id):
