@@ -1551,6 +1551,241 @@ _SQL_CAMPANHAS_WEB = """
 """
 
 
+# ── Analytics Pro ─────────────────────────────────────────────────────────────
+
+_SQL_PRO_FUNIL = """
+    SELECT
+        COUNT(*)                                                                                    AS visitantes,
+        COUNT(CASE WHEN estado_id IN (0,2,3,4) THEN 1 END)                                         AS whatsapp,
+        COUNT(CASE WHEN estado_id IN (0,2,3,4) AND interesse_produto IS NOT NULL THEN 1 END)        AS responderam,
+        COUNT(CASE WHEN estado_id = 0 THEN 1 END)                                                   AS pagaram,
+        COUNT(CASE WHEN estado_id IN (0,2,3,4) AND interesse_produto = 1 THEN 1 END)                AS com_interesse,
+        COUNT(CASE WHEN estado_id = 0 AND interesse_produto = 1 THEN 1 END)                         AS ci_pagou,
+        COUNT(CASE WHEN estado_id = 0 AND interesse_produto = 1 AND data_followup IS NULL THEN 1 END)     AS ci_pagou_sem_fup,
+        COUNT(CASE WHEN estado_id = 0 AND interesse_produto = 1 AND data_followup IS NOT NULL THEN 1 END) AS ci_pagou_com_fup,
+        COUNT(CASE WHEN estado_id IN (2,3,4) AND interesse_produto = 1 THEN 1 END)                  AS ci_nao_pagou,
+        COUNT(CASE WHEN estado_id IN (0,2,3,4) AND interesse_produto = 0 THEN 1 END)                AS sem_interesse,
+        COUNT(CASE WHEN estado_id = 0 AND interesse_produto = 0 THEN 1 END)                         AS si_pagou,
+        COUNT(CASE WHEN estado_id = 0 AND interesse_produto = 0 AND data_followup_interesse_1 IS NULL THEN 1 END)                                               AS si_pag_sem_engaj,
+        COUNT(CASE WHEN estado_id = 0 AND interesse_produto = 0 AND data_followup_interesse_1 IS NOT NULL AND data_followup_interesse_2 IS NULL THEN 1 END)     AS si_pag_com_engaj1,
+        COUNT(CASE WHEN estado_id = 0 AND interesse_produto = 0 AND data_followup_interesse_2 IS NOT NULL THEN 1 END)                                           AS si_pag_com_engaj2,
+        COUNT(CASE WHEN estado_id IN (2,3,4) AND interesse_produto = 0 THEN 1 END)                  AS si_nao_pagou,
+        COUNT(CASE WHEN estado_id IN (2,3,4) AND interesse_produto IS NULL THEN 1 END)               AS sem_resposta,
+        COUNT(CASE WHEN estado_id IN (2,3,4) AND interesse_produto IS NULL AND data_followup_interesse_1 IS NULL THEN 1 END)                                    AS sr_dropoff,
+        COUNT(CASE WHEN estado_id IN (2,3,4) AND interesse_produto IS NULL AND data_followup_interesse_1 IS NOT NULL AND data_followup_interesse_2 IS NULL THEN 1 END) AS sr_fup1,
+        COUNT(CASE WHEN estado_id IN (2,3,4) AND interesse_produto IS NULL AND data_followup_interesse_2 IS NOT NULL THEN 1 END)                                AS sr_fup2
+    FROM pedidos
+    WHERE produto_id = %s
+      AND data_contato_site BETWEEN %s AND %s
+"""
+
+_SQL_PRO_RECEITA = """
+    SELECT
+        COUNT(*)                                                                    AS total_pagamentos,
+        COALESCE(SUM(valor_pago), 0)                                                AS total_receita,
+        COUNT(CASE WHEN interesse_produto = 1 THEN 1 END)                           AS ci_pagamentos,
+        COALESCE(SUM(CASE WHEN interesse_produto = 1 THEN valor_pago END), 0)       AS ci_receita,
+        COUNT(CASE WHEN interesse_produto = 0 THEN 1 END)                           AS si_pagamentos,
+        COALESCE(SUM(CASE WHEN interesse_produto = 0 THEN valor_pago END), 0)       AS si_receita,
+        COUNT(CASE WHEN data_followup IS NOT NULL THEN 1 END)                       AS com_followup_pgto,
+        COALESCE(SUM(CASE WHEN data_followup IS NOT NULL THEN valor_pago END), 0)   AS receita_com_followup
+    FROM pedidos
+    WHERE produto_id = %s
+      AND estado_id = 0
+      AND data_pagamento BETWEEN %s AND %s
+"""
+
+_SQL_PRO_INVESTIMENTO = """
+    SELECT
+        COALESCE(SUM(valor_investido), 0) AS total_investido,
+        COALESCE(SUM(cliques), 0)         AS total_cliques,
+        COALESCE(SUM(impressoes), 0)      AS total_impressoes
+    FROM orcamento_campanha
+    WHERE produto_id = %s
+      AND data BETWEEN %s AND %s
+"""
+
+_SQL_PRO_CAMP_INV = """
+    SELECT campaignid,
+           SUM(valor_investido)          AS valor_investido,
+           COALESCE(SUM(cliques), 0)     AS cliques,
+           COALESCE(SUM(impressoes), 0)  AS impressoes
+    FROM orcamento_campanha
+    WHERE produto_id = %s AND data BETWEEN %s AND %s
+    GROUP BY campaignid
+"""
+
+_SQL_PRO_CAMP_FUNIL = """
+    SELECT campaignid,
+           COUNT(*)                                                                         AS visitantes,
+           COUNT(CASE WHEN estado_id IN (0,2,3,4) THEN 1 END)                              AS whatsapp,
+           COUNT(CASE WHEN estado_id IN (0,2,3,4) AND interesse_produto IS NOT NULL THEN 1 END) AS responderam
+    FROM pedidos
+    WHERE produto_id = %s AND data_contato_site BETWEEN %s AND %s
+    GROUP BY campaignid
+"""
+
+_SQL_PRO_CAMP_PAG = """
+    SELECT campaignid,
+           COUNT(*)                      AS pagaram,
+           COALESCE(SUM(valor_pago), 0)  AS receita
+    FROM pedidos
+    WHERE produto_id = %s AND estado_id = 0 AND data_pagamento BETWEEN %s AND %s
+    GROUP BY campaignid
+"""
+
+_SQL_PRO_CAMP_NOMES = """
+    SELECT campaignid, nome FROM campanhas WHERE produto_id = %s
+"""
+
+
+@admin_bp.route('/produto/<int:produto_id>/analytics-pro')
+@requer_acesso_produto
+def analytics_pro_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    ontem = (_hoje_sao_paulo() - datetime.timedelta(days=1)).isoformat()
+    data_ini_str = request.args.get('data_ini', ontem)
+    data_fim_str = request.args.get('data_fim', ontem)
+
+    try:
+        data_ini = datetime.datetime.fromisoformat(data_ini_str)
+        data_fim = datetime.datetime.fromisoformat(data_fim_str) + datetime.timedelta(days=1, seconds=-1)
+    except ValueError:
+        ontem_dt = _hoje_sao_paulo() - datetime.timedelta(days=1)
+        data_ini = datetime.datetime.combine(ontem_dt, datetime.time.min)
+        data_fim  = datetime.datetime.combine(ontem_dt, datetime.time.max)
+        data_ini_str = data_fim_str = ontem
+
+    data_ini_date = data_ini.date().isoformat()
+    data_fim_date = data_fim.date().isoformat()
+
+    funil = receita = investimento = None
+    campanhas_pro = []
+
+    try:
+        funil        = db.execute_query(_SQL_PRO_FUNIL,        (produto_id, data_ini, data_fim), fetch_one=True)
+        receita      = db.execute_query(_SQL_PRO_RECEITA,      (produto_id, data_ini, data_fim), fetch_one=True)
+        investimento = db.execute_query(_SQL_PRO_INVESTIMENTO, (produto_id, data_ini_date, data_fim_date), fetch_one=True)
+
+        camp_inv   = db.execute_query(_SQL_PRO_CAMP_INV,   (produto_id, data_ini_date, data_fim_date), fetch_all=True)
+        camp_funil = db.execute_query(_SQL_PRO_CAMP_FUNIL, (produto_id, data_ini, data_fim), fetch_all=True)
+        camp_pag   = db.execute_query(_SQL_PRO_CAMP_PAG,   (produto_id, data_ini, data_fim), fetch_all=True)
+        camp_nomes = db.execute_query(_SQL_PRO_CAMP_NOMES, (produto_id,), fetch_all=True)
+
+        nomes  = {r['campaignid']: r['nome'] for r in (camp_nomes or [])}
+        merged = {}
+        for r in (camp_inv or []):
+            cid = r['campaignid'] or ''
+            merged.setdefault(cid, {})['valor_investido'] = float(r['valor_investido'] or 0)
+            merged[cid]['cliques']    = int(r['cliques']    or 0)
+            merged[cid]['impressoes'] = int(r['impressoes'] or 0)
+        for r in (camp_funil or []):
+            cid = r['campaignid'] or ''
+            merged.setdefault(cid, {}).update({
+                'visitantes':  int(r['visitantes']  or 0),
+                'whatsapp':    int(r['whatsapp']    or 0),
+                'responderam': int(r['responderam'] or 0),
+            })
+        for r in (camp_pag or []):
+            cid = r['campaignid'] or ''
+            merged.setdefault(cid, {}).update({
+                'pagaram': int(r['pagaram'] or 0),
+                'receita': float(r['receita'] or 0),
+            })
+        for cid, row in merged.items():
+            row['campanha']       = nomes.get(cid) or (cid if cid else 'Sem campanha')
+            row.setdefault('valor_investido', 0.0)
+            row.setdefault('cliques', 0)
+            row.setdefault('impressoes', 0)
+            row.setdefault('visitantes', 0)
+            row.setdefault('whatsapp', 0)
+            row.setdefault('responderam', 0)
+            row.setdefault('pagaram', 0)
+            row.setdefault('receita', 0.0)
+            inv = row['valor_investido']
+            pag = row['pagaram']
+            rec = row['receita']
+            vis = row['visitantes']
+            imp = row['impressoes']
+            cli = row['cliques']
+            row['roas']         = round(rec / inv, 2) if inv > 0 else None
+            row['cpa']          = round(inv / pag, 2) if pag > 0 else None
+            row['conv_vis_pag'] = round(pag / vis * 100, 1) if vis > 0 else 0.0
+            row['ctr']          = round(cli / imp * 100, 2) if imp > 0 and imp >= cli else None
+            row['cpm']          = round(inv / imp * 1000, 2) if imp > 0 else None
+        campanhas_pro = sorted(merged.values(), key=lambda x: x['receita'], reverse=True)
+
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro analytics pro produto #{produto_id}: {e}")
+        flash('Erro ao carregar Analytics Pro.', 'danger')
+
+    m = {}
+    if funil:
+        v  = funil['visitantes']    or 0
+        w  = funil['whatsapp']      or 0
+        r  = funil['responderam']   or 0
+        p  = funil['pagaram']       or 0
+        ci = funil['com_interesse'] or 0
+        si = funil['sem_interesse'] or 0
+        sr = funil['sem_resposta']  or 0
+        m['pct_visita_whats']   = round(w / v * 100, 1) if v else 0.0
+        m['pct_whats_resp']     = round(r / w * 100, 1) if w else 0.0
+        m['pct_resp_pagaram']   = round(p / r * 100, 1) if r else 0.0
+        m['pct_visita_pagaram'] = round(p / v * 100, 1) if v else 0.0
+        m['pct_ci']             = round(ci / w * 100, 1) if w else 0.0
+        m['pct_si']             = round(si / w * 100, 1) if w else 0.0
+        m['pct_sr']             = round(sr / w * 100, 1) if w else 0.0
+        ci_p = funil['ci_pagou'] or 0
+        si_p = funil['si_pagou'] or 0
+        m['pct_ci_pagou']  = round(ci_p / ci * 100, 1) if ci else 0.0
+        m['pct_si_pagou']  = round(si_p / si * 100, 1) if si else 0.0
+        m['pct_pag_de_ci'] = round(ci_p / p * 100, 1)  if p  else 0.0
+        m['pct_pag_de_si'] = round(si_p / p * 100, 1)  if p  else 0.0
+
+    m['ticket_medio']    = 0.0
+    m['roas']            = None
+    m['total_investido'] = 0.0
+    m['total_cliques']   = 0
+    m['total_impressoes']= 0
+    m['ctr_total']       = None
+    m['cpm_total']       = None
+
+    if receita and receita['total_pagamentos']:
+        m['ticket_medio'] = float(receita['total_receita']) / receita['total_pagamentos']
+    if investimento:
+        m['total_investido']  = float(investimento['total_investido'])
+        m['total_cliques']    = int(investimento['total_cliques']    or 0)
+        m['total_impressoes'] = int(investimento['total_impressoes'] or 0)
+        if m['total_investido'] > 0 and receita:
+            m['roas'] = round(float(receita['total_receita']) / m['total_investido'], 2)
+        ti = m['total_impressoes']
+        tc = m['total_cliques']
+        if ti > 0 and ti >= tc:
+            m['ctr_total'] = round(tc / ti * 100, 2)
+        if ti > 0 and m['total_investido'] > 0:
+            m['cpm_total'] = round(m['total_investido'] / ti * 1000, 2)
+
+    chart_receita = {
+        'labels': ['Com Interesse', 'Sem Interesse'],
+        'valores': [
+            float(receita['ci_receita']) if receita else 0,
+            float(receita['si_receita']) if receita else 0,
+        ],
+        'cores': ['#4a9632', '#e07b2a'],
+    }
+
+    return render_template('admin/produto_analytics_pro.html',
+        produto=produto, funil=funil, receita=receita,
+        investimento=investimento, campanhas_pro=campanhas_pro,
+        m=m, chart_receita=chart_receita,
+        data_ini=data_ini_str, data_fim=data_fim_str,
+    )
+
+
 @admin_bp.route('/produto/<int:produto_id>/analytics')
 @requer_acesso_produto
 def analytics_produto(produto_id):
@@ -1771,7 +2006,9 @@ _SQL_LISTA_ORCAMENTO = """
     SELECT
         base.campaignid,
         COALESCE(cam.nome, base.campaignid) AS campanha,
-        orc.valor_investido
+        orc.valor_investido,
+        orc.cliques,
+        orc.impressoes
     FROM (
         SELECT campaignid FROM pedidos
         WHERE produto_id = %s AND DATE(data_contato_site) = %s
@@ -1878,12 +2115,19 @@ def salvar_orcamento(produto_id):
     except ValueError:
         flash('Valor inválido.', 'warning')
         return redirect(url_for('admin.orcamento_produto', produto_id=produto_id, data=data_str))
+    cliques_str = request.form.get('cliques', '').strip()
+    cliques = int(cliques_str) if cliques_str.isdigit() else None
+    impressoes_str = request.form.get('impressoes', '').strip()
+    impressoes = int(impressoes_str) if impressoes_str.isdigit() else None
     try:
         db.execute_query(
-            """INSERT INTO orcamento_campanha (produto_id, campaignid, data, valor_investido)
-               VALUES (%s, %s, %s, %s)
-               ON DUPLICATE KEY UPDATE valor_investido = VALUES(valor_investido)""",
-            (produto_id, campaignid, data_str, valor)
+            """INSERT INTO orcamento_campanha (produto_id, campaignid, data, valor_investido, cliques, impressoes)
+               VALUES (%s, %s, %s, %s, %s, %s)
+               ON DUPLICATE KEY UPDATE
+                   valor_investido = VALUES(valor_investido),
+                   cliques         = VALUES(cliques),
+                   impressoes      = VALUES(impressoes)""",
+            (produto_id, campaignid, data_str, valor, cliques, impressoes)
         )
         flash(f'Investimento de R$ {valor:.2f} salvo para {data_str}.', 'success')
         logger.info(f"[ADMIN] ✅ Orçamento {campaignid} {data_str} R${valor:.2f} salvo no produto #{produto_id} por {current_user.email}")

@@ -69,7 +69,7 @@ function setDia(diasAtras) {
             <thead>
                 <tr>
                     <th>Campanha</th>
-                    <th style="text-align:right;">Investido (R$)</th>
+                    <th style="text-align:right;">Investido (R$) / Cliques</th>
                     <th></th>
                 </tr>
             </thead>
@@ -90,8 +90,20 @@ function setDia(diasAtras) {
                             <input type="hidden" name="data" value="{{ data_selecionada }}">
                             <input type="number" name="valor_investido" step="0.01" min="0"
                                    value="{{ '%.2f'|format(o.valor_investido) if o.valor_investido is not none else '' }}"
-                                   placeholder="0.00"
-                                   style="width: 120px; margin: 0; padding: 5px 10px;
+                                   placeholder="R$ 0,00"
+                                   style="width: 110px; margin: 0; padding: 5px 10px;
+                                          font-size: 13px; text-align: right; font-family: var(--mono);"
+                                   autocomplete="off">
+                            <input type="number" name="cliques" min="0" step="1"
+                                   value="{{ o.cliques if o.cliques is not none else '' }}"
+                                   placeholder="Cliques"
+                                   style="width: 90px; margin: 0; padding: 5px 10px;
+                                          font-size: 13px; text-align: right; font-family: var(--mono);"
+                                   autocomplete="off">
+                            <input type="number" name="impressoes" min="0" step="1"
+                                   value="{{ o.impressoes if o.impressoes is not none else '' }}"
+                                   placeholder="Impressões"
+                                   style="width: 100px; margin: 0; padding: 5px 10px;
                                           font-size: 13px; text-align: right; font-family: var(--mono);"
                                    autocomplete="off">
                             <button type="submit" class="btn btn-primary btn-sm" style="white-space: nowrap;">
