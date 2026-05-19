@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>50 Receitas de Pães Sem Glúten e Sem Lactose</title>
+  <meta name="description" content="50 receitas de pães caseiros 100% sem glúten e sem lactose, testadas e aprovadas. Receba agora no WhatsApp por apenas R$10.">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Lato, sans-serif; background: #fff; color: #222; max-width: 480px; margin: 0 auto; overflow-x: hidden; }
+
+    .badge { display: block; background: linear-gradient(135deg, #25D366, #128C7E); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 14px; border-radius: 20px; width: fit-content; margin: 16px auto 0; }
+
+    .hero { width: 100%; position: relative; }
+    .hero img { width: 100%; display: block; cursor: pointer; }
+    .hero-btn { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #25D366, #128C7E); color: #fff; border: 3px solid rgba(255,255,255,0.6); padding: 20px 40px; border-radius: 50px; font-size: 20px; font-weight: 900; cursor: pointer; white-space: nowrap; box-shadow: 0 6px 30px rgba(0,0,0,0.5), 0 0 20px rgba(37,211,102,0.4); animation: pulse-btn 1.5s infinite; font-family: Lato, sans-serif; z-index: 10; text-transform: uppercase; letter-spacing: 1px; width: 85%; text-align: center; border: none; }
+    @keyframes pulse-btn { 0%,100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.05); } }
+
+    .titulo { text-align: center; padding: 16px 20px 8px; }
+    .titulo h1 { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 900; color: #1a1a1a; line-height: 1.2; }
+    .titulo h1 span { color: #25D366; }
+    .titulo p { font-size: 14px; color: #555; margin-top: 8px; line-height: 1.5; }
+
+    .beneficios { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px; }
+    .benefit-item { background: #f0fdf4; border-radius: 12px; padding: 14px 10px; text-align: center; border: 1px solid #bbf7d0; }
+    .benefit-item .icon-wrap { width: 48px; height: 48px; background: #dcfce7; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; }
+    .benefit-item i { font-size: 22px; color: #16a34a; }
+    .benefit-item img.icon-img { width: 28px; height: 28px; object-fit: contain; }
+    .benefit-item strong { font-size: 13px; color: #15803d; display: block; font-weight: 700; }
+
+    .carousel-section { padding: 16px 0; }
+    .carousel-section h2 { font-family: 'Playfair Display', serif; font-size: 20px; text-align: center; color: #1a1a1a; margin-bottom: 12px; padding: 0 16px; }
+    .carousel-section h2 span { color: #25D366; }
+    .carousel-track-wrap { overflow: hidden; width: 100%; }
+    .carousel-track { display: flex; gap: 12px; padding: 4px 16px; animation: scroll 60s linear infinite; width: max-content; }
+    .carousel-track:hover { animation-play-state: paused; }
+    .ci { flex: 0 0 140px; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.1); border: 1px solid #e2e8f0; }
+    .ci img { width: 140px; height: 110px; object-fit: cover; display: block; }
+    .ci span { display: block; font-size: 11px; font-weight: 700; color: #15803d; text-align: center; padding: 6px; line-height: 1.3; }
+    @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+    .preco { background: linear-gradient(135deg, #25D366, #128C7E); padding: 24px 20px; text-align: center; margin: 8px 0; }
+    .preco p { color: rgba(255,255,255,.9); font-size: 14px; margin-bottom: 4px; }
+    .preco .valor { font-family: 'Playfair Display', serif; font-size: 42px; font-weight: 900; color: #fff; line-height: 1; }
+    .preco .entrega { color: rgba(255,255,255,.85); font-size: 13px; margin-top: 6px; }
+
+    .btn-wpp { display: block; background: linear-gradient(135deg, #25D366, #128C7E); color: #fff; text-decoration: none; text-align: center; padding: 18px 20px; margin: 16px; border-radius: 50px; font-size: 17px; font-weight: 700; letter-spacing: .5px; box-shadow: 0 4px 20px rgba(37,211,102,.4); animation: pulse 2s infinite; }
+    .btn-wpp i { margin-right: 8px; }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+
+    .como { padding: 20px 16px; background: #f8fffe; }
+    .como h3 { font-family: 'Playfair Display', serif; font-size: 18px; text-align: center; color: #1a1a1a; margin-bottom: 14px; }
+    .passo { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+    .passo-num { background: #25D366; color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+    .passo p { font-size: 13px; color: #444; line-height: 1.4; }
+
+    footer { background: #f1f5f9; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0; }
+    footer p { font-size: 11px; color: #888; margin-bottom: 6px; line-height: 1.6; }
+    .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+    .footer-links a { color: #888; text-decoration: none; font-size: 11px; padding: 4px 8px; border-radius: 4px; transition: color 0.2s; }
+    .footer-links a:hover { color: #25D366; }
+    .footer-links span { color: #ccc; font-size: 11px; }
+
+    .loader-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.92); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); }
+    .loader-overlay.active { display: flex; }
+    .loader-box { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .spinner { width: 52px; height: 52px; border: 4px solid #e5e5e5; border-top-color: #25D366; border-radius: 50%; animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-text { color: #25D366; font-size: 14px; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+  <span class="badge">&#127808; Ebook Digital</span>
+
+  <div class="hero">
+    <img src="/static/images/pao_hero.jpg" alt="50 Receitas de Pães Sem Glúten e Sem Lactose" id="imgHero">
+    <button class="hero-btn" id="btnHero">Quero Receber Agora</button>
+  </div>
+
+  <div class="titulo">
+    <h1>50 Receitas de <span>Pães</span></h1>
+    <p>Sem glúten e sem lactose — pães caseiros deliciosos e fáceis de fazer</p>
+  </div>
+
+  <div class="beneficios">
+    <div class="benefit-item">
+      <div class="icon-wrap"><i class="fa-solid fa-wheat-awn"></i></div>
+      <strong>Sem Glúten</strong>
+    </div>
+    <div class="benefit-item">
+      <div class="icon-wrap">
+        <svg width="28" height="28" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="18" y="16" width="28" height="36" rx="4" stroke="#16a34a" stroke-width="3" fill="none"/>
+          <ellipse cx="32" cy="14" rx="8" ry="4" stroke="#16a34a" stroke-width="2.5" fill="none"/>
+          <rect x="24" y="10" width="16" height="6" rx="3" stroke="#16a34a" stroke-width="2" fill="white"/>
+          <path d="M24 32 Q32 26 40 32" stroke="#16a34a" stroke-width="2" fill="none"/>
+          <path d="M24 40 Q32 34 40 40" stroke="#16a34a" stroke-width="2" fill="none"/>
+          <circle cx="46" cy="46" r="14" fill="white" stroke="#16a34a" stroke-width="3"/>
+          <line x1="38" y1="38" x2="54" y2="54" stroke="#e53e3e" stroke-width="3.5" stroke-linecap="round"/>
+          <line x1="54" y1="38" x2="38" y2="54" stroke="#e53e3e" stroke-width="3.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <strong>Sem Lactose</strong>
+    </div>
+    <div class="benefit-item">
+      <div class="icon-wrap"><i class="fa-solid fa-book-open"></i></div>
+      <strong>Fácil de Fazer</strong>
+    </div>
+    <div class="benefit-item">
+      <div class="icon-wrap"><i class="fa-brands fa-whatsapp"></i></div>
+      <strong>Entrega Imediata</strong>
+    </div>
+  </div>
+
+  <div class="carousel-section">
+    <h2>Veja algumas <span>receitas</span></h2>
+    <div class="carousel-track-wrap">
+      <div class="carousel-track">
+        <div class="ci"><img src="/static/images/pao_banana.jpg" alt="Pão de Banana" loading="lazy"><span>Pão de Banana</span></div>
+        <div class="ci"><img src="/static/images/baguete_crocante.jpg" alt="Baguete Crocante" loading="lazy"><span>Baguete Crocante</span></div>
+        <div class="ci"><img src="/static/images/pao_focaccia.jpg" alt="Focaccia" loading="lazy"><span>Focaccia</span></div>
+        <div class="ci"><img src="/static/images/pao_sirio.jpg" alt="Pão Sírio" loading="lazy"><span>Pão Sírio</span></div>
+        <div class="ci"><img src="/static/images/pao_australiano.jpg" alt="Pão Australiano" loading="lazy"><span>Pão Australiano</span></div>
+        <div class="ci"><img src="/static/images/pao_basico.jpg" alt="Pão Básico" loading="lazy"><span>Pão Básico</span></div>
+        <div class="ci"><img src="/static/images/pao_aveia.jpg" alt="Pão de Aveia" loading="lazy"><span>Pão de Aveia</span></div>
+        <div class="ci"><img src="/static/images/pao_batata.jpg" alt="Pão de Batata" loading="lazy"><span>Pão de Batata</span></div>
+        <div class="ci"><img src="/static/images/pao_batata_doce.jpg" alt="Pão de Batata Doce" loading="lazy"><span>Pão de Batata Doce</span></div>
+        <div class="ci"><img src="/static/images/pao_castanhas.jpg" alt="Pão de Castanhas" loading="lazy"><span>Pão de Castanhas</span></div>
+        <div class="ci"><img src="/static/images/pao_cenoura.jpg" alt="Pão de Cenoura" loading="lazy"><span>Pão de Cenoura</span></div>
+        <div class="ci"><img src="/static/images/pao_hamburguer.jpg" alt="Pão de Hambúrguer" loading="lazy"><span>Pão de Hambúrguer</span></div>
+        <div class="ci"><img src="/static/images/pao_forma.jpg" alt="Pão de Forma" loading="lazy"><span>Pão de Forma</span></div>
+        <div class="ci"><img src="/static/images/pao_milho.jpg" alt="Pão de Milho" loading="lazy"><span>Pão de Milho</span></div>
+        <div class="ci"><img src="/static/images/pao_tapioca.jpg" alt="Pão de Tapioca" loading="lazy"><span>Pão de Tapioca</span></div>
+        <div class="ci"><img src="/static/images/pao_doce.jpg" alt="Pão Doce" loading="lazy"><span>Pão Doce</span></div>
+        <div class="ci"><img src="/static/images/pao_fofinho.jpg" alt="Pão Fofinho" loading="lazy"><span>Pão Fofinho</span></div>
+        <div class="ci"><img src="/static/images/pao_integral.jpg" alt="Pão Integral" loading="lazy"><span>Pão Integral</span></div>
+        <div class="ci"><img src="/static/images/pao_brioche.jpg" alt="Pãozinho Brioche" loading="lazy"><span>Pãozinho Brioche</span></div>
+        <div class="ci"><img src="/static/images/pao_mandioquinha.jpg" alt="Pão de Mandioquinha" loading="lazy"><span>Pão de Mandioquinha</span></div>
+        <div class="ci"><img src="/static/images/pao_frances.jpg" alt="Pão Francês" loading="lazy"><span>Pão Francês</span></div>
+        <div class="ci"><img src="/static/images/pao_fuba.jpg" alt="Pão de Fubá" loading="lazy"><span>Pão de Fubá</span></div>
+        <div class="ci"><img src="/static/images/pao_canela.jpg" alt="Pão de Canela" loading="lazy"><span>Pão de Canela</span></div>
+        <!-- Duplicado para loop infinito -->
+        <div class="ci"><img src="/static/images/pao_banana.jpg" alt="Pão de Banana" loading="lazy"><span>Pão de Banana</span></div>
+        <div class="ci"><img src="/static/images/baguete_crocante.jpg" alt="Baguete Crocante" loading="lazy"><span>Baguete Crocante</span></div>
+        <div class="ci"><img src="/static/images/pao_focaccia.jpg" alt="Focaccia" loading="lazy"><span>Focaccia</span></div>
+        <div class="ci"><img src="/static/images/pao_sirio.jpg" alt="Pão Sírio" loading="lazy"><span>Pão Sírio</span></div>
+        <div class="ci"><img src="/static/images/pao_australiano.jpg" alt="Pão Australiano" loading="lazy"><span>Pão Australiano</span></div>
+        <div class="ci"><img src="/static/images/pao_basico.jpg" alt="Pão Básico" loading="lazy"><span>Pão Básico</span></div>
+        <div class="ci"><img src="/static/images/pao_aveia.jpg" alt="Pão de Aveia" loading="lazy"><span>Pão de Aveia</span></div>
+        <div class="ci"><img src="/static/images/pao_batata.jpg" alt="Pão de Batata" loading="lazy"><span>Pão de Batata</span></div>
+        <div class="ci"><img src="/static/images/pao_batata_doce.jpg" alt="Pão de Batata Doce" loading="lazy"><span>Pão de Batata Doce</span></div>
+        <div class="ci"><img src="/static/images/pao_castanhas.jpg" alt="Pão de Castanhas" loading="lazy"><span>Pão de Castanhas</span></div>
+        <div class="ci"><img src="/static/images/pao_cenoura.jpg" alt="Pão de Cenoura" loading="lazy"><span>Pão de Cenoura</span></div>
+        <div class="ci"><img src="/static/images/pao_hamburguer.jpg" alt="Pão de Hambúrguer" loading="lazy"><span>Pão de Hambúrguer</span></div>
+        <div class="ci"><img src="/static/images/pao_forma.jpg" alt="Pão de Forma" loading="lazy"><span>Pão de Forma</span></div>
+        <div class="ci"><img src="/static/images/pao_milho.jpg" alt="Pão de Milho" loading="lazy"><span>Pão de Milho</span></div>
+        <div class="ci"><img src="/static/images/pao_tapioca.jpg" alt="Pão de Tapioca" loading="lazy"><span>Pão de Tapioca</span></div>
+        <div class="ci"><img src="/static/images/pao_doce.jpg" alt="Pão Doce" loading="lazy"><span>Pão Doce</span></div>
+        <div class="ci"><img src="/static/images/pao_fofinho.jpg" alt="Pão Fofinho" loading="lazy"><span>Pão Fofinho</span></div>
+        <div class="ci"><img src="/static/images/pao_integral.jpg" alt="Pão Integral" loading="lazy"><span>Pão Integral</span></div>
+        <div class="ci"><img src="/static/images/pao_brioche.jpg" alt="Pãozinho Brioche" loading="lazy"><span>Pãozinho Brioche</span></div>
+        <div class="ci"><img src="/static/images/pao_mandioquinha.jpg" alt="Pão de Mandioquinha" loading="lazy"><span>Pão de Mandioquinha</span></div>
+        <div class="ci"><img src="/static/images/pao_frances.jpg" alt="Pão Francês" loading="lazy"><span>Pão Francês</span></div>
+        <div class="ci"><img src="/static/images/pao_fuba.jpg" alt="Pão de Fubá" loading="lazy"><span>Pão de Fubá</span></div>
+        <div class="ci"><img src="/static/images/pao_canela.jpg" alt="Pão de Canela" loading="lazy"><span>Pão de Canela</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="preco">
+    <p>Ebook completo por apenas</p>
+    <div class="valor">R$ 10,00</div>
+    <div class="entrega"> Receba no WhatsApp em minutos</div>
+  </div>
+
+  <a href="#" class="btn-wpp" id="btnPreco" onclick="return false;">
+    <i class="fa-brands fa-whatsapp"></i> Quero Receber Agora
+  </a>
+
+  <div class="como">
+    <h3>Como funciona?</h3>
+    <div class="passo"><div class="passo-num">1</div><p>Clique no botão e envie uma mensagem pelo WhatsApp</p></div>
+    <div class="passo"><div class="passo-num">2</div><p>Receba o ebook completo com 50 receitas em minutos</p></div>
+    <div class="passo"><div class="passo-num">3</div><p>Faça pães deliciosos sem glúten e sem lactose em casa!</p></div>
+  </div>
+
+  <a href="#" class="btn-wpp" id="btnComoFunciona" onclick="return false;" style="margin-bottom:8px">
+    <i class="fa-brands fa-whatsapp"></i> Quero Receber Agora
+  </a>
+
+  <footer>
+    <p><strong style="color:#777;">Receitas Digitais e Saúde</strong> &nbsp;·&nbsp; © 2025. Todos os direitos reservados.</p>
+    <p style="margin-top:6px; font-size:10px; color:#bbb;">Para suporte ou dúvidas, acesse nossa <a href="/contato" style="color:#999; text-decoration:underline;">página de contato</a>.</p>
+    <div class="footer-links">
+      <a href="/politica-privacidade">Política de Privacidade</a>
+      <span>|</span>
+      <a href="/termos-de-uso">Termos de Uso</a>
+      <span>|</span>
+      <a href="/contato">Contato</a>
+    </div>
+    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e0d5c5; text-align: left;">
+      <p style="font-size: 10px; color: #bbb; line-height: 1.6; margin-bottom: 0;">
+        <strong style="color: #aaa;">AVISO LEGAL:</strong> Este produto é um e-book digital vendido por R$10,00 e entregue via WhatsApp após confirmação do pagamento. As receitas foram testadas em ambiente doméstico e não substituem orientação médica ou nutricional. Em caso de dúvidas sobre restrições alimentares específicas, consulte um profissional de saúde.
+      </p>
+    </div>
+  </footer>
+
+  <div id="loader" class="loader-overlay" aria-hidden="true">
+    <div class="loader-box">
+      <div class="spinner"></div>
+      <div class="loader-text">Preparando seu acesso&hellip;</div>
+    </div>
+  </div>
+
+  <script>
+    const loader = document.getElementById('loader');
+    let emProcessamento = false;
+
+    function mostrarLoader() {
+      loader.classList.add('active');
+      document.body.style.pointerEvents = 'none';
+    }
+
+    function esconderLoader() {
+      loader.classList.remove('active');
+      document.body.style.pointerEvents = '';
+    }
+
+    async function irParaWhatsApp() {
+      if (emProcessamento) return;
+      emProcessamento = true;
+      mostrarLoader();
+
+      let numeroWhatsapp = '556981058726';
+      let mensagemBaseWA = '\uD83D\uDE0A Ol\u00e1, tenho interesse em saber mais sobre as receitas';
+
+      const urlDaPaginaAtual = window.location.href;
+      const urlParams = new URLSearchParams(window.location.search);
+      const gclidCode  = urlParams.get('gclid') || '';
+      const campaignid = urlParams.get('gad_campaignid') || '';
+      const adgroupid  = urlParams.get('adgroupid') || '';
+      const creative   = urlParams.get('creative') || '';
+      const matchtype  = urlParams.get('matchtype') || '';
+      const device     = urlParams.get('device') || '';
+      const placement  = urlParams.get('placement') || '';
+      const video_id   = urlParams.get('video_id') || '';
+
+      const API_URL = '/api/v1/webhook/gravar-lide';
+      const dadosParaEnviar = { gclid: gclidCode, url: urlDaPaginaAtual, campaignid, adgroupid, creative, matchtype, device, placement, video_id };
+
+      try {
+        const resp = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dadosParaEnviar)
+        });
+        if (resp.ok) {
+          const contentType = resp.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const data = await resp.json();
+            if (data.whatsapp_numero?.trim()) numeroWhatsapp = data.whatsapp_numero.trim();
+            if (data.mensagemBaseWA?.trim()) mensagemBaseWA = data.mensagemBaseWA.trim();
+          }
+        }
+      } catch (e) {
+        console.error('Erro ao chamar API de LIDE:', e);
+      }
+
+      const urlWhatsapp = 'https://wa.me/' + numeroWhatsapp + '?text=' + encodeURIComponent(mensagemBaseWA);
+
+      try {
+        const popup = window.open(urlWhatsapp, '_blank', 'noopener,noreferrer');
+        if (!popup) window.location.href = urlWhatsapp;
+      } finally {
+        esconderLoader();
+        emProcessamento = false;
+      }
+    }
+
+    ['btnHero', 'imgHero', 'btnPreco', 'btnComoFunciona'].forEach(id => {
+      document.getElementById(id)?.addEventListener('click', irParaWhatsApp);
+    });
+  </script>
+</body>
+</html>

@@ -197,7 +197,7 @@ def lanche():
 
 @app.get("/paes-sem-gluten")
 def paes_sem_gluten():
-    return render_template('paes-sem-gluten-2.html')
+    return render_template('paes-sem-gluten-3.html')
 
 @app.get("/paes-sem-gluten-temp")
 def paes_sem_gluten_temp():
