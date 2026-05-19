@@ -1789,7 +1789,7 @@ def analytics_pro_produto(produto_id):
 @admin_bp.route('/produto/<int:produto_id>/analytics-pro/analisar', methods=['POST'])
 @requer_acesso_produto
 def analisar_campanhas_pro(produto_id):
-    from app.agente_analisa_campanhas import analisar as _analisar
+    from agente_analisa_campanhas import analisar as _analisar
 
     produto = _get_produto_or_redirect(produto_id)
     if not produto:
