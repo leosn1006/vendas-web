@@ -1880,7 +1880,7 @@ def analisar_campanhas_pro(produto_id):
         return {'analise': 'Nenhuma campanha tem dados completos (impressões + cliques + visitantes + investido) para o período selecionado. Preencha os dados em Orçamento.'}, 200
 
     periodo_str = data_ini_str if data_ini_str == data_fim_str else f"{data_ini_str} a {data_fim_str}"
-    analise = _analisar(produto.nome, periodo_str, campanhas_completas)
+    analise = _analisar(produto['nome'], periodo_str, campanhas_completas)
 
     logger.info(f"[ADMIN] ✅ Análise de campanhas gerada para produto #{produto_id} por {current_user.email}")
     return {'analise': analise}, 200
