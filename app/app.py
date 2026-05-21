@@ -107,6 +107,10 @@ def _is_lssolucoes():
     host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
     return 'lssolucoesdigitais.com.br' in host
 
+def _is_lsdigitalsolucoes():
+    host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return 'lsdigitalsolucoes.com.br' in host
+
 def _is_lsfb():
     host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
     return 'lsfb-livros.com.br' in host
@@ -124,6 +128,8 @@ def index():
     produtos = busca_produtos_disponiveis_web()
     if _is_lssolucoes():
         tmpl = 'portifolio-lssolucoes.html'
+    elif _is_lsdigitalsolucoes():
+        tmpl = 'portifolio-lssolucoes.html'
     elif _is_lsfb():
         tmpl = 'portifolio-lsfb.html'
     elif _is_rc_livros():
@@ -139,6 +145,8 @@ def portifolio():
     produtos = busca_produtos_disponiveis_web()
     if _is_lssolucoes():
         tmpl = 'portifolio-lssolucoes.html'
+    elif _is_lsdigitalsolucoes():
+        tmpl = 'portifolio-lssolucoes.html'
     elif _is_lsfb():
         tmpl = 'portifolio-lsfb.html'
     elif _is_rc_livros():
@@ -152,6 +160,8 @@ def portifolio():
 @app.get("/politica-privacidade")
 def politica_privacidade():
     if _is_lssolucoes():
+        tmpl = 'politica-privacidade-lssolucoes.html'
+    elif _is_lsdigitalsolucoes():
         tmpl = 'politica-privacidade-lssolucoes.html'
     elif _is_lsfb():
         tmpl = 'politica-privacidade-lsfb.html'
@@ -167,6 +177,8 @@ def politica_privacidade():
 def termos_de_uso():
     if _is_lssolucoes():
         tmpl = 'termos-de-uso-lssolucoes.html'
+    elif _is_lsdigitalsolucoes():
+        tmpl = 'termos-de-uso-lssolucoes.html'
     elif _is_lsfb():
         tmpl = 'termos-de-uso-lsfb.html'
     elif _is_rc_livros():
@@ -180,6 +192,8 @@ def termos_de_uso():
 @app.get("/contato")
 def contato():
     if _is_lssolucoes():
+        tmpl = 'contato-lssolucoes.html'
+    elif _is_lsdigitalsolucoes():
         tmpl = 'contato-lssolucoes.html'
     elif _is_lsfb():
         tmpl = 'contato-lsfb.html'
