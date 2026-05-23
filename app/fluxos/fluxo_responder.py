@@ -1,7 +1,7 @@
 import logging
 import random
 from whatsapp import marcar_como_lida, enviar_mensagem, enviar_mensagem_digitando
-from database import salvar_mensagem_pedido, buscar_historico_conversa, get_produto_by_id
+from database import salvar_mensagem_pedido, buscar_historico_conversa, get_produto_by_id, tem_notificacao_em_analise
 from agente_resposta_produto import responder_cliente_com_historico_produto
 from celery_app import celery_app
 
@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 def _campos_produto_faltando(produto: dict | None) -> list[str]:
-    campos_obrigatorios = ['prompt_vendas', 'faq', 'url_arquivo_produto']
+    # faq e url_arquivo_produto são opcionais no agente — apenas prompt_vendas é obrigatório
+    campos_obrigatorios = ['prompt_vendas']
 
     if not produto:
         return campos_obrigatorios
@@ -20,9 +21,32 @@ def _campos_produto_faltando(produto: dict | None) -> list[str]:
     ]
 
 def executar(pedido, mensagem_whatsapp):
+    produto = None  # inicializado aqui para estar disponível no except mesmo se a atribuição abaixo falhar
     try:
         logger.info("=" * 120)
         logger.info(f"[FLUXO-RESPONDER-MENSAGEM] 📦 Dados recebidos: \n Pedido: {pedido}")
+        # ============================================================================================
+        # extrai dados da mensagem primeiro — necessário para marcar como lida e para o early-exit,
+        # independente da config do produto
+        pedido_id = pedido['id']
+        mensagem_cliente = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
+        message_id = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['id']
+        # ============================================================================================
+        # marcar mensagem como lida imediatamente, independente de validações posteriores
+        logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 📥 Marcando mensagem como lida...")
+        try:
+            marcar_como_lida(message_id, pedido.get('phone_number_id'))
+        except Exception as exc_lida:
+            logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] ⚠️ Falha ao marcar como lida (não crítico): {exc_lida}")
+        # ============================================================================================
+        # se pedido já está em análise pelo admin, salva a mensagem e silencia a IA
+        # (não precisa carregar produto nem histórico)
+        if tem_notificacao_em_analise(pedido_id):
+            salvar_mensagem_pedido(message_id, pedido_id, mensagem_cliente, tipo_mensagem='recebida')
+            logger.info(f"[FLUXO-RESPONDER-MENSAGEM] 🔕 Pedido #{pedido_id} em análise pelo admin. Mensagem salva, IA silenciada.")
+            return
+        # ============================================================================================
+        # carrega e valida config do produto — só necessário a partir daqui, quando a IA vai responder
         produto = get_produto_by_id(pedido.get('produto_id'))
         campos_faltando = _campos_produto_faltando(produto)
         if campos_faltando:
@@ -30,18 +54,6 @@ def executar(pedido, mensagem_whatsapp):
                 f"[FLUXO-RESPONDER-MENSAGEM] Configuração do produto {pedido.get('produto_id')} incompleta. "
                 f"Campos obrigatórios ausentes: {', '.join(campos_faltando)}"
             )
-        # ============================================================================================
-        # grava mensagem recebida
-        pedido_id = pedido['id']
-        mensagem_cliente = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
-        message_id = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['id']
-        # ============================================================================================
-        # marcar mensagem como lida
-        logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 📥 Marcando mensagem como lida...")
-        try:
-            marcar_como_lida(message_id, pedido.get('phone_number_id'))
-        except Exception as exc_lida:
-            logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] ⚠️ Falha ao marcar como lida (não crítico): {exc_lida}")
         # ============================================================================================
         # busca histórico ANTES de salvar a mensagem atual para evitar duplicação no contexto do agente
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 📚 Buscando histórico do pedido #{pedido_id}...")
@@ -56,9 +68,10 @@ def executar(pedido, mensagem_whatsapp):
         resposta_cliente = responder_cliente_com_historico_produto(mensagem_cliente, historico, produto, pedido)
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 🤖 Resposta gerada: {resposta_cliente}")
         # ============================================================================================
-        # None = IA decidiu escalar mas pedido já está em análise pelo admin
+        # None = IA escalou via tool call (estorno, insatisfação etc.), API OpenAI falhou, ou retornou vazio.
+        # Em todos os casos o agente já criou a notificação para o admin em agente_resposta_produto.py.
         if resposta_cliente is None:
-            logger.info(f"[FLUXO-RESPONDER-MENSAGEM] 🔕 Pedido #{pedido_id} em análise pelo admin. IA silenciada.")
+            logger.info(f"[FLUXO-RESPONDER-MENSAGEM] 🔕 Pedido #{pedido_id}: IA escalou ou falhou. Admin notificado, sem resposta ao cliente.")
             return
         # ============================================================================================
         # envia digitando e agenda envio da resposta com delay humanizado (worker liberado durante a espera)
@@ -73,7 +86,6 @@ def executar(pedido, mensagem_whatsapp):
             args=[pedido, resposta_cliente, pedido_id],
             countdown=delay,
         )
-        # ============================================================================================
         logger.info("[FLUXO-RESPONDER-MENSAGEM] ✅ Resposta gerada e agendada com sucesso!")
         logger.info("=" * 120)
 
