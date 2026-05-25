@@ -220,7 +220,7 @@ def criar_pedido(pedido: Pedido):
     gclid = pedido.get('gclid')
     wbraid = pedido.get('wbraid')
     gbraid = pedido.get('gbraid')
-    mensagem_sugerida = pedido.get('mensagem_sugerida')
+    mensagem_sugerida = (pedido.get('mensagem_sugerida') or '')[:255] or None
     emoji_sugerida = pedido.get('emoji_sugerida')
     phone_number_id = pedido.get('phone_number_id')
     contact_phone = pedido.get('contact_phone')
