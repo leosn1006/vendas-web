@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@400;700&display=swap"></noscript>
-  <link rel="preload" as="image" href="/static/images/pudim-capa--hero-2.webp" type="image/webp">
+  <link rel="preload" as="image" href="/static/images/pudim-01.jpg">
   <style>
     :root {
       --verde: #25D366;
@@ -39,32 +39,56 @@
 
     .hero {
       width: 100%;
-      position: relative
+      position: relative;
+      height: 100vh;
+      height: 100svh;
     }
 
     .hero picture {
-      display: block
+      display: block;
+      height: 100%
     }
 
     .hero img {
       width: 100%;
+      height: 100%;
       display: block;
-      max-height: calc(100vh - 50px);
-      max-height: calc(100svh - 50px);
       object-fit: cover;
       object-position: top
     }
 
-    .hero-cta-overlay {
+    .hero-cta-btn {
       position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 20%;
-      background: transparent;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--verde), var(--verde-escuro));
+      color: #fff;
+      font-family: Lato, sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      padding: 14px 28px;
+      border-radius: 50px;
       border: none;
       cursor: pointer;
-      -webkit-tap-highlight-color: transparent
+      white-space: nowrap;
+      box-shadow: 0 4px 20px rgba(37, 211, 102, .4);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      -webkit-tap-highlight-color: transparent;
+      animation: pulse-hero 2s infinite
+    }
+
+    @keyframes pulse-hero {
+      0%, 100% {
+        transform: translateX(-50%) scale(1);
+        box-shadow: 0 4px 20px rgba(37, 211, 102, .4)
+      }
+      50% {
+        transform: translateX(-50%) scale(1.02);
+        box-shadow: 0 6px 28px rgba(37, 211, 102, .6)
+      }
     }
 
     .titulo {
@@ -242,7 +266,8 @@
       width: calc(100% - 32px)
     }
 
-    .btn-wpp .ico {
+    .btn-wpp .ico,
+    .hero-cta-btn .ico {
       width: 22px;
       height: 22px;
       fill: #fff;
@@ -385,7 +410,8 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .btn-wpp, #spinner { animation: none }
+      .btn-wpp, .hero-cta-btn, #spinner { animation: none }
+      .hero-cta-btn { transform: translateX(-50%) }
       .carousel-track { animation: none }
     }
   </style>
@@ -404,11 +430,10 @@
     </div>
   </div>
   <div class="hero">
-    <picture>
-      <source srcset="/static/images/pudim-capa--hero-2.webp" type="image/webp">
-      <img src="/static/images/pudim-capa--hero-2.png" alt="Pudim Sem Forno" width="1024" height="1536" fetchpriority="high">
-    </picture>
-    <button class="hero-cta-overlay" onclick="irParaWhatsApp()" aria-label="Quero Receber Agora"></button>
+    <img src="/static/images/pudim-01.jpg" alt="Pudim Sem Forno" width="1024" height="1536" fetchpriority="high">
+    <button type="button" class="hero-cta-btn" onclick="irParaWhatsApp()">
+      <svg class="ico" aria-hidden="true"><use href="#ico-wpp"/></svg> Quero Receber Agora
+    </button>
   </div>
   <button class="btn-wpp" onclick="irParaWhatsApp()"><svg class="ico" aria-hidden="true"><use href="#ico-wpp"/></svg> Quero Receber Agora</button>
   <div class="titulo">
