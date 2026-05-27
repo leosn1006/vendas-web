@@ -233,6 +233,10 @@ def pudim_temp():
 def tempero():
     return render_template('tempero.html')
 
+@app.get("/fatia")
+def fatia():
+    return render_template('fatia.html')
+
 @app.get("/sobremesas")
 def sobremesas():
     return render_template('sobremesa.html')

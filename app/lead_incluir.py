@@ -16,6 +16,7 @@ FALLBACK_TELEFONE = {
     9: "556182402494",
     10: "556182410466",
     11: "556182419301",
+    12: "556182419539",
 }
 
 def persistir_lead(body):
@@ -48,6 +49,8 @@ def persistir_lead(body):
             produto = 10
         elif "tempero" in url:
             produto = 11
+        elif "fatia" in url:
+            produto = 12
         else:
             produto = 1  # produto padrão para campanhas desconhecidas
 

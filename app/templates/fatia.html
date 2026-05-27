@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description"
+    content="Ebook com receitas de fatias de bolo para vender na feira. Recheios cremosos, bolos irresistíveis e renda extra garantida. Entregue no WhatsApp em minutos.">
+  <title>Receitas Caseiras de Fatia de Bolo - Ebook Completo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@400;700&display=swap"
+    rel="stylesheet">
+  <link rel="preload" as="image" href="/static/images/fatia-capa-2.png" fetchpriority="high">
+  <style>
+    :root {
+      --rosa:              #cc4d78;
+      --rosa-escuro:       #9a2850;
+      --rosa-profundo:     #561430;
+      --rosa-claro:        #fff0f5;
+      --rosa-borda:        #f5bcd2;
+      --rosa-texto:        #861a44;
+      --rosa-texto-escuro: #9a2850;
+      --dourado:           #c8960a;
+      --verde:             #25D366;
+      --verde-escuro:      #128C7E
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
+
+    body {
+      font-family: Lato, sans-serif;
+      background: #fff;
+      color: #222;
+      max-width: 480px;
+      margin: 0 auto;
+      overflow-x: hidden
+    }
+
+    .badge {
+      display: block;
+      background: linear-gradient(135deg, var(--rosa), var(--rosa-escuro));
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 20px;
+      width: fit-content;
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1;
+      white-space: nowrap
+    }
+
+    .hero {
+      width: 100%;
+      cursor: pointer;
+      position: relative;
+      height: 100svh;
+      overflow: hidden
+    }
+
+    .hero img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      object-position: top
+    }
+
+    .titulo {
+      text-align: center;
+      padding: 16px 20px 8px
+    }
+
+    .titulo h1 {
+      font-family: "Playfair Display", serif;
+      font-size: 26px;
+      font-weight: 900;
+      color: #1a1a1a;
+      line-height: 1.2
+    }
+
+    .titulo h1 span {
+      color: var(--rosa)
+    }
+
+    .titulo p {
+      font-size: 14px;
+      color: #555;
+      margin-top: 8px;
+      line-height: 1.5
+    }
+
+    .beneficios {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 16px
+    }
+
+    .benefit-item {
+      background: var(--rosa-claro);
+      border-radius: 12px;
+      padding: 14px 10px;
+      text-align: center;
+      border: 1px solid var(--rosa-borda)
+    }
+
+    .benefit-item .ico {
+      width: 26px;
+      height: 26px;
+      fill: var(--rosa-texto-escuro);
+      margin-bottom: 6px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto
+    }
+
+    .benefit-item strong {
+      font-size: 13px;
+      color: var(--rosa-texto);
+      display: block;
+      font-weight: 700
+    }
+
+    .carousel-section {
+      padding: 16px 0
+    }
+
+    .carousel-section h2 {
+      font-family: "Playfair Display", serif;
+      font-size: 20px;
+      text-align: center;
+      color: #1a1a1a;
+      margin-bottom: 12px;
+      padding: 0 16px
+    }
+
+    .carousel-section h2 span {
+      color: var(--dourado)
+    }
+
+    .carousel-track-wrap {
+      overflow: hidden;
+      width: 100%
+    }
+
+    .carousel-track {
+      display: flex;
+      gap: 12px;
+      padding: 4px 16px;
+      animation: scroll 50s linear infinite;
+      width: max-content
+    }
+
+    .carousel-track:hover {
+      animation-play-state: paused
+    }
+
+    .ci {
+      flex: 0 0 140px;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+      border: 1px solid #e2e8f0
+    }
+
+    .ci img {
+      width: 140px;
+      height: 110px;
+      object-fit: cover;
+      display: block
+    }
+
+    .ci span {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--rosa-texto);
+      text-align: center;
+      padding: 6px;
+      line-height: 1.3
+    }
+
+    @keyframes scroll {
+      0% { transform: translateX(0) }
+      100% { transform: translateX(-50%) }
+    }
+
+    .preco {
+      background: linear-gradient(135deg, var(--rosa-profundo), #2a0818);
+      padding: 24px 20px;
+      text-align: center;
+      margin: 8px 0
+    }
+
+    .preco p {
+      color: rgba(255, 255, 255, .9);
+      font-size: 14px;
+      margin-bottom: 4px
+    }
+
+    .preco .valor {
+      font-family: "Playfair Display", serif;
+      font-size: 42px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1
+    }
+
+    .preco .entrega {
+      color: rgba(255, 255, 255, .85);
+      font-size: 13px;
+      margin-top: 6px
+    }
+
+    .btn-wpp {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--verde), var(--verde-escuro));
+      color: #fff;
+      text-decoration: none;
+      text-align: center;
+      padding: 18px 20px;
+      margin: 16px auto;
+      border-radius: 50px;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      box-shadow: 0 4px 20px rgba(37, 211, 102, .4);
+      animation: pulse 2s infinite;
+      cursor: pointer;
+      border: none;
+      width: calc(100% - 32px)
+    }
+
+    .btn-wpp .ico {
+      width: 22px;
+      height: 22px;
+      fill: #fff;
+      flex-shrink: 0
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 4px 20px rgba(37, 211, 102, .4)
+      }
+      50% {
+        transform: scale(1.02);
+        box-shadow: 0 6px 28px rgba(37, 211, 102, .6)
+      }
+    }
+
+    .como {
+      padding: 20px 16px;
+      background: var(--rosa-claro)
+    }
+
+    .como h3 {
+      font-family: "Playfair Display", serif;
+      font-size: 18px;
+      text-align: center;
+      color: #1a1a1a;
+      margin-bottom: 14px
+    }
+
+    .passo {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px
+    }
+
+    .passo-num {
+      background: var(--rosa);
+      color: #fff;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      flex-shrink: 0
+    }
+
+    .passo p {
+      font-size: 13px;
+      color: #444;
+      line-height: 1.4
+    }
+
+    footer {
+      background: #f1f5f9;
+      padding: 16px;
+      text-align: center;
+      border-top: 1px solid #e2e8f0
+    }
+
+    footer p {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 6px
+    }
+
+    footer a {
+      color: var(--rosa);
+      text-decoration: none;
+      font-size: 11px;
+      margin: 0 6px
+    }
+
+    #loader {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, .5);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center
+    }
+
+    #loader.active {
+      display: flex
+    }
+
+    #loader-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px 36px;
+      text-align: center;
+      font-family: Lato, sans-serif
+    }
+
+    #loader-box p {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #444
+    }
+
+    #spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e2e8f0;
+      border-top-color: var(--rosa);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg) }
+    }
+
+    .btn-wpp:last-of-type {
+      margin-bottom: 8px
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .carousel-track { animation: none; overflow-x: auto }
+      .btn-wpp { animation: none }
+      #spinner { animation-duration: .01ms }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="loader">
+    <div id="loader-box">
+      <div id="spinner"></div>
+      <p>Aguarde...</p>
+    </div>
+  </div>
+
+  <div class="hero" role="button" tabindex="0" onclick="irParaWhatsApp()"
+    onkeydown="if(event.key==='Enter'||event.key===' ')irParaWhatsApp()">
+    <span class="badge">&#127874; 100 Receitas Para Vender</span>
+    <img src="/static/images/fatia-capa-2.png" alt="Receitas Caseiras de Fatia de Bolo">
+  </div>
+
+  <button class="btn-wpp" onclick="irParaWhatsApp()">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="ico" aria-hidden="true">
+      <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
+    </svg>
+    Quero Receber Agora
+  </button>
+
+  <div class="titulo">
+    <h1>Receitas Caseiras <span>de Fatia de Bolo</span></h1>
+    <p>Aprenda a fazer fatias irresistíveis para vender na feira e transformar em renda extra — receitas testadas, recheios cremosos e bolos que vendem sozinhos</p>
+  </div>
+
+  <div class="beneficios">
+    <div class="benefit-item">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="ico" aria-hidden="true">
+        <path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/>
+      </svg>
+      <strong>Receitas Testadas</strong>
+    </div>
+    <div class="benefit-item">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" class="ico" aria-hidden="true">
+        <path d="M249.6 471.5c10.8 3.8 22.4-4.1 22.4-15.5V78.6c0-4.2-1.6-8.4-5-11C247.4 52 202.4 32 144 32C93.5 32 46.3 45.3 18.1 56.2C6.8 60.5 0 71.7 0 83.8V454.1c0 11.9 12.8 20.2 24.1 16.5C55.6 460.1 105.5 448 144 448c33.9 0 79 14 105.6 23.5zm76.8 0C353 462 398.1 448 432 448c38.5 0 88.4 12.1 119.9 22.6c11.3 3.8 24.1-4.6 24.1-16.5V83.8c0-12.1-6.8-23.3-18.1-27.6C529.7 45.3 482.5 32 432 32c-58.4 0-103.4 20-123 45.6c-3.3 2.6-5 6.8-5 11V456c0 11.4 11.7 19.3 22.4 15.5z"/>
+      </svg>
+      <strong>Fácil de Fazer</strong>
+    </div>
+    <div class="benefit-item">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="ico" aria-hidden="true">
+        <path d="M64 32C28.7 32 0 60.7 0 96V416c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V192c0-35.3-28.7-64-64-64H80c-8.8 0-16-7.2-16-16s7.2-16 16-16H448c17.7 0 32-14.3 32-32s-14.3-32-32-32H64zM432 296c0 13.3-10.7 24-24 24s-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24z"/>
+      </svg>
+      <strong>Renda na Feira</strong>
+    </div>
+    <div class="benefit-item">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="ico" aria-hidden="true">
+        <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
+      </svg>
+      <strong>Entrega Imediata</strong>
+    </div>
+    <div class="benefit-item">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" class="ico" aria-hidden="true">
+        <path d="M64 64C28.7 64 0 92.7 0 128v64c35.3 0 64 28.7 64 64s-28.7 64-64 64v64c0 35.3 28.7 64 64 64H512c35.3 0 64-28.7 64-64V320c-35.3 0-64-28.7-64-64s28.7-64 64-64V128c0-35.3-28.7-64-64-64H64zm64 112l224 0 0 160H128V176z"/>
+      </svg>
+      <strong>Veja Antes de Pagar</strong>
+    </div>
+    <div class="benefit-item">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="ico" aria-hidden="true">
+        <path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm0-384c13.3 0 24 10.7 24 24V264c0 13.3-10.7 24-24 24s-24-10.7-24-24V152c0-13.3 10.7-24 24-24zm-32 224a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"/>
+      </svg>
+      <strong>Recheios Exclusivos</strong>
+    </div>
+  </div>
+
+  <div class="carousel-section">
+    <h2>Bolos que <span>todo mundo quer um pedaço</span></h2>
+    <div class="carousel-track-wrap">
+      <div class="carousel-track">
+        <div class="ci"><img src="/static/images/fatia-01.jpg" alt="Fatia de Coco" loading="lazy" width="140" height="110"><span>Fatia de Coco</span></div>
+        <div class="ci"><img src="/static/images/fatia-02.jpg" alt="Bolo de Morango e Chocolate" loading="lazy" width="140" height="110"><span>Morango e Chocolate</span></div>
+        <div class="ci"><img src="/static/images/fatia-03.jpg" alt="Recheio Cremoso" loading="lazy" width="140" height="110"><span>Recheio Cremoso</span></div>
+        <div class="ci"><img src="/static/images/fatia-04.jpg" alt="Fatia Especial" loading="lazy" width="140" height="110"><span>Fatia Especial</span></div>
+        <div class="ci"><img src="/static/images/fatia-05.jpg" alt="Bolo Úmido" loading="lazy" width="140" height="110"><span>Bolo Úmido</span></div>
+        <div class="ci"><img src="/static/images/fatia-06.jpg" alt="Fatia de Chocolate" loading="lazy" width="140" height="110"><span>Fatia de Chocolate</span></div>
+        <div class="ci"><img src="/static/images/fatia-07.jpg" alt="Bolo de Limão" loading="lazy" width="140" height="110"><span>Bolo de Limão</span></div>
+        <div class="ci"><img src="/static/images/fatia-08.jpg" alt="Delícia da Feira" loading="lazy" width="140" height="110"><span>Delícia da Feira</span></div>
+        <div class="ci"><img src="/static/images/fatia-01.jpg" alt="Fatia de Coco" loading="lazy" width="140" height="110"><span>Fatia de Coco</span></div>
+        <div class="ci"><img src="/static/images/fatia-02.jpg" alt="Bolo de Morango e Chocolate" loading="lazy" width="140" height="110"><span>Morango e Chocolate</span></div>
+        <div class="ci"><img src="/static/images/fatia-03.jpg" alt="Recheio Cremoso" loading="lazy" width="140" height="110"><span>Recheio Cremoso</span></div>
+        <div class="ci"><img src="/static/images/fatia-04.jpg" alt="Fatia Especial" loading="lazy" width="140" height="110"><span>Fatia Especial</span></div>
+        <div class="ci"><img src="/static/images/fatia-05.jpg" alt="Bolo Úmido" loading="lazy" width="140" height="110"><span>Bolo Úmido</span></div>
+        <div class="ci"><img src="/static/images/fatia-06.jpg" alt="Fatia de Chocolate" loading="lazy" width="140" height="110"><span>Fatia de Chocolate</span></div>
+        <div class="ci"><img src="/static/images/fatia-07.jpg" alt="Bolo de Limão" loading="lazy" width="140" height="110"><span>Bolo de Limão</span></div>
+        <div class="ci"><img src="/static/images/fatia-08.jpg" alt="Delícia da Feira" loading="lazy" width="140" height="110"><span>Delícia da Feira</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="preco">
+    <p>Ebook completo — faça em casa e venda na feira!</p>
+    <div class="valor">R$ 19,90</div>
+    <div class="entrega">&#128241; Receba no WhatsApp em minutos</div>
+  </div>
+
+  <button class="btn-wpp" onclick="irParaWhatsApp()">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="ico" aria-hidden="true">
+      <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
+    </svg>
+    Quero Receber Agora
+  </button>
+
+  <div class="como">
+    <h3>Como funciona?</h3>
+    <div class="passo">
+      <div class="passo-num">1</div>
+      <p>Clique no botão e envie uma mensagem pelo WhatsApp</p>
+    </div>
+    <div class="passo">
+      <div class="passo-num">2</div>
+      <p>Receba o ebook com todas as receitas em minutos — ingredientes simples e fáceis de encontrar</p>
+    </div>
+    <div class="passo">
+      <div class="passo-num">3</div>
+      <p>Pague somente se gostar das receitas</p>
+    </div>
+    <div class="passo">
+      <div class="passo-num">4</div>
+      <p>Prepare as fatias, monte sua bancada na feira e transforme em renda extra toda semana!</p>
+    </div>
+  </div>
+
+  <button class="btn-wpp" onclick="irParaWhatsApp()">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="ico" aria-hidden="true">
+      <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
+    </svg>
+    Quero Receber Agora
+  </button>
+
+  <footer>
+    <p>&copy; 2025 Receitas de Fatia. Todos os direitos reservados.</p>
+    <div>
+      <a href="/politica-privacidade">Politica de Privacidade</a>
+      <a href="/termos-de-uso">Termos de Uso</a>
+      <a href="/contato">Contato</a>
+    </div>
+    <p style="margin-top:12px;font-size:10px;color:#aaa;line-height:1.5;text-align:left">
+      <strong style="display:block;margin-bottom:4px">Aviso Legal</strong>
+      Os resultados referentes à comercialização dos bolos descritos neste e-book podem variar de pessoa para pessoa. O sucesso financeiro depende exclusivamente da dedicação, esforço individual, aplicação das técnicas ensinadas e das condições de mercado de cada região. Não garantimos ganhos fixos ou resultados específicos. Ao adquirir este material, você concorda que é o único responsável por suas ações e decisões. Este site não faz parte do Google Inc. ou do Facebook Inc. Além disso, este site NÃO é endossado pelo Google ou Facebook de qualquer maneira.
+    </p>
+  </footer>
+
+  <script>
+    const loader = document.getElementById('loader');
+    let emProcessamento = false;
+    function mostrarLoader() { loader.classList.add('active'); document.body.style.pointerEvents = 'none'; }
+    function esconderLoader() { loader.classList.remove('active'); document.body.style.pointerEvents = ''; }
+    async function irParaWhatsApp() {
+      if (emProcessamento) return;
+      emProcessamento = true;
+      mostrarLoader();
+      let numeroWhatsapp = '556182419539';
+      let mensagemBaseWA = 'Gostaria de saber mais sobre as receitas de fatias de bolo para feira';
+      const urlDaPaginaAtual = window.location.href;
+      const urlParams = new URLSearchParams(window.location.search);
+      const gclidCode = urlParams.get('gclid') || '';
+      const campaignid = urlParams.get('gad_campaignid') || '';
+      const adgroupid = urlParams.get('adgroupid') || '';
+      const creative = urlParams.get('creative') || '';
+      const matchtype = urlParams.get('matchtype') || '';
+      const device = urlParams.get('device') || '';
+      const placement = urlParams.get('placement') || '';
+      const video_id = urlParams.get('video_id') || '';
+      const API_URL = '/api/v1/webhook/gravar-lide';
+      const dadosParaEnviar = { gclid: gclidCode, url: urlDaPaginaAtual, campaignid, adgroupid, creative, matchtype, device, placement, video_id };
+      try {
+        const resp = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dadosParaEnviar) });
+        if (resp.ok) {
+          const contentType = resp.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const data = await resp.json();
+            if (data.whatsapp_numero?.trim()) numeroWhatsapp = data.whatsapp_numero.trim();
+            if (data.mensagemBaseWA?.trim()) mensagemBaseWA = data.mensagemBaseWA.trim();
+          }
+        }
+      } catch (e) { console.error('Erro ao chamar API de LIDE:', e); }
+      const urlWhatsapp = 'https://wa.me/' + numeroWhatsapp + '?text=' + encodeURIComponent(mensagemBaseWA);
+      try {
+        const popup = window.open(urlWhatsapp, '_blank', 'noopener,noreferrer');
+        if (!popup) window.location.href = urlWhatsapp;
+      } finally {
+        esconderLoader();
+        emProcessamento = false;
+      }
+    }
+  </script>
+</body>
+
+</html>
