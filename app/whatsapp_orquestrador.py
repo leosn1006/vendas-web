@@ -43,7 +43,7 @@ def extrair_dados_mensagem(mensagem_whatsapp):
     except (KeyError, IndexError) as e:
         return None
 
-_NUMEROS_BLOQUEADOS = {'551721368696'}
+_NUMEROS_BLOQUEADOS = {'551721368696', '553299597398'}
 
 def recebe_webhook(mensagem_whatsapp):
     try:
