@@ -15,10 +15,23 @@ from whatsapp import (
     marcar_como_lida, enviar_mensagem_digitando,
     enviar_audio, enviar_imagem, enviar_mensagem, enviar_documento,
     enviar_produto_whatsapp,
+    ErroTransienteWhatsApp,
 )
 from database import salvar_mensagem_pedido
 
 logger = logging.getLogger(__name__)
+
+
+def _executar_com_retry(fn, tag: str, max_tentativas: int = 2, delay_s: float = 8.0):
+    for tentativa in range(max_tentativas):
+        try:
+            return fn()
+        except ErroTransienteWhatsApp as e:
+            if tentativa < max_tentativas - 1:
+                logger.warning(f"[{tag}] ⚠️ Erro transiente (tentativa {tentativa + 1}/{max_tentativas}), aguardando {delay_s:.0f}s: {e}")
+                time.sleep(delay_s)
+            else:
+                raise
 
 
 def calcular_delay(acao: dict) -> float:
@@ -66,30 +79,30 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
 
     elif tipo == 'enviar_audio':
         _exige_campo(acao, 'url', tag)
-        mid = enviar_audio(pedido, url_audio=acao['url'])
+        mid = _executar_com_retry(lambda: enviar_audio(pedido, url_audio=acao['url']), tag)
         salvar_mensagem_pedido(mid, pedido_id, "[áudio enviado]", tipo_mensagem='enviada')
         logger.debug(f"[{tag}] 🎵 Áudio enviado.")
 
     elif tipo == 'enviar_imagem':
         _exige_campo(acao, 'url', tag)
-        mid = enviar_imagem(pedido, acao['url'])
+        mid = _executar_com_retry(lambda: enviar_imagem(pedido, acao['url']), tag)
         salvar_mensagem_pedido(mid, pedido_id, "[imagem enviada]", tipo_mensagem='enviada')
         logger.debug(f"[{tag}] 🖼 Imagem enviada.")
 
     elif tipo == 'enviar_arquivo':
         _exige_campo(acao, 'url', tag)
-        mid = enviar_documento(
+        mid = _executar_com_retry(lambda: enviar_documento(
             pedido,
             url_documento=acao['url'],
             caption=acao.get('caption') or '',
             filename=acao.get('nome_arquivo') or 'arquivo',
-        )
+        ), tag)
         salvar_mensagem_pedido(mid, pedido_id, f"[arquivo] {acao.get('nome_arquivo')}", tipo_mensagem='enviada')
         logger.debug(f"[{tag}] 📄 Arquivo enviado: {acao.get('nome_arquivo')}")
 
     elif tipo == 'enviar_mensagem':
         _exige_campo(acao, 'mensagem', tag)
-        mid = enviar_mensagem(pedido, acao['mensagem'])
+        mid = _executar_com_retry(lambda: enviar_mensagem(pedido, acao['mensagem']), tag)
         salvar_mensagem_pedido(mid, pedido_id, acao['mensagem'], tipo_mensagem='enviada')
         logger.debug(f"[{tag}] 💬 Mensagem enviada: {str(acao['mensagem'])[:60]}...")
 
@@ -106,14 +119,14 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
             acao.get('param1') or '',
             f"#{pedido_id:04d}",
         ]
-        mid = enviar_produto_whatsapp(
+        mid = _executar_com_retry(lambda: enviar_produto_whatsapp(
             pedido,
             template_name=acao['mensagem'],
             language=acao.get('caption') or 'pt_BR',
             doc_url=acao['url'],
             doc_filename=acao['nome_arquivo'],
             body_params=body_params,
-        )
+        ), tag)
         salvar_mensagem_pedido(mid, pedido_id, f"[template] {acao['mensagem']}", tipo_mensagem='enviada')
         logger.debug(f"[{tag}] 📦 Template '{acao['mensagem']}' enviado para {pedido.get('contact_phone')}")
 

@@ -73,7 +73,10 @@ def enviar_audio(pedido: Pedido, url_audio: str):
         logger.info(f"[AUDIO-ENVIAR] Mensagem enviada com sucesso! ID da mensagem: {id_message}")
         return id_message
 
-    raise ValueError(f"[AUDIO-ENVIAR] ❌ Erro ao enviar audio: status={response.status_code} body={response.text}")
+    msg = f"[AUDIO-ENVIAR] ❌ Erro ao enviar audio: status={response.status_code} body={response.text}"
+    if response.status_code >= 500:
+        raise ErroTransienteWhatsApp(msg)
+    raise ValueError(msg)
 
 def enviar_mensagem(pedido: Pedido, mensagem: str):
     if pedido is None:
@@ -112,13 +115,13 @@ def enviar_mensagem(pedido: Pedido, mensagem: str):
         logger.info(f"[MENSAGEM-ENVIAR] Mensagem enviada com sucesso! ID da mensagem: {id_message}")
         return id_message
 
+    msg = f"[MENSAGEM-ENVIAR] ❌ Erro ao enviar mensagem: status={response.status_code} body={response.text}"
+    if response.status_code >= 500:
+        raise ErroTransienteWhatsApp(msg)
     try:
-        body = response.json()
-        is_transient = body.get('error', {}).get('is_transient', False)
+        is_transient = response.json().get('error', {}).get('is_transient', False)
     except Exception:
         is_transient = False
-
-    msg = f"[MENSAGEM-ENVIAR] ❌ Erro ao enviar mensagem: status={response.status_code} body={response.text}"
     if is_transient:
         raise ErroTransienteWhatsApp(msg)
     raise ValueError(msg)
@@ -197,7 +200,10 @@ def enviar_documento(pedido: Pedido, url_documento: str, caption: str, filename:
         logger.info(f"[DOCUMENTO-ENVIAR] Mensagem enviada com sucesso! ID da mensagem: {id_message}")
         return id_message
 
-    raise ValueError(f"[DOCUMENTO-ENVIAR] ❌ Erro ao enviar documento: status={response.status_code} body={response.text}")
+    msg = f"[DOCUMENTO-ENVIAR] ❌ Erro ao enviar documento: status={response.status_code} body={response.text}"
+    if response.status_code >= 500:
+        raise ErroTransienteWhatsApp(msg)
+    raise ValueError(msg)
 
 def enviar_imagem(pedido: Pedido, url_imagem: str):
     if pedido is None:
@@ -235,7 +241,10 @@ def enviar_imagem(pedido: Pedido, url_imagem: str):
         logger.info(f"[IMAGEM-ENVIAR] Mensagem enviada com sucesso! ID da mensagem: {id_message}")
         return id_message
 
-    raise ValueError(f"[IMAGEM-ENVIAR] ❌ Erro ao enviar imagem: status={response.status_code} body={response.text}")
+    msg = f"[IMAGEM-ENVIAR] ❌ Erro ao enviar imagem: status={response.status_code} body={response.text}"
+    if response.status_code >= 500:
+        raise ErroTransienteWhatsApp(msg)
+    raise ValueError(msg)
 
 
 def enviar_produto_whatsapp(pedido: dict, template_name: str, language: str,
@@ -294,7 +303,10 @@ def enviar_produto_whatsapp(pedido: dict, template_name: str, language: str,
         logger.info(f"[TEMPLATE-ENVIAR] Template enviado com sucesso! ID: {id_message}")
         return id_message
 
-    raise ValueError(f"[TEMPLATE-ENVIAR] ❌ Erro ao enviar template: status={response.status_code} body={response.text}")
+    msg = f"[TEMPLATE-ENVIAR] ❌ Erro ao enviar template: status={response.status_code} body={response.text}"
+    if response.status_code >= 500:
+        raise ErroTransienteWhatsApp(msg)
+    raise ValueError(msg)
 
 
 def notificar_admin_pedido(pedido: dict, mensagem: str):
