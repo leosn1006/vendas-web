@@ -5,7 +5,7 @@ from datetime import datetime
 from database import (get_ultimo_pedido_by_phone, get_ultimo_pedido_por_mensagem_sugerida,
                       vincula_pedido_com_contato, Pedido, criar_pedido, get_pedido,
                       get_produto_by_phone_number_id,
-                      buscar_ultima_mensagem_recebida_por_telefone,
+                      buscar_ultima_mensagem_recebida_por_pedido,
                       contar_comprovantes_recebidos_recentes,
                       tem_notificacao_em_analise)
 from whatsapp_upload import receber_audio
@@ -76,21 +76,22 @@ def recebe_webhook(mensagem_whatsapp):
         _numero = dados['numero_remetente']
         _tipo = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type']
         _produto_id = pedido.get('produto_id') or dados.get('produto')
+        _pedido_id = pedido.get('id')
 
         try:
             if _tipo == 'text' and dados.get('texto'):
-                ultima = buscar_ultima_mensagem_recebida_por_telefone(_numero, minutos=10)
+                ultima = buscar_ultima_mensagem_recebida_por_pedido(_pedido_id, minutos=10)
                 if ultima and dados['texto'].strip() == ultima.strip():
                     logger.warning(f"[ORQUESTRADOR-WEBHOOK] ⚠️ Loop texto — {_numero}: '{dados['texto'][:60]}'")
-                    criar_notificacao_admin(pedido.get('id'), _produto_id, 'loop_autoresponder',
+                    criar_notificacao_admin(_pedido_id, _produto_id, 'loop_autoresponder',
                                             f"Loop de texto: '{dados['texto'][:200]}'")
                     return "loop detectado"
 
             elif _tipo in ('image', 'document'):
-                total = contar_comprovantes_recebidos_recentes(_numero, minutos=5)
+                total = contar_comprovantes_recebidos_recentes(_pedido_id, minutos=5)
                 if total >= 3:
                     logger.warning(f"[ORQUESTRADOR-WEBHOOK] ⚠️ Loop imagem — {_numero}: {total} comprovantes/5min")
-                    criar_notificacao_admin(pedido.get('id'), _produto_id, 'loop_autoresponder',
+                    criar_notificacao_admin(_pedido_id, _produto_id, 'loop_autoresponder',
                                             f"Loop de imagem: {total} comprovantes em 5min")
                     return "loop detectado"
 

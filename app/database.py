@@ -364,34 +364,32 @@ def atualizar_estado_pedido(pedido_id, novo_estado_id):
     return pedido_id
 
 
-def buscar_ultima_mensagem_recebida_por_telefone(contact_phone: str, minutos: int = 10):
-    """Retorna o texto da última mensagem recebida desse telefone nos últimos N minutos."""
+def buscar_ultima_mensagem_recebida_por_pedido(pedido_id: int, minutos: int = 10):
+    """Retorna o texto da última mensagem recebida neste pedido nos últimos N minutos."""
     query = """
-        SELECT mp.mensagem_json
-        FROM mensagens_pedidos mp
-        JOIN pedidos p ON mp.pedido_id = p.id
-        WHERE p.contact_phone = %s
-          AND mp.tipo_mensagem = 'recebida'
-          AND mp.data_mensagem >= NOW() - INTERVAL %s MINUTE
-        ORDER BY mp.data_mensagem DESC
+        SELECT mensagem_json
+        FROM mensagens_pedidos
+        WHERE pedido_id = %s
+          AND tipo_mensagem = 'recebida'
+          AND data_mensagem >= NOW() - INTERVAL %s MINUTE
+        ORDER BY data_mensagem DESC
         LIMIT 1
     """
-    row = db.execute_query(query, (contact_phone, minutos), fetch_one=True)
+    row = db.execute_query(query, (pedido_id, minutos), fetch_one=True)
     return row['mensagem_json'] if row else None
 
 
-def contar_comprovantes_recebidos_recentes(contact_phone: str, minutos: int = 5) -> int:
-    """Conta comprovantes (imagens/docs) recebidos desse telefone nos últimos N minutos."""
+def contar_comprovantes_recebidos_recentes(pedido_id: int, minutos: int = 5) -> int:
+    """Conta comprovantes (imagens/docs) recebidos neste pedido nos últimos N minutos."""
     query = """
         SELECT COUNT(*) AS total
-        FROM mensagens_pedidos mp
-        JOIN pedidos p ON mp.pedido_id = p.id
-        WHERE p.contact_phone = %s
-          AND mp.tipo_mensagem = 'recebida'
-          AND mp.mensagem_json LIKE 'Comprovante recebido:%'
-          AND mp.data_mensagem >= NOW() - INTERVAL %s MINUTE
+        FROM mensagens_pedidos
+        WHERE pedido_id = %s
+          AND tipo_mensagem = 'recebida'
+          AND mensagem_json LIKE 'Comprovante recebido:%'
+          AND data_mensagem >= NOW() - INTERVAL %s MINUTE
     """
-    row = db.execute_query(query, (contact_phone, minutos), fetch_one=True)
+    row = db.execute_query(query, (pedido_id, minutos), fetch_one=True)
     return row['total'] if row else 0
 
 

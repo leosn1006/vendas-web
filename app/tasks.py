@@ -1,13 +1,32 @@
 # worker para tratar as mensagens da fila Redis
 import logging
+import os
+import redis as redis_lib
 from celery import shared_task
 from whatsapp import notificar_admin_erro_sistema
 
 logger = logging.getLogger(__name__)
 
+_redis = redis_lib.from_url(os.getenv("REDIS_URL", "redis://redis:6379/0"), decode_responses=True)
+
 #TODO rever max_retries e countdown, para não ficar tentando para sempre em caso de erro persistente, e para não demorar muito para tentar novamente em caso de erro temporário
 @shared_task(name="tasks.processar_webhook", bind=True, max_retries=0)
 def processar_webhook(self, body):
+    # Deduplicação: WhatsApp pode entregar o mesmo webhook mais de uma vez (at-least-once delivery)
+    redis_key = None
+    try:
+        msg_id = body['entry'][0]['changes'][0]['value']['messages'][0]['id']
+        redis_key = f"wha:msg:{msg_id}"
+        if not _redis.set(redis_key, 1, nx=True, ex=300):
+            logger.info(f"[TASK-WEBHOOK] ℹ️ Webhook duplicado ignorado: {msg_id}")
+            return
+    except (KeyError, IndexError):
+        pass  # sem message_id (status updates, notificações) → processa normalmente
+    except Exception as redis_err:
+        # Redis fora do ar não deve matar a task; processa sem garantia de dedup
+        logger.warning(f"[TASK-WEBHOOK] ⚠️ Redis indisponível para dedup, processando sem garantia: {redis_err}")
+        redis_key = None
+
     logger.info("=" * 120)
     logger.info(f"[TASK-WEBHOOK] 📦 Dados recebidos para processamento da mensagem webhook:  {body}")
     from whatsapp_orquestrador import recebe_webhook
@@ -18,6 +37,12 @@ def processar_webhook(self, body):
         logger.info("[TASK-WEBHOOK] ✅ Mensagem processada com sucesso!")
         logger.info("=" * 120)
     except Exception as exc:
+        # Libera a chave para permitir retry em caso de crash (acks_late=True)
+        if redis_key:
+            try:
+                _redis.delete(redis_key)
+            except Exception:
+                pass
         telefone = body.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('contacts', [{}])[0].get('wa_id', '?')
         logger.exception(f"[TASK-WEBHOOK] ❌ tel: {telefone} | body: {str(body)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
         notificar_admin_erro_sistema(f"TASK-WEBHOOK | tel: {telefone} | {type(exc).__name__}")
