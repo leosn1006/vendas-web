@@ -4,9 +4,12 @@ from celery_app import celery_app
 from datetime import datetime
 from database import (get_ultimo_pedido_by_phone, get_ultimo_pedido_por_mensagem_sugerida,
                       vincula_pedido_com_contato, Pedido, criar_pedido, get_pedido,
-                      get_produto_by_phone_number_id)
+                      get_produto_by_phone_number_id,
+                      buscar_ultima_mensagem_recebida_por_telefone,
+                      contar_comprovantes_recebidos_recentes,
+                      tem_notificacao_em_analise)
 from whatsapp_upload import receber_audio
-from whatsapp import notificar_admin_erro_sistema
+from whatsapp import notificar_admin_erro_sistema, criar_notificacao_admin
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +68,34 @@ def recebe_webhook(mensagem_whatsapp):
             return "Mensagem recebida, mas não processada"
 
         pedido = buscar_pedido(dados)
+
+        if tem_notificacao_em_analise(pedido.get('id')):
+            logger.info(f"[ORQUESTRADOR-WEBHOOK] 🔕 Pedido #{pedido.get('id')} em análise — ignorando mensagem")
+            return "pedido em análise"
+
+        _numero = dados['numero_remetente']
+        _tipo = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type']
+        _produto_id = pedido.get('produto_id') or dados.get('produto')
+
+        try:
+            if _tipo == 'text' and dados.get('texto'):
+                ultima = buscar_ultima_mensagem_recebida_por_telefone(_numero, minutos=10)
+                if ultima and dados['texto'].strip() == ultima.strip():
+                    logger.warning(f"[ORQUESTRADOR-WEBHOOK] ⚠️ Loop texto — {_numero}: '{dados['texto'][:60]}'")
+                    criar_notificacao_admin(pedido.get('id'), _produto_id, 'loop_autoresponder',
+                                            f"Loop de texto: '{dados['texto'][:200]}'")
+                    return "loop detectado"
+
+            elif _tipo in ('image', 'document'):
+                total = contar_comprovantes_recebidos_recentes(_numero, minutos=5)
+                if total >= 3:
+                    logger.warning(f"[ORQUESTRADOR-WEBHOOK] ⚠️ Loop imagem — {_numero}: {total} comprovantes/5min")
+                    criar_notificacao_admin(pedido.get('id'), _produto_id, 'loop_autoresponder',
+                                            f"Loop de imagem: {total} comprovantes em 5min")
+                    return "loop detectado"
+
+        except Exception as exc_loop:
+            logger.warning(f"[ORQUESTRADOR-WEBHOOK] ⚠️ Falha na detecção de loop, continuando: {exc_loop}")
 
         logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 Enfileira da fila correta: {pedido}" )
         # enfileira na fila correta de acordo com o estado do pedido.
