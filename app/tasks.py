@@ -18,7 +18,7 @@ def processar_webhook(self, body):
         msg_id = body['entry'][0]['changes'][0]['value']['messages'][0]['id']
         redis_key = f"wha:msg:{msg_id}"
         if not _redis.set(redis_key, 1, nx=True, ex=300):
-            logger.info(f"[TASK-WEBHOOK] ℹ️ Webhook duplicado ignorado: {msg_id}")
+            logger.warning(f"[TASK-WEBHOOK] ⚠️ Webhook duplicado ignorado: {msg_id}")
             return
     except (KeyError, IndexError):
         pass  # sem message_id (status updates, notificações) → processa normalmente
