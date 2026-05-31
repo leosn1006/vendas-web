@@ -393,6 +393,13 @@ def contar_comprovantes_recebidos_recentes(pedido_id: int, minutos: int = 5) -> 
     return row['total'] if row else 0
 
 
+def contar_total_mensagens_pedido(pedido_id: int) -> int:
+    """Retorna o sequencial máximo de mensagens do pedido (equivale ao total acumulado)."""
+    query = "SELECT COALESCE(MAX(sequencial_mensagem), 0) AS total FROM mensagens_pedidos WHERE pedido_id = %s"
+    row = db.execute_query(query, (pedido_id,), fetch_one=True)
+    return row['total'] if row else 0
+
+
 def salvar_mensagem_pedido(mensagem_id, pedido_id, mensagem_json, tipo_mensagem='recebida'):
     """
     Salva uma mensagem relacionada a um pedido.
