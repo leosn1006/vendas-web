@@ -21,7 +21,8 @@ from database import (db,
     listar_chaves_pix_produto, adicionar_chave_pix_produto, desativar_chave_pix_produto,
     busca_financeiro_pix,
     listar_planilhas_dns_produto, adicionar_planilha_dns, atualizar_planilha_dns, remover_planilha_dns,
-    listar_notificacoes_em_analise, marcar_notificacao_respondida)
+    listar_notificacoes_em_analise, marcar_notificacao_respondida, bloquear_pedido,
+    buscar_notificacao_em_analise_pedido)
 
 _FLUXOS = ['introducao', 'pedido', 'comprovante', 'responder', 'followup', 'confirmacao_web', 'followup_interesse_1', 'followup_interesse_2']
 _FLUXOS_READONLY = {'responder'}
@@ -805,8 +806,22 @@ def conversa_pedido(produto_id, pedido_id):
         return redirect(url_for('admin.conversas_produto', produto_id=produto_id))
 
     mensagens = buscar_todas_mensagens_pedido(pedido_id)
+    notificacao_ativa = buscar_notificacao_em_analise_pedido(pedido_id)
     return render_template('admin/produto_conversas.html',
-                           produto=produto, pedido=pedido, mensagens=mensagens)
+                           produto=produto, pedido=pedido, mensagens=mensagens,
+                           notificacao_ativa=notificacao_ativa)
+
+
+@admin_bp.route('/produto/<int:produto_id>/conversas/<int:pedido_id>/bloquear', methods=['POST'])
+@requer_acesso_produto
+def bloquear_conversa(produto_id, pedido_id):
+    pedido = get_pedido(pedido_id)
+    if not pedido or pedido.get('produto_id') != produto_id:
+        flash('Pedido não encontrado.', 'danger')
+        return redirect(url_for('admin.conversas_produto', produto_id=produto_id))
+    bloquear_pedido(pedido_id)
+    flash('Pedido bloqueado. O agente não responderá mais a este contato.', 'success')
+    return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
 
 
 @admin_bp.route('/produto/<int:produto_id>/conversas/<int:pedido_id>/enviar', methods=['POST'])

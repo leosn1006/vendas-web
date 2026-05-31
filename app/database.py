@@ -1349,3 +1349,21 @@ def marcar_notificacao_respondida(notificacao_id: int, produto_id: int) -> None:
         "UPDATE notificacoes_pedido SET estado = 'respondido' WHERE id = %s AND produto_id = %s",
         (notificacao_id, produto_id),
     )
+
+
+def buscar_notificacao_em_analise_pedido(pedido_id: int):
+    """Retorna a notificação em_analise ativa do pedido, ou None."""
+    return db.execute_query(
+        "SELECT id FROM notificacoes_pedido WHERE pedido_id = %s AND estado = 'em_analise' LIMIT 1",
+        (pedido_id,), fetch_one=True
+    )
+
+
+def bloquear_pedido(pedido_id: int) -> None:
+    """Marca pedido como bloqueado e resolve qualquer notificação em_analise ativa (atômico)."""
+    with db.get_cursor() as cursor:
+        cursor.execute("UPDATE pedidos SET bloqueado = 1 WHERE id = %s", (pedido_id,))
+        cursor.execute(
+            "UPDATE notificacoes_pedido SET estado = 'respondido' WHERE pedido_id = %s AND estado = 'em_analise'",
+            (pedido_id,),
+        )

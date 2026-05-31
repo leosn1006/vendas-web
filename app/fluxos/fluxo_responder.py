@@ -1,7 +1,9 @@
 import logging
 import random
-from whatsapp import marcar_como_lida, enviar_mensagem, enviar_mensagem_digitando
-from database import salvar_mensagem_pedido, buscar_historico_conversa, get_produto_by_id, tem_notificacao_em_analise
+from whatsapp import marcar_como_lida, enviar_mensagem, enviar_mensagem_digitando, criar_notificacao_admin
+from database import (salvar_mensagem_pedido, buscar_historico_conversa, get_produto_by_id,
+                      tem_notificacao_em_analise, contar_total_mensagens_pedido,
+                      buscar_ultima_mensagem_recebida_por_pedido)
 from agente_resposta_produto import responder_cliente_com_historico_produto
 from celery_app import celery_app
 
@@ -45,6 +47,25 @@ def executar(pedido, mensagem_whatsapp):
             salvar_mensagem_pedido(message_id, pedido_id, mensagem_cliente, tipo_mensagem='recebida')
             logger.info(f"[FLUXO-RESPONDER-MENSAGEM] 🔕 Pedido #{pedido_id} em análise pelo admin. Mensagem salva, IA silenciada.")
             return
+        # ============================================================================================
+        # limite de mensagens por pedido
+        total_msgs = contar_total_mensagens_pedido(pedido_id)
+        if total_msgs >= 40:
+            salvar_mensagem_pedido(message_id, pedido_id, mensagem_cliente, tipo_mensagem='recebida')
+            criar_notificacao_admin(pedido_id, pedido.get('produto_id'), 'loop_excesso_msg',
+                                    f"Pedido com {total_msgs} mensagens — limite atingido")
+            logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] 🛑 Pedido #{pedido_id} com {total_msgs} msgs — silenciando")
+            return
+        # ============================================================================================
+        # texto repetido (autoresponder)
+        if len(mensagem_cliente) > 10:
+            ultima = buscar_ultima_mensagem_recebida_por_pedido(pedido_id, minutos=10)
+            if ultima and mensagem_cliente.strip() == ultima.strip():
+                salvar_mensagem_pedido(message_id, pedido_id, mensagem_cliente, tipo_mensagem='recebida')
+                criar_notificacao_admin(pedido_id, pedido.get('produto_id'), 'loop_repetidas_msg',
+                                        f"Loop de texto: '{mensagem_cliente[:200]}'")
+                logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] ⚠️ Loop texto — pedido #{pedido_id}")
+                return
         # ============================================================================================
         # carrega e valida config do produto — só necessário a partir daqui, quando a IA vai responder
         produto = get_produto_by_id(pedido.get('produto_id'))

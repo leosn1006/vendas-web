@@ -191,8 +191,31 @@
 <!-- Chat -->
 <div class="card">
     <div class="chat-toolbar">
+        <button onclick="history.back()" class="btn btn-ghost btn-sm">← Voltar</button>
         <a href="{{ url_for('admin.conversa_pedido', produto_id=produto.id, pedido_id=pedido.id) }}"
            class="btn btn-ghost btn-sm">↻ Recarregar</a>
+        {% if notificacao_ativa %}
+        <form method="POST"
+              action="{{ url_for('admin.responder_notificacao', produto_id=produto.id, notificacao_id=notificacao_ativa.id) }}"
+              style="display:inline">
+            <button type="submit" class="btn btn-sm btn-primary"
+                    onclick="return confirm('Marcar como respondido?')">
+                ✓ Respondido
+            </button>
+        </form>
+        {% endif %}
+        {% if not pedido.bloqueado %}
+        <form method="POST"
+              action="{{ url_for('admin.bloquear_conversa', produto_id=produto.id, pedido_id=pedido.id) }}"
+              style="display:inline">
+            <button type="submit" class="btn btn-sm btn-danger"
+                    onclick="return confirm('Bloquear este pedido? O agente não responderá mais.')">
+                🚫 Bloquear
+            </button>
+        </form>
+        {% else %}
+        <span class="btn btn-sm" style="opacity:.5;cursor:default">🚫 Bloqueado</span>
+        {% endif %}
     </div>
 
     <div class="chat-container">

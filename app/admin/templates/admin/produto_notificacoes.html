@@ -115,6 +115,14 @@
                                 ✓ Respondido
                             </button>
                         </form>
+                        <form method="POST"
+                              action="{{ url_for('admin.bloquear_conversa', produto_id=produto.id, pedido_id=n.pedido_id) }}"
+                              style="display:inline">
+                            <button type="submit" class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Bloquear este pedido?')">
+                                🚫 Bloquear
+                            </button>
+                        </form>
                     </div>
                 </td>
             </tr>

@@ -5,10 +5,7 @@ from datetime import datetime
 from database import (get_ultimo_pedido_by_phone, get_ultimo_pedido_por_mensagem_sugerida,
                       vincula_pedido_com_contato, Pedido, criar_pedido, get_pedido,
                       get_produto_by_phone_number_id,
-                      buscar_ultima_mensagem_recebida_por_pedido,
-                      contar_comprovantes_recebidos_recentes,
-                      contar_total_mensagens_pedido,
-                      tem_notificacao_em_analise)
+                      contar_comprovantes_recebidos_recentes)
 from whatsapp_upload import receber_audio
 from whatsapp import notificar_admin_erro_sistema, criar_notificacao_admin
 
@@ -70,25 +67,16 @@ def recebe_webhook(mensagem_whatsapp):
 
         pedido = buscar_pedido(dados)
 
-        if tem_notificacao_em_analise(pedido.get('id')):
-            logger.info(f"[ORQUESTRADOR-WEBHOOK] 🔕 Pedido #{pedido.get('id')} em análise — ignorando mensagem")
-            return "pedido em análise"
+        if pedido.get('bloqueado'):
+            logger.info(f"[ORQUESTRADOR-WEBHOOK] 🚫 Pedido #{pedido.get('id')} bloqueado — ignorando mensagem")
+            return "pedido bloqueado"
 
         _tipo = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type']
         _produto_id = pedido.get('produto_id') or dados.get('produto')
         _pedido_id = pedido.get('id')
 
         try:
-            if _tipo == 'text' and dados.get('texto'):
-                texto = dados['texto'].strip()
-                ultima = buscar_ultima_mensagem_recebida_por_pedido(_pedido_id, minutos=10)
-                if len(texto) > 10 and ultima and texto == ultima.strip():
-                    logger.warning(f"[ORQUESTRADOR-WEBHOOK] ⚠️ Loop texto — pedido #{_pedido_id}: '{texto[:60]}'")
-                    criar_notificacao_admin(_pedido_id, _produto_id, 'loop_repetidas_msg',
-                                            f"Loop de texto: '{texto[:200]}'")
-                    return "loop detectado"
-
-            elif _tipo in ('image', 'document'):
+            if _tipo in ('image', 'document'):
                 total = contar_comprovantes_recebidos_recentes(_pedido_id, minutos=5)
                 if total >= 3:
                     logger.warning(f"[ORQUESTRADOR-WEBHOOK] ⚠️ Loop imagem — pedido #{_pedido_id}: {total} comprovantes/5min")
@@ -138,12 +126,6 @@ def recebe_webhook(mensagem_whatsapp):
             case _:
                 tipo_msg = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type']
                 if tipo_msg == 'text':
-                    total_msgs = contar_total_mensagens_pedido(_pedido_id)
-                    if total_msgs >= 40:
-                        logger.warning(f"[ORQUESTRADOR-WEBHOOK] 🛑 Pedido #{_pedido_id} atingiu limite de {total_msgs} mensagens — ignorando resposta")
-                        criar_notificacao_admin(_pedido_id, _produto_id, 'loop_excesso_msg',
-                                                f"Pedido com {total_msgs} mensagens — limite de 40 atingido")
-                        return "limite de mensagens atingido"
                     logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de responder cliente")
                     celery_app.send_task("tasks.responder_mensagem", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
                 elif tipo_msg in ('document', 'image'):
