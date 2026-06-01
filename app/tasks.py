@@ -104,6 +104,10 @@ def fluxo_enviar_introducao_dinamico(self, pedido, mensagem_whatsapp=None, ordem
         logger.info("=" * 120)
 
     except Exception as exc:
+        if self.request.retries >= self.max_retries:
+            from database import atualizar_estado_pedido
+            atualizar_estado_pedido(pedido_id, 1)
+            logger.warning(f"[{_TAG}] 🔓 Estado revertido → 1 para pedido #{pedido_id} após erro")
         msg_txt = '(sem texto)'
         if mensagem_whatsapp:
             msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
@@ -180,6 +184,10 @@ def fluxo_enviar_pedido_dinamico(self, pedido, mensagem_whatsapp=None, ordem=1, 
         logger.info("=" * 120)
 
     except Exception as exc:
+        if self.request.retries >= self.max_retries:
+            from database import atualizar_estado_pedido
+            atualizar_estado_pedido(pedido_id, 2)
+            logger.warning(f"[{_TAG}] 🔓 Estado revertido → 2 para pedido #{pedido_id} após erro")
         msg_txt = '(sem texto)'
         if mensagem_whatsapp:
             msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
@@ -231,6 +239,10 @@ def fluxo_conferir_comprovante_dinamico(self, pedido, mensagem_whatsapp):
         logger.info(f"[TASK-COMPROVANTE-DIN] ✅ Mensagem processada com sucesso!")
         logger.info("=" * 120)
     except Exception as exc:
+        if self.request.retries >= self.max_retries:
+            from database import atualizar_estado_pedido
+            atualizar_estado_pedido(pedido.get('id'), 3)
+            logger.warning(f"[TASK-COMPROVANTE-DIN] 🔓 Estado revertido → 3 para pedido #{pedido.get('id')} após erro")
         msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
         logger.exception(f"[TASK-COMPROVANTE-DIN] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
         notificar_admin_erro_sistema(f"TASK-COMPROVANTE-DIN | pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")

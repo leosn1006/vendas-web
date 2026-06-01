@@ -5,7 +5,8 @@ from datetime import datetime
 from database import (get_ultimo_pedido_by_phone, get_ultimo_pedido_por_mensagem_sugerida,
                       vincula_pedido_com_contato, Pedido, criar_pedido, get_pedido,
                       get_produto_by_phone_number_id,
-                      contar_comprovantes_recebidos_recentes)
+                      contar_comprovantes_recebidos_recentes,
+                      tentar_travar_fluxo, salvar_mensagem_recebida_simples)
 from whatsapp_upload import receber_audio
 from whatsapp import notificar_admin_erro_sistema, criar_notificacao_admin
 
@@ -92,6 +93,9 @@ def recebe_webhook(mensagem_whatsapp):
         tempo_espera = random.uniform(15, 25)
         # se for um audio, manda direto para o fluxo de transcrever, independente do estado do pedido, para evitar erros de transcrição de outros tipos de mídia e lá será redirecionado para o fluxo correto
         if mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type'] == 'audio':
+            if pedido.get('estado_id') in (11, 12, 13):
+                logger.warning(f"[ORQUESTRADOR-WEBHOOK] 🔒 Estado {pedido.get('estado_id')} (fluxo em andamento) — áudio ignorado pedido #{_pedido_id}")
+                return "fluxo em andamento, áudio ignorado"
             if pedido.get('estado_id') == 1000:
                 logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 áudio de cliente web (estado 1000) → responder_mensagem")
                 celery_app.send_task("tasks.responder_mensagem", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
@@ -115,22 +119,48 @@ def recebe_webhook(mensagem_whatsapp):
             case 1: # Cliente acessou a página de vendas e clicou para enviar mensagem ou veio direto pelo whatsapp sem passar pela página de vendas, ou seja, estado inicial do pedido'
                 # esse fluxo deve ser respondido mais rapidamente para não perder o cliente, então o tempo de espera é menor
                 tempo_espera = random.uniform(5, 15)
-                logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de introdução dinâmico")
-                celery_app.send_task("tasks.enviar_introducao_dinamico", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                if tentar_travar_fluxo(_pedido_id, estado_atual=1, estado_travado=11):
+                    logger.info(f"[ORQUESTRADOR-WEBHOOK] 🔒 Lock 1→11 adquirido pedido #{_pedido_id}, mandando para introdução")
+                    celery_app.send_task("tasks.enviar_introducao_dinamico", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                else:
+                    logger.warning(f"[ORQUESTRADOR-WEBHOOK] 🔒 Introdução já em andamento pedido #{_pedido_id}, mensagem silenciada")
+                    salvar_mensagem_recebida_simples(_pedido_id, mensagem_whatsapp)
+            case 11: # introdução em andamento — silenciar tudo (áudio já tratado acima)
+                logger.warning(f"[ORQUESTRADOR-WEBHOOK] 🔒 Estado 11 pedido #{_pedido_id}, mensagem silenciada")
+                salvar_mensagem_recebida_simples(_pedido_id, mensagem_whatsapp)
             case 2: # cliente respondendo a introdução, se quer ou não receber o produto
-                logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de pedido dinâmico")
-                celery_app.send_task("tasks.enviar_pedido_dinamico", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                if tentar_travar_fluxo(_pedido_id, estado_atual=2, estado_travado=12):
+                    logger.info(f"[ORQUESTRADOR-WEBHOOK] 🔒 Lock 2→12 adquirido pedido #{_pedido_id}, mandando para pedido")
+                    celery_app.send_task("tasks.enviar_pedido_dinamico", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                else:
+                    logger.warning(f"[ORQUESTRADOR-WEBHOOK] 🔒 Pedido já em andamento pedido #{_pedido_id}, mensagem silenciada")
+                    salvar_mensagem_recebida_simples(_pedido_id, mensagem_whatsapp)
+            case 12: # pedido em andamento — silenciar tudo (áudio já tratado acima)
+                logger.warning(f"[ORQUESTRADOR-WEBHOOK] 🔒 Estado 12 pedido #{_pedido_id}, mensagem silenciada")
+                salvar_mensagem_recebida_simples(_pedido_id, mensagem_whatsapp)
             case 1000: # cliente pagou via web (e-book entregue por email)
                 logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 cliente web (estado 1000) → responder_mensagem")
                 celery_app.send_task("tasks.responder_mensagem", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
             case _:
                 tipo_msg = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type']
-                if tipo_msg == 'text':
+                estado_atual = pedido.get('estado_id')
+                if estado_atual == 13: # comprovante em análise
+                    if tipo_msg == 'text':
+                        logger.info(f"[ORQUESTRADOR-WEBHOOK] 🔒 Estado 13 pedido #{_pedido_id}, texto → responder_mensagem")
+                        celery_app.send_task("tasks.responder_mensagem", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                    else:
+                        logger.warning(f"[ORQUESTRADOR-WEBHOOK] 🔒 Estado 13 pedido #{_pedido_id}, comprovante duplicado silenciado")
+                        salvar_mensagem_recebida_simples(_pedido_id, mensagem_whatsapp)
+                elif tipo_msg == 'text':
                     logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de responder cliente")
                     celery_app.send_task("tasks.responder_mensagem", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
                 elif tipo_msg in ('document', 'image'):
-                    logger.info(f"[ORQUESTRADOR-WEBHOOK] 📥 mandando para o fluxo de conferir comprovante dinâmico")
-                    celery_app.send_task("tasks.conferir_comprovante_dinamico", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                    if tentar_travar_fluxo(_pedido_id, estado_atual=estado_atual, estado_travado=13):
+                        logger.info(f"[ORQUESTRADOR-WEBHOOK] 🔒 Lock {estado_atual}→13 adquirido pedido #{_pedido_id}, mandando para conferir comprovante")
+                        celery_app.send_task("tasks.conferir_comprovante_dinamico", args=[pedido, mensagem_whatsapp], countdown=tempo_espera)
+                    else:
+                        logger.warning(f"[ORQUESTRADOR-WEBHOOK] 🔒 Comprovante já em análise pedido #{_pedido_id}, imagem silenciada")
+                        salvar_mensagem_recebida_simples(_pedido_id, mensagem_whatsapp)
 
         return "Mensagem processada com sucesso!"
 

@@ -364,6 +364,25 @@ def atualizar_estado_pedido(pedido_id, novo_estado_id):
     return pedido_id
 
 
+def tentar_travar_fluxo(pedido_id, estado_atual, estado_travado):
+    """Atomicamente move pedido de estado_atual → estado_travado.
+    Retorna True se adquiriu o lock, False se já estava travado (0 rows afetadas)."""
+    with db.get_cursor() as cursor:
+        cursor.execute(
+            "UPDATE pedidos SET estado_id = %s WHERE id = %s AND estado_id = %s",
+            (estado_travado, pedido_id, estado_atual),
+        )
+        return cursor.rowcount > 0
+
+
+def salvar_mensagem_recebida_simples(pedido_id, mensagem_whatsapp):
+    """Extrai message_id e texto da payload WhatsApp e salva como mensagem recebida."""
+    dados_msg = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]
+    message_id = dados_msg['id']
+    mensagem_txt = dados_msg.get('text', {}).get('body', '') or ''
+    salvar_mensagem_pedido(message_id, pedido_id, mensagem_txt, tipo_mensagem='recebida')
+
+
 def buscar_ultima_mensagem_recebida_por_pedido(pedido_id: int, minutos: int = 10):
     """Retorna o texto da última mensagem recebida neste pedido nos últimos N minutos."""
     query = """
