@@ -107,10 +107,10 @@ def executar(pedido, mensagem_whatsapp):
             comprovante_valido = True
             valor_pago         = preco_produto
         elif ja_pago:
-            logger.info(f"[{_TAG}] ⚠️ pedido #{pedido_id} — já possui pagamento registrado, IA ignorada")
-            resultado          = {}
-            comprovante_valido = True
-            valor_pago         = _to_float(pedido.get('valor_pago'), 0.0)
+            # Pedido já confirmado: comprovante salvo acima para auditoria, mas não
+            # reexecutamos o fluxo para evitar reenviar arquivo e mensagens de confirmação.
+            logger.info(f"[{_TAG}] ⚠️ pedido #{pedido_id} — já possui pagamento registrado, encerrando")
+            return
         else:
             logger.debug(f"[{_TAG}] 🤖 Validando comprovante com IA...")
             resultado_json = validar_comprovante_com_ia(path_comprovante)
