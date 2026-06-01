@@ -204,6 +204,19 @@
             </button>
         </form>
         {% endif %}
+        {% set followup_livre = not pedido.data_followup or not pedido.data_followup_interesse_1 or not pedido.data_followup_interesse_2 %}
+        {% if followup_livre %}
+        <form method="POST"
+              action="{{ url_for('admin.bloquear_followup_conversa', produto_id=produto.id, pedido_id=pedido.id) }}"
+              style="display:inline">
+            <button type="submit" class="btn btn-sm"
+                    onclick="return confirm('Bloquear followup? Nenhuma cobrança automática será enviada.')">
+                ⛔ Sem followup
+            </button>
+        </form>
+        {% else %}
+        <span class="btn btn-sm" style="opacity:.5;cursor:default">⛔ Followup bloqueado</span>
+        {% endif %}
         {% if not pedido.bloqueado %}
         <form method="POST"
               action="{{ url_for('admin.bloquear_conversa', produto_id=produto.id, pedido_id=pedido.id) }}"

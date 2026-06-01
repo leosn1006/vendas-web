@@ -116,6 +116,14 @@
                             </button>
                         </form>
                         <form method="POST"
+                              action="{{ url_for('admin.bloquear_followup_conversa', produto_id=produto.id, pedido_id=n.pedido_id) }}"
+                              style="display:inline">
+                            <button type="submit" class="btn btn-sm"
+                                    onclick="return confirm('Bloquear followup? Nenhuma cobrança automática será enviada.')">
+                                ⛔ Sem followup
+                            </button>
+                        </form>
+                        <form method="POST"
                               action="{{ url_for('admin.bloquear_conversa', produto_id=produto.id, pedido_id=n.pedido_id) }}"
                               style="display:inline">
                             <button type="submit" class="btn btn-sm btn-danger"

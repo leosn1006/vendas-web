@@ -608,6 +608,19 @@ def atualizar_pedido_com_data_followup(pedido_id):
     db.execute_query(query, (pedido_id,))
     return pedido_id
 
+def bloquear_followup_pedido(pedido_id: int) -> None:
+    """Marca todas as datas de followup com o timestamp atual, impedindo que o beat scheduler
+    envie qualquer followup para este pedido (o scheduler só processa pedidos com essas colunas NULL)."""
+    db.execute_query(
+        """UPDATE pedidos
+           SET data_followup          = CURRENT_TIMESTAMP,
+               data_followup_interesse_1 = CURRENT_TIMESTAMP,
+               data_followup_interesse_2 = CURRENT_TIMESTAMP
+           WHERE id = %s""",
+        (pedido_id,),
+    )
+
+
 def atualizar_pedido_com_data_envio_pedido(pedido_id):
     """
     Atualiza um pedido com a data do envio do pedido.
