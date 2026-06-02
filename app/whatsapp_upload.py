@@ -10,8 +10,8 @@ from database import get_whatsapp_token
 logger = logging.getLogger(__name__)
 
 # Configurações de Segurança
-EXTENSOES_PERMITIDAS = {'.pdf', '.jpg', '.jpeg', '.png', '.ogg', '.opus'}  # Extensões permitidas
-MIMES_PERMITIDOS = {'application/pdf', 'image/jpeg', 'image/png', 'audio/ogg', 'audio/ogg; codecs=opus', 'audio/opus'}  # MIMEs permitidos
+EXTENSOES_PERMITIDAS = {'.pdf', '.jpg', '.jpeg', '.png', '.ogg', '.opus', '.mp3'}  # Extensões permitidas
+MIMES_PERMITIDOS = {'application/pdf', 'image/jpeg', 'image/png', 'audio/ogg', 'audio/ogg; codecs=opus', 'audio/opus', 'audio/mpeg', 'audio/mp4'}  # MIMEs permitidos
 TAMANHO_MAX_MB = 25
 
 def receber_comprovante(tipo_midia, url, mime_type, filename, pedido_id, phone_number_id=None):
