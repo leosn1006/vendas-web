@@ -1109,6 +1109,26 @@ def get_whatsapp_token(api_phone_number_id: str) -> str:
     return _whatsapp_token_cache[api_phone_number_id]
 
 
+def phone_number_id_cadastrado(api_phone_number_id: str) -> bool:
+    """Verifica se o phone_number_id está registrado em telefones_produto, sem resolver o token.
+    Em caso de falha no banco, loga o erro e retorna False (fail-safe: bloqueia a mensagem).
+    """
+    if not api_phone_number_id:
+        return False
+    try:
+        row = db.execute_query(
+            "SELECT 1 FROM telefones_produto WHERE api_phone_number_id = %s LIMIT 1",
+            (api_phone_number_id,), fetch_one=True
+        )
+        return row is not None
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(
+            f"[WHATSAPP-TOKEN] ❌ Falha ao verificar phone_number_id '{api_phone_number_id}' no banco: {e}"
+        )
+        return False
+
+
 def get_phone_number_id_produto(produto_id: int):
     """Retorna o api_phone_number_id (ID da API Meta) associado ao produto ou None."""
     row = db.execute_query(

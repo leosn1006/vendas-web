@@ -6,7 +6,8 @@ from database import (get_ultimo_pedido_by_phone, get_ultimo_pedido_por_mensagem
                       vincula_pedido_com_contato, Pedido, criar_pedido, get_pedido,
                       get_produto_by_phone_number_id,
                       contar_comprovantes_recebidos_recentes,
-                      tentar_travar_fluxo, salvar_mensagem_recebida_simples)
+                      tentar_travar_fluxo, salvar_mensagem_recebida_simples,
+                      phone_number_id_cadastrado)
 from whatsapp_upload import receber_audio
 from whatsapp import notificar_admin_erro_sistema, criar_notificacao_admin
 
@@ -65,6 +66,27 @@ def recebe_webhook(mensagem_whatsapp):
         if dados is None:
             logger.info("[ORQUESTRADOR-WEBHOOK] ⚠️ Mensagem recebida, mas não é do tipo texto ou formato inválido.")
             return "Mensagem recebida, mas não processada"
+
+        # Rejeita mensagens de chips não cadastrados no admin (produto → Números WhatsApp).
+        # Verificamos antes de criar qualquer pedido: sem token não conseguimos responder,
+        # então não faz sentido processar. Retornamos 200 para a Meta não retentar.
+        # phone_number_id_cadastrado() faz só SELECT de presença, sem resolver token —
+        # isso evita confundir "chip não cadastrado" com "env var do token ausente".
+        _phone_number_id = dados.get('phone_number_id')
+        if not _phone_number_id or not phone_number_id_cadastrado(_phone_number_id):
+            try:
+                _tipo_raw = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['type']
+            except (KeyError, IndexError):
+                _tipo_raw = 'desconhecido'
+            _conteudo_log = (
+                f"texto: '{dados.get('texto')}'" if dados.get('texto') is not None
+                else f"tipo: {_tipo_raw}"
+            )
+            logger.warning(
+                f"[ORQUESTRADOR-WEBHOOK] ⚠️ phone_number_id '{_phone_number_id}' não cadastrado em telefones_produto "
+                f"— mensagem ignorada (remetente: {dados.get('numero_remetente')}, nome: {dados.get('nome')}, {_conteudo_log})"
+            )
+            return "Mensagem processada com sucesso!"
 
         pedido = buscar_pedido(dados)
 
