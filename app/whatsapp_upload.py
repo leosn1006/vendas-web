@@ -10,7 +10,7 @@ from database import get_whatsapp_token
 logger = logging.getLogger(__name__)
 
 # Configurações de Segurança
-EXTENSOES_PERMITIDAS = {'.pdf', '.jpg', '.jpeg', '.png', '.ogg', '.opus', '.mp3'}  # Extensões permitidas
+EXTENSOES_PERMITIDAS = {'.pdf', '.jpg', '.jpeg', '.png', '.ogg', '.opus', '.mp3', '.mp4'}  # Extensões permitidas
 MIMES_PERMITIDOS = {'application/pdf', 'image/jpeg', 'image/png', 'audio/ogg', 'audio/ogg; codecs=opus', 'audio/opus', 'audio/mpeg', 'audio/mp4'}  # MIMEs permitidos
 TAMANHO_MAX_MB = 25
 
@@ -104,8 +104,11 @@ def receber_audio(tipo_midia, id_audio, mime_type, pedido_id, phone_number_id=No
     diretorio_destino.mkdir(parents=True, exist_ok=True)
 
     # 4. Nomeação Segura (Ignora o nome original do usuário para evitar ataques)
-    # WhatsApp envia áudios como .ogg (compativel com OpenAI Whisper)
-    extensao_final = ".ogg"
+    _MIME_PARA_EXTENSAO = {
+        'audio/ogg': '.ogg', 'audio/ogg; codecs=opus': '.ogg', 'audio/opus': '.ogg',
+        'audio/mpeg': '.mp3', 'audio/mp4': '.mp4',
+    }
+    extensao_final = _MIME_PARA_EXTENSAO.get(mime_original, '.ogg')
     nome_arquivo = f"pedido_{pedido_id}_{id_audio}{extensao_final}"
     caminho_final = diretorio_destino / nome_arquivo
 
