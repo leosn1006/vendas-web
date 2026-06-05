@@ -336,6 +336,20 @@ def processar_uploads_google_sheets(self):
         raise self.retry(exc=exc, countdown=600)
 
 
+@shared_task(bind=True, max_retries=1)
+def processar_orcamento_sheets(self, data_str=None):
+    try:
+        logger.info(f"[TASK-ORCAMENTO-SHEETS] 📊 Iniciando processamento de orçamento via Google Sheets{' data=' + data_str if data_str else ''}...")
+        from fluxos.fluxo_orcamento_sheets import processar_orcamento_sheets as _fn
+        resultado = _fn(data_str)
+        logger.info(f"[TASK-ORCAMENTO-SHEETS] ✅ Concluído: {resultado}")
+    except Exception as exc:
+        logger.error(f"[TASK-ORCAMENTO-SHEETS] ❌ Erro: {exc}")
+        import traceback
+        traceback.print_exc()
+        raise self.retry(exc=exc, countdown=600)
+
+
 @shared_task(bind=True, max_retries=0)
 def processar_pagamentos_pix(self):
     try:

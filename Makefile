@@ -1,10 +1,12 @@
-.PHONY: help upload-google-ads-now upload-google-sheets-now buscar-pix logs-worker logs-worker-normal logs-worker-baixa logs-files restart-worker restart-nginx atualizar-senha criar-usuario
+.PHONY: help upload-google-ads-now upload-google-sheets-now buscar-pix orcamento-sheets-now logs-worker logs-worker-normal logs-worker-baixa logs-files restart-worker restart-nginx atualizar-senha criar-usuario
 
 help:
 	@echo "Comandos disponíveis:"
 	@echo "  make upload-google-ads-now        # Dispara agora o upload de conversões Google Ads"
-	@echo "  make upload-google-sheets-now     # Dispara agora a exportação de GCLIDs para Google Sheets"
-	@echo "  make buscar-pix                   # Busca PIX de hoje e persiste no banco"
+	@echo "  make upload-google-sheets-now          # Dispara agora a exportação de GCLIDs para Google Sheets"
+	@echo "  make orcamento-sheets-now              # Processa orçamento de ontem via Google Sheets"
+	@echo "  make orcamento-sheets-now data=2026-06-01  # Reprocessa uma data específica (yyyy-mm-dd)"
+	@echo "  make buscar-pix                        # Busca PIX de hoje e persiste no banco"
 	@echo "  make buscar-pix data=31/03/2026   # Busca PIX de uma data específica (dd/mm/yyyy)"
 	@echo "  make logs-worker                  # Acompanha logs do worker-urgente"
 	@echo "  make logs-worker-normal           # Acompanha logs do worker-normal"
@@ -22,6 +24,12 @@ upload-google-ads-now:
 upload-google-sheets-now:
 	@echo "Disparando task tasks.processar_uploads_google_sheets..."
 	docker compose exec worker-baixa celery -A celery_app call tasks.processar_uploads_google_sheets
+
+orcamento-sheets-now:
+	@echo "Processando orçamento sheets de $(if $(data),$(data),ontem)..."
+	@docker compose exec worker-baixa python -c "\
+from fluxos.fluxo_orcamento_sheets import processar_orcamento_sheets; \
+processar_orcamento_sheets($(if $(data),'$(data)',None))"
 
 buscar-pix:
 	@echo "Buscando PIX de $(if $(data),$(data),hoje)..."

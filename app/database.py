@@ -832,6 +832,26 @@ def remover_planilha_dns(planilha_id):
         "DELETE FROM google_ads_planilha_dns WHERE id = %s", (planilha_id,))
 
 
+# ── orcamento_campanha (sheets) ───────────────────────────────────────────────
+
+def buscar_produto_id_por_campaignid(campaignid) -> int | None:
+    row = db.execute_query(
+        "SELECT produto_id FROM campanhas WHERE campaignid = %s LIMIT 1",
+        (campaignid,), fetch_one=True)
+    return row['produto_id'] if row else None
+
+def upsert_orcamento_campanha(produto_id, campaignid, data, valor_investido, cliques, impressoes):
+    db.execute_query(
+        """INSERT INTO orcamento_campanha
+               (produto_id, campaignid, data, valor_investido, cliques, impressoes)
+           VALUES (%s, %s, %s, %s, %s, %s)
+           ON DUPLICATE KEY UPDATE
+               valor_investido = VALUES(valor_investido),
+               cliques         = VALUES(cliques),
+               impressoes      = VALUES(impressoes)""",
+        (produto_id, campaignid, data, valor_investido, cliques, impressoes))
+
+
 # ── telefones_produto ─────────────────────────────────────────────────────────
 
 def get_produto_by_phone_number_id(phone_number_id):

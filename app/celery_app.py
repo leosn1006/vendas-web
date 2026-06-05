@@ -53,6 +53,11 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute=5, hour=0),  # 00h05 — captura PIX de 23:15–23:59 do dia anterior
         'options': {'queue': 'baixa'},
     },
+    'orcamento-sheets-diario': {
+        'task': 'tasks.processar_orcamento_sheets',
+        'schedule': crontab(minute=10, hour=0),  # 00h10 — lê métricas de ontem do Google Ads
+        'options': {'queue': 'baixa'},
+    },
 }
 
 from celery.signals import worker_process_init
@@ -102,5 +107,6 @@ celery_app.conf.update(
         "tasks.processar_pagamentos_pix":                {"queue": "baixa"},
         "tasks.processar_pagamentos_pix_fechamento":     {"queue": "baixa"},
         "tasks.verificar_pagamentos_pendentes":          {"queue": "baixa"},
+        "tasks.processar_orcamento_sheets":              {"queue": "baixa"},
     },
 )
