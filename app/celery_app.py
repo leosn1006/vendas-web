@@ -55,7 +55,7 @@ celery_app.conf.beat_schedule = {
     },
     'orcamento-sheets-diario': {
         'task': 'tasks.processar_orcamento_sheets',
-        'schedule': crontab(minute=10, hour=0),  # 00h10 — lê métricas de ontem do Google Ads
+        'schedule': crontab(minute=40, hour=0),  # 00h40 — lê métricas de ontem do Google Ads
         'options': {'queue': 'baixa'},
     },
 }
