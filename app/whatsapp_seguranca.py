@@ -35,6 +35,7 @@ class WhatsAppSecurity:
         'lclivros.com.br': 'WHATSAPP_APP_SECRET_LC',
         'lsdigitalsolucoes.com.br': 'WHATSAPP_APP_SECRET_LSDS',
         'kpnlivros.com.br': 'WHATSAPP_APP_SECRET_KPN',
+        'ju-livros.com.br': 'WHATSAPP_APP_SECRET_JU',
     }
 
     _HOST_ACCESS_TOKEN_MAP = {
@@ -45,6 +46,7 @@ class WhatsAppSecurity:
         'lclivros.com.br': 'WHATSAPP_ACCESS_TOKEN_LC',
         'lsdigitalsolucoes.com.br': 'WHATSAPP_ACCESS_TOKEN_LSDS',
         'kpnlivros.com.br': 'WHATSAPP_ACCESS_TOKEN_KPN',
+        'ju-livros.com.br': 'WHATSAPP_ACCESS_TOKEN_JU',
     }
 
     def _secret_para_payload(self) -> str:

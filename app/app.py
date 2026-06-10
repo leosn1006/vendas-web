@@ -123,6 +123,10 @@ def _is_lc_livros():
     host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
     return 'lclivros.com.br' in host
 
+def _is_ju_livros():
+    host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return 'ju-livros.com.br' in host
+
 @app.get("/")
 def index():
     produtos = busca_produtos_disponiveis_web()
@@ -136,6 +140,8 @@ def index():
         tmpl = 'portifolio-rc.html'
     elif _is_lc_livros():
         tmpl = 'portifolio-lc.html'
+    elif _is_ju_livros():
+        tmpl = 'portifolio-ju.html'
     else:
         tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
@@ -153,6 +159,8 @@ def portifolio():
         tmpl = 'portifolio-rc.html'
     elif _is_lc_livros():
         tmpl = 'portifolio-lc.html'
+    elif _is_ju_livros():
+        tmpl = 'portifolio-ju.html'
     else:
         tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
@@ -169,6 +177,8 @@ def politica_privacidade():
         tmpl = 'politica-privacidade-rc.html'
     elif _is_lc_livros():
         tmpl = 'politica-privacidade-lc.html'
+    elif _is_ju_livros():
+        tmpl = 'politica-privacidade-ju.html'
     else:
         tmpl = 'politica-privacidade.html'
     return render_template(tmpl)
@@ -185,6 +195,8 @@ def termos_de_uso():
         tmpl = 'termos-de-uso-rc.html'
     elif _is_lc_livros():
         tmpl = 'termos-de-uso-lc.html'
+    elif _is_ju_livros():
+        tmpl = 'termos-de-uso-ju.html'
     else:
         tmpl = 'termos-de-uso.html'
     return render_template(tmpl)
@@ -201,6 +213,8 @@ def contato():
         tmpl = 'contato-rc.html'
     elif _is_lc_livros():
         tmpl = 'contato-lc.html'
+    elif _is_ju_livros():
+        tmpl = 'contato-ju.html'
     else:
         tmpl = 'contato.html'
     return render_template(tmpl)
