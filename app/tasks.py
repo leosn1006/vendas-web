@@ -338,16 +338,37 @@ def processar_uploads_google_sheets(self):
 
 @shared_task(bind=True, max_retries=1)
 def processar_orcamento_sheets(self, data_str=None):
+    lock_key = "lock:orcamento_sheets"
+    if not _redis.set(lock_key, 1, nx=True, ex=3300):  # TTL 55 min — evita sobreposição entre execuções horárias
+        logger.info("[TASK-ORCAMENTO-SHEETS] ⏭ Outra instância já em execução — ignorando")
+        return
+
     try:
-        logger.info(f"[TASK-ORCAMENTO-SHEETS] 📊 Iniciando processamento de orçamento via Google Sheets{' data=' + data_str if data_str else ''}...")
+        from datetime import datetime, timezone, timedelta
+        _SP_TZ = timezone(timedelta(hours=-3))
+        agora = datetime.now(_SP_TZ)
+
+        if data_str:
+            datas = [data_str]
+        else:
+            hoje  = agora.strftime('%Y-%m-%d')
+            ontem = (agora - timedelta(days=1)).strftime('%Y-%m-%d')
+            datas = [hoje]
+            if agora.hour <= 4:  # Google Ads ainda apura o dia anterior até ~04h
+                datas.append(ontem)
+
         from fluxos.fluxo_orcamento_sheets import processar_orcamento_sheets as _fn
-        resultado = _fn(data_str)
-        logger.info(f"[TASK-ORCAMENTO-SHEETS] ✅ Concluído: {resultado}")
+        for data in datas:
+            logger.info(f"[TASK-ORCAMENTO-SHEETS] 📊 Processando data={data}...")
+            resultado = _fn(data)
+            logger.info(f"[TASK-ORCAMENTO-SHEETS] ✅ {data}: {resultado}")
     except Exception as exc:
         logger.error(f"[TASK-ORCAMENTO-SHEETS] ❌ Erro: {exc}")
         import traceback
         traceback.print_exc()
         raise self.retry(exc=exc, countdown=600)
+    finally:
+        _redis.delete(lock_key)
 
 
 @shared_task(bind=True, max_retries=0)

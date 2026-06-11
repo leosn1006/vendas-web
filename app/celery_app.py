@@ -53,9 +53,9 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute=5, hour=0),  # 00h05 — captura PIX de 23:15–23:59 do dia anterior
         'options': {'queue': 'baixa'},
     },
-    'orcamento-sheets-diario': {
+    'orcamento-sheets-horario': {
         'task': 'tasks.processar_orcamento_sheets',
-        'schedule': crontab(minute=40, hour=0),  # 00h40 — lê métricas de ontem do Google Ads
+        'schedule': crontab(minute=10),  # toda hora no :10 — hoje sempre; ontem também entre 00h–04h
         'options': {'queue': 'baixa'},
     },
 }
