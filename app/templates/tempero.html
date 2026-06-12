@@ -12,7 +12,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@400;700&display=swap"
     rel="stylesheet">
-  <link rel="preload" as="image" href="/static/images/tempero-capa.png" fetchpriority="high">
+  <link rel="preload" as="image" href="/static/images/tempero-capa.webp" fetchpriority="high" type="image/webp">
   <style>
     :root {
       --laranja: #e67e22;
@@ -61,6 +61,11 @@
       position: relative;
       height: 70vh;
       overflow: hidden
+    }
+
+    .hero picture {
+      display: block;
+      height: 100%
     }
 
     .hero img {
@@ -396,7 +401,10 @@
   <span class="badge">&#127807; Ebook de Receitas</span>
   <div class="hero" role="button" tabindex="0" onclick="irParaWhatsApp()"
     onkeydown="if(event.key==='Enter'||event.key===' ')irParaWhatsApp()">
-    <img src="/static/images/tempero-capa.png" alt="Temperos Caseiros no Pote">
+    <picture>
+      <source srcset="/static/images/tempero-capa.webp" type="image/webp">
+      <img src="/static/images/tempero-capa.png" alt="Temperos Caseiros no Pote" fetchpriority="high">
+    </picture>
   </div>
   <button class="btn-wpp" onclick="irParaWhatsApp()"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"
       class="ico" aria-hidden="true">

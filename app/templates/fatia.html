@@ -12,7 +12,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@400;700&display=swap"
     rel="stylesheet">
-  <link rel="preload" as="image" href="/static/images/fatia-capa-2.png" fetchpriority="high">
+  <link rel="preload" as="image" href="/static/images/fatia-capa-2.webp" fetchpriority="high" type="image/webp">
   <style>
     :root {
       --rosa:              #cc4d78;
@@ -67,6 +67,11 @@
       position: relative;
       height: 100svh;
       background: #f5dce6
+    }
+
+    .hero picture {
+      display: block;
+      height: 100%
     }
 
     .hero img {
@@ -392,7 +397,10 @@
   <div class="hero" role="button" tabindex="0" onclick="irParaWhatsApp()"
     onkeydown="if(event.key==='Enter'||event.key===' ')irParaWhatsApp()">
     <span class="badge">&#127874; 100 Receitas Para Vender</span>
-    <img src="/static/images/fatia-capa-2.png" alt="Receitas Caseiras de Fatia de Bolo">
+    <picture>
+      <source srcset="/static/images/fatia-capa-2.webp" type="image/webp">
+      <img src="/static/images/fatia-capa-2.png" alt="Receitas Caseiras de Fatia de Bolo" fetchpriority="high">
+    </picture>
   </div>
 
   <button class="btn-wpp" onclick="irParaWhatsApp()">
