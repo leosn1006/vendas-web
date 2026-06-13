@@ -29,8 +29,11 @@ def extrair_dados_mensagem(mensagem_whatsapp):
         if mensagem['type'] != 'text' and mensagem['type'] != 'document' and mensagem['type'] != 'image'and mensagem['type'] != 'audio':
             return None
 
-        display_phone = metadata.get('display_phone_number')
-        produto_db = get_produto_by_phone_number_id(display_phone) if display_phone else None
+        api_phone_id = metadata.get('phone_number_id')
+        if api_phone_id == '1225090297335755':
+            display_phone = metadata.get('display_phone_number')
+            logger.warning(f"[ORQUESTRADOR] 📱 phone_number_id={api_phone_id!r} display_phone_number={display_phone!r}")
+        produto_db = get_produto_by_phone_number_id(api_phone_id) if api_phone_id else None
         produto = produto_db['id'] if produto_db else 1
         return {
             'numero_remetente': mensagem['from'],

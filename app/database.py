@@ -869,7 +869,7 @@ def get_produto_by_phone_number_id(phone_number_id):
         SELECT p.*
         FROM produtos p
         INNER JOIN telefones_produto tp ON tp.produto_id = p.id
-        WHERE tp.telefone = %s AND p.ativo = TRUE
+        WHERE tp.api_phone_number_id = %s AND p.ativo = TRUE
         LIMIT 1
     """
     return db.execute_query(query, (phone_number_id,), fetch_one=True)
