@@ -2202,6 +2202,70 @@ _SQL_ROI_REAL = """
 """
 
 
+_SQL_ROI_TODOS_PRODUTOS = """
+    SELECT
+        p.id,
+        p.nome,
+        COALESCE(oc.total_investido,  0) AS total_investido,
+        COALESCE(pp.total_pix,        0) AS total_pix
+    FROM produtos p
+    LEFT JOIN (
+        SELECT produto_id, SUM(valor_investido) AS total_investido
+        FROM orcamento_campanha
+        WHERE data BETWEEN %(ini_date)s AND %(fim_date)s
+        GROUP BY produto_id
+    ) oc ON oc.produto_id = p.id
+    LEFT JOIN (
+        SELECT produto_id, SUM(valor) AS total_pix
+        FROM pagamento_pix
+        WHERE horario BETWEEN %(ini)s AND %(fim)s
+        GROUP BY produto_id
+    ) pp ON pp.produto_id = p.id
+    WHERE p.ativo = TRUE
+    ORDER BY total_pix DESC
+"""
+
+
+@admin_bp.route('/roi-produtos')
+@requer_admin
+def roi_todos_produtos():
+    hoje = _hoje_sao_paulo()
+    data_ini_str = request.args.get('data_ini', hoje.isoformat())
+    data_fim_str = request.args.get('data_fim', hoje.isoformat())
+
+    try:
+        data_ini = datetime.datetime.fromisoformat(data_ini_str)
+        data_fim = datetime.datetime.fromisoformat(data_fim_str) + datetime.timedelta(days=1, seconds=-1)
+    except ValueError:
+        data_ini = datetime.datetime.combine(hoje, datetime.time.min)
+        data_fim = datetime.datetime.combine(hoje, datetime.time.max)
+        data_ini_str = data_fim_str = hoje.isoformat()
+
+    data_ini_date = data_ini.date().isoformat()
+    data_fim_date = data_fim.date().isoformat()
+
+    try:
+        rows = db.execute_query(
+            _SQL_ROI_TODOS_PRODUTOS,
+            {'ini': data_ini, 'fim': data_fim,
+             'ini_date': data_ini_date, 'fim_date': data_fim_date},
+            fetch_all=True
+        )
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro no ROI todos os produtos: {e}")
+        flash('Erro ao carregar ROI dos produtos.', 'danger')
+        rows = []
+
+    for r in rows:
+        investido = float(r['total_investido'])
+        pix = float(r['total_pix'])
+        r['roi_multiplier'] = (pix / investido) if investido > 0 else None
+        r['lucro_liquido'] = pix - investido
+
+    return render_template('admin/roi_todos_produtos.html',
+        rows=rows, data_ini=data_ini_str, data_fim=data_fim_str)
+
+
 @admin_bp.route('/produto/<int:produto_id>/orcamento')
 @requer_acesso_produto
 def orcamento_produto(produto_id):
