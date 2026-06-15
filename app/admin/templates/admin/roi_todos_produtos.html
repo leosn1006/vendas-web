@@ -32,6 +32,35 @@
         gap: 4px;
     }
     .produto-link:hover { text-decoration: underline; }
+
+    .imposto-card {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 10px 16px;
+        margin-bottom: 16px;
+    }
+    .imposto-label {
+        font-size: 13px;
+        color: var(--muted);
+        white-space: nowrap;
+    }
+    .imposto-input {
+        width: 72px;
+        font-family: var(--mono);
+        font-size: 14px;
+        text-align: right;
+        padding: 5px 8px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--text);
+    }
+    .imposto-pct {
+        font-size: 13px;
+        color: var(--text);
+    }
 </style>
 {% endblock %}
 
@@ -45,6 +74,20 @@
 
 {% include 'admin/includes/_filtro_periodo.html' %}
 
+<div class="card imposto-card">
+    <span class="imposto-label">Imposto sobre faturamento</span>
+    <input id="imposto-input" class="imposto-input" type="number"
+           min="0" max="100" step="0.1" value="{{ '%.1f'|format(taxa_imposto) }}">
+    <span class="imposto-pct">%</span>
+    <button id="btn-imposto-3" class="btn btn-sm" type="button">3%</button>
+    <button id="btn-calcular-imposto" class="btn btn-sm btn-primary" type="button">Calcular</button>
+    {% if taxa_imposto > 0 %}
+    <span class="imposto-label" style="margin-left:4px;">
+        aplicando {{ '%.1f'|format(taxa_imposto) }}% sobre PIX recebido
+    </span>
+    {% endif %}
+</div>
+
 {% if rows %}
 <div class="card">
     <div class="table-wrap">
@@ -54,16 +97,18 @@
                     <th>Produto</th>
                     <th style="text-align:right;">Investido</th>
                     <th style="text-align:right;">Recebido (PIX)</th>
+                    <th style="text-align:right;">Imposto</th>
                     <th style="text-align:right;">ROI</th>
                     <th style="text-align:right;">Lucro Líquido</th>
                 </tr>
             </thead>
             <tbody>
                 {% for r in rows %}
-                {% set investido = r.total_investido | float %}
-                {% set pix       = r.total_pix       | float %}
-                {% set lucro     = r.lucro_liquido   | float %}
-                {% set roi_mult  = r.roi_multiplier %}
+                {% set investido  = r.total_investido | float %}
+                {% set pix        = r.total_pix       | float %}
+                {% set imposto    = r.imposto_valor   | float %}
+                {% set lucro      = r.lucro_liquido   | float %}
+                {% set roi_mult   = r.roi_multiplier %}
 
                 {% if roi_mult is none %}
                     {% set dot_class = 'gray' %}
@@ -89,6 +134,14 @@
 
                     <td style="text-align:right; font-family:var(--mono); font-size:13px;">
                         R$ {{ '%.2f'|format(pix) }}
+                    </td>
+
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        {% if imposto > 0.005 %}
+                            <span class="roi-red">−R$ {{ '%.2f'|format(imposto) }}</span>
+                        {% else %}
+                            <span class="roi-muted">—</span>
+                        {% endif %}
                     </td>
 
                     <td style="text-align:right; font-family:var(--mono); font-size:13px;">
@@ -119,7 +172,8 @@
             </tbody>
             {% set tot_investido = rows | sum(attribute='total_investido') | float %}
             {% set tot_pix       = rows | sum(attribute='total_pix')       | float %}
-            {% set tot_lucro     = tot_pix - tot_investido %}
+            {% set tot_imposto   = rows | sum(attribute='imposto_valor')   | float %}
+            {% set tot_lucro     = tot_pix - tot_investido - tot_imposto %}
             <tfoot>
                 <tr>
                     <td>Total</td>
@@ -130,8 +184,15 @@
                         R$ {{ '%.2f'|format(tot_pix) }}
                     </td>
                     <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        {% if tot_imposto > 0.005 %}
+                            <span class="roi-red">−R$ {{ '%.2f'|format(tot_imposto) }}</span>
+                        {% else %}
+                            <span class="roi-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
                         {% if tot_investido > 0 %}
-                            {% set roi_tot = tot_pix / tot_investido %}
+                            {% set roi_tot = (tot_pix - tot_imposto) / tot_investido %}
                             {% if roi_tot < 1 %}
                                 <span class="roi-red">{{ '%.2f'|format(roi_tot) }}×</span>
                             {% elif roi_tot <= 1.005 %}
@@ -168,4 +229,46 @@
 
 {% block extra_js %}
 {% include 'admin/includes/_filtro_periodo_js.html' %}
+<script>
+(function () {
+    const form = document.querySelector('.period-form');
+    const impostoInput = document.getElementById('imposto-input');
+    if (!form || !impostoInput) return;
+
+    function getImpostoValue() {
+        const v = parseFloat(impostoInput.value);
+        return isNaN(v) ? '2.5' : Math.max(0, Math.min(100, v)).toString();
+    }
+
+    function injectImposto() {
+        let h = form.querySelector('input[name="imposto"]');
+        if (!h) {
+            h = document.createElement('input');
+            h.type = 'hidden';
+            h.name = 'imposto';
+            form.appendChild(h);
+        }
+        h.value = getImpostoValue();
+    }
+
+    // Sobrescreve form.submit() para capturar os submits do _filtro_periodo_js
+    const _origSubmit = HTMLFormElement.prototype.submit.bind(form);
+    form.submit = function () {
+        injectImposto();
+        _origSubmit();
+    };
+
+    // Cobre submits via evento (Enter no campo, etc.)
+    form.addEventListener('submit', injectImposto);
+
+    document.getElementById('btn-calcular-imposto')
+        ?.addEventListener('click', () => form.submit());
+
+    document.getElementById('btn-imposto-3')
+        ?.addEventListener('click', () => {
+            impostoInput.value = '3';
+            form.submit();
+        });
+})();
+</script>
 {% endblock %}

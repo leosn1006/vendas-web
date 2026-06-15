@@ -2256,14 +2256,21 @@ def roi_todos_produtos():
         flash('Erro ao carregar ROI dos produtos.', 'danger')
         rows = []
 
+    try:
+        taxa = max(0.0, min(100.0, float(request.args.get('imposto', '2.5') or '2.5')))
+    except (ValueError, TypeError):
+        taxa = 2.5
+
     for r in rows:
         investido = float(r['total_investido'])
         pix = float(r['total_pix'])
-        r['roi_multiplier'] = (pix / investido) if investido > 0 else None
-        r['lucro_liquido'] = pix - investido
+        imposto_valor = pix * taxa / 100
+        r['imposto_valor'] = imposto_valor
+        r['roi_multiplier'] = ((pix - imposto_valor) / investido) if investido > 0 else None
+        r['lucro_liquido'] = pix - investido - imposto_valor
 
     return render_template('admin/roi_todos_produtos.html',
-        rows=rows, data_ini=data_ini_str, data_fim=data_fim_str)
+        rows=rows, data_ini=data_ini_str, data_fim=data_fim_str, taxa_imposto=taxa)
 
 
 @admin_bp.route('/produto/<int:produto_id>/orcamento')
