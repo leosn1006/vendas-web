@@ -149,7 +149,8 @@ def exportar_para_google_sheets():
                     dp = now_sp
 
                 conversion_time = dp.strftime("%Y-%m-%d %H:%M:%S") + " America/Sao_Paulo"
-                rows.append([venda.gclid or '', conversion_name, conversion_time, "10.00", "BRL", getattr(venda, 'wbraid', '') or '', getattr(venda, 'gbraid', '') or ''])
+                conversion_value = "20.00" if venda.produto_id == 12 else "10.00"
+                rows.append([venda.gclid or '', conversion_name, conversion_time, conversion_value, "BRL", getattr(venda, 'wbraid', '') or '', getattr(venda, 'gbraid', '') or ''])
                 ids.append(venda.id)
 
             ws.append_rows(rows, value_input_option="USER_ENTERED")
