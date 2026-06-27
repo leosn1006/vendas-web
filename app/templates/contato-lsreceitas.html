@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contato — LS Receitas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --verde:      #2d6a1f;
+            --verde-med:  #4a9632;
+            --verde-claro:#7bc34a;
+            --laranja:    #e07b2a;
+            --creme:      #fdf6ec;
+            --marrom:     #5c3d1e;
+            --texto:      #2c2c2c;
+            --cinza:      #666;
+            --branco:     #ffffff;
+            --sombra:     0 4px 24px rgba(0,0,0,0.10);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--creme);
+            color: var(--texto);
+        }
+
+        .site-header {
+            background: linear-gradient(135deg, var(--marrom), #8a5a2f);
+            padding: 0 24px;
+        }
+
+        .header-inner {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 0;
+        }
+
+        .logo-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 17px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 20px;
+        }
+
+        .header-nav a {
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 700;
+            transition: color 0.2s;
+        }
+
+        .header-nav a:hover { color: #fff; }
+
+        .page-hero {
+            background: linear-gradient(135deg, var(--marrom), #8a5a2f);
+            padding: 48px 24px 56px;
+            text-align: center;
+        }
+
+        .page-hero-tag {
+            display: inline-block;
+            background: rgba(255,255,255,0.18);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 5px 14px;
+            border-radius: 20px;
+            margin-bottom: 14px;
+        }
+
+        .page-hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.8rem, 4vw, 2.6rem);
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .page-hero p {
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+        }
+
+        .page-content {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 40px 24px 60px;
+        }
+
+        .contact-grid {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (min-width: 600px) {
+            .contact-grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        .contact-card {
+            background: var(--branco);
+            border-radius: 16px;
+            padding: 28px 24px;
+            box-shadow: var(--sombra);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .contact-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+        }
+
+        .contact-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .icon-verde   { background: #e8f5e0; }
+        .icon-laranja { background: #fdf0e3; }
+
+        .contact-card h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--marrom);
+        }
+
+        .contact-card p {
+            font-size: 13px;
+            color: var(--cinza);
+            line-height: 1.6;
+        }
+
+        .contact-card a {
+            color: var(--verde-med);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        .contact-card a:hover { text-decoration: underline; }
+
+        .info-card {
+            background: var(--branco);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: var(--sombra);
+            text-align: center;
+        }
+
+        .info-card h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--marrom);
+            margin-bottom: 12px;
+        }
+
+        .info-card p {
+            font-size: 14px;
+            color: var(--cinza);
+            line-height: 1.7;
+            margin-bottom: 20px;
+            max-width: 480px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .btn-email {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, var(--verde-med), var(--verde));
+            color: #fff;
+            font-family: 'Lato', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            border-radius: 50px;
+            text-decoration: none;
+            box-shadow: 0 6px 20px rgba(74,150,50,0.35);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .btn-email:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(74,150,50,0.45);
+        }
+
+        footer {
+            background: var(--marrom);
+            padding: 32px 24px;
+            text-align: center;
+        }
+
+        .footer-inner { max-width: 900px; margin: 0 auto; }
+
+        footer p {
+            color: rgba(255,255,255,0.7);
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .footer-links a {
+            color: rgba(255,255,255,0.6);
+            text-decoration: none;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover { color: #fff; }
+        .footer-links span { color: rgba(255,255,255,0.3); font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<header class="site-header">
+    <div class="header-inner">
+        <a href="/portifolio" class="logo-link">
+            <div class="logo-icon">🍽️</div>
+            <span class="logo-text">LS Receitas</span>
+        </a>
+        <nav class="header-nav">
+            <a href="/politica-privacidade">Privacidade</a>
+            <a href="/termos-de-uso">Termos</a>
+            <a href="/contato">Contato</a>
+        </nav>
+    </div>
+</header>
+
+<div class="page-hero">
+    <span class="page-hero-tag">Fale Comigo</span>
+    <h1>Contato</h1>
+    <p>Estou aqui para tirar suas dúvidas sobre os e-books.</p>
+</div>
+
+<div class="page-content">
+
+    <div class="contact-grid">
+        <div class="contact-card">
+            <div class="contact-icon icon-verde">📧</div>
+            <h2>E-mail</h2>
+            <p>Para dúvidas sobre pedidos, conteúdo e suporte.</p>
+            <a href="mailto:luizasabino97@gmail.com">luizasabino97@gmail.com</a>
+        </div>
+        <div class="contact-card">
+            <div class="contact-icon icon-laranja">📍</div>
+            <h2>Localização</h2>
+            <p>Aguas Claras — Brasília DF<br>Atendimento apenas por e-mail.</p>
+        </div>
+    </div>
+
+    <div class="info-card">
+        <h2>Como posso te ajudar?</h2>
+        <p>Respondo todas as mensagens por e-mail. Se você comprou um e-book e tem dúvidas sobre o conteúdo, precisa de suporte ou quer saber sobre outros produtos, me manda uma mensagem.</p>
+        <a href="mailto:luizasabino97@gmail.com?subject=Dúvida%20sobre%20e-book%20LS%20Receitas" class="btn-email">
+            ✉ Enviar e-mail
+        </a>
+    </div>
+
+</div>
+
+<footer>
+    <div class="footer-inner">
+        <p><strong style="color:rgba(255,255,255,0.9);">LS Receitas</strong> &nbsp;·&nbsp; © 2026 Luiza Sabino. Todos os direitos reservados.</p>
+        <div class="footer-links">
+            <a href="/politica-privacidade">Política de Privacidade</a>
+            <span>|</span>
+            <a href="/termos-de-uso">Termos de Uso</a>
+            <span>|</span>
+            <a href="/contato">Contato</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

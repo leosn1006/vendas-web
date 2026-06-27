@@ -1088,7 +1088,7 @@ def busca_produtos_disponiveis_web():
     return db.execute_query(
         """SELECT id, nome, preco, descricao, url_pagina_vendas, url_imagem_complementar
            FROM produtos
-           WHERE disponivel_web = TRUE AND ativo = TRUE AND url_pagina_vendas IS NOT NULL
+           WHERE disponivel_web = TRUE AND ativo = TRUE AND url_pagina_vendas IS NOT NULL AND preco IS NOT NULL
            ORDER BY id""",
         fetch_one=False
     ) or []
