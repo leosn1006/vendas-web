@@ -53,6 +53,12 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute=5, hour=0),  # 00h05 — captura PIX de 23:15–23:59 do dia anterior
         'options': {'queue': 'baixa'},
     },
+    # NF-e desabilitada temporariamente — reabilitar após configurar IE no banco
+    # 'reprocessar-nfe-pendentes': {
+    #     'task': 'tasks.reprocessar_nfe_pendentes',
+    #     'schedule': crontab(minute='*/30'),
+    #     'options': {'queue': 'baixa'},
+    # },
     'orcamento-sheets-horario': {
         'task': 'tasks.processar_orcamento_sheets',
         'schedule': crontab(minute=10),  # toda hora no :10 — hoje sempre; ontem também entre 00h–04h
@@ -108,5 +114,8 @@ celery_app.conf.update(
         "tasks.processar_pagamentos_pix_fechamento":     {"queue": "baixa"},
         "tasks.verificar_pagamentos_pendentes":          {"queue": "baixa"},
         "tasks.processar_orcamento_sheets":              {"queue": "baixa"},
+        # NF-e
+        "tasks.emitir_nfe":                              {"queue": "normal"},
+        "tasks.reprocessar_nfe_pendentes":               {"queue": "baixa"},
     },
 )

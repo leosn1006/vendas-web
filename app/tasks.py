@@ -429,3 +429,48 @@ def enviar_email_entrega(self, pedido_id: int):
         traceback.print_exc()
         logger.info("=" * 120)
         raise self.retry(exc=exc, countdown=60)
+
+
+@shared_task(name='tasks.emitir_nfe', bind=True, max_retries=3)
+def emitir_nfe(self, pagamento_pix_id: int):
+    """Emite NF-e para um pagamento PIX. Retry com backoff exponencial."""
+    _TAG = 'TASK-NFE'
+    try:
+        from fiscal.nfe_service import emitir_nfe as _emitir
+        resultado = _emitir(pagamento_pix_id)
+        status = resultado.get('status', '?')
+        nfe_id = resultado.get('nfe_id')
+        logger.info(f'[{_TAG}] PIX={pagamento_pix_id} nfe_id={nfe_id} → {status}')
+    except (ValueError, RuntimeError) as exc:
+        # Erros permanentes (config faltando, XSD inválido, PIX não encontrado)
+        logger.error(f'[{_TAG}] ❌ Erro permanente PIX={pagamento_pix_id}: {exc}')
+        notificar_admin_erro_sistema(f'TASK-NFE | PIX={pagamento_pix_id} | {type(exc).__name__}: {str(exc)[:200]}')
+    except Exception as exc:
+        tentativa = self.request.retries + 1
+        countdown  = 60 * (2 ** self.request.retries)   # 60s → 120s → 240s
+        logger.exception(
+            f'[{_TAG}] ❌ PIX={pagamento_pix_id} | '
+            f'Tentativa {tentativa}/{self.max_retries + 1} | retry em {countdown}s: {exc}'
+        )
+        if self.request.retries >= self.max_retries:
+            notificar_admin_erro_sistema(f'TASK-NFE | PIX={pagamento_pix_id} | esgotou retries | {type(exc).__name__}')
+        raise self.retry(exc=exc, countdown=countdown)
+
+
+@shared_task(name='tasks.reprocessar_nfe_pendentes', bind=True, max_retries=0)
+def reprocessar_nfe_pendentes(self):
+    """Beat task — recupera PIX das últimas 24h sem NF-e, reagendando emissão."""
+    _TAG = 'TASK-NFE-REPRO'
+    try:
+        from database import buscar_pagamentos_pix_sem_nfe
+        ids = buscar_pagamentos_pix_sem_nfe(dias_atras=1)
+        if not ids:
+            logger.debug(f'[{_TAG}] Nenhum PIX pendente')
+            return
+        logger.info(f'[{_TAG}] {len(ids)} PIX pendente(s) → agendando emissão')
+        for pix_id in ids:
+            emitir_nfe.apply_async(args=[pix_id])
+    except Exception as exc:
+        logger.error(f'[{_TAG}] ❌ Erro: {exc}')
+        import traceback
+        traceback.print_exc()

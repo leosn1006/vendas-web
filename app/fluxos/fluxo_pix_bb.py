@@ -37,13 +37,15 @@ def executar(data_str: str = None):
     chaves = database.busca_chaves_pix_produtos()
 
     novos = ignorados = 0
+    novos_ids: list[int] = []
     por_produto: dict[int | None, int] = {}
     for pix in pix_list:
         chave = pix.get('chave', '')
         produto_id = chaves.get(chave)
-        inserido = database.salvar_pagamento_pix(pix, produto_id)
-        if inserido:
+        pix_id = database.salvar_pagamento_pix(pix, produto_id)
+        if pix_id:
             novos += 1
+            novos_ids.append(pix_id)
             por_produto[produto_id] = por_produto.get(produto_id, 0) + 1
         else:
             ignorados += 1
@@ -52,3 +54,10 @@ def executar(data_str: str = None):
     for pid, qtd in sorted(por_produto.items(), key=lambda x: -(x[1])):
         label = f'produto_id={pid}' if pid else 'sem produto'
         logger.info(f'[FLUXO-PIX-BB]   {label}: {qtd} pagamento(s)')
+
+    # NF-e desabilitada temporariamente — reabilitar após configurar IE no banco
+    # if novos_ids:
+    #     from celery import current_app
+    #     for pix_id in novos_ids:
+    #         current_app.send_task('tasks.emitir_nfe', args=[pix_id], countdown=5)
+    #     logger.info(f'[FLUXO-PIX-BB] {len(novos_ids)} task(s) NF-e agendada(s)')

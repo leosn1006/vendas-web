@@ -1359,7 +1359,7 @@ def salvar_pagamento_pix(pix: dict, produto_id) -> bool:
                 txid,
             ),
         )
-        return cursor.rowcount > 0
+        return cursor.lastrowid if cursor.rowcount > 0 else None
 
 
 # ============================================================
@@ -1439,3 +1439,142 @@ def bloquear_pedido(pedido_id: int) -> None:
             "UPDATE notificacoes_pedido SET estado = 'respondido' WHERE pedido_id = %s AND estado = 'em_analise'",
             (pedido_id,),
         )
+
+
+# ─── NF-e ────────────────────────────────────────────────────────────────────
+
+def buscar_nfe_configuracao_ativa() -> dict | None:
+    """Retorna a configuração NF-e ativa (tenant único por enquanto)."""
+    return db.execute_query(
+        "SELECT * FROM nfe_configuracao WHERE ativo = 1 LIMIT 1",
+        fetch_one=True,
+    )
+
+
+def buscar_pagamento_pix_por_id(pagamento_pix_id: int) -> dict | None:
+    return db.execute_query(
+        "SELECT * FROM pagamento_pix WHERE id = %s",
+        (pagamento_pix_id,), fetch_one=True,
+    )
+
+
+def incrementar_numero_nfe(config_id: int) -> int:
+    """Incrementa e retorna o próximo número de NF-e com lock de linha."""
+    with db.get_cursor() as cursor:
+        cursor.execute(
+            "SELECT ultimo_numero_nfe FROM nfe_configuracao WHERE id = %s FOR UPDATE",
+            (config_id,),
+        )
+        row = cursor.fetchone()
+        novo = row['ultimo_numero_nfe'] + 1
+        cursor.execute(
+            "UPDATE nfe_configuracao SET ultimo_numero_nfe = %s WHERE id = %s",
+            (novo, config_id),
+        )
+    return novo
+
+
+def criar_nfe_pendente(
+    tenant_id: int,
+    pagamento_pix_id: int,
+    chave_acesso: str,
+    numero: str,
+    serie: str,
+    ambiente: int,
+    xml_assinado: str,
+) -> int:
+    """INSERT em nfe_emitidas com status=enviando. Retorna o id gerado."""
+    return db.execute_query(
+        """INSERT INTO nfe_emitidas
+           (tenant_id, pagamento_pix_id, chave_acesso, numero, serie, ambiente,
+            xml_assinado, status_emissao, tentativas)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, 'enviando', 1)""",
+        (tenant_id, pagamento_pix_id, chave_acesso, numero, serie, ambiente, xml_assinado),
+    )
+
+
+def vincular_nfe_ao_pagamento_pix(pagamento_pix_id: int, nfe_id: int) -> None:
+    db.execute_query(
+        "UPDATE pagamento_pix SET nfe_emitida_id = %s WHERE id = %s",
+        (nfe_id, pagamento_pix_id),
+    )
+
+
+def atualizar_nfe_autorizada(
+    nfe_id: int,
+    c_stat: str,
+    x_motivo: str,
+    n_prot: str,
+    dh_recbto: str,
+    xml_nfe_proc: str,
+) -> None:
+    db.execute_query(
+        """UPDATE nfe_emitidas
+           SET c_stat=%s, x_motivo=%s, n_prot=%s, dh_recbto=%s,
+               xml_nfe_proc=%s, status_emissao='autorizada', ultimo_erro=NULL
+           WHERE id=%s""",
+        (c_stat, x_motivo, n_prot, dh_recbto, xml_nfe_proc, nfe_id),
+    )
+
+
+def atualizar_nfe_rejeitada(nfe_id: int, c_stat: str, x_motivo: str) -> None:
+    db.execute_query(
+        """UPDATE nfe_emitidas
+           SET c_stat=%s, x_motivo=%s, status_emissao='rejeitada'
+           WHERE id=%s""",
+        (c_stat, x_motivo, nfe_id),
+    )
+
+
+def atualizar_nfe_aguardando_retorno(nfe_id: int, n_rec: str) -> None:
+    """Salva nRec para consulta assíncrona posterior."""
+    db.execute_query(
+        "UPDATE nfe_emitidas SET n_rec=%s, status_emissao='aguardando_retorno' WHERE id=%s",
+        (n_rec, nfe_id),
+    )
+
+
+def atualizar_nfe_erro(nfe_id: int, erro_msg: str) -> None:
+    db.execute_query(
+        """UPDATE nfe_emitidas
+           SET status_emissao='erro', ultimo_erro=%s, tentativas=tentativas+1
+           WHERE id=%s""",
+        (erro_msg[:2000], nfe_id),
+    )
+
+
+def gravar_log_soap(
+    nfe_id: int,
+    operacao: str,
+    url: str,
+    soap_request: str,
+    soap_response: str,
+    status_http: int,
+    duracao_ms: float,
+) -> None:
+    db.execute_query(
+        """INSERT INTO nfe_log_comunicacao
+           (nfe_id, operacao, url, soap_request, soap_response, status_http, duracao_ms)
+           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+        (nfe_id, operacao, url, soap_request, soap_response, status_http, int(duracao_ms)),
+    )
+
+
+def buscar_pagamentos_pix_sem_nfe(limite: int = 500, dias_atras: int = 1) -> list[int]:
+    """
+    IDs de pagamento_pix dos últimos N dias sem NF-e autorizada.
+    Inclui: sem tentativa alguma (ne.id IS NULL) ou com tentativa em erro (para retry).
+    Exclui: rejeitadas (precisam de intervenção humana) e enviando (em progresso).
+    """
+    rows = db.execute_query(
+        """SELECT pp.id
+           FROM pagamento_pix pp
+           LEFT JOIN nfe_emitidas ne ON ne.pagamento_pix_id = pp.id
+           WHERE pp.nfe_emitida_id IS NULL
+             AND (ne.id IS NULL OR ne.status_emissao = 'erro')
+             AND pp.horario >= NOW() - INTERVAL %s DAY
+           ORDER BY pp.id ASC
+           LIMIT %s""",
+        (dias_atras, limite), fetch_all=True,
+    )
+    return [r['id'] for r in rows] if rows else []
