@@ -67,27 +67,27 @@ def processar_orcamento_sheets(data_str: str | None = None) -> dict:
 
         # Fase 1: leitura do gspread (erros por aba são tolerados)
         try:
-            headers = ws.row_values(1)
-            if not headers:
-                logger.debug(f"[ORCAMENTO-SHEETS] Aba '{aba}' sem cabeçalho — ignorada")
+            # Uma única chamada à API por aba (evita quota 429)
+            all_rows = ws.get_all_values()
+            if not all_rows:
+                logger.debug(f"[ORCAMENTO-SHEETS] Aba '{aba}' vazia — ignorada")
                 continue
 
+            headers = all_rows[0]
             col_map = {h.strip(): i + 1 for i, h in enumerate(headers)}  # 1-indexed
             ausentes = _COLUNAS_NECESSARIAS - col_map.keys()
             if ausentes:
                 logger.debug(f"[ORCAMENTO-SHEETS] Aba '{aba}' sem colunas {ausentes} — ignorada")
                 continue
 
-            # Busca só a coluna de datas — estratégia de baixo consumo de memória
-            date_col = ws.col_values(col_map['Data'])
-
-            # Bug fix: encontra TODAS as linhas da data, não só a primeira
-            row_indices = [i + 1 for i, d in enumerate(date_col) if d == data_alvo]
-            if not row_indices:
+            date_col_idx = col_map['Data'] - 1  # 0-indexed para list slicing
+            rows = [
+                row for row in all_rows[1:]
+                if len(row) > date_col_idx and row[date_col_idx].strip() == data_alvo
+            ]
+            if not rows:
                 logger.debug(f"[ORCAMENTO-SHEETS] Aba '{aba}' sem data {data_alvo} — ignorada")
                 continue
-
-            rows = [ws.row_values(idx) for idx in row_indices]
 
         except Exception as e:
             # Falha de leitura do gspread: registra e segue para a próxima aba
