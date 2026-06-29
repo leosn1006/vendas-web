@@ -15,6 +15,11 @@ services:
     command: >
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
+      --slow-query-log=1
+      --slow-query-log-file=/var/lib/mysql/slow.log
+      --long-query-time=1
+      --wait-timeout=300
+      --interactive-timeout=300
     volumes:
       # Persistência dos dados no Ubuntu (ajuste o caminho conforme necessário)
       - /var/lib/mysql-vendas:/var/lib/mysql
