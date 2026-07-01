@@ -50,7 +50,7 @@ def enviar_audio(pedido: Pedido, url_audio: str):
         "Accept": "application/json"
     }
 
-    numero_remetente = pedido.get("contact_phone")
+    numero_remetente = pedido.get("contact_to") or pedido.get("contact_phone")
 
     dados = {
         "messaging_product": "whatsapp",
@@ -92,7 +92,7 @@ def enviar_mensagem(pedido: Pedido, mensagem: str):
         "Accept": "application/json"
     }
 
-    numero_remetente = pedido.get("contact_phone")
+    numero_remetente = pedido.get("contact_to") or pedido.get("contact_phone")
 
     dados = {
         "messaging_product": "whatsapp",
@@ -176,7 +176,7 @@ def enviar_documento(pedido: Pedido, url_documento: str, caption: str, filename:
         "Accept": "application/json"
     }
 
-    numero_remetente = pedido.get("contact_phone")
+    numero_remetente = pedido.get("contact_to") or pedido.get("contact_phone")
 
     dados = {
         "messaging_product": "whatsapp",
@@ -219,7 +219,7 @@ def enviar_imagem(pedido: Pedido, url_imagem: str):
         "Accept": "application/json"
     }
 
-    numero_remetente = pedido.get("contact_phone")
+    numero_remetente = pedido.get("contact_to") or pedido.get("contact_phone")
 
     dados = {
         "messaging_product": "whatsapp",
@@ -264,7 +264,7 @@ def enviar_produto_whatsapp(pedido: dict, template_name: str, language: str,
         "Accept": "application/json"
     }
 
-    numero_remetente = pedido.get("contact_phone")
+    numero_remetente = pedido.get("contact_to") or pedido.get("contact_phone")
 
     dados = {
         "messaging_product": "whatsapp",

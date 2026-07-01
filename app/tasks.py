@@ -43,7 +43,8 @@ def processar_webhook(self, body):
                 _redis.delete(redis_key)
             except Exception:
                 pass
-        telefone = body.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('contacts', [{}])[0].get('wa_id', '?')
+        _contato_val = body.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('contacts', [{}])[0]
+        telefone = _contato_val.get('wa_id') or _contato_val.get('user_id', '?')
         logger.exception(f"[TASK-WEBHOOK] ❌ tel: {telefone} | body: {str(body)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
         notificar_admin_erro_sistema(f"TASK-WEBHOOK | tel: {telefone} | {type(exc).__name__}")
         raise self.retry(exc=exc, countdown=30)

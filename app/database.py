@@ -97,7 +97,7 @@ class Database:
             if connection:
                 connection.close()
 
-    def execute_query(self, query, params=None, fetch_one=False, fetch_all=False):
+    def execute_query(self, query, params=None, fetch_one=False, fetch_all=False, return_rowcount=False):
         """
         Executa uma query no banco de dados.
 
@@ -106,6 +106,7 @@ class Database:
             params: Parâmetros da query (opcional)
             fetch_one: Se True, retorna apenas um resultado
             fetch_all: Se True, retorna todos os resultados
+            return_rowcount: Se True, retorna cursor.rowcount (útil para UPDATE/DELETE)
 
         Returns:
             Resultado da query ou None
@@ -117,6 +118,8 @@ class Database:
                 return cursor.fetchone()
             elif fetch_all:
                 return cursor.fetchall()
+            elif return_rowcount:
+                return cursor.rowcount
 
             return cursor.lastrowid
 
@@ -188,6 +191,8 @@ class Pedido(TypedDict):
     phone_number_id: Optional[str]
     contact_phone: Optional[str]
     contact_name: Optional[str]
+    bsuid: Optional[str]
+    contact_to: Optional[str]
     data_pedido: Optional[str]
     campaignid: Optional[str]
     adgroupid: Optional[str]
@@ -223,8 +228,10 @@ def criar_pedido(pedido: Pedido):
     mensagem_sugerida = (pedido.get('mensagem_sugerida') or '')[:255] or None
     emoji_sugerida = pedido.get('emoji_sugerida')
     phone_number_id = pedido.get('phone_number_id')
-    contact_phone = pedido.get('contact_phone')
+    contact_phone = pedido.get('contact_phone') or None
     contact_name = pedido.get('contact_name')
+    bsuid = pedido.get('bsuid')
+    contact_to = pedido.get('contact_to') or None
     data_pedido = pedido.get('data_pedido')
     interesse_produto = pedido.get('interesse_produto')  # None se não informado
     campaignid = pedido.get('campaignid')
@@ -260,6 +267,8 @@ def criar_pedido(pedido: Pedido):
            , phone_number_id
            , contact_phone
            , contact_name
+           , bsuid
+           , contact_to
            , data_pedido
            , interesse_produto
            , campaignid
@@ -311,6 +320,8 @@ def criar_pedido(pedido: Pedido):
            , %s
            , %s
            , %s
+           , %s
+           , %s
            )
     """
     pedido_id = db.execute_query(query, (
@@ -325,6 +336,8 @@ def criar_pedido(pedido: Pedido):
            , phone_number_id
            , contact_phone
            , contact_name
+           , bsuid
+           , contact_to
            , data_pedido
            , interesse_produto
            , campaignid
@@ -509,6 +522,30 @@ def get_ultimo_pedido_by_phone(contact_phone, produto_id, phone_number_id=None):
     """
     return db.execute_query(query, (contact_phone, produto_id), fetch_one=True)
 
+def get_ultimo_pedido_by_bsuid(bsuid, produto_id, phone_number_id=None):
+    if not bsuid:
+        return None
+    if phone_number_id is not None:
+        query = """
+            SELECT *
+            FROM pedidos p
+            WHERE p.bsuid          = %s
+            AND   p.produto_id     = %s
+            AND   p.phone_number_id = %s
+            ORDER BY p.data_pedido DESC
+            LIMIT 1
+        """
+        return db.execute_query(query, (bsuid, produto_id, phone_number_id), fetch_one=True)
+    query = """
+        SELECT *
+        FROM pedidos p
+        WHERE p.bsuid      = %s
+        AND   p.produto_id = %s
+        ORDER BY p.data_pedido DESC
+        LIMIT 1
+    """
+    return db.execute_query(query, (bsuid, produto_id), fetch_one=True)
+
 def get_ultimo_pedido_por_mensagem_sugerida(mensagem_sugerida, produto_id, phone_number_id):
     """
     Busca o último pedido de um contato pelo telefone.
@@ -535,14 +572,17 @@ def get_ultimo_pedido_por_mensagem_sugerida(mensagem_sugerida, produto_id, phone
     """
     return db.execute_query(query, (mensagem_sugerida, produto_id, phone_number_id), fetch_one=True)
 
-def vincula_pedido_com_contato(id_pedido, contact_phone, contact_name, phone_number_id):
+def vincula_pedido_com_contato(id_pedido, contact_phone, contact_name, phone_number_id,
+                               bsuid=None, contact_to=None):
     """
     Vincula um pedido existente a um contato.
     Args:
         id_pedido: ID do pedido
-        contact_phone: Telefone do contato
+        contact_phone: Telefone do contato (pode ser vazio se for usuário com username)
         contact_name: Nome do contato
         phone_number_id: ID do número de telefone
+        bsuid: Business-Scoped User ID (quando telefone não está disponível)
+        contact_to: Identificador para resposta — telefone ou BSUID
     Returns:
         Pedido atualizado ou None se não conseguiu vincular
     """
@@ -551,17 +591,18 @@ def vincula_pedido_com_contato(id_pedido, contact_phone, contact_name, phone_num
         SET contact_phone   = %s,
             contact_name    = %s,
             phone_number_id = %s,
+            bsuid           = %s,
+            contact_to      = %s,
             estado_id       = 1,
             data_pedido     = CURRENT_TIMESTAMP
         WHERE id = %s and estado_id = 1 -- só vincula se estiver no estado Iniciado
     """
-    resultado = db.execute_query(query, (contact_phone, contact_name, phone_number_id, id_pedido))
-    if resultado is None:
+    rows_affected = db.execute_query(query, (contact_phone or None, contact_name, phone_number_id,
+                                              bsuid or None, contact_to or None, id_pedido),
+                                     return_rowcount=True)
+    if not rows_affected:
         return None
-    else:
-        # devolve pedido atualizado
-        pedido = get_pedido(id_pedido)
-        return pedido
+    return get_pedido(id_pedido)
 
 #atualizar pedido com caminho do comprovante
 def atualizar_pedido_com_comprovante(pedido_id, path_comprovante):
@@ -660,7 +701,7 @@ def buscar_pedidos_followup( horas_sem_atualizacao: int) -> list:
         FROM pedidos
         WHERE estado_id = 3 -- estado 'produto enviado, aguardando pagamento'
         AND data_envio_pedido < NOW() - INTERVAL %s HOUR
-        AND contact_phone IS NOT NULL
+        AND contact_to IS NOT NULL
         AND interesse_produto = 1
     """
     return db.execute_query(query, (horas_sem_atualizacao,), fetch_all=True)
@@ -672,7 +713,7 @@ def buscar_pedidos_followup_interesse_1() -> list:
         WHERE estado_id = 2
           AND data_followup_interesse_1 IS NULL
           AND data_ultima_atualizacao <= NOW() - INTERVAL 15 MINUTE
-          AND contact_phone IS NOT NULL
+          AND contact_to IS NOT NULL
     """
     return db.execute_query(query, fetch_all=True)
 
@@ -684,7 +725,7 @@ def buscar_pedidos_followup_interesse_2() -> list:
           AND data_followup_interesse_1 IS NOT NULL
           AND data_followup_interesse_2 IS NULL
           AND data_followup_interesse_1 <= NOW() - INTERVAL 90 MINUTE
-          AND contact_phone IS NOT NULL
+          AND contact_to IS NOT NULL
     """
     return db.execute_query(query, fetch_all=True)
 
@@ -1167,20 +1208,21 @@ def criar_pedido_web_unificado(produto_id: int, phone_number_id: str,
                                device: str = '', placement: str = '',
                                video_id: str = '') -> int:
     """Cria pedido em `pedidos` com estado 1001 (Pedido web criado). Retorna o id."""
+    _contact_phone = contact_phone or ''
     return db.execute_query(
         """INSERT INTO pedidos
              (produto_id, valor_pago, estado_id, gclid,
               data_ultima_atualizacao, data_contato_site, data_pedido,
-              phone_number_id, contact_phone, contact_name, email,
+              phone_number_id, contact_phone, contact_name, contact_to, email,
                 dns_origem,
               campaignid, adgroupid, creative, matchtype, device, placement, video_id)
            VALUES (%s, 0.0, 1001, %s,
                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
-                   %s, %s, %s, %s,
+                   %s, %s, %s, %s, %s,
                     %s,
                    %s, %s, %s, %s, %s, %s, %s)""",
         (produto_id, gclid or '',
-         phone_number_id or '', contact_phone or '', contact_name or '', email or '',
+         phone_number_id or '', _contact_phone, contact_name or '', _contact_phone or None, email or '',
             dns_origem or '',
          campaignid or '', adgroupid or '', creative or '',
          matchtype or '', device or '', placement or '', video_id or '')

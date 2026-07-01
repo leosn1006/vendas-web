@@ -2,7 +2,8 @@ import logging
 import random
 from celery_app import celery_app
 from datetime import datetime
-from database import (get_ultimo_pedido_by_phone, get_ultimo_pedido_por_mensagem_sugerida,
+from database import (get_ultimo_pedido_by_phone, get_ultimo_pedido_by_bsuid,
+                      get_ultimo_pedido_por_mensagem_sugerida,
                       vincula_pedido_com_contato, Pedido, criar_pedido, get_pedido,
                       get_produto_by_phone_number_id,
                       contar_comprovantes_recebidos_recentes,
@@ -35,8 +36,19 @@ def extrair_dados_mensagem(mensagem_whatsapp):
             logger.warning(f"[ORQUESTRADOR] 📱 phone_number_id={api_phone_id!r} display_phone_number={display_phone!r}")
         produto_db = get_produto_by_phone_number_id(api_phone_id) if api_phone_id else None
         produto = produto_db['id'] if produto_db else 1
+        bsuid = contato.get('user_id')
+        numero_remetente = mensagem.get('from', '') or ''
+        contact_to = numero_remetente if numero_remetente else bsuid
+        if not contact_to:
+            logger.error(
+                f"[ORQUESTRADOR] ❌ Webhook sem 'from' e sem 'user_id' — impossível responder a {contato['profile']['name']!r}. "
+                f"Mensagem descartada. phone_number_id={metadata.get('phone_number_id')!r}"
+            )
+            return None
         return {
-            'numero_remetente': mensagem['from'],
+            'numero_remetente': numero_remetente,
+            'bsuid': bsuid,
+            'contact_to': contact_to,
             'id_conversa': mensagem['id'],
             'nome': contato['profile']['name'],
             'texto': mensagem['text']['body'] if mensagem['type'] == 'text' else None,
@@ -203,15 +215,20 @@ def buscar_pedido(dados):
         return "Mensagem recebida, mas não processada"
 
     numero_remetente = dados['numero_remetente']
+    bsuid = dados.get('bsuid')
+    contact_to = dados.get('contact_to')
     id_conversa = dados['id_conversa']
     nome = dados['nome']
     msg_enviado_cliente = dados['texto']
     phone_number_id = dados['phone_number_id']
 
-    logger.info(f"[ORQUESTRADOR] 📱 Mensagem de {nome} ({numero_remetente}): {msg_enviado_cliente}")
+    logger.info(f"[ORQUESTRADOR] 📱 Mensagem de {nome} ({numero_remetente or bsuid}): {msg_enviado_cliente}")
 
-    # Verificar se já existe pedido para este telefone no mesmo chip
-    pedido = get_ultimo_pedido_by_phone(numero_remetente, dados.get('produto'), phone_number_id)
+    # Verificar se já existe pedido para este contato no mesmo chip
+    if numero_remetente:
+        pedido = get_ultimo_pedido_by_phone(numero_remetente, dados.get('produto'), phone_number_id)
+    else:
+        pedido = get_ultimo_pedido_by_bsuid(bsuid, dados.get('produto'), phone_number_id)
     if pedido is not None:
         logger.info(f"[ORQUESTRADOR] 👤 Cliente existente: {nome} (Pedido #{pedido['id']})")
         return pedido
@@ -221,7 +238,8 @@ def buscar_pedido(dados):
         pedido = get_ultimo_pedido_por_mensagem_sugerida(msg_enviado_cliente, dados.get('produto'), phone_number_id)
         if pedido is not None:
             logger.info(f"[ORQUESTRADOR] 🔗 Associando contato ao pedido existente: {pedido['id']}")
-            pedido = vincula_pedido_com_contato(pedido['id'], numero_remetente, nome, phone_number_id)
+            pedido = vincula_pedido_com_contato(pedido['id'], numero_remetente, nome, phone_number_id,
+                                                bsuid=bsuid, contact_to=contact_to)
             if pedido is not None:
                 logger.info(f"[ORQUESTRADOR] ✅ Pedido #{pedido.get('id')} atualizado com o contato {nome} ({numero_remetente})")
                 return pedido
@@ -261,6 +279,8 @@ def criar_pedido_sem_campanha(dados):
             phone_number_id=dados.get('phone_number_id'),
             contact_phone=dados.get('numero_remetente'),
             contact_name=dados.get('nome'),
+            bsuid=dados.get('bsuid'),
+            contact_to=dados.get('contact_to'),
             data_pedido=timestamp_mysql,
             campaignid=None,
             adgroupid=None,

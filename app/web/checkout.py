@@ -151,7 +151,7 @@ def verificar_pagamento(txid: str) -> dict:
             )
             import tasks
             tasks.enviar_email_entrega.delay(pedido['id'])
-            if pedido.get('contact_phone'):
+            if pedido.get('contact_to') or pedido.get('contact_phone'):
                 tasks.fluxo_enviar_confirmacao_web.delay(pedido['id'])
         return {'pago': pago}
     except Exception as e:
