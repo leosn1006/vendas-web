@@ -10,7 +10,7 @@ def transcrever_audio(path_audio: str) -> str:
     client = OpenAI()
     with open(path_audio, 'rb') as f:
         transcricao = client.audio.transcriptions.create(
-            model="whisper-1",
+            model="gpt-4o-mini-transcribe",
             file=f,
             language="pt"
         )
