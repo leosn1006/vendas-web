@@ -1,0 +1,106 @@
+{% extends "admin/base.html" %}
+{% block title %}Bônus — {{ produto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Bônus</h1>
+        <p class="page-subtitle">{{ produto.nome }} — e-books extras entregues junto com o produto principal</p>
+    </div>
+</div>
+
+<div class="alert alert-warning" style="margin-bottom: 20px;">
+    ⚠️ Cadastro apenas — a entrega automática (e-mail/WhatsApp) ainda lê só o campo antigo
+    <code>url_pdf_bonus</code> do produto. Bônus cadastrados aqui ainda não são enviados ao cliente.
+</div>
+
+<div class="card">
+    {% if bonus %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Ordem</th>
+                    <th>Nome</th>
+                    <th>Arquivo</th>
+                    <th>Nome do arquivo (download)</th>
+                    <th>Descrição</th>
+                    {% if current_user.is_admin() %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bonus %}
+                <tr>
+                    <td style="color: var(--muted); font-family: var(--mono); font-size: 13px; width: 60px;">
+                        {{ b.ordem }}
+                    </td>
+                    <td style="font-size: 14px;">{{ b.nome }}</td>
+                    <td style="font-family: var(--mono); font-size: 13px; color: var(--muted);">{{ b.path_arquivo }}</td>
+                    <td style="font-family: var(--mono); font-size: 13px; color: var(--muted);">{{ b.nome_arquivo }}</td>
+                    <td style="font-size: 13px; color: var(--muted);">{{ b.descricao or '' }}</td>
+                    {% if current_user.is_admin() %}
+                    <td style="text-align: right;">
+                        <form method="POST"
+                              action="{{ url_for('admin.remover_bonus_produto_view', produto_id=produto.id, bonus_id=b.id) }}"
+                              onsubmit="return confirm('Remover este bônus?')">
+                            <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--muted); font-size: 14px; padding: 8px 0 20px;">
+        Nenhum bônus cadastrado para este produto.
+    </p>
+    {% endif %}
+
+    {% if current_user.is_admin() %}
+    <div style="margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border);">
+        <p style="font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+                  color: var(--muted); font-family: var(--mono); margin-bottom: 12px;">
+            Adicionar bônus
+        </p>
+        <form method="POST"
+              action="{{ url_for('admin.adicionar_bonus_produto_view', produto_id=produto.id) }}"
+              class="form-grid">
+            <div class="form-group">
+                <label for="nome">Nome do bônus</label>
+                <input type="text" id="nome" name="nome"
+                       placeholder="ex: Receitas de Bolos Sem Glúten"
+                       maxlength="255" required autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="path_arquivo">Arquivo (em static/arquivos)</label>
+                <input type="text" id="path_arquivo" name="path_arquivo"
+                       placeholder="ex: bolos-sem-gluten.pdf"
+                       maxlength="255" required autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="nome_arquivo">Nome do arquivo no download (opcional)</label>
+                <input type="text" id="nome_arquivo" name="nome_arquivo"
+                       placeholder="ex: receitas-bonus-bolos-sem-gluten.pdf"
+                       maxlength="255" autocomplete="off">
+                <small class="form-text text-muted">Se vazio, usa o mesmo nome do campo Arquivo.</small>
+            </div>
+            <div class="form-group">
+                <label for="ordem">Ordem</label>
+                <input type="number" id="ordem" name="ordem" min="1" max="99" value="1">
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label for="descricao">Descrição (opcional)</label>
+                <input type="text" id="descricao" name="descricao"
+                       placeholder="linha curta exibida no checkout/e-mail"
+                       maxlength="500" autocomplete="off">
+            </div>
+            <div class="form-actions" style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-primary">+ Adicionar</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

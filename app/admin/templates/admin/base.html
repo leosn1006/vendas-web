@@ -610,6 +610,14 @@
            class="nav-link {% if request.endpoint in ['admin.fluxos_overview','admin.fluxo_acoes','admin.editar_acao_fluxo'] %}active{% endif %}">
             <span class="icon">⚙️</span> Fluxos
         </a>
+        <a href="{{ url_for('admin.produto_bonus', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.produto_bonus' %}active{% endif %}">
+            <span class="icon">🎁</span> Bônus
+        </a>
+        <a href="{{ url_for('admin.produto_bumps', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint in ['admin.produto_bumps','admin.editar_bump_produto'] %}active{% endif %}">
+            <span class="icon">🛒</span> Order Bumps
+        </a>
         {% endif %}
 
         {% endif %}

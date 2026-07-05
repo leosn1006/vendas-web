@@ -15,6 +15,9 @@ from database import (db,
     listar_mensagens_sugeridas, adicionar_mensagem_sugerida, remover_mensagem_sugerida,
     listar_acoes_fluxo, get_acao_fluxo,
     adicionar_acao_fluxo, atualizar_acao_fluxo, remover_acao_fluxo,
+    listar_bonus_produto, adicionar_bonus_produto, remover_bonus_produto,
+    listar_bump_produto, get_bump_produto,
+    adicionar_bump_produto, atualizar_bump_produto, remover_bump_produto,
     get_pedido, get_ultimo_pedido_by_phone, salvar_mensagem_pedido,
     buscar_todas_mensagens_pedido,
     buscar_pedido_por_nome, acertar_valor_pedido,
@@ -1247,6 +1250,146 @@ def remover_acao_fluxo_view(produto_id, fluxo, acao_id):
 
 
 # ============================================================
+# Bônus por produto (venda web)
+# ============================================================
+
+@admin_bp.route('/produto/<int:produto_id>/bonus')
+@requer_login
+def produto_bonus(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+    bonus = listar_bonus_produto(produto_id)
+    return render_template('admin/produto_bonus.html', produto=produto, bonus=bonus)
+
+
+@admin_bp.route('/produto/<int:produto_id>/bonus/adicionar', methods=['POST'])
+@requer_admin
+def adicionar_bonus_produto_view(produto_id):
+    nome = request.form.get('nome', '').strip()
+    path_arquivo = request.form.get('path_arquivo', '').strip()
+    nome_arquivo = request.form.get('nome_arquivo', '').strip() or path_arquivo
+    if not nome or not path_arquivo:
+        flash('Informe nome e arquivo do bônus.', 'warning')
+        return redirect(url_for('admin.produto_bonus', produto_id=produto_id))
+    try:
+        adicionar_bonus_produto(
+            produto_id, nome, path_arquivo, nome_arquivo,
+            descricao=request.form.get('descricao'),
+            ordem=int(request.form.get('ordem') or 1),
+        )
+        flash('Bônus adicionado com sucesso!', 'success')
+        logger.info(f"[ADMIN] ✅ Bônus adicionado ao produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao adicionar bônus: {e}")
+        flash(f'Erro ao adicionar bônus: {e}', 'danger')
+    return redirect(url_for('admin.produto_bonus', produto_id=produto_id))
+
+
+@admin_bp.route('/produto/<int:produto_id>/bonus/<int:bonus_id>/remover', methods=['POST'])
+@requer_admin
+def remover_bonus_produto_view(produto_id, bonus_id):
+    try:
+        remover_bonus_produto(bonus_id, produto_id)
+        flash('Bônus removido.', 'success')
+        logger.info(f"[ADMIN] ✅ Bônus #{bonus_id} removido do produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao remover bônus: {e}")
+        flash(f'Erro ao remover bônus: {e}', 'danger')
+    return redirect(url_for('admin.produto_bonus', produto_id=produto_id))
+
+
+# ============================================================
+# Order Bumps por produto (venda web)
+# ============================================================
+
+@admin_bp.route('/produto/<int:produto_id>/bumps')
+@requer_login
+def produto_bumps(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+    bumps = listar_bump_produto(produto_id)
+    return render_template('admin/produto_bumps.html', produto=produto, bumps=bumps)
+
+
+@admin_bp.route('/produto/<int:produto_id>/bumps/adicionar', methods=['POST'])
+@requer_admin
+def adicionar_bump_produto_view(produto_id):
+    nome = request.form.get('nome', '').strip()
+    path_arquivo = request.form.get('path_arquivo', '').strip()
+    nome_arquivo = request.form.get('nome_arquivo', '').strip() or path_arquivo
+    if not nome or not path_arquivo:
+        flash('Informe nome e arquivo do order bump.', 'warning')
+        return redirect(url_for('admin.produto_bumps', produto_id=produto_id))
+    try:
+        adicionar_bump_produto(
+            produto_id, nome, path_arquivo, nome_arquivo,
+            preco_original=float(request.form['preco_original']),
+            preco_promocional=float(request.form['preco_promocional']),
+            descricao=request.form.get('descricao'),
+            ordem=int(request.form.get('ordem') or 1),
+        )
+        flash('Order bump adicionado com sucesso!', 'success')
+        logger.info(f"[ADMIN] ✅ Order bump adicionado ao produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao adicionar order bump: {e}")
+        flash(f'Erro ao adicionar order bump: {e}', 'danger')
+    return redirect(url_for('admin.produto_bumps', produto_id=produto_id))
+
+
+@admin_bp.route('/produto/<int:produto_id>/bumps/<int:bump_id>/editar', methods=['GET', 'POST'])
+@requer_admin
+def editar_bump_produto(produto_id, bump_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    bump = get_bump_produto(bump_id, produto_id)
+    if not bump:
+        flash('Order bump não encontrado.', 'danger')
+        return redirect(url_for('admin.produto_bumps', produto_id=produto_id))
+
+    if request.method == 'POST':
+        try:
+            path_arquivo = request.form['path_arquivo'].strip()
+            atualizar_bump_produto(
+                bump_id, produto_id,
+                nome=request.form['nome'].strip(),
+                path_arquivo=path_arquivo,
+                nome_arquivo=request.form.get('nome_arquivo', '').strip() or path_arquivo,
+                preco_original=float(request.form['preco_original']),
+                preco_promocional=float(request.form['preco_promocional']),
+                descricao=request.form.get('descricao'),
+                ordem=int(request.form.get('ordem') or 1),
+            )
+            flash('Order bump atualizado com sucesso!', 'success')
+            logger.info(f"[ADMIN] ✅ Order bump #{bump_id} atualizado por {current_user.email}")
+            return redirect(url_for('admin.produto_bumps', produto_id=produto_id))
+        except Exception as e:
+            logger.error(f"[ADMIN] ❌ Erro ao atualizar order bump: {e}")
+            flash(f'Erro ao salvar: {e}', 'danger')
+
+    return render_template('admin/produto_bump_editar.html', produto=produto, bump=bump)
+
+
+@admin_bp.route('/produto/<int:produto_id>/bumps/<int:bump_id>/remover', methods=['POST'])
+@requer_admin
+def remover_bump_produto_view(produto_id, bump_id):
+    try:
+        remover_bump_produto(bump_id, produto_id)
+        flash('Order bump removido.', 'success')
+        logger.info(f"[ADMIN] ✅ Order bump #{bump_id} removido do produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao remover order bump: {e}")
+        flash(f'Erro ao remover order bump: {e}', 'danger')
+    return redirect(url_for('admin.produto_bumps', produto_id=produto_id))
+
+
+# ============================================================
 # Arquivos (PDF e Áudio OGG)
 # ============================================================
 
@@ -1546,12 +1689,21 @@ _SQL_CAMPANHAS = """
 
 _SQL_FUNIL_WEB = """
     SELECT
-        COUNT(CASE WHEN estado_id IN (1000,1001,1002) THEN 1 END) AS total_pedidos,
-        COUNT(CASE WHEN estado_id = 1000 THEN 1 END)              AS pagos
+        COUNT(CASE WHEN estado_id IN (1004,1003,1001,1002,1000) THEN 1 END) AS chegou_landing,
+        COUNT(CASE WHEN estado_id IN (1003,1001,1002,1000) THEN 1 END)      AS chegou_checkout,
+        COUNT(CASE WHEN estado_id IN (1000,1001,1002) THEN 1 END)          AS total_pedidos,
+        COUNT(CASE WHEN estado_id = 1000 THEN 1 END)                        AS pagos
     FROM pedidos
     WHERE produto_id = %s
       AND data_contato_site BETWEEN %s AND %s
 """
+# Nota: como o estado é atualizado na mesma linha (1004→1003→1001→1002→1000, não um evento por
+# etapa), "chegou_landing"/"chegou_checkout" somam também quem já avançou além daquela etapa —
+# funciona porque hoje 100% do tráfego de checkout passa pela landing primeiro (pudim-e.html é
+# a única porta de entrada pro produto 8). Se um dia um anúncio apontar direto pro checkout
+# (pulando a landing), essa contagem de "chegou_landing" ficaria imprecisa — nesse caso valeria
+# adicionar colunas de timestamp por marco (ex: data_chegou_landing) em vez de inferir pelo
+# estado atual.
 
 _SQL_RECEITA_WEB = """
     SELECT
@@ -2027,29 +2179,42 @@ def analytics_web_produto(produto_id):
         data_ini_str = data_fim_str = hoje.isoformat()
 
     try:
-        funil     = db.execute_query(_SQL_FUNIL_WEB,     (produto_id, data_ini, data_fim), fetch_one=True)
-        receita   = db.execute_query(_SQL_RECEITA_WEB,   (produto_id, data_ini, data_fim), fetch_one=True)
-        campanhas = db.execute_query(_SQL_CAMPANHAS_WEB, (produto_id, data_ini, data_fim), fetch_all=True)
+        funil       = db.execute_query(_SQL_FUNIL_WEB,        (produto_id, data_ini, data_fim), fetch_one=True)
+        receita     = db.execute_query(_SQL_RECEITA_WEB,      (produto_id, data_ini, data_fim), fetch_one=True)
+        campanhas   = db.execute_query(_SQL_CAMPANHAS_WEB,    (produto_id, data_ini, data_fim), fetch_all=True)
+        investimento = db.execute_query(_SQL_PRO_INVESTIMENTO, (produto_id, data_ini, data_fim), fetch_one=True)
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro no analytics web produto #{produto_id}: {e}")
         flash('Erro ao carregar analytics web.', 'danger')
-        funil = receita = None
+        funil = receita = investimento = None
         campanhas = []
 
     conv_pedidos_pagos = 0.0
+    conv_landing_checkout = 0.0
+    conv_checkout_pedido = 0.0
     ticket_medio = 0.0
+    cliques_google_ads = investimento['total_cliques'] if investimento else 0
 
     if funil and funil['total_pedidos'] > 0:
         conv_pedidos_pagos = round((funil['pagos'] / funil['total_pedidos']) * 100, 1)
+
+    if funil and funil['chegou_landing'] > 0:
+        conv_landing_checkout = round((funil['chegou_checkout'] / funil['chegou_landing']) * 100, 1)
+
+    if funil and funil['chegou_checkout'] > 0:
+        conv_checkout_pedido = round((funil['total_pedidos'] / funil['chegou_checkout']) * 100, 1)
 
     if receita and receita['total_pagamentos']:
         ticket_medio = float(receita['total_receita']) / receita['total_pagamentos']
 
     return render_template('admin/produto_analytics_web.html',
-        produto            = produto,
-        funil              = funil,
-        receita            = receita,
-        campanhas          = campanhas,
+        produto               = produto,
+        funil                 = funil,
+        receita               = receita,
+        campanhas             = campanhas,
+        cliques_google_ads    = cliques_google_ads,
+        conv_landing_checkout = conv_landing_checkout,
+        conv_checkout_pedido  = conv_checkout_pedido,
         data_ini           = data_ini_str,
         data_fim           = data_fim_str,
         ticket_medio       = ticket_medio,

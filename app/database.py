@@ -1084,6 +1084,173 @@ def remover_acao_fluxo(acao_id):
     db.execute_query("DELETE FROM acoes_fluxo_produto WHERE id = %s", (acao_id,))
 
 
+# ============================================================
+# Bônus e Order Bumps por produto (venda web)
+# ============================================================
+
+def listar_bonus_produto(produto_id):
+    """Lista os bônus configurados para um produto, ordenados por ordem."""
+    return db.execute_query(
+        "SELECT * FROM produto_bonus WHERE produto_id = %s ORDER BY ordem, id",
+        (produto_id,), fetch_all=True
+    ) or []
+
+
+def adicionar_bonus_produto(produto_id, nome, path_arquivo, nome_arquivo, descricao=None, ordem=1):
+    """Adiciona um bônus a um produto. Retorna o ID criado."""
+    return db.execute_query(
+        """INSERT INTO produto_bonus (produto_id, nome, path_arquivo, nome_arquivo, descricao, ordem)
+           VALUES (%s, %s, %s, %s, %s, %s)""",
+        (produto_id, nome, path_arquivo, nome_arquivo, descricao or None, ordem)
+    )
+
+
+def remover_bonus_produto(bonus_id, produto_id):
+    """Remove um bônus pelo ID, restrito ao produto informado (evita apagar item de outro produto)."""
+    db.execute_query(
+        "DELETE FROM produto_bonus WHERE id = %s AND produto_id = %s", (bonus_id, produto_id)
+    )
+
+
+def listar_bump_produto(produto_id):
+    """Lista os order bumps configurados para um produto, ordenados por ordem."""
+    return db.execute_query(
+        "SELECT * FROM produto_bump WHERE produto_id = %s ORDER BY ordem, id",
+        (produto_id,), fetch_all=True
+    ) or []
+
+
+def get_bump_produto(bump_id, produto_id):
+    """Retorna um order bump pelo ID, restrito ao produto informado (evita editar/ver item de outro produto)."""
+    return db.execute_query(
+        "SELECT * FROM produto_bump WHERE id = %s AND produto_id = %s",
+        (bump_id, produto_id), fetch_one=True
+    )
+
+
+def adicionar_bump_produto(produto_id, nome, path_arquivo, nome_arquivo, preco_original,
+                            preco_promocional, descricao=None, ordem=1):
+    """Adiciona um order bump a um produto. Retorna o ID criado."""
+    return db.execute_query(
+        """INSERT INTO produto_bump
+               (produto_id, nome, path_arquivo, nome_arquivo, descricao,
+                preco_original, preco_promocional, ordem)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+        (produto_id, nome, path_arquivo, nome_arquivo, descricao or None,
+         preco_original, preco_promocional, ordem)
+    )
+
+
+def atualizar_bump_produto(bump_id, produto_id, nome, path_arquivo, nome_arquivo, preco_original,
+                            preco_promocional, descricao=None, ordem=1):
+    """Atualiza um order bump existente pelo ID, restrito ao produto informado."""
+    db.execute_query(
+        """UPDATE produto_bump SET
+               nome=%s, path_arquivo=%s, nome_arquivo=%s, descricao=%s,
+               preco_original=%s, preco_promocional=%s, ordem=%s
+           WHERE id=%s AND produto_id=%s""",
+        (nome, path_arquivo, nome_arquivo, descricao or None,
+         preco_original, preco_promocional, ordem, bump_id, produto_id)
+    )
+
+
+def remover_bump_produto(bump_id, produto_id):
+    """Remove um order bump pelo ID, restrito ao produto informado (evita apagar item de outro produto)."""
+    db.execute_query(
+        "DELETE FROM produto_bump WHERE id = %s AND produto_id = %s", (bump_id, produto_id)
+    )
+
+
+def listar_bumps_validos(produto_id, bump_ids):
+    """
+    Retorna as linhas de `produto_bump` cujo `id` esteja em `bump_ids` E que pertençam a
+    `produto_id` — nunca confie em preço/nome vindo do cliente, sempre releia do banco a
+    partir só dos ids escolhidos.
+    """
+    bump_ids = [int(b) for b in (bump_ids or []) if str(b).isdigit()]
+    if not bump_ids:
+        return []
+    placeholders = ','.join(['%s'] * len(bump_ids))
+    return db.execute_query(
+        f"SELECT * FROM produto_bump WHERE produto_id = %s AND id IN ({placeholders})",
+        (produto_id, *bump_ids), fetch_all=True
+    ) or []
+
+
+def listar_itens_pedido(pedido_id):
+    """Lista os itens gravados em `pedido_itens` para um pedido, em ordem de criação."""
+    return db.execute_query(
+        "SELECT * FROM pedido_itens WHERE pedido_id = %s ORDER BY id",
+        (pedido_id,), fetch_all=True
+    ) or []
+
+
+def get_item_pedido(item_id, pedido_id):
+    """Retorna um item de `pedido_itens` pelo ID, restrito ao pedido informado (evita baixar
+    arquivo de outro pedido via manipulação de URL)."""
+    return db.execute_query(
+        "SELECT * FROM pedido_itens WHERE id = %s AND pedido_id = %s",
+        (item_id, pedido_id), fetch_one=True
+    )
+
+
+def criar_itens_pedido_web(pedido_id, produto, valor_principal, bump_rows=None):
+    """
+    Grava em `pedido_itens` o snapshot do que foi incluído no pedido web no momento da
+    compra: uma linha 'principal' (o produto comprado, pelo valor efetivamente cobrado por
+    ele) + uma linha 'bonus' para cada bônus configurado em `produto_bonus` + uma linha
+    'bump' para cada order bump aceito (já validado pelo chamador via listar_bumps_validos).
+
+    Recebe `produto` (dict já carregado pelo chamador, ex: get_produto_disponivel_web) e
+    `valor_principal` (o valor do produto principal realmente cobrado, sem os bumps) em vez
+    de reconsultar o banco — evita uma query redundante e garante que o valor gravado bate
+    com o que foi de fato cobrado (que pode divergir do produtos.preco por causa do override
+    CHECKOUT_VALOR_TESTE_PRODUTO_<id>).
+
+    Se o produto não tiver `url_pdf` configurado, não grava nada e apenas loga um aviso
+    — evita satisfazer a coluna NOT NULL de `path_arquivo` com uma string vazia.
+
+    Nota para quem for somar `pedido_itens.valor` em relatórios: esta função grava o item
+    assim que o lead é criado (estado 1001), antes da confirmação de pagamento — pedidos
+    nunca pagos também geram linhas aqui. Para receita real, sempre faça JOIN com
+    `pedidos.estado_id` (só conta pago quando estado_id = 1000).
+    """
+    if not produto or not produto.get('url_pdf'):
+        logger.warning(
+            f"[PEDIDO-ITENS] ⚠️ Produto sem url_pdf configurado — pedido #{pedido_id} "
+            f"ficará sem registro em pedido_itens."
+        )
+        return
+
+    url_pdf = produto['url_pdf']
+    nome_arquivo = os.path.basename(url_pdf)
+    db.execute_query(
+        """INSERT INTO pedido_itens (pedido_id, tipo, nome, path_arquivo, nome_arquivo, valor)
+           VALUES (%s, 'principal', %s, %s, %s, %s)""",
+        (pedido_id, produto['nome'], url_pdf, nome_arquivo, valor_principal)
+    )
+
+    bonus_rows = listar_bonus_produto(produto['id'])
+    if bonus_rows:
+        db.execute_many(
+            """INSERT INTO pedido_itens
+                   (pedido_id, tipo, produto_bonus_id, nome, path_arquivo, nome_arquivo, valor)
+               VALUES (%s, 'bonus', %s, %s, %s, %s, 0.00)""",
+            [(pedido_id, bonus['id'], bonus['nome'], bonus['path_arquivo'], bonus['nome_arquivo'])
+             for bonus in bonus_rows]
+        )
+
+    if bump_rows:
+        db.execute_many(
+            """INSERT INTO pedido_itens
+                   (pedido_id, tipo, produto_bump_id, nome, path_arquivo, nome_arquivo, valor)
+               VALUES (%s, 'bump', %s, %s, %s, %s, %s)""",
+            [(pedido_id, bump['id'], bump['nome'], bump['path_arquivo'], bump['nome_arquivo'],
+              bump['preco_promocional'])
+             for bump in bump_rows]
+        )
+
+
 def buscar_todas_mensagens_pedido(pedido_id: int) -> list:
     """Retorna todas as mensagens de um pedido em ordem cronológica."""
     rows = db.execute_query(
@@ -1199,6 +1366,76 @@ def get_phone_number_id_produto(produto_id: int):
     return row['api_phone_number_id'] if row else None
 
 
+def criar_pedido_web_inicial(produto_id: int, estado_id: int, dns_origem: str = '',
+                             gclid: str = '', campaignid: str = '', adgroupid: str = '',
+                             creative: str = '', matchtype: str = '',
+                             device: str = '', placement: str = '',
+                             video_id: str = '') -> int:
+    """
+    Cria um pedido em `pedidos` numa etapa anterior à identificação do cliente
+    (estado_id 1004 = chegou na página de vendas, ou 1003 = chegou no checkout) — sem
+    contact_phone/contact_name/email, só dados de campanha. Mesma ideia de `criar_pedido`
+    (fluxo WhatsApp, que cria o pedido no clique do botão, antes de qualquer conversa).
+    Retorna o id.
+    """
+    return db.execute_query(
+        """INSERT INTO pedidos
+             (produto_id, valor_pago, estado_id, gclid,
+              data_ultima_atualizacao, data_contato_site,
+              dns_origem, campaignid, adgroupid, creative, matchtype, device, placement, video_id)
+           VALUES (%s, 0.0, %s, %s,
+                   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
+                   %s, %s, %s, %s, %s, %s, %s, %s)""",
+        (produto_id, estado_id, gclid or '',
+         dns_origem or '', campaignid or '', adgroupid or '', creative or '',
+         matchtype or '', device or '', placement or '', video_id or '')
+    )
+
+
+def get_pedido_nao_finalizado(pedido_id: int, produto_id: int):
+    """Retorna o pedido se ele ainda estiver numa etapa pré-identificação (1004 ou 1003),
+    restrito ao produto informado — evita reaproveitar/atualizar pedido de outro produto ou
+    um pedido que já foi finalizado (protege a troca de order bump após já ter finalizado:
+    ver `finalizar_pedido_web`)."""
+    return db.execute_query(
+        "SELECT * FROM pedidos WHERE id = %s AND produto_id = %s AND estado_id IN (1004, 1003)",
+        (pedido_id, produto_id), fetch_one=True
+    )
+
+
+def avancar_pedido_web(pedido_id: int, estado_id: int) -> None:
+    """Avança um pedido ainda não finalizado (1004→1003) sem recriar a linha."""
+    db.execute_query(
+        """UPDATE pedidos SET estado_id = %s, data_ultima_atualizacao = CURRENT_TIMESTAMP
+           WHERE id = %s AND estado_id IN (1004, 1003)""",
+        (estado_id, pedido_id)
+    )
+
+
+def finalizar_pedido_web(pedido_id: int, phone_number_id: str, contact_phone: str,
+                         contact_name: str, email: str) -> bool:
+    """
+    Preenche a identidade do cliente num pedido já existente (1004/1003) e avança pra 1001
+    (Pedido web criado) — usado quando o cliente chegou na landing/checkout antes de finalizar.
+    Só atualiza se o pedido ainda estiver em 1004/1003 (WHERE protege contra reaproveitar um
+    pedido que já foi adiante, ex: cliente quer trocar de order bump depois de já ter gerado um
+    PIX — nesse caso o caminho correto é criar um pedido novo via `criar_pedido_web_unificado`).
+    Retorna True se atualizou alguma linha, False caso o pedido não estivesse mais em 1004/1003.
+    """
+    _contact_phone = contact_phone or ''
+    linhas = db.execute_query(
+        """UPDATE pedidos
+           SET phone_number_id = %s, contact_phone = %s, contact_name = %s, contact_to = %s,
+               email = %s, estado_id = 1001, data_pedido = CURRENT_TIMESTAMP,
+               data_ultima_atualizacao = CURRENT_TIMESTAMP
+           WHERE id = %s AND estado_id IN (1004, 1003)""",
+        (phone_number_id or '', _contact_phone, contact_name or '', _contact_phone or None,
+         email or '', pedido_id),
+        return_rowcount=True
+    )
+    return bool(linhas)
+
+
 def criar_pedido_web_unificado(produto_id: int, phone_number_id: str,
                                contact_phone: str, contact_name: str,
                                dns_origem: str = '',
@@ -1257,9 +1494,17 @@ def get_pedido_by_solicitacao_bb(numero_solicitacao_bb: str):
 
 def confirmar_pagamento_web(pedido_id: int, valor: float, nome_pagador: str = '',
                             cpf_cnpj_pagador: str = '', valor_liquido: float = None,
-                            data_repasse: str = None, e2e_id: str = '') -> None:
-    """Confirma pagamento web: avança para estado 1000 e registra dados do pagador."""
-    db.execute_query(
+                            data_repasse: str = None, e2e_id: str = '') -> bool:
+    """
+    Confirma pagamento web: avança para estado 1000 e registra dados do pagador.
+
+    O `WHERE ... AND estado_id != 1000` torna a operação atômica (compare-and-swap): se duas
+    chamadas concorrentes (ex: polling do cliente e o sweep de resiliência) tentarem confirmar
+    o mesmo pedido ao mesmo tempo, só uma delas efetivamente atualiza a linha. Retorna True só
+    para quem "ganhou" — quem chama deve usar isso pra decidir se dispara a entrega (evita
+    e-mail duplicado).
+    """
+    linhas = db.execute_query(
         """UPDATE pedidos
            SET estado_id = 1000,
                valor_pago = %s,
@@ -1270,10 +1515,12 @@ def confirmar_pagamento_web(pedido_id: int, valor: float, nome_pagador: str = ''
                e2e_id = %s,
                data_pagamento = CURRENT_TIMESTAMP,
                data_ultima_atualizacao = CURRENT_TIMESTAMP
-           WHERE id = %s""",
+           WHERE id = %s AND estado_id != 1000""",
         (valor, nome_pagador or '', cpf_cnpj_pagador or '',
-         valor_liquido, data_repasse, e2e_id or '', pedido_id)
+         valor_liquido, data_repasse, e2e_id or '', pedido_id),
+        return_rowcount=True
     )
+    return bool(linhas)
 
 
 def marcar_ebook_enviado(pedido_id: int) -> None:

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, send_file
+from flask import Flask, request, jsonify, render_template, send_file, make_response
 from whatsapp_seguranca import whatsapp_security, validar_assinatura_whatsapp
 from lead_incluir import persistir_lead
 from notificacoes import notificador, notificar_erro
@@ -256,6 +256,15 @@ def pudim():
 @app.get("/pudim-temp")
 def pudim_temp():
     return render_template('pudim-temp.html')
+
+@app.get("/pudim-e")
+def pudim_e():
+    from web.checkout import rastrear_visita_funil, COOKIE_MAX_AGE_FUNIL
+    produto_id = 8
+    pedido_id = rastrear_visita_funil(request, produto_id, estado_novo=1004)
+    resp = make_response(render_template('pudim-e.html'))
+    resp.set_cookie(f'pedido_web_{produto_id}', str(pedido_id), max_age=COOKIE_MAX_AGE_FUNIL)
+    return resp
 
 @app.get("/tempero")
 def tempero():

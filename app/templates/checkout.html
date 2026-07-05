@@ -18,6 +18,7 @@
             --texto:    #222;
             --sub:      #666;
             --erro:     #c0392b;
+            --laranja:  #b45309;
         }
 
         body {
@@ -54,10 +55,36 @@
             border: 1px solid var(--borda);
         }
 
-        /* ── Resumo do produto ── */
-        .resumo-label { font-size: 12px; color: var(--sub); margin-bottom: 6px; }
-        .resumo-nome  { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
-        .resumo-preco { font-size: 22px; font-weight: 900; color: var(--verde); }
+        /* ── Resumo do produto (lista de itens, atualiza com os bumps marcados) ── */
+        .resumo-label { font-size: 12px; color: var(--sub); margin-bottom: 10px; }
+        .resumo-itens { display: flex; flex-direction: column; gap: 8px; }
+        .linha-item { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 14px; }
+        .linha-item span:first-child { flex: 1; min-width: 0; }
+        .linha-item span:last-child  { flex-shrink: 0; white-space: nowrap; }
+        .linha-item-principal { font-size: 17px; font-weight: 700; }
+        .linha-item-extra { font-size: 13px; color: var(--laranja); }
+        .resumo-total-wrap {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--borda);
+            font-size: 14px; color: var(--sub);
+        }
+        .resumo-total-wrap strong { font-size: 22px; font-weight: 900; color: var(--verde); }
+
+        /* ── Bônus ── */
+        .bonus-box {
+            background: #fffaf0; border: 1.5px dashed #f0b429;
+            border-radius: 12px; padding: 18px 20px; margin-bottom: 16px;
+        }
+        .bonus-titulo {
+            font-size: 14px; font-weight: 900; color: var(--laranja);
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+        }
+        .bonus-item {
+            font-size: 14px; color: var(--texto); padding: 6px 0;
+            display: flex; align-items: flex-start; gap: 8px;
+        }
+        .bonus-item + .bonus-item { border-top: 1px dashed #f0dcae; }
+        .bonus-item .check { color: var(--verde); flex-shrink: 0; font-weight: 900; }
 
         /* ── Títulos de seção ── */
         .secao-titulo {
@@ -132,29 +159,22 @@
             visibility: hidden;
         }
 
-        /* ── Opções de pagamento ── */
-        .pagamento-opcao {
-            border: 2px solid var(--borda);
-            border-radius: 10px; padding: 14px 16px;
-            margin-bottom: 10px; cursor: pointer;
-            display: flex; align-items: center; gap: 14px;
-            transition: border-color .15s, background .15s;
+        /* ── Pagamento (só PIX por enquanto) ── */
+        .pagamento-tag {
+            display: flex; align-items: center; gap: 10px;
+            border: 1.5px solid var(--borda); border-radius: 10px;
+            padding: 12px 14px; margin-bottom: 14px;
         }
-        .pagamento-opcao:hover  { border-color: #aaa; }
-        .pagamento-opcao.ativo  { border-color: var(--verde); background: #f0f7f3; }
-        .pagamento-opcao input[type=radio] { width: 18px; height: 18px; cursor: pointer; }
-
-        .pagamento-info { flex: 1; }
-        .pagamento-nome { font-weight: 700; font-size: 15px; }
-        .pagamento-sub  { font-size: 12px; color: var(--sub); margin-top: 2px; }
-
         .pix-icon {
-            width: 36px; height: 36px;
+            width: 32px; height: 32px;
             background: #32BCAD; border-radius: 8px;
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
         }
-        .pix-icon svg { width: 22px; height: 22px; fill: #fff; }
+        .pix-icon svg { width: 20px; height: 20px; fill: #fff; }
+        .pagamento-info { flex: 1; }
+        .pagamento-nome { font-weight: 700; font-size: 14px; }
+        .pagamento-sub  { font-size: 12px; color: var(--sub); margin-top: 1px; }
 
         .bbpay-icon {
             width: 36px; height: 36px;
@@ -163,6 +183,36 @@
             flex-shrink: 0; font-weight: 900; font-size: 12px;
             color: var(--amarelo-bb); letter-spacing: -0.5px;
         }
+
+        /* ── Order bumps ── */
+        .bump-card {
+            border: 2px dashed #f0b429; background: #fffdf5;
+            border-radius: 12px; padding: 16px; margin-bottom: 12px;
+            display: flex; gap: 12px; align-items: flex-start;
+            cursor: pointer; transition: border-color .15s, background .15s;
+        }
+        .bump-card:hover { border-color: #d99a1f; }
+        .bump-card.marcado { border-style: solid; background: #fff6e0; }
+        .bump-card input[type=checkbox] {
+            width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px; cursor: pointer;
+        }
+        .bump-selo {
+            display: inline-block; background: var(--laranja); color: #fff;
+            font-size: 10px; font-weight: 900; letter-spacing: .5px;
+            text-transform: uppercase; padding: 2px 8px; border-radius: 20px;
+            margin-bottom: 6px;
+        }
+        .bump-nome { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+        .bump-desc { font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+        .bump-precos { font-size: 13px; }
+        .bump-preco-original { color: var(--sub); text-decoration: line-through; margin-right: 6px; }
+        .bump-preco-promo { color: var(--verde); font-weight: 900; font-size: 15px; }
+
+        .total-linha {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 14px; color: var(--sub); margin-bottom: 10px; padding: 0 2px;
+        }
+        .total-linha strong { color: var(--texto); font-size: 18px; font-weight: 900; }
 
         /* ── Erros ── */
         .msg-erro {
@@ -184,10 +234,18 @@
         }
         .btn-finalizar:hover    { background: #3a6347; }
         .btn-finalizar:disabled { background: #aaa; cursor: not-allowed; }
+        .btn-sub-seguro {
+            text-align: center; font-size: 12px; color: var(--sub); margin-top: 10px;
+        }
 
         /* ── Estado: PIX QR Code ── */
         #estado-pix { display: none; }
-        .qr-titulo  { font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+        .qr-titulo  { font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 12px; }
+        .pix-itens {
+            max-width: 280px; margin: 0 auto 12px; text-align: left;
+            background: #fafafa; border-radius: 8px; padding: 10px 14px;
+        }
+        .pix-itens .linha-item { font-size: 13px; padding: 3px 0; }
         .qr-preco   { text-align: center; font-size: 20px; font-weight: 900; color: var(--verde); margin-bottom: 16px; }
         .qr-img     { display: block; margin: 0 auto 16px; max-width: 220px; width: 100%; border-radius: 8px; }
 
@@ -247,6 +305,10 @@
         }
         .btn-tentar-novamente:hover { background: #f0f7f3; }
 
+        /* Botão "já paguei" sempre visível junto ao QR (não só depois do timeout) */
+        .ja-paguei-wrap { text-align: center; margin-top: 16px; }
+        .ja-paguei-wrap p { font-size: 12px; color: #999; margin-top: 6px; }
+
         /* ── Estado: sucesso ── */
         #estado-sucesso { display: none; text-align: center; }
         .sucesso-icone  { font-size: 48px; display: block; margin-bottom: 8px; }
@@ -263,10 +325,12 @@
         .link-suporte { color: var(--verde); font-weight: 700; text-decoration: none; }
         .link-suporte:hover { text-decoration: underline; }
 
+        #downloadsWrap { margin: 18px 0 6px; text-align: left; }
+
         .btn-download {
             display: block; width: 100%;
             background: var(--verde); color: #fff; text-decoration: none;
-            border-radius: 50px; padding: 16px;
+            border-radius: 50px; padding: 16px; text-align: center;
             font-size: 15px; font-weight: 700; font-family: 'Lato', sans-serif;
             margin-bottom: 12px; transition: background .15s;
         }
@@ -276,7 +340,7 @@
             display: block; width: 100%;
             background: #fff8e1; color: #b45309;
             border: 2px solid #f59e0b; text-decoration: none;
-            border-radius: 50px; padding: 15px;
+            border-radius: 50px; padding: 15px; text-align: center;
             font-size: 15px; font-weight: 700; font-family: 'Lato', sans-serif;
             margin-bottom: 12px; transition: background .15s;
         }
@@ -305,12 +369,35 @@
 
 <div class="container">
 
-    <!-- Resumo do produto -->
+    <!-- Resumo do produto (vira uma listinha de itens quando um bump é marcado) -->
     <div class="card">
         <div class="resumo-label">Detalhes da sua compra:</div>
-        <div class="resumo-nome">{{ produto.descricao }}</div>
-        <div class="resumo-preco">R$ {{ "%.2f"|format(produto.preco) }}</div>
+        <div id="resumoItens" class="resumo-itens">
+            <div class="linha-item linha-item-principal">
+                <span>{{ produto.descricao }}</span>
+                <span>R$ {{ "%.2f"|format(produto.preco) }}</span>
+            </div>
+        </div>
+        <div class="resumo-total-wrap">
+            <span>Total</span>
+            <strong id="resumoTotal">R$ {{ "%.2f"|format(produto.preco) }}</strong>
+        </div>
     </div>
+
+    {% if bonus %}
+    <!-- Bônus incluídos -->
+    <div class="bonus-box">
+        <div class="bonus-titulo">🎁 Você também recebe de bônus</div>
+        {% for b in bonus %}
+        <div class="bonus-item">
+            <span class="check">✓</span>
+            <span>
+                <strong>{{ b.nome }}</strong>{% if b.descricao %} — {{ b.descricao }}{% endif %}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <!-- Formulário de checkout -->
     <div id="estado-form">
@@ -318,7 +405,7 @@
         <!-- Identificação -->
         <div class="card">
             <div class="secao-titulo">
-                <span class="secao-num">1</span> Identificação
+                <span class="secao-num">1</span> Seus dados
             </div>
 
             <div class="campo">
@@ -328,6 +415,11 @@
             <div class="campo">
                 <label for="inputEmail">E-mail</label>
                 <input type="email" id="inputEmail" placeholder="seu@email.com" autocomplete="email">
+            </div>
+            <div class="campo">
+                <label for="inputEmailConfirma">Confirme seu e-mail</label>
+                <input type="email" id="inputEmailConfirma" placeholder="digite o e-mail novamente" autocomplete="off">
+                <span class="erro-campo oculto" id="erroEmailConfirma">Os e-mails não são iguais</span>
             </div>
             <div class="campo">
                 <label for="inputWhatsapp">WhatsApp com DDD <span style="font-weight:400;color:#888;">(opcional)</span></label>
@@ -341,36 +433,42 @@
                     Número incompleto — informe com DDD (ex: 61 98765-4321)
                 </span>
             </div>
-        </div>
 
-        <!-- Pagamento -->
-        <div class="card">
-            <div class="secao-titulo">
-                <span class="secao-num">2</span> Forma de pagamento
-            </div>
-
-            <label class="pagamento-opcao ativo" id="opcaoPix">
-                <input type="radio" name="metodo" value="pix" checked>
+            <div class="pagamento-tag">
                 <div class="pix-icon">
                     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                     </svg>
                 </div>
                 <div class="pagamento-info">
-                    <div class="pagamento-nome">PIX</div>
+                    <div class="pagamento-nome">Pagamento via PIX</div>
                     <div class="pagamento-sub">Aprovação imediata</div>
                 </div>
-            </label>
+            </div>
+        </div>
 
-            <label class="pagamento-opcao" id="opcaoBBPay">
-                <input type="radio" name="metodo" value="bbpay">
-                <div class="bbpay-icon">BB</div>
-                <div class="pagamento-info">
-                    <div class="pagamento-nome">BB Pay</div>
-                    <div class="pagamento-sub">Pague pelo app Banco do Brasil</div>
+        {% if bumps %}
+        <!-- Order bumps -->
+        <div class="card">
+            <div class="secao-titulo">
+                <span class="secao-num">2</span> Aproveite e leve também
+            </div>
+            {% for b in bumps %}
+            <label class="bump-card" data-bump-wrap>
+                <input type="checkbox" class="bump-checkbox" data-id="{{ b.id }}" data-preco="{{ b.preco_promocional }}">
+                <div>
+                    <span class="bump-selo">Oferta exclusiva</span>
+                    <div class="bump-nome">{{ b.nome }}</div>
+                    {% if b.descricao %}<div class="bump-desc">{{ b.descricao }}</div>{% endif %}
+                    <div class="bump-precos">
+                        <span class="bump-preco-original">R$ {{ "%.2f"|format(b.preco_original) }}</span>
+                        <span class="bump-preco-promo">R$ {{ "%.2f"|format(b.preco_promocional) }}</span>
+                    </div>
                 </div>
             </label>
+            {% endfor %}
         </div>
+        {% endif %}
 
         <!-- Erros de validação -->
         <div class="msg-erro" id="msgErro">
@@ -378,13 +476,20 @@
             <ul id="listaErros"></ul>
         </div>
 
+        <div class="total-linha">
+            <span>Total</span>
+            <strong id="totalDisplay">R$ {{ "%.2f"|format(produto.preco) }}</strong>
+        </div>
+
         <button class="btn-finalizar" id="btnFinalizar">FINALIZAR COMPRA</button>
+        <div class="btn-sub-seguro">🔒 Pagamento 100% seguro via PIX</div>
 
     </div><!-- /estado-form -->
 
     <!-- Estado: PIX QR Code -->
     <div id="estado-pix" class="card" style="text-align:center;">
         <div class="qr-titulo">Pague com PIX</div>
+        <div id="pixItens" class="pix-itens"></div>
         <div class="qr-preco" id="pixPreco"></div>
         <img id="qrImg" class="qr-img" src="" alt="QR Code PIX">
         <div class="copiaecola-wrap">
@@ -400,31 +505,35 @@
             <div class="spinner"></div>
             <span>Aguardando confirmação do pagamento…<span id="countdownDisplay" class="countdown-txt"></span></span>
         </div>
+        <div class="ja-paguei-wrap" id="jaPagueiWrap">
+            <button onclick="reiniciarPolling()" class="btn-tentar-novamente">✅ Já paguei — verificar agora</button>
+            <p>Pagou e não atualizou sozinho? Clique acima que a gente confere na hora.</p>
+        </div>
         <div id="pixExpirado" style="display:none; font-size:13px; color:#888; margin-top:16px; text-align:center;">
             Tempo de verificação encerrado.<br>
-            Se você já pagou, clique abaixo e vamos conferir.<br>
+            Se você já pagou, clique acima e vamos conferir.<br>
             Caso precise de ajuda: <a href="mailto:admin@lsnlivros.com.br" class="link-suporte">admin@lsnlivros.com.br</a>
-            <br><br>
-            <button onclick="reiniciarPolling()" class="btn-tentar-novamente">✅ Já paguei — verificar agora</button>
             <br><br>
             <button onclick="voltarFormulario()" class="btn-tentar-novamente" style="border-color:#aaa; color:#666;">✏️ Corrigir meus dados</button>
         </div>
     </div>
 
-    <!-- Estado: sucesso / entrega e-mail -->
+    <!-- Estado: sucesso / entrega -->
     <div id="estado-sucesso" class="card">
         <span class="sucesso-icone">🎉</span>
         <div class="sucesso-titulo">Pagamento confirmado!</div>
         <p class="sucesso-sub">
-            Seu guia está sendo enviado para<br>
-            <strong id="sucesso-email"></strong><br><br>
-            Verifique sua caixa de entrada — e a pasta de <strong>spam</strong>, por garantia.
+            Baixe seus arquivos abaixo. Também enviamos tudo para<br>
+            <strong id="sucesso-email"></strong> — confira a caixa de entrada e o <strong>spam</strong>, por garantia.
         </p>
+
+        <div id="downloadsWrap"></div>
+
         <p class="sucesso-pedido">
             Pedido <strong id="sucesso-pedido-id"></strong>
         </p>
         <p style="font-size:13px; color:#888; margin-top:4px;">
-            Não recebeu? Verifique se o número está correto ou entre em contato:<br>
+            Precisa de ajuda? Entre em contato:<br>
             <a href="mailto:admin@lsnlivros.com.br" class="link-suporte">admin@lsnlivros.com.br</a>
         </p>
     </div>
@@ -451,12 +560,18 @@
 <script
     data-produto-id="{{ produto.id }}"
     data-preco="{{ '%.2f'|format(produto.preco) }}"
+    data-nome="{{ produto.descricao }}"
+    data-pedido-id-inicial="{{ pedido_id_inicial or '' }}"
     id="checkout-config">
 </script>
 <script>
     const _cfg = document.getElementById('checkout-config').dataset;
     const PRODUTO_ID = parseInt(_cfg.produtoId);
-    const PRECO_DISPLAY = 'R$ ' + _cfg.preco.replace('.', ',');
+    const PRECO_BASE = parseFloat(_cfg.preco);
+    const PRODUTO_NOME = _cfg.nome;
+    // Pedido criado ao carregar a página (funil: chegou no checkout) — se o cliente finalizar,
+    // esse mesmo registro é atualizado em vez de criar um pedido novo.
+    const PEDIDO_ID_INICIAL = _cfg.pedidoIdInicial ? parseInt(_cfg.pedidoIdInicial) : null;
 
     let currentTxid     = null;
     let currentPedidoId = null;
@@ -475,13 +590,46 @@
         video_id:   urlParams.get('video_id')       || '',
     };
 
-    // ── Opções de pagamento ──
-    document.querySelectorAll('input[name=metodo]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            document.querySelectorAll('.pagamento-opcao').forEach(el => el.classList.remove('ativo'));
-            radio.closest('.pagamento-opcao').classList.add('ativo');
+    // ── Order bumps: recalcula o total e mantém o resumo (topo) em sincronia ──
+    function formatarReal(v) { return 'R$ ' + v.toFixed(2).replace('.', ','); }
+
+    function itensSelecionados() {
+        const itens = [{ nome: PRODUTO_NOME, preco: PRECO_BASE }];
+        document.querySelectorAll('.bump-checkbox:checked').forEach(cb => {
+            const nome = cb.closest('.bump-card').querySelector('.bump-nome').textContent.trim();
+            itens.push({ nome, preco: parseFloat(cb.dataset.preco) });
+        });
+        return itens;
+    }
+
+    function renderizarLinhasItens(containerId, itens) {
+        const wrap = document.getElementById(containerId);
+        wrap.innerHTML = itens.map((item, i) => `
+            <div class="linha-item ${i === 0 ? 'linha-item-principal' : 'linha-item-extra'}">
+                <span>${i === 0 ? item.nome : '+ ' + item.nome}</span>
+                <span>${formatarReal(item.preco)}</span>
+            </div>`).join('');
+    }
+
+    function recalcularTotal() {
+        const itens = itensSelecionados();
+        const total = itens.reduce((soma, item) => soma + item.preco, 0);
+        renderizarLinhasItens('resumoItens', itens);
+        document.getElementById('resumoTotal').textContent = formatarReal(total);
+        document.getElementById('totalDisplay').textContent = formatarReal(total);
+        return total;
+    }
+
+    document.querySelectorAll('.bump-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => {
+            cb.closest('.bump-card').classList.toggle('marcado', cb.checked);
+            recalcularTotal();
         });
     });
+
+    function bumpIdsSelecionados() {
+        return Array.from(document.querySelectorAll('.bump-checkbox:checked')).map(cb => parseInt(cb.dataset.id));
+    }
 
     // ── Máscara WhatsApp ──
     (function () {
@@ -550,6 +698,22 @@
         });
     })();
 
+    // ── Confirmação de e-mail ──
+    (function () {
+        const email    = document.getElementById('inputEmail');
+        const confirma = document.getElementById('inputEmailConfirma');
+        const erro     = document.getElementById('erroEmailConfirma');
+
+        function validar() {
+            if (!confirma.value) { erro.classList.add('oculto'); return; }
+            const igual = email.value.trim().toLowerCase() === confirma.value.trim().toLowerCase();
+            erro.classList.toggle('oculto', igual);
+        }
+        confirma.addEventListener('input', validar);
+        confirma.addEventListener('blur', validar);
+        email.addEventListener('blur', validar);
+    })();
+
     // ── Mostrar/esconder estados ──
     function mostrarEstado(estado) {
         ['estado-form', 'estado-pix', 'estado-sucesso', 'estado-fallback'].forEach(id => {
@@ -562,13 +726,15 @@
     // ── Validação ──
     function validar() {
         const erros = [];
-        const nome  = document.getElementById('inputNome').value.trim();
-        const email = document.getElementById('inputEmail').value.trim();
-        const wa    = document.getElementById('inputWhatsapp').value.replace(/\D/g, '');
-        const metodo = document.querySelector('input[name=metodo]:checked')?.value;
+        const nome     = document.getElementById('inputNome').value.trim();
+        const email    = document.getElementById('inputEmail').value.trim();
+        const emailConf = document.getElementById('inputEmailConfirma').value.trim();
+        const wa       = document.getElementById('inputWhatsapp').value.replace(/\D/g, '');
 
         if (!nome)              erros.push('Nome completo');
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) erros.push('E-mail válido');
+        else if (email.toLowerCase() !== emailConf.toLowerCase()) erros.push('Confirmação de e-mail (os dois campos precisam ser iguais)');
+
         if (wa.length > 0 && wa.length < 10) {
             erros.push('WhatsApp com DDD');
             document.getElementById('erroWhatsapp').classList.remove('oculto');
@@ -577,7 +743,6 @@
             document.getElementById('erroWhatsapp').classList.add('oculto');
             document.getElementById('wrapperWhatsapp').classList.remove('invalido');
         }
-        if (!metodo)            erros.push('Forma de pagamento');
 
         const divErro = document.getElementById('msgErro');
         const lista   = document.getElementById('listaErros');
@@ -588,7 +753,7 @@
         }
         divErro.style.display = 'none';
         const ddi = document.querySelector('.prefixo-ddi')?.dataset.ddi || '55';
-        return { nome, email, ddi, whatsapp: wa, metodo };
+        return { nome, email, ddi, whatsapp: wa, metodo: 'pix' };
     }
 
     // ── Copiar código PIX ──
@@ -602,7 +767,7 @@
     });
 
     // ── Polling de status ──
-    const POLLING_INTERVAL_MS = 5000;
+    const POLLING_INTERVAL_MS = 8000;
     const POLLING_TIMEOUT_MS  = 8 * 60 * 1000; // 8 minutos
 
     function pararPolling() {
@@ -632,7 +797,7 @@
             el.textContent = ` · ${min}:${seg}`;
         }, 1000);
 
-        // Consulta o backend a cada 5s
+        // Consulta o backend a cada 8s
         pollingTimer = setInterval(async () => {
             if (Date.now() >= expiracao) {
                 pararPolling();
@@ -645,17 +810,32 @@
                 const data = await resp.json();
                 if (data.pago) {
                     pararPolling();
-                    pagamentoConfirmado();
+                    pagamentoConfirmado(data.itens || []);
                 }
             } catch (e) { /* continua tentando */ }
         }, POLLING_INTERVAL_MS);
     }
 
+    // ── Botões de download por item pago ──
+    function renderizarDownloads(itens) {
+        const wrap = document.getElementById('downloadsWrap');
+        wrap.innerHTML = '';
+        itens.forEach(item => {
+            const a = document.createElement('a');
+            a.href = `/api/v1/pedido/${currentPedidoId}/itens/${item.id}/download`;
+            a.className = (item.tipo === 'principal') ? 'btn-download' : 'btn-bonus';
+            const rotulo = (item.tipo === 'principal') ? '⬇ Baixar' : '🎁 Baixar';
+            a.textContent = `${rotulo} — ${item.nome}`;
+            wrap.appendChild(a);
+        });
+    }
+
     // ── Pagamento confirmado ──
-    function pagamentoConfirmado() {
+    function pagamentoConfirmado(itens) {
         const email = document.getElementById('inputEmail') ? document.getElementById('inputEmail').value.trim() : '';
         document.getElementById('sucesso-email').textContent = email || 'seu e-mail';
         document.getElementById('sucesso-pedido-id').textContent = `#${currentPedidoId}`;
+        renderizarDownloads(itens || []);
         mostrarEstado('sucesso');
     }
 
@@ -678,16 +858,20 @@
     }
 
 
-    // ── Retorno do BB Pay (urlRetorno com ?pedido=) ──
+    // ── Retorno do BB Pay ou reabertura do link (urlRetorno/link com ?pedido=) ──
     // ?pedido= tem prioridade: sempre verifica no backend, ignora localStorage
     const retornoPedidoId = urlParams.get('pedido');
     if (retornoPedidoId) {
-        mostrarEstado('pix');
+        currentPedidoId = parseInt(retornoPedidoId);
         fetch(`/api/v1/pix/pedido/${retornoPedidoId}`)
             .then(r => r.json())
             .then(data => {
-                currentPedidoId = parseInt(retornoPedidoId);
-                if (data.txid) {
+                if (data.pago) {
+                    pagamentoConfirmado(data.itens || []);
+                } else if (data.txid) {
+                    const itensServidor = (data.itens || []).map(i => ({ nome: i.nome, preco: i.valor }));
+                    if (itensServidor.length) renderizarLinhasItens('pixItens', itensServidor);
+                    mostrarEstado('pix');
                     currentTxid = data.txid;
                     iniciarPolling();
                 } else {
@@ -705,11 +889,15 @@
         this.disabled = true;
         this.textContent = 'Processando...';
 
+        const bumpIds = bumpIdsSelecionados();
+        const itensAntesDoEnvio = itensSelecionados();
+        const totalExibido = recalcularTotal();
+
         try {
             const resp = await fetch('/api/v1/pix/gerar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ produto_id: PRODUTO_ID, ...dados, ...utmData }),
+                body: JSON.stringify({ produto_id: PRODUTO_ID, pedido_id: PEDIDO_ID_INICIAL, bump_ids: bumpIds, ...dados, ...utmData }),
             });
             const data = await resp.json();
             currentPedidoId = data.pedido_id;
@@ -722,50 +910,15 @@
             }
 
             currentTxid = data.txid;
-
-            if (dados.metodo === 'bbpay' && data.url_bbpay) {
-                // Mostra tela de aguardando sem polling
-                document.getElementById('pixPreco').textContent = PRECO_DISPLAY;
-                document.getElementById('qrImg').style.display = 'none';
-                document.getElementById('qrTexto').parentElement.style.display = 'none';
-                document.getElementById('bbpaySeparator').style.display = 'none';
-                document.getElementById('spinnerWrap').style.display = 'none';
-
-                // Mostra botão BB Pay + mensagem para voltar após pagar
-                const linkBB = document.getElementById('linkBBPay');
-                linkBB.href = data.url_bbpay;
-                linkBB.style.display = 'flex';
-
-                const pixExpirado = document.getElementById('pixExpirado');
-                pixExpirado.innerHTML = `
-                    Complete o pagamento no BB Pay e volte aqui.<br>
-                    Após pagar, clique no botão abaixo para confirmar.<br>
-                    Caso precise de ajuda: <a href="mailto:admin@lsnlivros.com.br" class="link-suporte">admin@lsnlivros.com.br</a>
-                    <br><br>
-                    <button onclick="reiniciarPolling()" class="btn-tentar-novamente">✅ Já paguei — verificar agora</button>
-                    <br><br>
-                    <button onclick="voltarFormulario()" class="btn-tentar-novamente" style="border-color:#aaa; color:#666;">✏️ Corrigir meus dados</button>
-                `;
-                pixExpirado.style.display = 'block';
-
-                mostrarEstado('pix');
-
-                // Tenta abrir em nova aba, se bloqueado redireciona
-                const popup = window.open(data.url_bbpay, '_blank');
-                if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-                    // Popup bloqueado - redireciona na mesma aba
-                    setTimeout(() => {
-                        window.location.href = data.url_bbpay;
-                    }, 500);
-                }
-                return;
-            }
+            const precoDisplay = formatarReal(data.valor != null ? parseFloat(data.valor) : totalExibido);
 
             // PIX: mostra QR Code e inicia polling
-            document.getElementById('pixPreco').textContent = PRECO_DISPLAY;
+            renderizarLinhasItens('pixItens', itensAntesDoEnvio);
+            document.getElementById('pixPreco').textContent = precoDisplay;
             const qrImg = document.getElementById('qrImg');
             if (data.qrcode_base64) {
                 qrImg.src = 'data:image/png;base64,' + data.qrcode_base64;
+                qrImg.style.display = '';
             } else {
                 qrImg.style.display = 'none';
             }

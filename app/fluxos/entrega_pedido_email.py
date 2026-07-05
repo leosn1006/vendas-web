@@ -3,10 +3,12 @@ Entrega do e-book por e-mail com link de download.
 
 Fluxo:
   1. Busca pedido (email, contact_name, produto_id)
-  2. Busca produto (url_pdf, url_pdf_bonus, email_remetente, descricao) — tabela produtos
-  3. Monta e-mail com botões de download (sem anexo)
-  4. Envia via Gmail API (Service Account + Domain-Wide Delegation)
-  5. Marca data_envio_ebook no pedido
+  2. Busca produto (email_remetente, descricao, cores) — tabela produtos, só para personalização
+  3. Busca os itens realmente comprados em `pedido_itens` (principal + bônus + bumps aceitos)
+  4. Monta e-mail com um botão de download por item, apontando para a rota protegida por
+     pedido_id (em vez de linkar direto pro arquivo estático) — sem anexo
+  5. Envia via Gmail API (Service Account + Domain-Wide Delegation)
+  6. Marca data_envio_ebook no pedido
 """
 
 import os
@@ -31,6 +33,12 @@ def executar(pedido_id: int) -> None:
     pedido  = db.get_pedido(pedido_id)
     produto = db.get_produto_disponivel_web(pedido['produto_id'])
 
+    # Idempotência: se a task for reexecutada (ex: retry do Celery depois de uma falha
+    # ocorrida DEPOIS do e-mail já ter sido enviado), não manda de novo.
+    if pedido.get('data_envio_ebook'):
+        logger.info(f'[EMAIL] Pedido #{pedido_id} já entregue em {pedido["data_envio_ebook"]} — ignorando reenvio')
+        return
+
     if not pedido.get('email'):
         logger.warning(f'[EMAIL] Pedido #{pedido_id} sem e-mail — entrega ignorada')
         return
@@ -48,15 +56,21 @@ def executar(pedido_id: int) -> None:
     cor_secundaria       = (produto or {}).get('email_cor_secundaria') or '#b45309'
 
     base_url = os.getenv('APP_BASE_URL', '').rstrip('/')
-    url_download       = f"{base_url}/static/arquivos/{produto['url_pdf']}"       if produto and produto.get('url_pdf')       else None
-    url_download_bonus = f"{base_url}/static/arquivos/{produto['url_pdf_bonus']}" if produto and produto.get('url_pdf_bonus') else None
+    itens = [
+        {
+            'nome': item['nome'],
+            'tipo': item['tipo'],
+            'url': f"{base_url}/api/v1/pedido/{pedido_id}/itens/{item['id']}/download",
+        }
+        for item in db.listar_itens_pedido(pedido_id)
+    ]
 
     _enviar(
         destinatario=destinatario,
         remetente=remetente,
         nome_remetente=f'{nome_remetente_email} — {nome_produto}',
         subject=subject,
-        html=_corpo_html(nome_cliente, nome_produto, url_download, url_download_bonus,
+        html=_corpo_html(nome_cliente, nome_produto, itens,
                         nome_remetente_email, cor_primaria, cor_secundaria),
     )
     db.marcar_ebook_enviado(pedido_id)
@@ -118,8 +132,7 @@ def _lighten_hex(hex_color: str, amount: float = 0.3) -> str:
 
 
 def _corpo_html(nome: str, nome_produto: str,
-                url_download: str | None,
-                url_download_bonus: str | None,
+                itens: list,
                 nome_remetente: str,
                 cor_primaria: str,
                 cor_secundaria: str) -> str:
@@ -129,8 +142,8 @@ def _corpo_html(nome: str, nome_produto: str,
     Args:
         nome: Primeiro nome do cliente
         nome_produto: Descrição do produto
-        url_download: URL do PDF principal
-        url_download_bonus: URL do PDF bônus (opcional)
+        itens: lista de dicts {nome, tipo, url} — um por item de `pedido_itens`
+               (tipo='principal' vira o botão grande; 'bonus'/'bump' viram botões extras)
         nome_remetente: Nome usado no corpo e assinatura (ex: 'Luiza', 'Luiza Carolina')
         cor_primaria: Cor do header em hex (ex: '#2d6a1f')
         cor_secundaria: Cor dos botões em hex (ex: '#b45309')
@@ -138,28 +151,32 @@ def _corpo_html(nome: str, nome_produto: str,
     # Calcula versão mais clara da cor primária para gradient (+30% lightness)
     cor_primaria_clara = _lighten_hex(cor_primaria, 0.3)
 
-    btn_principal = f'''
-      <a href="{url_download}"
+    def _botao(item: dict, principal: bool = False) -> str:
+        rotulo = f"📥 Baixar meu {nome_produto}" if principal else f"🎁 Baixar {item['nome']}"
+        tamanho = '17px' if principal else '15px'
+        padding = '16px 32px' if principal else '12px 24px'
+        return f'''
+      <a href="{item['url']}"
          style="display:inline-block; background:{cor_secundaria}; color:#ffffff;
-                font-size:17px; font-weight:bold; text-decoration:none;
-                padding:16px 32px; border-radius:12px; margin:8px 0;">
-        📥 Baixar meu {nome_produto}
-      </a>''' if url_download else ''
+                font-size:{tamanho}; font-weight:bold; text-decoration:none;
+                padding:{padding}; border-radius:12px; margin:8px 0;">
+        {rotulo}
+      </a>'''
 
-    btn_bonus = f'''
-      <a href="{url_download_bonus}"
-         style="display:inline-block; background:{cor_secundaria}; color:#ffffff;
-                font-size:15px; font-weight:bold; text-decoration:none;
-                padding:12px 24px; border-radius:12px; margin:8px 0;">
-        🎁 Baixar meu Bônus
-      </a>''' if url_download_bonus else ''
+    principais = [i for i in itens if i['tipo'] == 'principal']
+    extras     = [i for i in itens if i['tipo'] != 'principal']
 
-    secao_bonus = f'''
+    btn_principal = _botao(principais[0], principal=True) if principais else ''
+
+    secao_bonus = ''
+    if extras:
+        botoes_extras = ''.join(_botao(i) for i in extras)
+        secao_bonus = f'''
             <p style="font-size:14px; color:#555; margin:0 0 8px;">
-              Você também ganhou um bônus especial:
+              Você também ganhou:
             </p>
-            {btn_bonus}
-    ''' if url_download_bonus else ''
+            {botoes_extras}
+    '''
 
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">

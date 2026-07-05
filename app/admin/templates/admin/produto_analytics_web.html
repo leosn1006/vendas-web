@@ -188,7 +188,41 @@
 
 <div class="funil-container">
 
-    <!-- Etapa 1: Pedidos web -->
+    <!-- Etapa 0: Chegou na landing -->
+    <div class="funil-step step-0">
+        <div class="funil-header">
+            <div class="funil-title">📣 Chegou na página de vendas</div>
+        </div>
+        <div class="funil-number">{{ funil.chegou_landing }}</div>
+        <div class="funil-subtitle">
+            registrado no nosso site
+            {% if cliques_google_ads %}
+                · Google Ads informou {{ cliques_google_ads }} clique{{ 's' if cliques_google_ads != 1 else '' }} no período
+                {% if funil.chegou_landing < cliques_google_ads %}
+                    <strong style="color:#c0392b;">— {{ cliques_google_ads - funil.chegou_landing }} a menos que os cliques do anúncio, vale checar se o site teve algum problema</strong>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    {% if funil.chegou_landing > 0 %}
+    <div class="funil-arrow">↓ {{ conv_landing_checkout }}% chegaram no checkout</div>
+    {% endif %}
+
+    <!-- Etapa 1: Chegou no checkout -->
+    <div class="funil-step step-1">
+        <div class="funil-header">
+            <div class="funil-title">🛒 Chegou no checkout</div>
+        </div>
+        <div class="funil-number">{{ funil.chegou_checkout }}</div>
+        <div class="funil-subtitle">abriu a tela de pagamento</div>
+    </div>
+
+    {% if funil.chegou_checkout > 0 %}
+    <div class="funil-arrow">↓ {{ conv_checkout_pedido }}% finalizaram o pedido</div>
+    {% endif %}
+
+    <!-- Etapa 2: Pedidos web finalizados -->
     <div class="funil-step step-1">
         <div class="funil-header">
             <div class="funil-title">🌐 Pedidos Web</div>
@@ -201,7 +235,7 @@
     <div class="funil-arrow">↓ {{ conv_pedidos_pagos }}% converteram</div>
     {% endif %}
 
-    <!-- Etapa 2: Pagos -->
+    <!-- Etapa 3: Pagos -->
     <div class="funil-step step-2">
         <div class="funil-header">
             <div class="funil-title">💰 Pagos</div>

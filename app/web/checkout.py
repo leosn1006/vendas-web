@@ -14,6 +14,50 @@ import qrcode as qrcode_lib
 
 logger = logging.getLogger(__name__)
 
+COOKIE_MAX_AGE_FUNIL = 3600  # 1h — janela de "mesma visita" pro funil landing→checkout
+
+
+def rastrear_visita_funil(request_obj, produto_id: int, estado_novo: int) -> int:
+    """
+    Cria ou reaproveita um pedido "não finalizado" (estado 1004 = chegou na página de vendas,
+    1003 = chegou no checkout) pra essa visita, usando um cookie por produto
+    (`pedido_web_<produto_id>`). Mesma ideia do fluxo WhatsApp (`criar_pedido`), que já cria um
+    pedido no clique do botão, antes de qualquer identidade do cliente.
+
+    - Se o cookie aponta pra um pedido desse produto ainda em 1004/1003: reaproveita a mesma
+      linha (evita criar um pedido novo a cada F5), avançando pra `estado_novo` se for o caso
+      (nunca regride de 1003 de volta pra 1004).
+    - Senão: cria um pedido novo em `estado_novo`, só com dados de campanha da querystring
+      (sem nome/e-mail — isso só é preenchido em `finalizar_pedido_web`, no Finalizar Compra).
+
+    Retorna o pedido_id. Quem chamar deve gravar/renovar o cookie na resposta com esse valor.
+    """
+    from database import get_pedido_nao_finalizado, avancar_pedido_web, criar_pedido_web_inicial
+
+    cookie_nome = f'pedido_web_{produto_id}'
+    pedido_id_cookie = request_obj.cookies.get(cookie_nome, '')
+
+    if pedido_id_cookie.isdigit():
+        pedido = get_pedido_nao_finalizado(int(pedido_id_cookie), produto_id)
+        if pedido:
+            if pedido['estado_id'] == 1004 and estado_novo == 1003:
+                avancar_pedido_web(pedido['id'], 1003)
+            return pedido['id']
+
+    args = request_obj.args
+    dns_origem = (request_obj.headers.get('X-Forwarded-Host') or request_obj.host or '').split(':')[0].lower()
+    return criar_pedido_web_inicial(
+        produto_id, estado_novo, dns_origem=dns_origem,
+        gclid=args.get('gclid', ''),
+        campaignid=args.get('gad_campaignid', ''),
+        adgroupid=args.get('adgroupid', ''),
+        creative=args.get('creative', ''),
+        matchtype=args.get('matchtype', ''),
+        device=args.get('device', ''),
+        placement=args.get('placement', ''),
+        video_id=args.get('video_id', ''),
+    )
+
 
 def _formatar_documento(numero: str, tipo: int) -> str:
     """Formata CPF ou CNPJ. Suporta CNPJ alfanumérico (Receita Federal jun/2026)."""
@@ -43,13 +87,18 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     from web.bb_pay import criar_solicitacao
     from database import (get_produto_disponivel_web,
                           criar_pedido_web_unificado, atualizar_pedido_solicitacao_bb,
-                          get_phone_number_id_produto)
+                          get_phone_number_id_produto, criar_itens_pedido_web,
+                          listar_bumps_validos, get_pedido_nao_finalizado, finalizar_pedido_web)
 
     produto_id = int(body.get('produto_id', 1))
     produto = get_produto_disponivel_web(produto_id)
     _teste_produto = os.getenv(f'CHECKOUT_VALOR_TESTE_PRODUTO_{produto_id}')
-    valor = float(_teste_produto or (produto.get('preco', 19.90) if produto else 19.90))
+    valor_principal = float(_teste_produto or (produto.get('preco', 19.90) if produto else 19.90))
     numero_convenio = int(produto.get('numero_convenio_bb', 0)) if produto else 0
+
+    # Bumps: nunca confiar em preço vindo do cliente — releitura pelos ids escolhidos.
+    bump_rows = listar_bumps_validos(produto_id, body.get('bump_ids'))
+    valor = valor_principal + sum(float(b['preco_promocional']) for b in bump_rows)
     phone_number_id = get_phone_number_id_produto(produto_id) or os.getenv('WHATSAPP_PHONE_NUMBER_ID', '')
 
     # Normaliza telefone para formato WhatsApp: DDI vem do frontend, fallback 55
@@ -61,22 +110,44 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     if len(_phone) == 13 and _phone[4] == '9':  # ex: 5561981163324 → 556181163324
         _phone = _phone[:4] + _phone[5:]
 
-    pedido_id = criar_pedido_web_unificado(
-        produto_id=produto_id,
-        phone_number_id=phone_number_id,
-        contact_phone=_phone,
-        contact_name=body.get('nome', ''),
-        dns_origem=dns_origem,
-        email=body.get('email', ''),
-        gclid=body.get('gclid', ''),
-        campaignid=body.get('campaignid', ''),
-        adgroupid=body.get('adgroupid', ''),
-        creative=body.get('creative', ''),
-        matchtype=body.get('matchtype', ''),
-        device=body.get('device', ''),
-        placement=body.get('placement', ''),
-        video_id=body.get('video_id', ''),
-    )
+    # Se a visita já tinha um pedido "não finalizado" (1004/1003, criado ao carregar a
+    # landing/checkout), reaproveita essa linha em vez de criar uma nova — mantém o funil
+    # inteiro (landing → checkout → finalizado → pago) num único registro. Se não houver (ou
+    # já tiver sido finalizado antes, ex: cliente trocando de order bump), cria um pedido novo.
+    pedido_id_body = body.get('pedido_id')
+    pedido_existente = get_pedido_nao_finalizado(int(pedido_id_body), produto_id) if pedido_id_body else None
+
+    if pedido_existente:
+        pedido_id = pedido_existente['id']
+        finalizar_pedido_web(
+            pedido_id,
+            phone_number_id=phone_number_id,
+            contact_phone=_phone,
+            contact_name=body.get('nome', ''),
+            email=body.get('email', ''),
+        )
+    else:
+        pedido_id = criar_pedido_web_unificado(
+            produto_id=produto_id,
+            phone_number_id=phone_number_id,
+            contact_phone=_phone,
+            contact_name=body.get('nome', ''),
+            dns_origem=dns_origem,
+            email=body.get('email', ''),
+            gclid=body.get('gclid', ''),
+            campaignid=body.get('campaignid', ''),
+            adgroupid=body.get('adgroupid', ''),
+            creative=body.get('creative', ''),
+            matchtype=body.get('matchtype', ''),
+            device=body.get('device', ''),
+            placement=body.get('placement', ''),
+            video_id=body.get('video_id', ''),
+        )
+    try:
+        criar_itens_pedido_web(pedido_id, produto, valor_principal, bump_rows)
+    except Exception as e:
+        # Snapshot informativo — uma falha aqui não pode derrubar o checkout em si.
+        logger.error(f'[WEB-CHECKOUT] Erro ao gravar itens do pedido #{pedido_id}: {e}')
 
     try:
         if not url_base:
@@ -118,13 +189,14 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
 def verificar_pagamento(txid: str) -> dict:
     """
     Consulta o BB Pay pelo numeroSolicitacao e confirma o pagamento se aprovado.
-    Ao confirmar, dispara a task Celery que envia o ebook via WhatsApp.
+    Ao confirmar, dispara a task Celery que envia o e-book por e-mail (único canal de entrega
+    do checkout web — WhatsApp não é mais usado aqui).
 
     Retorna {'pago': bool} (ou {'pago': False, 'erro': True} em caso de falha).
     """
     from web.bb_pay import consultar_pagamentos
     from database import (get_pedido_by_solicitacao_bb, get_produto_disponivel_web,
-                          confirmar_pagamento_web)
+                          confirmar_pagamento_web, listar_itens_pedido)
     try:
         pedido = get_pedido_by_solicitacao_bb(txid)
         if not pedido:
@@ -137,7 +209,10 @@ def verificar_pagamento(txid: str) -> dict:
         pago = data['pago']
         if pago and pedido['estado_id'] != 1000:
             pag = data['pagamento']
-            confirmar_pagamento_web(
+            # confirmar_pagamento_web só retorna True pra quem realmente ganhou a "corrida" —
+            # se o polling do cliente e o sweep de resiliência caírem quase juntos pro mesmo
+            # pedido, só um deles dispara a entrega (evita e-mail duplicado).
+            confirmou_agora = confirmar_pagamento_web(
                 pedido_id=pedido['id'],
                 valor=pag.get('valorOriginalPagamento', pedido.get('valor_pago', 0)),
                 nome_pagador=pag.get('nomePagador', ''),
@@ -149,14 +224,50 @@ def verificar_pagamento(txid: str) -> dict:
                 data_repasse=pag.get('dataRepassePagamento'),
                 e2e_id=pag.get('e2eId', ''),
             )
-            import tasks
-            tasks.enviar_email_entrega.delay(pedido['id'])
-            if pedido.get('contact_to') or pedido.get('contact_phone'):
-                tasks.fluxo_enviar_confirmacao_web.delay(pedido['id'])
-        return {'pago': pago}
+            if confirmou_agora:
+                import tasks
+                tasks.enviar_email_entrega.delay(pedido['id'])
+
+        if not pago:
+            return {'pago': False}
+
+        # Pago agora ou já estava pago numa consulta anterior — devolve os itens pra
+        # tela montar os botões de download (mesmo se o cliente reabrir o link depois).
+        itens = [
+            {'id': item['id'], 'tipo': item['tipo'], 'nome': item['nome'], 'valor': float(item['valor'])}
+            for item in listar_itens_pedido(pedido['id'])
+        ]
+        return {'pago': True, 'pedido_id': pedido['id'], 'itens': itens}
     except Exception as e:
         logger.error(f'[WEB-CHECKOUT] Erro ao verificar pagamento {txid}: {e}')
         return {'pago': False, 'erro': True}
+
+
+def baixar_item_pedido(pedido_id: int, item_id: int):
+    """
+    Retorna (caminho, nome_arquivo) de um item de `pedido_itens` (principal, bônus ou bump),
+    desde que o pedido esteja confirmado como pago (estado_id = 1000).
+
+    Serve a partir de `storage/entregaveis/` — pasta própria do checkout web, não exposta
+    publicamente pelo nginx (diferente de `static/arquivos/`, que continua pública de propósito
+    para o fluxo WhatsApp, que entrega antes do pagamento). Os arquivos usados pelo checkout web
+    são cópias colocadas lá, não os originais.
+
+    Retorna (None, 403) se o pedido não existe, não pertence ao item, ou não está pago.
+    """
+    from database import get_pedido, get_item_pedido
+
+    item = get_item_pedido(item_id, pedido_id)
+    if not item:
+        return None, 403
+
+    pedido = get_pedido(pedido_id)
+    if not pedido or pedido.get('estado_id') != 1000:
+        return None, 403
+
+    caminho = os.path.join(os.path.dirname(__file__), '..', 'storage', 'entregaveis',
+                            item['path_arquivo'])
+    return caminho, item['nome_arquivo']
 
 
 def entregar_pdf(pedido_id: int, bonus: bool = False):

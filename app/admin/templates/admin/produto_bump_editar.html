@@ -1,0 +1,70 @@
+{% extends "admin/base.html" %}
+{% block title %}Editar Order Bump — {{ produto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Editar Order Bump</div>
+        <div class="page-subtitle">{{ produto.nome }}</div>
+    </div>
+    <a href="{{ url_for('admin.produto_bumps', produto_id=produto.id) }}"
+       class="btn btn-ghost btn-sm">← Voltar</a>
+</div>
+
+<div class="card" style="max-width: 760px;">
+    <form method="POST">
+        <div class="form-grid">
+
+            <div class="form-group span-2">
+                <label>Nome</label>
+                <input type="text" name="nome" maxlength="255"
+                       value="{{ bump.nome }}" required>
+            </div>
+
+            <div class="form-group span-2">
+                <label>Arquivo (em static/arquivos)</label>
+                <input type="text" name="path_arquivo" maxlength="255"
+                       value="{{ bump.path_arquivo }}" required>
+            </div>
+
+            <div class="form-group span-2">
+                <label>Nome do arquivo no download</label>
+                <input type="text" name="nome_arquivo" maxlength="255"
+                       value="{{ bump.nome_arquivo }}">
+                <small class="form-text text-muted">Se vazio, usa o mesmo nome do campo Arquivo.</small>
+            </div>
+
+            <div class="form-group">
+                <label>Preço original (R$)</label>
+                <input type="number" name="preco_original" min="0" step="0.01"
+                       value="{{ bump.preco_original }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Preço promocional (R$)</label>
+                <input type="number" name="preco_promocional" min="0" step="0.01"
+                       value="{{ bump.preco_promocional }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Ordem</label>
+                <input type="number" name="ordem" min="1" max="99"
+                       value="{{ bump.ordem }}" required>
+            </div>
+
+            <div class="form-group span-2">
+                <label>Descrição (opcional)</label>
+                <input type="text" name="descricao" maxlength="500"
+                       value="{{ bump.descricao or '' }}">
+            </div>
+
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('admin.produto_bumps', produto_id=produto.id) }}"
+               class="btn btn-ghost">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Salvar alterações</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
