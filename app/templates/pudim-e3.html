@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pudim Sem Forno — 30 Receitas Fáceis Direto na Geladeira</title>
+    <meta name="description" content="30 receitas de pudim sem precisar ligar o forno. Fácil, rápido e pronto para a família em minutos. Acesso imediato por R$10,90.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --marrom:      #5a2c0f;
+            --marrom-esc:  #3d1f0a;
+            --caramelo:    #b5651d;
+            --caramelo-cl: #e8a94c;
+            --creme:       #fff8f0;
+            --texto:       #2c2c2c;
+            --cinza:       #666;
+            --branco:      #ffffff;
+            --verde:       #27ae60;
+            --sombra:      0 4px 24px rgba(0,0,0,0.12);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--creme);
+            color: var(--texto);
+            max-width: 480px;
+            margin: 0 auto;
+            padding-bottom: 80px;
+            overflow-x: hidden;
+        }
+
+        /* ── URGENCY BAR ── */
+        .urgency-bar {
+            background: var(--marrom-esc);
+            color: var(--caramelo-cl);
+            text-align: center;
+            padding: 10px 16px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            line-height: 1.5;
+        }
+        .urgency-bar strong { color: #fff; }
+
+        /* ── HERO (full-bleed, estilo pudim-e) ── */
+        .hero {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            height: 100svh;
+            background: var(--marrom-esc);
+        }
+        .hero-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top;
+            display: block;
+        }
+        .hero-cta-btn {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: block;
+            background: linear-gradient(135deg, #e8a94c 0%, #c97d1e 100%);
+            color: var(--marrom-esc);
+            text-align: center;
+            padding: 17px 30px 15px;
+            border-radius: 50px;
+            font-size: 1.05rem;
+            font-weight: 900;
+            text-decoration: none;
+            white-space: nowrap;
+            box-shadow: 0 6px 24px rgba(181,101,29,0.55);
+            letter-spacing: 0.3px;
+            animation: pulseGold 2.2s infinite;
+        }
+        @keyframes pulseGold {
+            0%,100% { transform: translateX(-50%) scale(1); box-shadow: 0 6px 24px rgba(181,101,29,0.55); }
+            50%      { transform: translateX(-50%) scale(1.015); box-shadow: 0 8px 36px rgba(232,169,76,0.72); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .hero-cta-btn { animation: none; transform: translateX(-50%); }
+        }
+
+        /* ── TÍTULO (logo após o hero) ── */
+        .titulo {
+            text-align: center;
+            padding: 30px 22px 6px;
+            background: var(--creme);
+        }
+        .hero-tag {
+            display: inline-block;
+            background: var(--caramelo-cl);
+            color: var(--marrom-esc);
+            font-size: 0.7rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            padding: 5px 14px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+        }
+        .titulo h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            color: var(--marrom);
+            line-height: 1.22;
+            margin-bottom: 10px;
+        }
+        .titulo h1 em {
+            color: var(--caramelo);
+            font-style: normal;
+        }
+        .titulo-sub {
+            color: var(--cinza);
+            font-size: 0.93rem;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        .titulo .confianca {
+            font-size: 0.78rem;
+            color: var(--verde);
+            font-weight: 700;
+        }
+        .btn-hero {
+            display: block;
+            background: linear-gradient(135deg, #e8a94c 0%, #c97d1e 100%);
+            color: var(--marrom-esc);
+            text-align: center;
+            padding: 17px 20px 15px;
+            border-radius: 50px;
+            font-size: 1.05rem;
+            font-weight: 900;
+            text-decoration: none;
+            box-shadow: 0 6px 24px rgba(181,101,29,0.55);
+            letter-spacing: 0.3px;
+        }
+        .btn-hero small {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 400;
+            margin-top: 3px;
+            opacity: 0.85;
+        }
+
+        /* ── PROOF BAR ── */
+        .proof-bar {
+            display: flex;
+            background: var(--branco);
+            border-bottom: 3px solid var(--caramelo-cl);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .proof-bar::-webkit-scrollbar { display: none; }
+        .proof-item {
+            flex: 0 0 auto;
+            text-align: center;
+            padding: 14px 18px;
+            border-right: 1px solid #f0e8df;
+        }
+        .proof-item:last-child { border-right: none; }
+        .proof-num {
+            display: block;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            font-weight: 900;
+            color: var(--caramelo);
+        }
+        .proof-label {
+            font-size: 0.66rem;
+            color: var(--cinza);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            white-space: nowrap;
+        }
+
+        /* ── SECTION TITLES ── */
+        .sec-title {
+            text-align: center;
+            padding: 0 22px;
+        }
+        .sec-title h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            color: var(--marrom);
+            line-height: 1.3;
+            margin-bottom: 8px;
+        }
+        .sec-title p {
+            font-size: 0.88rem;
+            color: var(--cinza);
+            line-height: 1.65;
+        }
+        .divider {
+            width: 44px;
+            height: 3px;
+            background: var(--caramelo);
+            margin: 10px auto 14px;
+            border-radius: 2px;
+        }
+
+        /* ── PAIN SECTION ── */
+        .pain-sec {
+            background: var(--marrom-esc);
+            padding: 36px 22px;
+        }
+        .pain-sec .sec-title h2 { color: var(--caramelo-cl); }
+        .pain-sec .sec-title p  { color: rgba(255,255,255,0.78); }
+        .pain-sec .divider      { background: var(--caramelo-cl); }
+        .pain-list { list-style: none; margin-top: 22px; }
+        .pain-list li {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            padding: 13px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            color: rgba(255,255,255,0.88);
+            font-size: 0.9rem;
+            line-height: 1.55;
+        }
+        .pain-list li .ico { font-size: 1.3rem; flex-shrink: 0; }
+
+        /* ── BIG CAROUSEL ── */
+        .carousel-sec {
+            background: var(--branco);
+            padding: 36px 0 28px;
+        }
+        .carousel-sec .sec-title { margin-bottom: 22px; }
+        .c-wrapper {
+            position: relative;
+            overflow: hidden;
+            touch-action: pan-y;
+        }
+        .c-track {
+            display: flex;
+            transition: transform 0.42s cubic-bezier(.4,0,.2,1);
+            will-change: transform;
+        }
+        .c-slide {
+            min-width: 100%;
+            position: relative;
+        }
+        .c-slide img {
+            width: 100%;
+            height: 380px;
+            object-fit: cover;
+            display: block;
+        }
+        .c-caption {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: linear-gradient(transparent, rgba(58,20,5,0.9));
+            padding: 48px 22px 20px;
+            color: #fff;
+        }
+        .c-caption h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.25rem;
+            margin-bottom: 5px;
+        }
+        .c-caption p {
+            font-size: 0.8rem;
+            opacity: 0.85;
+        }
+        .c-btn {
+            position: absolute;
+            top: 50%; transform: translateY(-50%);
+            background: rgba(255,255,255,0.92);
+            border: none;
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            z-index: 10;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+            color: var(--marrom);
+        }
+        .c-btn.prev { left: 12px; }
+        .c-btn.next { right: 12px; }
+        .c-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 18px 0 6px;
+        }
+        .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #ddd;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+        }
+        .dot.active {
+            background: var(--caramelo);
+            width: 26px;
+            border-radius: 4px;
+        }
+
+        /* ── WHAT'S INSIDE ── */
+        .inside-sec {
+            padding: 36px 22px;
+            background: var(--creme);
+        }
+        .books-img {
+            display: block;
+            width: 100%;
+            max-width: 340px;
+            margin: 24px auto;
+            border-radius: 16px;
+            box-shadow: var(--sombra);
+        }
+        .includes-list { list-style: none; margin-top: 20px; }
+        .includes-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 13px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            font-size: 0.88rem;
+            color: var(--texto);
+            line-height: 1.5;
+        }
+        .chk {
+            width: 22px; height: 22px;
+            background: var(--caramelo);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 0.75rem;
+            flex-shrink: 0; margin-top: 1px;
+        }
+
+        /* ── RECIPE GRID ── */
+        .grid-sec {
+            padding: 36px 22px;
+            background: var(--branco);
+        }
+        .r-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 22px;
+        }
+        .r-card {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--sombra);
+            background: var(--branco);
+        }
+        .r-card img {
+            width: 100%;
+            height: 130px;
+            object-fit: cover;
+            display: block;
+        }
+        .r-card-name {
+            padding: 10px 10px 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--marrom);
+            line-height: 1.35;
+        }
+        .r-card.locked { position: relative; }
+        .r-card.locked img { filter: blur(4px) brightness(0.7); }
+        .r-lock-badge {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            background: rgba(255,255,255,0.92);
+            border-radius: 50px;
+            padding: 6px 14px;
+            font-size: 0.72rem;
+            font-weight: 900;
+            color: var(--marrom);
+            white-space: nowrap;
+        }
+
+        /* ── TESTIMONIALS ── */
+        .testi-sec {
+            padding: 36px 22px;
+            background: linear-gradient(160deg, var(--marrom-esc) 0%, var(--marrom) 100%);
+        }
+        .testi-sec .sec-title h2 { color: var(--caramelo-cl); }
+        .testi-sec .sec-title p  { color: rgba(255,255,255,0.72); }
+        .testi-sec .divider      { background: var(--caramelo-cl); }
+        .t-card {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 18px;
+        }
+        .t-stars {
+            color: var(--caramelo-cl);
+            font-size: 1rem;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+        .t-text {
+            font-size: 0.88rem;
+            color: rgba(255,255,255,0.9);
+            line-height: 1.65;
+            font-style: italic;
+            margin-bottom: 16px;
+        }
+        .t-author {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+        }
+        .t-avatar {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--caramelo-cl);
+            flex-shrink: 0;
+        }
+        .t-name {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #fff;
+        }
+        .t-loc {
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.55);
+            margin-top: 2px;
+        }
+
+        /* ── OFFER ── */
+        .offer-sec {
+            padding: 36px 22px;
+            background: var(--creme);
+            text-align: center;
+        }
+        .price-box {
+            background: var(--branco);
+            border: 2px solid var(--caramelo-cl);
+            border-radius: 20px;
+            padding: 28px 22px 24px;
+            box-shadow: var(--sombra);
+            margin: 24px 0 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .ribbon {
+            position: absolute;
+            top: 16px; right: -22px;
+            background: var(--caramelo);
+            color: #fff;
+            font-size: 0.62rem;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 5px 36px;
+            transform: rotate(30deg);
+        }
+        .p-old {
+            font-size: 0.88rem;
+            color: var(--cinza);
+            text-decoration: line-through;
+        }
+        .p-now {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.2rem;
+            font-weight: 900;
+            color: var(--marrom);
+            line-height: 1;
+            margin: 6px 0 4px;
+        }
+        .p-now sup { font-size: 1.3rem; vertical-align: super; }
+        .p-desc {
+            font-size: 0.78rem;
+            color: var(--cinza);
+            margin-bottom: 18px;
+        }
+        .v-stack { list-style: none; text-align: left; }
+        .v-stack li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 0;
+            border-bottom: 1px dashed #e8ddd4;
+            font-size: 0.83rem;
+        }
+        .v-stack li:last-child { border-bottom: none; }
+        .v-stack .strike { color: var(--cinza); text-decoration: line-through; font-size: 0.78rem; }
+        .v-stack .free { color: var(--verde); font-weight: 900; font-size: 0.78rem; }
+
+        .btn-cta {
+            display: block;
+            background: linear-gradient(135deg, #2ecc71, #219a52);
+            color: #fff;
+            text-align: center;
+            padding: 18px 20px 16px;
+            border-radius: 50px;
+            font-size: 1.05rem;
+            font-weight: 900;
+            text-decoration: none;
+            box-shadow: 0 8px 28px rgba(46,204,113,0.45);
+            animation: pulseGreen 2.2s infinite;
+            letter-spacing: 0.3px;
+        }
+        .btn-cta small {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 400;
+            margin-top: 4px;
+            opacity: 0.88;
+        }
+        @keyframes pulseGreen {
+            0%,100% { box-shadow: 0 8px 28px rgba(46,204,113,0.45); }
+            50%      { box-shadow: 0 10px 38px rgba(46,204,113,0.7); }
+        }
+        .pay-row {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-top: 14px;
+        }
+        .pay-badge {
+            background: var(--branco);
+            border: 1px solid #e0d5cb;
+            border-radius: 6px;
+            padding: 5px 11px;
+            font-size: 0.7rem;
+            color: var(--cinza);
+            font-weight: 700;
+        }
+
+        /* ── GUARANTEE ── */
+        .guar-sec {
+            background: var(--branco);
+            padding: 28px 22px;
+        }
+        .guar-box {
+            border: 2px dashed var(--caramelo);
+            border-radius: 18px;
+            padding: 26px 22px;
+            text-align: center;
+        }
+        .guar-ico { font-size: 3.2rem; display: block; margin-bottom: 12px; }
+        .guar-box h3 {
+            font-family: 'Playfair Display', serif;
+            color: var(--marrom);
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+        .guar-box p { font-size: 0.85rem; color: var(--cinza); line-height: 1.65; }
+
+        /* ── FAQ ── */
+        .faq-sec { padding: 36px 22px; background: var(--creme); }
+        .faq-item { border-bottom: 1px solid rgba(0,0,0,0.08); }
+        .faq-q {
+            width: 100%;
+            background: none; border: none;
+            text-align: left;
+            padding: 17px 0;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--marrom);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+        }
+        .faq-q::after {
+            content: '+';
+            font-size: 1.5rem;
+            color: var(--caramelo);
+            flex-shrink: 0;
+            transition: transform 0.28s;
+            line-height: 1;
+        }
+        .faq-item.open .faq-q::after { transform: rotate(45deg); }
+        .faq-a {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease;
+            font-size: 0.87rem;
+            color: var(--cinza);
+            line-height: 1.68;
+        }
+        .faq-item.open .faq-a { max-height: 320px; padding-bottom: 18px; }
+
+        /* ── FINAL CTA ── */
+        .final-sec {
+            background: var(--marrom);
+            padding: 36px 22px;
+            text-align: center;
+        }
+        .final-sec h2 {
+            font-family: 'Playfair Display', serif;
+            color: var(--caramelo-cl);
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+        }
+        .final-sec p {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 22px;
+        }
+
+        /* ── STICKY CTA ── */
+        .sticky-bar {
+            position: fixed;
+            bottom: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 100%; max-width: 480px;
+            background: var(--branco);
+            padding: 10px 16px 12px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.13);
+            z-index: 200;
+        }
+        .sticky-bar a {
+            display: block;
+            background: linear-gradient(135deg, #2ecc71, #219a52);
+            color: #fff;
+            text-align: center;
+            padding: 14px 20px;
+            border-radius: 50px;
+            font-size: 0.92rem;
+            font-weight: 900;
+            text-decoration: none;
+        }
+        .sticky-bar small {
+            display: block;
+            text-align: center;
+            font-size: 0.66rem;
+            color: var(--cinza);
+            margin-top: 5px;
+        }
+
+        /* ── FOOTER ── */
+        .footer {
+            background: var(--marrom-esc);
+            color: rgba(255,255,255,0.45);
+            text-align: center;
+            padding: 24px 22px;
+            font-size: 0.73rem;
+            line-height: 1.9;
+        }
+        .footer a { color: var(--caramelo-cl); text-decoration: none; }
+    </style>
+</head>
+<body>
+
+    <!-- URGENCY BAR -->
+    <div class="urgency-bar">
+        🔥 <strong>PROMOÇÃO:</strong> Acesso imediato a <strong>30 receitas</strong> por apenas <strong>R$10,90</strong>
+    </div>
+
+    <!-- HERO -->
+    <section class="hero">
+        <img
+            class="hero-img"
+            src="/static/images/pudim-01.webp"
+            alt="30 Receitas de Pudim Sem Forno"
+            fetchpriority="high"
+        >
+        <a href="#oferta" class="hero-cta-btn" id="btnHero">QUERO MINHAS RECEITAS →</a>
+    </section>
+
+    <!-- TÍTULO -->
+    <div class="titulo">
+        <span class="hero-tag">✨ E-book Digital</span>
+        <h1>30 Pudins <em>Irresistíveis</em><br>Sem Ligar o Forno</h1>
+        <p class="titulo-sub">Receitas fáceis, rápidas e aprovadas pela família — prontas em minutos, direto da sua geladeira.</p>
+        <p class="confianca">🔒 Pagamento seguro via PIX · Recebido por e-mail na hora</p>
+    </div>
+
+    <div style="padding: 14px 22px 0;">
+        <a href="#oferta" class="btn-hero" id="btnTitulo">
+            QUERO AS RECEITAS AGORA
+            <small>Acesso imediato · Apenas R$10,90</small>
+        </a>
+    </div>
+
+    <!-- SOCIAL PROOF BAR -->
+    <div class="proof-bar">
+        <div class="proof-item">
+            <span class="proof-num">+12k</span>
+            <span class="proof-label">Downloads</span>
+        </div>
+        <div class="proof-item">
+            <span class="proof-num">30</span>
+            <span class="proof-label">Receitas</span>
+        </div>
+        <div class="proof-item">
+            <span class="proof-num">⭐ 4.9</span>
+            <span class="proof-label">Avaliação</span>
+        </div>
+        <div class="proof-item">
+            <span class="proof-num">0%</span>
+            <span class="proof-label">Forno</span>
+        </div>
+        <div class="proof-item">
+            <span class="proof-num">7 dias</span>
+            <span class="proof-label">Garantia</span>
+        </div>
+    </div>
+
+    <!-- PAIN SECTION -->
+    <section class="pain-sec">
+        <div class="sec-title">
+            <h2>Você se identifica?</h2>
+            <div class="divider"></div>
+            <p>Se você já passou por uma dessas situações, esse e-book foi feito para você.</p>
+        </div>
+        <ul class="pain-list">
+            <li><span class="ico">😅</span><span>Quer fazer uma sobremesa gostosa mas está sem tempo — e ligar o forno parece demais?</span></li>
+            <li><span class="ico">😰</span><span>Tem medo de errar a receita na frente da família ou de visitas?</span></li>
+            <li><span class="ico">🥵</span><span>No verão, só de pensar em ligar o forno já desiste?</span></li>
+            <li><span class="ico">💸</span><span>Cansada de gastar caro em sobremesas prontas que não têm o mesmo sabor?</span></li>
+            <li><span class="ico">🤔</span><span>Não sabe o que preparar quando chega visita de surpresa?</span></li>
+        </ul>
+    </section>
+
+    <!-- BIG CAROUSEL -->
+    <section class="carousel-sec">
+        <div class="sec-title">
+            <h2>Veja as receitas por dentro</h2>
+            <div class="divider"></div>
+            <p>Deslize para conhecer alguns dos 30 pudins do e-book</p>
+        </div>
+
+        <div class="c-wrapper" id="mainCarousel">
+            <div class="c-track" id="cTrack">
+
+                <div class="c-slide">
+                    <img src="/static/images/pudim-02.webp" alt="Pudim Tradicional">
+                    <div class="c-caption">
+                        <h3>Pudim Tradicional</h3>
+                        <p>O clássico favorito — cremoso, caramelizado e irresistível</p>
+                    </div>
+                </div>
+
+                <div class="c-slide">
+                    <img src="/static/images/pudim-03.webp" alt="Pudim de Chocolate">
+                    <div class="c-caption">
+                        <h3>Pudim de Chocolate</h3>
+                        <p>Para os amantes de chocolate — intenso e aveludado</p>
+                    </div>
+                </div>
+
+                <div class="c-slide">
+                    <img src="/static/images/pudim-06.webp" alt="Pudim de Chia com Morango e Mel">
+                    <div class="c-caption">
+                        <h3>Pudim de Chia com Morango</h3>
+                        <p>Leve, saudável e cheio de sabor</p>
+                    </div>
+                </div>
+
+                <div class="c-slide">
+                    <img src="/static/images/pudim-09.webp" alt="Pudim Gelado de Laranja Siciliana">
+                    <div class="c-caption">
+                        <h3>Pudim Gelado de Laranja Siciliana</h3>
+                        <p>Refrescante, sofisticado e perfeito para o verão</p>
+                    </div>
+                </div>
+
+                <div class="c-slide">
+                    <img src="/static/images/pudim-14.webp" alt="Pudim de Leite Ninho com Nutella">
+                    <div class="c-caption">
+                        <h3>Pudim de Leite Ninho com Nutella</h3>
+                        <p>Sucesso garantido com crianças e adultos!</p>
+                    </div>
+                </div>
+
+                <div class="c-slide">
+                    <img src="/static/images/pudim-18.webp" alt="Pudim Gelado de Brigadeiro">
+                    <div class="c-caption">
+                        <h3>Pudim Gelado de Brigadeiro</h3>
+                        <p>Dois favoritos brasileiros em um só</p>
+                    </div>
+                </div>
+
+                <div class="c-slide">
+                    <img src="/static/images/pudim-20.webp" alt="Pudim Gelado de Banana com Caramelo">
+                    <div class="c-caption">
+                        <h3>Pudim de Banana com Caramelo</h3>
+                        <p>Sabor caseiro que derrete na boca</p>
+                    </div>
+                </div>
+
+            </div>
+            <button class="c-btn prev" id="cPrev" aria-label="Anterior">&#8249;</button>
+            <button class="c-btn next" id="cNext" aria-label="Próximo">&#8250;</button>
+        </div>
+        <div class="c-dots" id="cDots"></div>
+    </section>
+
+    <!-- WHAT'S INSIDE -->
+    <section class="inside-sec">
+        <div class="sec-title">
+            <h2>O que você recebe<br>na compra?</h2>
+            <div class="divider"></div>
+            <p>O e-book de pudins + um bônus grátis de brinde</p>
+        </div>
+
+        <img
+            class="books-img"
+            src="/static/images/pudim-bolo-capas.webp"
+            alt="2 livros digitais: 30 Receitas de Pudins (livro principal) e Receitas de Bolos Sem Glúten (bônus exclusivo) — acesso imediato por e-mail ou celular"
+            loading="lazy"
+        >
+
+        <ul class="includes-list">
+            <li><span class="chk">✓</span><span><strong>30 receitas completas</strong> com ingredientes e modo de preparo passo a passo</span></li>
+            <li><span class="chk">✓</span><span><strong>Fotos reais</strong> de cada receita para você visualizar o resultado</span></li>
+            <li><span class="chk">✓</span><span><strong>Ingredientes simples</strong> encontrados em qualquer mercado</span></li>
+            <li><span class="chk">✓</span><span><strong>Dicas de apresentação</strong> para impressionar família e visitas</span></li>
+            <li><span class="chk">✓</span><span><strong>Variações e substituições</strong> para diferentes gostos e restrições</span></li>
+            <li><span class="chk">✓</span><span><strong>Recebido por e-mail</strong> na hora — acesse depois pelo celular, sem precisar imprimir</span></li>
+            <li><span class="chk">🎁</span><span><strong>Bônus grátis:</strong> e-book com 10 receitas de bolos sem glúten</span></li>
+        </ul>
+    </section>
+
+    <!-- RECIPE GRID -->
+    <section class="grid-sec">
+        <div class="sec-title">
+            <h2>Algumas das 30 receitas</h2>
+            <div class="divider"></div>
+            <p>Sobremesa deliciosa para todos os momentos e ocasiões</p>
+        </div>
+        <div class="r-grid">
+            <div class="r-card">
+                <img src="/static/images/pudim-04.jpg" alt="Pudim de Leite Condensado">
+                <div class="r-card-name">Pudim de Leite Condensado</div>
+            </div>
+            <div class="r-card">
+                <img src="/static/images/pudim-05.jpg" alt="Pudim de Chocolate">
+                <div class="r-card-name">Pudim de Chocolate Belga</div>
+            </div>
+            <div class="r-card">
+                <img src="/static/images/pudim-07.jpg" alt="Pudim de Coco">
+                <div class="r-card-name">Pudim de Coco com Calda</div>
+            </div>
+            <div class="r-card">
+                <img src="/static/images/pudim-08.jpg" alt="Pudim de Morango">
+                <div class="r-card-name">Pudim Gelado de Morango</div>
+            </div>
+            <div class="r-card locked">
+                <img src="/static/images/pudim-10.jpg" alt="Mais receitas">
+                <div class="r-lock-badge">🔒 +26 receitas</div>
+                <div class="r-card-name">E muito mais...</div>
+            </div>
+            <div class="r-card locked">
+                <img src="/static/images/pudim-11.jpg" alt="Receita surpresa">
+                <div class="r-lock-badge">🔒 Surpresa!</div>
+                <div class="r-card-name">Receita especial bônus</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TESTIMONIALS -->
+    <section class="testi-sec">
+        <div class="sec-title">
+            <h2>O que as clientes dizem</h2>
+            <div class="divider"></div>
+            <p>Mais de 12.000 mulheres já transformaram suas sobremesas</p>
+        </div>
+
+        <div class="t-card">
+            <div class="t-stars">★★★★★</div>
+            <p class="t-text">"Fiz o pudim de chocolate para o aniversário da minha filha e todo mundo pediu a receita! Nunca imaginei que seria tão fácil sem forno. Valeu cada centavo!"</p>
+            <div class="t-author">
+                <img src="/static/images/luiza-carolina.jpg" alt="Ana Paula S." class="t-avatar">
+                <div>
+                    <div class="t-name">Ana Paula S.</div>
+                    <div class="t-loc">São Paulo, SP</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="t-card">
+            <div class="t-stars">★★★★★</div>
+            <p class="t-text">"Sou péssima na cozinha, mas o passo a passo é tão claro que fiz o pudim de leite na primeira tentativa! Ficou lindo. Meu marido não acreditou que fui eu quem fez."</p>
+            <div class="t-author">
+                <img src="/static/images/luiza.jpg" alt="Carla M." class="t-avatar">
+                <div>
+                    <div class="t-name">Carla M.</div>
+                    <div class="t-loc">Rio de Janeiro, RJ</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="t-card">
+            <div class="t-stars">★★★★★</div>
+            <p class="t-text">"No verão não quero nem pensar em ligar o forno. Esse e-book salvou minhas reuniões de família! Já fiz 8 receitas e todas ficaram incríveis."</p>
+            <div class="t-author">
+                <img src="/static/images/luiza-carolina-antes.jpg" alt="Márcia F." class="t-avatar">
+                <div>
+                    <div class="t-name">Márcia F.</div>
+                    <div class="t-loc">Belo Horizonte, MG</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- OFFER -->
+    <section class="offer-sec" id="oferta">
+        <div class="sec-title">
+            <h2>Garanta agora com<br>desconto especial</h2>
+            <div class="divider"></div>
+        </div>
+
+        <div class="price-box">
+            <div class="ribbon">Oferta</div>
+            <p class="p-old">De R$49,90</p>
+            <p class="p-now"><sup>R$</sup>10<sup>,90</sup></p>
+            <p class="p-desc">Pagamento único &middot; Acesso imediato &middot; Para sempre</p>
+            <ul class="v-stack">
+                <li><span>E-book com 30 receitas</span><span class="strike">R$29,90</span></li>
+                <li><span>Fotos de todas as receitas</span><span class="strike">R$9,90</span></li>
+                <li><span>Dicas de apresentação</span><span class="strike">R$9,90</span></li>
+                <li><span>🎁 Bônus: e-book de bolos sem glúten</span><span class="free">GRÁTIS</span></li>
+            </ul>
+        </div>
+
+        <a href="#" class="btn-cta" id="btnOferta">
+            ✅ QUERO MEU E-BOOK AGORA
+            <small>🔒 Compra segura &middot; Acesso imediato</small>
+        </a>
+
+        <div class="pay-row">
+            <span class="pay-badge">💳 Crédito</span>
+            <span class="pay-badge">📱 PIX</span>
+            <span class="pay-badge">🏦 Boleto</span>
+            <span class="pay-badge">🔒 SSL</span>
+        </div>
+    </section>
+
+    <!-- GUARANTEE -->
+    <section class="guar-sec">
+        <div class="guar-box">
+            <span class="guar-ico">🛡️</span>
+            <h3>Garantia Incondicional de 7 Dias</h3>
+            <p>Compre sem risco. Se por qualquer motivo você não ficar satisfeita, devolvemos 100% do seu dinheiro em até 7 dias. Sem burocracia e sem perguntas.</p>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq-sec">
+        <div class="sec-title">
+            <h2>Dúvidas frequentes</h2>
+            <div class="divider"></div>
+        </div>
+
+        <div class="faq-item">
+            <button class="faq-q">Como recebo o e-book após a compra?</button>
+            <div class="faq-a">Imediatamente após a confirmação do pagamento, você recebe um e-mail com o link de download em PDF. Pode acessar direto pelo celular.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-q">Precisa ter habilidade na cozinha?</button>
+            <div class="faq-a">Não! As receitas foram desenvolvidas para quem tem pouca experiência. O passo a passo é claro e simples, com ingredientes que você já conhece.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-q">Os ingredientes são fáceis de encontrar?</button>
+            <div class="faq-a">Sim! Todas as receitas usam ingredientes básicos como leite condensado, creme de leite e gelatina — disponíveis em qualquer supermercado.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-q">Como funciona a garantia de 7 dias?</button>
+            <div class="faq-a">Se você não ficar satisfeita por qualquer motivo, basta enviar um e-mail dentro de 7 dias após a compra e devolvemos 100% do valor. Sem perguntas.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-q">Posso acessar pelo celular?</button>
+            <div class="faq-a">Sim! O e-book em PDF funciona em qualquer smartphone, tablet ou computador. Salve no celular e consulte enquanto cozinha!</div>
+        </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section class="final-sec">
+        <h2>Não perca mais tempo!</h2>
+        <p>Junte-se a mais de 12.000 mulheres que já descobriram como fazer pudins incríveis sem ligar o forno.</p>
+        <a href="#oferta" class="btn-hero" style="text-decoration:none;" id="btnFinal">
+            QUERO AS 30 RECEITAS — R$10,90
+            <small>Acesso imediato após a compra</small>
+        </a>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>© 2025 Pudim Sem Forno. Todos os direitos reservados.</p>
+        <p><a href="#">Política de Privacidade</a> &middot; <a href="#">Termos de Uso</a> &middot; <a href="#">Contato</a></p>
+        <p style="margin-top:10px;">Este produto é um e-book digital. O acesso é liberado imediatamente após a confirmação do pagamento.</p>
+    </footer>
+
+    <!-- STICKY CTA -->
+    <div class="sticky-bar" id="stickyBar">
+        <a href="#oferta" id="btnSticky">✅ COMPRAR AGORA — R$10,90</a>
+        <small>🔒 Pagamento seguro &middot; Acesso imediato</small>
+    </div>
+
+    <script>
+    // ── CAROUSEL ──────────────────────────────────────────
+    (function () {
+        const track  = document.getElementById('cTrack');
+        const dotsEl = document.getElementById('cDots');
+        const prevBtn = document.getElementById('cPrev');
+        const nextBtn = document.getElementById('cNext');
+        const slides = track.querySelectorAll('.c-slide');
+        let cur = 0;
+        let timer;
+
+        slides.forEach((_, i) => {
+            const d = document.createElement('button');
+            d.className = 'dot' + (i === 0 ? ' active' : '');
+            d.setAttribute('aria-label', 'Slide ' + (i + 1));
+            d.addEventListener('click', () => { goTo(i); reset(); });
+            dotsEl.appendChild(d);
+        });
+
+        function goTo(n) {
+            cur = (n + slides.length) % slides.length;
+            track.style.transform = `translateX(-${cur * 100}%)`;
+            dotsEl.querySelectorAll('.dot').forEach((d, i) =>
+                d.classList.toggle('active', i === cur)
+            );
+        }
+
+        function reset() { clearInterval(timer); start(); }
+        function start() { timer = setInterval(() => goTo(cur + 1), 3600); }
+
+        prevBtn.addEventListener('click', () => { goTo(cur - 1); reset(); });
+        nextBtn.addEventListener('click', () => { goTo(cur + 1); reset(); });
+
+        let tx = 0;
+        const el = document.getElementById('mainCarousel');
+        el.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+        el.addEventListener('touchend', e => {
+            const diff = tx - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 44) { goTo(diff > 0 ? cur + 1 : cur - 1); reset(); }
+        }, { passive: true });
+
+        start();
+    })();
+
+    // ── FAQ ───────────────────────────────────────────────
+    document.querySelectorAll('.faq-q').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.parentElement;
+            const open = item.classList.contains('open');
+            document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+            if (!open) item.classList.add('open');
+        });
+    });
+
+    // ── STICKY BAR oculta quando oferta está visível ──────
+    const stickyBar = document.getElementById('stickyBar');
+    const ofertaSection = document.getElementById('oferta');
+
+    const io = new IntersectionObserver(entries => {
+        stickyBar.style.display = entries[0].isIntersecting ? 'none' : 'block';
+    }, { threshold: 0.15 });
+
+    io.observe(ofertaSection);
+
+    // ── CTAs: redireciona para o checkout do produto (repassa querystring) ──
+    ['btnHero', 'btnTitulo', 'btnOferta', 'btnFinal', 'btnSticky'].forEach(id => {
+        document.getElementById(id)?.addEventListener('click', () => {
+            window.location.href = '/pay/8' + window.location.search;
+        });
+    });
+    </script>
+
+</body>
+</html>

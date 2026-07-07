@@ -275,6 +275,15 @@ def pudim_e2():
     resp.set_cookie(f'pedido_web_{produto_id}', str(pedido_id), max_age=COOKIE_MAX_AGE_FUNIL)
     return resp
 
+@app.get("/pudim-e3")
+def pudim_e3():
+    from web.checkout import rastrear_visita_funil, COOKIE_MAX_AGE_FUNIL
+    produto_id = 8
+    pedido_id = rastrear_visita_funil(request, produto_id, estado_novo=1004)
+    resp = make_response(render_template('pudim-e3.html'))
+    resp.set_cookie(f'pedido_web_{produto_id}', str(pedido_id), max_age=COOKIE_MAX_AGE_FUNIL)
+    return resp
+
 @app.get("/tempero")
 def tempero():
     return render_template('tempero.html')
