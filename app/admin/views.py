@@ -1817,6 +1817,18 @@ _SQL_PRO_CAMP_NOMES = """
     SELECT campaignid, nome FROM campanhas WHERE produto_id = %s
 """
 
+_SQL_PRO_PIX_HORARIO = """
+    SELECT
+        WEEKDAY(horario) AS dia_semana,   -- 0=Segunda ... 6=Domingo
+        HOUR(horario)    AS hora,
+        COUNT(*)                      AS qtd,
+        COALESCE(SUM(valor), 0)       AS receita
+    FROM pagamento_pix
+    WHERE produto_id = %s
+      AND horario BETWEEN %s AND %s
+    GROUP BY WEEKDAY(horario), HOUR(horario)
+"""
+
 
 @admin_bp.route('/produto/<int:produto_id>/analytics-pro')
 @requer_acesso_produto
@@ -1843,12 +1855,14 @@ def analytics_pro_produto(produto_id):
     data_fim_date = data_fim.date().isoformat()
 
     funil = receita = investimento = None
+    pix_horario = None
     campanhas_pro = []
 
     try:
         funil        = db.execute_query(_SQL_PRO_FUNIL,        (produto_id, data_ini, data_fim), fetch_one=True)
         receita      = db.execute_query(_SQL_PRO_RECEITA,      (produto_id, data_ini, data_fim), fetch_one=True)
         investimento = db.execute_query(_SQL_PRO_INVESTIMENTO, (produto_id, data_ini_date, data_fim_date), fetch_one=True)
+        pix_horario  = db.execute_query(_SQL_PRO_PIX_HORARIO,  (produto_id, data_ini, data_fim), fetch_all=True)
 
         camp_inv   = db.execute_query(_SQL_PRO_CAMP_INV,   (produto_id, data_ini_date, data_fim_date), fetch_all=True)
         camp_funil = db.execute_query(_SQL_PRO_CAMP_FUNIL, (produto_id, data_ini, data_fim), fetch_all=True)
@@ -1948,19 +1962,60 @@ def analytics_pro_produto(produto_id):
         if ti > 0 and m['total_investido'] > 0:
             m['cpm_total'] = round(m['total_investido'] / ti * 1000, 2)
 
-    chart_receita = {
-        'labels': ['Com Interesse', 'Sem Interesse'],
-        'valores': [
-            float(receita['ci_receita']) if receita else 0,
-            float(receita['si_receita']) if receita else 0,
-        ],
-        'cores': ['#4a9632', '#e07b2a'],
+    DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+
+    matriz     = [[0.0] * 24 for _ in range(7)]
+    qtd_matriz = [[0] * 24 for _ in range(7)]
+    for row in (pix_horario or []):
+        d, h = int(row['dia_semana']), int(row['hora'])
+        matriz[d][h]     = float(row['receita'] or 0)
+        qtd_matriz[d][h] = int(row['qtd'] or 0)
+
+    max_valor = max((v for linha in matriz for v in linha), default=0.0)
+
+    def _alpha(valor):
+        if not max_valor or valor <= 0:
+            return 0.0
+        return round(0.15 + (valor / max_valor) * 0.75, 3)
+
+    linhas = []
+    for d, dia_label in enumerate(DIAS_SEMANA):
+        celulas = [
+            {
+                'hora': h,
+                'valor': matriz[d][h],
+                'qtd': qtd_matriz[d][h],
+                'alpha': _alpha(matriz[d][h]),
+            }
+            for h in range(24)
+        ]
+        linhas.append({'label': dia_label, 'celulas': celulas})
+
+    total_por_hora = [sum(matriz[d][h] for d in range(7)) for h in range(24)]
+    max_total_hora = max(total_por_hora, default=0.0)
+    hora_pico = total_por_hora.index(max_total_hora) if max_total_hora else None
+    totais_hora = [
+        {
+            'hora': h,
+            'valor': total_por_hora[h],
+            'pct_barra': round(total_por_hora[h] / max_total_hora * 100, 1) if max_total_hora else 0,
+            'pico': h == hora_pico,
+        }
+        for h in range(24)
+    ]
+
+    heatmap_pix = {
+        'linhas': linhas,
+        'totais_hora': totais_hora,
+        'total_geral': sum(total_por_hora),
+        'max_valor': max_valor,
+        'hora_pico': hora_pico,
     }
 
     return render_template('admin/produto_analytics_pro.html',
         produto=produto, funil=funil, receita=receita,
         investimento=investimento, campanhas_pro=campanhas_pro,
-        m=m, chart_receita=chart_receita,
+        m=m, heatmap_pix=heatmap_pix,
         data_ini=data_ini_str, data_fim=data_fim_str,
     )
 

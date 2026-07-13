@@ -242,39 +242,111 @@
     .node-blue   { border-left: 3px solid #4a90d9; }
     .node-gray   { border-left: 3px solid #999; }
 
-    /* ── Receita Split ── */
-    .receita-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+    /* ── Heatmap Vendas Pix (dia x hora) ── */
+    /* Verde usado como cor sequencial (via alpha) = var(--accent2) #4a9632, já usado
+       na página para "positivo" (kpi verde, nós do Mapa de Bifurcações). */
+    .heatmap-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
         gap: 16px;
-        margin-bottom: 28px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
     }
 
-    .chart-container {
-        position: relative;
-        height: 260px;
+    .heatmap-legend {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
     }
 
-    .insight-box {
-        background: #fffbf5;
-        border: 1px solid #f5e6d3;
-        border-left: 4px solid var(--accent);
-        border-radius: 8px;
-        padding: 14px 16px;
-        margin-top: 16px;
-    }
-
-    .insight-title {
+    .heatmap-legend-label {
         font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        color: var(--accent);
+        color: var(--muted);
         font-family: var(--mono);
-        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
-    .insight-text { font-size: 13px; color: var(--text); }
+    .heatmap-legend-swatch {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        border: 1px solid var(--border);
+    }
+
+    .heatmap-wrap {
+        overflow-x: auto;
+    }
+
+    .heatmap-grid {
+        display: grid;
+        grid-template-columns: 42px repeat(24, minmax(24px, 1fr));
+        gap: 2px;
+        min-width: 760px;
+        align-items: center;
+    }
+
+    .heatmap-hour-label {
+        font-size: 9px;
+        color: var(--muted);
+        font-family: var(--mono);
+        text-align: center;
+        padding-bottom: 4px;
+    }
+
+    .heatmap-hour-label.is-pico {
+        color: var(--accent2);
+        font-weight: 700;
+    }
+
+    .heatmap-day-label {
+        font-size: 11px;
+        color: var(--muted);
+        font-family: var(--mono);
+    }
+
+    .heatmap-cell {
+        aspect-ratio: 1;
+        min-height: 20px;
+        border-radius: 3px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+    }
+
+    .heatmap-total-cell {
+        height: 40px;
+        margin-top: 16px;
+        display: flex;
+        align-items: flex-end;
+        position: relative;
+    }
+
+    .heatmap-total-bar {
+        width: 100%;
+        min-height: 2px;
+        border-radius: 2px 2px 0 0;
+        background: var(--accent2);
+        opacity: 0.55;
+    }
+
+    .heatmap-total-bar.is-pico {
+        opacity: 1;
+    }
+
+    .heatmap-pico-label {
+        position: absolute;
+        top: -14px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 8px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--accent2);
+        white-space: nowrap;
+    }
 
     /* ── Campanha Table ── */
     .roas-green  { color: #4a9632; font-weight: 600; }
@@ -292,7 +364,6 @@
     }
 
     @media (max-width: 900px) {
-        .receita-grid { grid-template-columns: 1fr; }
         .kpi-grid { grid-template-columns: repeat(2, 1fr); }
     }
 </style>
@@ -589,80 +660,51 @@
     </div>{# /bifurca-level-1 #}
 </div>{# /bifurcacao-wrap #}
 
-{# ══════════════════════════════════════════════════════ RECEITA COM vs SEM INTERESSE #}
-{% if receita %}
-<div class="section-title">Receita: Com vs Sem Interesse</div>
-<div class="receita-grid">
-
-    <div class="card">
-        <div style="font-size: 12px; font-weight: 600; color: var(--muted); font-family: var(--mono);
-                    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">
-            Distribuição de Receita
+{# ══════════════════════════════════════════════════════ VENDAS POR DIA DA SEMANA E HORA (PIX) #}
+{% if heatmap_pix and heatmap_pix.total_geral > 0 %}
+<div class="section-title">Vendas por Dia da Semana e Hora (Pix)</div>
+<div class="card">
+    <div class="heatmap-header">
+        <div style="font-size: 12px; color: var(--muted); font-family: var(--mono);">
+            Dinheiro que caiu na conta via Pix (extrato bancário), agrupado por dia da semana e hora — passe o
+            mouse sobre uma célula para ver o valor exato.
         </div>
-        <div class="chart-container">
-            <canvas id="chartReceita"></canvas>
+        <div class="heatmap-legend">
+            <span class="heatmap-legend-label">menos</span>
+            <span class="heatmap-legend-swatch" style="background: rgba(74,150,50,0.15);"></span>
+            <span class="heatmap-legend-swatch" style="background: rgba(74,150,50,0.4);"></span>
+            <span class="heatmap-legend-swatch" style="background: rgba(74,150,50,0.65);"></span>
+            <span class="heatmap-legend-swatch" style="background: rgba(74,150,50,0.9);"></span>
+            <span class="heatmap-legend-label">mais</span>
         </div>
     </div>
 
-    <div class="card">
-        <div style="font-size: 12px; font-weight: 600; color: var(--muted); font-family: var(--mono);
-                    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">
-            Comparativo por Caminho
-        </div>
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th></th>
-                        <th style="text-align:right; color:#4a9632;">Com Interesse</th>
-                        <th style="text-align:right; color:#e07b2a;">Sem Interesse</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td style="color:var(--muted); font-size:12px;">Pagamentos</td>
-                        <td style="text-align:right; font-family:var(--mono);">{{ receita.ci_pagamentos }}</td>
-                        <td style="text-align:right; font-family:var(--mono);">{{ receita.si_pagamentos }}</td>
-                    </tr>
-                    <tr>
-                        <td style="color:var(--muted); font-size:12px;">Receita</td>
-                        <td style="text-align:right; font-family:var(--mono);">R$ {{ '%.2f'|format(receita.ci_receita) }}</td>
-                        <td style="text-align:right; font-family:var(--mono);">R$ {{ '%.2f'|format(receita.si_receita) }}</td>
-                    </tr>
-                    <tr>
-                        <td style="color:var(--muted); font-size:12px;">Taxa conv.</td>
-                        <td style="text-align:right; font-family:var(--mono); color:#4a9632; font-weight:600;">{{ m.pct_ci_pagou }}%</td>
-                        <td style="text-align:right; font-family:var(--mono); color:#e07b2a; font-weight:600;">{{ m.pct_si_pagou }}%</td>
-                    </tr>
-                    <tr>
-                        <td style="color:var(--muted); font-size:12px;">% da receita total</td>
-                        <td style="text-align:right; font-family:var(--mono);">{{ m.pct_pag_de_ci }}%</td>
-                        <td style="text-align:right; font-family:var(--mono);">{{ m.pct_pag_de_si }}%</td>
-                    </tr>
-                    {% if receita.com_followup_pgto > 0 %}
-                    <tr>
-                        <td style="color:var(--muted); font-size:12px;">Precisaram followup pgto</td>
-                        <td style="text-align:right; font-family:var(--mono);">{{ receita.com_followup_pgto }}</td>
-                        <td style="text-align:right; font-family:var(--mono); color:var(--muted);">—</td>
-                    </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
+    <div class="heatmap-wrap">
+        <div class="heatmap-grid">
+            <div></div>
+            {% for h in range(24) %}
+            <div class="heatmap-hour-label {{ 'is-pico' if h == heatmap_pix.hora_pico }}">{{ h }}</div>
+            {% endfor %}
 
-        {% if m.pct_pag_de_si > 0 %}
-        <div class="insight-box">
-            <div class="insight-title">Estratégia Presente</div>
-            <div class="insight-text">
-                <strong>{{ m.pct_pag_de_si }}%</strong> da receita veio de clientes que disseram <em>não</em>
-                — {{ receita.si_pagamentos }} pagamento{{ 's' if receita.si_pagamentos != 1 }},
-                R$ {{ '%.2f'|format(receita.si_receita) }}.
+            {% for linha in heatmap_pix.linhas %}
+            <div class="heatmap-day-label">{{ linha.label }}</div>
+            {% for cel in linha.celulas %}
+            <div class="heatmap-cell"
+                 style="background: rgba(74,150,50,{{ cel.alpha }});"
+                 title="{{ linha.label }} {{ cel.hora }}h — R$ {{ '%.2f'|format(cel.valor) }} ({{ cel.qtd }} pagamento{{ 's' if cel.qtd != 1 }})">
             </div>
+            {% endfor %}
+            {% endfor %}
+
+            <div class="heatmap-day-label" style="font-weight: 600;">Total</div>
+            {% for t in heatmap_pix.totais_hora %}
+            <div class="heatmap-total-cell" title="Total {{ t.hora }}h — R$ {{ '%.2f'|format(t.valor) }}{{ ' (pico)' if t.pico }}">
+                <div class="heatmap-total-bar {{ 'is-pico' if t.pico }}" style="height: {{ t.pct_barra }}%;"></div>
+                {% if t.pico %}<div class="heatmap-pico-label">pico</div>{% endif %}
+            </div>
+            {% endfor %}
         </div>
-        {% endif %}
-
     </div>
-
 </div>
 {% endif %}
 
@@ -789,50 +831,6 @@
 
 {% block extra_js %}
 {% include 'admin/includes/_filtro_periodo_js.html' %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-(function () {
-    const ctx = document.getElementById('chartReceita');
-    if (!ctx) return;
-    const data   = {{ chart_receita.valores | tojson }};
-    const labels = {{ chart_receita.labels  | tojson }};
-    const cores  = {{ chart_receita.cores   | tojson }};
-    if (data[0] === 0 && data[1] === 0) return;
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: cores,
-                borderWidth: 2,
-                borderColor: '#fdf6ec',
-                hoverOffset: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { font: { size: 12 }, color: '#888', padding: 16 }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function (ctx) {
-                            const val = ctx.parsed;
-                            return ' R$ ' + val.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-                        }
-                    }
-                }
-            },
-            cutout: '65%'
-        }
-    });
-})();
-</script>
-
 <script>
 function analisarCampanhas() {
     const btn = document.getElementById('btn-analisar');
