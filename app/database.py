@@ -1580,10 +1580,15 @@ def busca_financeiro_pix(produto_id, data_ini, data_fim) -> dict:
     ) or {'total_valor': 0, 'qtd_transacoes': 0}
 
     transacoes = db.execute_query(
-        """SELECT horario, valor, chave_pix, cpf_cnpj, nome_pagador, txid, e2e_id
-           FROM pagamento_pix
-           WHERE produto_id = %s AND horario BETWEEN %s AND %s
-           ORDER BY horario DESC""",
+        """SELECT pp.horario, pp.valor, pp.chave_pix, pp.cpf_cnpj, pp.nome_pagador,
+                  pp.txid, pp.e2e_id,
+                  pp.nfe_emitida_id,
+                  ne.c_stat      AS nfe_c_stat,
+                  ne.chave_acesso AS nfe_chave_acesso
+           FROM pagamento_pix pp
+           LEFT JOIN nfe_emitidas ne ON ne.id = pp.nfe_emitida_id
+           WHERE pp.produto_id = %s AND pp.horario BETWEEN %s AND %s
+           ORDER BY pp.horario DESC""",
         (produto_id, data_ini, data_fim),
         fetch_all=True,
     ) or []

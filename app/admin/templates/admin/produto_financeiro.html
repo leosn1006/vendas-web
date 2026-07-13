@@ -112,6 +112,7 @@
                     <th>Chave PIX</th>
                     <th>Pagador</th>
                     <th>CPF/CNPJ</th>
+                    <th style="text-align:center;">NF-e</th>
                 </tr>
             </thead>
             <tbody>
@@ -126,6 +127,19 @@
                     <td style="font-family:var(--mono); font-size:13px;">{{ t.chave_pix }}</td>
                     <td style="font-size:13px;">{{ t.nome_pagador or '—' }}</td>
                     <td style="font-family:var(--mono); font-size:13px; color:var(--muted);">{{ t.cpf_cnpj or '—' }}</td>
+                    <td style="text-align:center;">
+                        {% if t.nfe_emitida_id and t.nfe_c_stat == '100' %}
+                        <a href="{{ url_for('admin.fiscal_danfe', nfe_id=t.nfe_emitida_id) }}"
+                           target="_blank"
+                           style="font-size:12px; font-family:var(--mono); color:var(--accent2); text-decoration:none;"
+                           title="Abrir DANFE">DANFE ↗</a>
+                        {% elif t.nfe_emitida_id %}
+                        <span style="font-size:12px; font-family:var(--mono); color:var(--muted);"
+                              title="NF-e cStat={{ t.nfe_c_stat }}">{{ t.nfe_c_stat or '…' }}</span>
+                        {% else %}
+                        <span style="color:var(--muted);">—</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

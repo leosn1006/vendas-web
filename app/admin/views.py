@@ -2729,6 +2729,35 @@ def financeiro_produto(produto_id):
     )
 
 
+@admin_bp.route('/fiscal/nfe/<int:nfe_id>/danfe')
+@requer_admin
+def fiscal_danfe(nfe_id):
+    from flask import Response
+    row = db.execute_query(
+        "SELECT xml_nfe_proc, xml_assinado, chave_acesso FROM nfe_emitidas WHERE id = %s",
+        (nfe_id,),
+        fetch_one=True,
+    )
+    if not row:
+        return 'NF-e não encontrada', 404
+    xml = row['xml_nfe_proc'] or row['xml_assinado']
+    if not xml:
+        return 'XML da NF-e não disponível', 404
+    try:
+        from brazilfiscalreport.danfe import Danfe
+        danfe = Danfe(xml=xml.encode('utf-8') if isinstance(xml, str) else xml)
+        pdf_bytes = danfe.output()
+    except Exception as e:
+        logger.error(f'[ADMIN] Erro ao gerar DANFE nfe_id={nfe_id}: {e}')
+        return f'Erro ao gerar DANFE: {e}', 500
+    chave = row['chave_acesso'] or str(nfe_id)
+    return Response(
+        pdf_bytes,
+        mimetype='application/pdf',
+        headers={'Content-Disposition': f'inline; filename="danfe_{chave}.pdf"'},
+    )
+
+
 @admin_bp.route('/produto/<int:produto_id>/financeiro/atualizar-pix', methods=['POST'])
 @requer_admin
 def financeiro_atualizar_pix(produto_id):

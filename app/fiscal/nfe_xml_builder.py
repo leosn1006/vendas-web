@@ -1,8 +1,10 @@
 """
 Monta o XML infNFe 4.00 usando nfelib dataclasses.
-Os campos de tributação (NCM, CFOP, CST_ICMS, CST_PIS, CST_COFINS) vêm de
-nfe_configuracao e devem ser validados com contador antes de ir para produção.
-Enquanto não definidos, usa ICMS40/PISNT/COFINSNT (isenção) como placeholder seguro.
+
+Tributação confirmada pelo contador para livros digitais com ISBN (Lucro Presumido):
+  ICMS  CST 40 — Isento (imunidade constitucional, art. 150 VI d CF/88)
+  PIS   CST 06 — Operação Tributável a Alíquota Zero
+  COFINS CST 06 — Operação Tributável a Alíquota Zero
 """
 from datetime import datetime
 from decimal import Decimal
@@ -17,7 +19,7 @@ from nfelib.nfe.bindings.v4_0.leiaute_nfe_v4_00 import (
     TcodUfIbge, Tmod, Tamb, TfinNfe, Torig,
     EmitCrt, DestIndIedest, TranspModFrete,
     IdeTpNf, IdeIdDest, IdeTpImp, IdeTpEmis, IdeIndFinal, IdeIndPres, IdeIndIntermed,
-    Icms40Cst, PisntCst, CofinsntCst,
+    Icms40Cst, Icms40MotDesIcms, PisntCst, CofinsntCst,
 )
 
 _ZERO = '0.00'
@@ -75,39 +77,33 @@ def _endereco_dest_fallback(e: dict) -> Tendereco:
     )
 
 
-def _icms_placeholder() -> Tnfe.InfNfe.Det.Imposto.Icms:
-    """
-    ICMS40 (CST=40, Isenção) como placeholder.
-    Substituir pela tributação correta após definição com contador.
-    """
+def _icms_livro() -> Tnfe.InfNfe.Det.Imposto.Icms:
+    # CST 41 = Não tributado — imunidade constitucional art. 150 VI d (livros com ISBN)
+    # motDesICMS=90 (Outros) + vICMSDeson=0 exigidos pelo DF quando cBenef informado
     return Tnfe.InfNfe.Det.Imposto.Icms(
         ICMS40=Tnfe.InfNfe.Det.Imposto.Icms.Icms40(
-            orig=Torig('0'),        # 0 = Nacional
-            CST=Icms40Cst('40'),    # 40 = Isento — VALIDAR COM CONTADOR
+            orig=Torig('0'),
+            CST=Icms40Cst('41'),
+            vICMSDeson=_ZERO,
+            motDesICMS=Icms40MotDesIcms('90'),
         )
     )
 
 
-def _pis_placeholder() -> Tnfe.InfNfe.Det.Imposto.Pis:
-    """
-    PISNT (CST=07, Operação Isenta) como placeholder.
-    Substituir pela tributação correta após definição com contador.
-    """
+def _pis_livro() -> Tnfe.InfNfe.Det.Imposto.Pis:
+    # CST 06 = Operação Tributável a Alíquota Zero (livros com ISBN)
     return Tnfe.InfNfe.Det.Imposto.Pis(
         PISNT=Tnfe.InfNfe.Det.Imposto.Pis.Pisnt(
-            CST=PisntCst('07'),     # 07 = Operação Isenta — VALIDAR COM CONTADOR
+            CST=PisntCst('06'),
         )
     )
 
 
-def _cofins_placeholder() -> Tnfe.InfNfe.Det.Imposto.Cofins:
-    """
-    COFINSNT (CST=07, Operação Isenta) como placeholder.
-    Substituir pela tributação correta após definição com contador.
-    """
+def _cofins_livro() -> Tnfe.InfNfe.Det.Imposto.Cofins:
+    # CST 06 = Operação Tributável a Alíquota Zero (livros com ISBN)
     return Tnfe.InfNfe.Det.Imposto.Cofins(
         COFINSNT=Tnfe.InfNfe.Det.Imposto.Cofins.Cofinsnt(
-            CST=CofinsntCst('07'),  # 07 = Operação Isenta — VALIDAR COM CONTADOR
+            CST=CofinsntCst('06'),
         )
     )
 
@@ -143,7 +139,8 @@ def montar_nfe(
     serie    = str(int(config.get('serie_padrao', '1')))
     x_prod   = config.get('x_prod', 'Livro Digital')
     ncm      = config.get('ncm') or '49011000'   # livro digital — VALIDAR COM CONTADOR
-    cfop     = config.get('cfop') or '6107'       # venda a não-contribuinte fora do DF — VALIDAR
+    cfop     = config.get('cfop') or '5102'       # venda de mercadoria a não-contribuinte (confirmar com contador)
+    c_benef  = config.get('c_benef') or None      # cBenef obrigatório quando CST=40 — ex: DF811004 (livros DF)
     valor    = _fmt_valor(pagamento.get('valor', '0'))
     cpf_cnpj = ''.join(filter(str.isdigit, str(pagamento.get('cpf_cnpj') or '')))
     # Homologação exige xNome exato do destinatário (cStat=598 se diferente)
@@ -202,6 +199,7 @@ def montar_nfe(
             cEAN='SEM GTIN',
             xProd=x_prod,
             NCM=ncm,
+            cBenef=c_benef,
             CFOP=cfop,
             uCom='UN',
             qCom='1.0000',
@@ -214,9 +212,9 @@ def montar_nfe(
             indTot='1',
         ),
         imposto=Tnfe.InfNfe.Det.Imposto(
-            ICMS=_icms_placeholder(),
-            PIS=_pis_placeholder(),
-            COFINS=_cofins_placeholder(),
+            ICMS=_icms_livro(),
+            PIS=_pis_livro(),
+            COFINS=_cofins_livro(),
         ),
     )
 
@@ -251,7 +249,7 @@ def montar_nfe(
             nNF=str(n_nf),
             dhEmi=dh_emi,
             tpNF=IdeTpNf('1'),           # 1 = Saída
-            idDest=IdeIdDest('2'),        # 2 = Interestadual (B2C digital, consumidor em qualquer UF)
+            idDest=IdeIdDest('1'),        # 1 = Interna (endereço emitente como fallback — sem endereço real do cliente)
             cMunFG=emit_data['c_mun'],
             tpImp=IdeTpImp('1'),          # 1 = DANFE normal
             tpEmis=IdeTpEmis('1'),        # 1 = Emissão normal
