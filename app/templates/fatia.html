@@ -5,14 +5,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description"
-    content="Ebook com receitas de fatias de bolo para vender na feira. Recheios cremosos, bolos irresistíveis e renda extra garantida. Entregue no WhatsApp em minutos.">
-  <title>Receitas Caseiras de Fatia de Bolo - Ebook Completo</title>
+    content="Kit com 4 e-books: receitas de fatias de bolo, guia para vender na feira, receitas caseiras de bolos e bônus de brigadeiros. Recheios cremosos, bolos irresistíveis e renda extra garantida. Entregue no WhatsApp em minutos.">
+  <title>100 Receitas de Fatias de Bolo + 3 Bônus - Kit Completo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@400;700&display=swap"
     rel="stylesheet">
-  <link rel="preload" as="image" href="/static/images/fatia-hero-02.webp" fetchpriority="high" type="image/webp">
+  <link rel="preload" as="image" href="/static/images/fatia-hero-3.webp" fetchpriority="high" type="image/webp">
   <style>
     :root {
       --rosa:              #cc4d78;
@@ -154,52 +154,92 @@
       color: var(--dourado)
     }
 
-    .carousel-track-wrap {
+    .c-wrapper {
+      position: relative;
       overflow: hidden;
-      width: 100%
+      touch-action: pan-y
     }
 
-    .carousel-track {
+    .c-track {
       display: flex;
-      gap: 12px;
-      padding: 4px 16px;
-      animation: scroll 50s linear infinite;
-      width: max-content
+      transition: transform .42s cubic-bezier(.4,0,.2,1);
+      will-change: transform
     }
 
-    .carousel-track:hover {
-      animation-play-state: paused
+    .c-slide {
+      min-width: 100%;
+      position: relative
     }
 
-    .ci {
-      flex: 0 0 140px;
-      background: #fff;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
-      border: 1px solid #e2e8f0
-    }
-
-    .ci img {
-      width: 140px;
-      height: 110px;
+    .c-slide img {
+      width: 100%;
+      height: 400px;
       object-fit: cover;
       display: block
     }
 
-    .ci span {
-      display: block;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--rosa-texto);
-      text-align: center;
-      padding: 6px;
-      line-height: 1.3
+    .c-caption {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(86,20,48,.9));
+      padding: 48px 20px 18px;
+      color: #fff
     }
 
-    @keyframes scroll {
-      0% { transform: translateX(0) }
-      100% { transform: translateX(-50%) }
+    .c-caption h3 {
+      font-family: "Playfair Display", serif;
+      font-size: 18px;
+      margin-bottom: 4px
+    }
+
+    .c-caption p {
+      font-size: 12px;
+      opacity: .9
+    }
+
+    .c-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,.92);
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 1.15rem;
+      cursor: pointer;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,.18);
+      color: var(--rosa-texto)
+    }
+
+    .c-btn.prev { left: 10px }
+    .c-btn.next { right: 10px }
+
+    .c-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 0 4px
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ddd;
+      cursor: pointer;
+      transition: all .3s;
+      border: none
+    }
+
+    .dot.active {
+      background: var(--rosa);
+      width: 24px;
+      border-radius: 4px
     }
 
     .preco {
@@ -227,6 +267,25 @@
       color: rgba(255, 255, 255, .85);
       font-size: 13px;
       margin-top: 6px
+    }
+
+    .selos {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 16px 4px
+    }
+
+    .selo {
+      background: var(--rosa-claro);
+      border: 1px solid var(--rosa-borda);
+      color: var(--rosa-texto);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 20px;
+      white-space: nowrap
     }
 
     .btn-wpp {
@@ -379,7 +438,7 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .carousel-track { animation: none; overflow-x: auto }
+      .c-track { transition: none }
       .btn-wpp { animation: none }
       #spinner { animation-duration: .01ms }
     }
@@ -396,10 +455,10 @@
 
   <div class="hero" role="button" tabindex="0" onclick="irParaWhatsApp()"
     onkeydown="if(event.key==='Enter'||event.key===' ')irParaWhatsApp()">
-    <span class="badge">&#127874; 100 Receitas Para Vender</span>
+    <span class="badge">&#127874; Kit com 4 Livros + Bônus</span>
     <picture>
-      <source srcset="/static/images/fatia-hero-02.webp" type="image/webp">
-      <img src="/static/images/Fatia-hero-02.jpg" alt="Receitas Caseiras de Fatia de Bolo" fetchpriority="high">
+      <source srcset="/static/images/fatia-hero-3.webp" type="image/webp">
+      <img src="/static/images/fatia-hero-3.jpg" alt="Kit com 4 livros: 100 Receitas de Fatias de Bolo, Como Vender Fatias na Feira, Receitas Caseiras de Bolos e Bônus de Brigadeiros" fetchpriority="high">
     </picture>
   </div>
 
@@ -411,8 +470,8 @@
   </button>
 
   <div class="titulo">
-    <h1>Receitas Caseiras <span>de Fatia de Bolo</span></h1>
-    <p>Aprenda a fazer fatias irresistíveis para vender na feira e transformar em renda extra — receitas testadas, recheios cremosos e bolos que vendem sozinhos</p>
+    <h1>Kit com 4 Livros <span>de Receitas de Fatia de Bolo</span></h1>
+    <p>Aprenda a fazer fatias irresistíveis para vender na feira e transformar em renda extra — receitas testadas, guia completo de vendas e bônus de brigadeiros inclusos</p>
   </div>
 
   <div class="beneficios">
@@ -456,32 +515,67 @@
 
   <div class="carousel-section">
     <h2>Bolos que <span>todo mundo quer um pedaço</span></h2>
-    <div class="carousel-track-wrap">
-      <div class="carousel-track">
-        <div class="ci"><img src="/static/images/fatia-01.jpg" alt="Fatia de Coco" loading="lazy" width="140" height="110"><span>Fatia de Coco</span></div>
-        <div class="ci"><img src="/static/images/fatia-02.jpg" alt="Bolo de Morango e Chocolate" loading="lazy" width="140" height="110"><span>Morango e Chocolate</span></div>
-        <div class="ci"><img src="/static/images/fatia-03.jpg" alt="Recheio Cremoso" loading="lazy" width="140" height="110"><span>Recheio Cremoso</span></div>
-        <div class="ci"><img src="/static/images/fatia-04.jpg" alt="Fatia Especial" loading="lazy" width="140" height="110"><span>Fatia Especial</span></div>
-        <div class="ci"><img src="/static/images/fatia-05.jpg" alt="Bolo Úmido" loading="lazy" width="140" height="110"><span>Bolo Úmido</span></div>
-        <div class="ci"><img src="/static/images/fatia-06.jpg" alt="Fatia de Chocolate" loading="lazy" width="140" height="110"><span>Fatia de Chocolate</span></div>
-        <div class="ci"><img src="/static/images/fatia-07.jpg" alt="Bolo de Limão" loading="lazy" width="140" height="110"><span>Bolo de Limão</span></div>
-        <div class="ci"><img src="/static/images/fatia-08.jpg" alt="Delícia da Feira" loading="lazy" width="140" height="110"><span>Delícia da Feira</span></div>
-        <div class="ci"><img src="/static/images/fatia-01.jpg" alt="Fatia de Coco" loading="lazy" width="140" height="110"><span>Fatia de Coco</span></div>
-        <div class="ci"><img src="/static/images/fatia-02.jpg" alt="Bolo de Morango e Chocolate" loading="lazy" width="140" height="110"><span>Morango e Chocolate</span></div>
-        <div class="ci"><img src="/static/images/fatia-03.jpg" alt="Recheio Cremoso" loading="lazy" width="140" height="110"><span>Recheio Cremoso</span></div>
-        <div class="ci"><img src="/static/images/fatia-04.jpg" alt="Fatia Especial" loading="lazy" width="140" height="110"><span>Fatia Especial</span></div>
-        <div class="ci"><img src="/static/images/fatia-05.jpg" alt="Bolo Úmido" loading="lazy" width="140" height="110"><span>Bolo Úmido</span></div>
-        <div class="ci"><img src="/static/images/fatia-06.jpg" alt="Fatia de Chocolate" loading="lazy" width="140" height="110"><span>Fatia de Chocolate</span></div>
-        <div class="ci"><img src="/static/images/fatia-07.jpg" alt="Bolo de Limão" loading="lazy" width="140" height="110"><span>Bolo de Limão</span></div>
-        <div class="ci"><img src="/static/images/fatia-08.jpg" alt="Delícia da Feira" loading="lazy" width="140" height="110"><span>Delícia da Feira</span></div>
+    <div class="c-wrapper" id="mainCarousel">
+      <div class="c-track" id="cTrack">
+        <div class="c-slide">
+          <img src="/static/images/fatia-01.webp" alt="Fatia de Coco">
+          <div class="c-caption">
+            <h3>Fatia de Coco</h3>
+            <p>Recheio cremoso que derrete na boca</p>
+          </div>
+        </div>
+        <div class="c-slide">
+          <img src="/static/images/fatia-02.webp" alt="Bolo de Morango e Chocolate">
+          <div class="c-caption">
+            <h3>Morango e Chocolate</h3>
+            <p>A combinação que todo mundo quer repetir</p>
+          </div>
+        </div>
+        <div class="c-slide">
+          <img src="/static/images/fatia-08.webp" alt="Delícia da Feira">
+          <div class="c-caption">
+            <h3>Delícia da Feira</h3>
+            <p>A fatia que mais vende na bancada</p>
+          </div>
+        </div>
+        <div class="c-slide">
+          <img src="/static/images/fatia-capa.webp" alt="Coleção completa de receitas de fatia de bolo">
+          <div class="c-caption">
+            <h3>Coleção Completa</h3>
+            <p>100 receitas para vender na feira o ano todo</p>
+          </div>
+        </div>
+        <div class="c-slide">
+          <img src="/static/images/fatia-capa-2.webp" alt="Bolos que vendem sozinhos">
+          <div class="c-caption">
+            <h3>Bolos Que Vendem Sozinhos</h3>
+            <p>Visual caprichado que atrai o cliente na hora</p>
+          </div>
+        </div>
+        <div class="c-slide">
+          <img src="/static/images/fatia-semanal.webp" alt="Cardápio semanal de receitas">
+          <div class="c-caption">
+            <h3>Cardápio da Semana</h3>
+            <p>Variedade pra nunca vender sempre a mesma fatia</p>
+          </div>
+        </div>
       </div>
+      <button class="c-btn prev" id="cPrev" aria-label="Anterior">&#8249;</button>
+      <button class="c-btn next" id="cNext" aria-label="Próximo">&#8250;</button>
     </div>
+    <div class="c-dots" id="cDots"></div>
   </div>
 
   <div class="preco">
-    <p>Ebook completo — faça em casa e venda na feira!</p>
-    <div class="valor">R$ 19,90</div>
+    <p>4 e-books completos + bônus, por menos que um lanche</p>
+    <div class="valor">R$ 10,00</div>
     <div class="entrega">&#128241; Receba no WhatsApp em minutos</div>
+  </div>
+
+  <div class="selos">
+    <span class="selo">&#128274; Compra Segura</span>
+    <span class="selo">&#9989; Satisfação Garantida</span>
+    <span class="selo">&#9889; Entrega Imediata</span>
   </div>
 
   <button class="btn-wpp" onclick="irParaWhatsApp()">
@@ -499,7 +593,7 @@
     </div>
     <div class="passo">
       <div class="passo-num">2</div>
-      <p>Receba o ebook com todas as receitas em minutos — ingredientes simples e fáceis de encontrar</p>
+      <p>Receba os 4 livros completos em minutos — ingredientes simples e fáceis de encontrar</p>
     </div>
     <div class="passo">
       <div class="passo-num">3</div>
@@ -541,7 +635,7 @@
       emProcessamento = true;
       mostrarLoader();
       let numeroWhatsapp = '556182419539';
-      let mensagemBaseWA = 'Gostaria de saber mais sobre as receitas de fatias de bolo para feira';
+      let mensagemBaseWA = 'Gostaria de saber mais sobre o kit com os 4 livros de receitas de fatias de bolo';
       const urlDaPaginaAtual = window.location.href;
       const urlParams = new URLSearchParams(window.location.search);
       const gclidCode = urlParams.get('gclid') || '';
@@ -574,6 +668,53 @@
         emProcessamento = false;
       }
     }
+
+    (function () {
+      const track = document.getElementById('cTrack');
+      const dotsEl = document.getElementById('cDots');
+      const prevBtn = document.getElementById('cPrev');
+      const nextBtn = document.getElementById('cNext');
+      const slides = track.querySelectorAll('.c-slide');
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let cur = 0;
+      let timer;
+
+      slides.forEach((_, i) => {
+        const d = document.createElement('button');
+        d.className = 'dot' + (i === 0 ? ' active' : '');
+        d.setAttribute('aria-label', 'Slide ' + (i + 1));
+        d.addEventListener('click', () => { goTo(i); reset(); });
+        dotsEl.appendChild(d);
+      });
+
+      function goTo(n) {
+        cur = (n + slides.length) % slides.length;
+        track.style.transform = `translateX(-${cur * 100}%)`;
+        dotsEl.querySelectorAll('.dot').forEach((d, i) =>
+          d.classList.toggle('active', i === cur)
+        );
+      }
+
+      function reset() { clearInterval(timer); start(); }
+      function start() {
+        clearInterval(timer);
+        if (reduceMotion) return;
+        timer = setInterval(() => goTo(cur + 1), 3600);
+      }
+
+      prevBtn.addEventListener('click', () => { goTo(cur - 1); reset(); });
+      nextBtn.addEventListener('click', () => { goTo(cur + 1); reset(); });
+
+      let tx = 0;
+      const el = document.getElementById('mainCarousel');
+      el.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+      el.addEventListener('touchend', e => {
+        const diff = tx - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 44) { goTo(diff > 0 ? cur + 1 : cur - 1); reset(); }
+      }, { passive: true });
+
+      start();
+    })();
   </script>
 </body>
 
