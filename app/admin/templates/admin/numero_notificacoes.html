@@ -1,10 +1,13 @@
 {% extends "admin/base.html" %}
-{% block title %}Histórico — {{ telefone_atual.telefone }}{% endblock %}
+{% block title %}Histórico de estados — {{ telefone_atual.telefone }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">Histórico de notificações</h1>
+        <a href="{{ url_for('admin.numeros_whatsapp', produto_id=produto_id) }}" style="font-size: 13px; color: var(--muted); text-decoration: none;">
+            ← Voltar
+        </a>
+        <h1 class="page-title">Histórico de estados</h1>
         <p class="page-subtitle">{{ telefone_atual.telefone }} ({{ telefone_atual.api_phone_number_id or '—' }})</p>
     </div>
     <div>

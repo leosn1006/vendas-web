@@ -1004,7 +1004,8 @@ def listar_telefones_com_token(produto_id=None):
         list: dicts com id, produto_id, telefone, api_phone_number_id, token_env_key
     """
     query = """
-        SELECT id, produto_id, telefone, api_phone_number_id, token_env_key
+        SELECT id, produto_id, telefone, api_phone_number_id, token_env_key,
+               quality_rating, status_api, waba_id
         FROM telefones_produto
         WHERE api_phone_number_id IS NOT NULL AND api_phone_number_id != ''
     """
@@ -1018,21 +1019,27 @@ def listar_telefones_com_token(produto_id=None):
 _QUALITY_RATINGS_VALIDOS = {'GREEN', 'YELLOW', 'RED'}
 
 
-def atualizar_qualidade_telefone(telefone_id, quality_rating, status_api=None, name_status_api=None):
-    """Grava o resultado bem-sucedido de uma checagem de qualidade. Limpa qualidade_erro.
+def normalizar_quality_rating(quality_rating):
+    """Mapeia qualquer valor fora de GREEN/YELLOW/RED (None, 'NA', valor futuro inesperado
+    da API) para 'UNKNOWN'. A coluna é um ENUM restrito a essas 4 opções, mas a Graph API
+    documenta outros valores possíveis (ex: 'NA' para número sem rating calculado ainda),
+    que sem essa normalização fariam o UPDATE falhar e o número ficar preso mostrando erro
+    de checagem."""
+    return quality_rating if quality_rating in _QUALITY_RATINGS_VALIDOS else 'UNKNOWN'
 
-    Normaliza qualquer valor fora de GREEN/YELLOW/RED para 'UNKNOWN' antes de gravar —
-    a coluna é um ENUM restrito a essas 4 opções, mas a Graph API documenta outros valores
-    possíveis (ex: 'NA' para número sem rating calculado ainda), que sem essa normalização
-    fariam o UPDATE falhar e o número ficar preso mostrando erro de checagem."""
-    if quality_rating not in _QUALITY_RATINGS_VALIDOS:
-        quality_rating = 'UNKNOWN'
+
+def atualizar_qualidade_telefone(telefone_id, quality_rating, status_api=None, name_status_api=None, waba_id=None):
+    """Grava o resultado bem-sucedido de uma checagem de qualidade. Limpa qualidade_erro.
+    waba_id usa COALESCE pra não apagar um valor já conhecido caso a resposta não traga
+    health_status por algum motivo pontual."""
+    quality_rating = normalizar_quality_rating(quality_rating)
     db.execute_query(
         """UPDATE telefones_produto
            SET quality_rating = %s, status_api = %s, name_status_api = %s,
+               waba_id = COALESCE(%s, waba_id),
                qualidade_atualizada_em = NOW(), qualidade_erro = NULL
            WHERE id = %s""",
-        (quality_rating, status_api, name_status_api, telefone_id)
+        (quality_rating, status_api, name_status_api, waba_id, telefone_id)
     )
 
 
@@ -1112,22 +1119,21 @@ def contar_notificacoes_telefone_recentes(produto_id, horas=24):
 
 # ── notificacoes_conta_whatsapp (captura crua, sem UI nesta fase) ─────────────
 
-def criar_notificacao_conta_whatsapp(tipo_evento, waba_id=None, business_id=None, payload_raw=None):
+def criar_notificacao_conta_whatsapp(tipo_evento, waba_id=None, business_id=None, payload_raw=None, mensagem=None):
     """Persiste evento de nível WABA/Business Manager (account_update, account_review_update,
-    account_alerts, business_capability_update). Sem UI dedicada ainda — ver plano de fase 2."""
+    account_alerts, business_capability_update) — ex: aviso de spam/revisão de conta."""
     import json as _json
     return db.execute_query(
-        """INSERT INTO notificacoes_conta_whatsapp (tipo_evento, waba_id, business_id, payload_raw)
-           VALUES (%s, %s, %s, %s)""",
-        (tipo_evento, waba_id, business_id, _json.dumps(payload_raw, ensure_ascii=False))
+        """INSERT INTO notificacoes_conta_whatsapp (tipo_evento, waba_id, business_id, payload_raw, mensagem)
+           VALUES (%s, %s, %s, %s, %s)""",
+        (tipo_evento, waba_id, business_id, _json.dumps(payload_raw, ensure_ascii=False), mensagem)
     )
 
 
 def listar_notificacoes_conta_whatsapp(waba_id=None, limit=200):
-    """Lista eventos de nível WABA/Business Manager, mais recentes primeiro. Sem UI dedicada
-    ainda (fase 2) — mas já existe caminho de leitura pra não depender de SQL manual em caso
-    de incidente (ver migrations/045_notificacoes_conta_whatsapp.sql)."""
-    query = "SELECT id, tipo_evento, waba_id, business_id, payload_raw, created_at FROM notificacoes_conta_whatsapp"
+    """Lista eventos de nível WABA/Business Manager, mais recentes primeiro. Sem filtro
+    por produto — usar listar_notificacoes_conta_whatsapp_produto pra isso."""
+    query = "SELECT id, tipo_evento, mensagem, waba_id, business_id, payload_raw, created_at FROM notificacoes_conta_whatsapp"
     params = ()
     if waba_id is not None:
         query += " WHERE waba_id = %s"
@@ -1135,6 +1141,37 @@ def listar_notificacoes_conta_whatsapp(waba_id=None, limit=200):
     query += " ORDER BY created_at DESC LIMIT %s"
     params = params + (limit,)
     return db.execute_query(query, params, fetch_all=True) or []
+
+
+def listar_notificacoes_conta_whatsapp_produto(produto_id, limit=200):
+    """Notificações de nível WABA/BM para as WABAs que sustentam os números deste produto
+    (join indireto via waba_id, já que o evento não carrega produto_id/telefone_id)."""
+    return db.execute_query(
+        """SELECT id, tipo_evento, mensagem, waba_id, business_id, payload_raw, created_at
+           FROM notificacoes_conta_whatsapp
+           WHERE waba_id IN (
+               SELECT DISTINCT waba_id FROM telefones_produto
+               WHERE produto_id = %s AND waba_id IS NOT NULL
+           )
+           ORDER BY created_at DESC
+           LIMIT %s""",
+        (produto_id, limit), fetch_all=True
+    ) or []
+
+
+def contar_notificacoes_conta_recentes(produto_id, horas=24):
+    """Total de notificações de conta/WABA nas últimas N horas pras WABAs deste produto —
+    usado no badge do botão 'Notificações'."""
+    row = db.execute_query(
+        """SELECT COUNT(*) AS total FROM notificacoes_conta_whatsapp
+           WHERE created_at >= NOW() - INTERVAL %s HOUR
+           AND waba_id IN (
+               SELECT DISTINCT waba_id FROM telefones_produto
+               WHERE produto_id = %s AND waba_id IS NOT NULL
+           )""",
+        (horas, produto_id), fetch_one=True
+    )
+    return (row or {}).get('total', 0)
 
 
 # ── mensagens_sugeridas_produto ───────────────────────────────────────────────

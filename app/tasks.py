@@ -372,12 +372,48 @@ def processar_orcamento_sheets(self, data_str=None):
         _redis.delete(lock_key)
 
 
+def _extrair_waba_id(data):
+    """health_status traz a cadeia de entidades (PHONE_NUMBER, WABA, BUSINESS, APP) —
+    extrai o id da entidade WABA, se presente."""
+    entidades = (data.get('health_status') or {}).get('entities', [])
+    for e in entidades:
+        if e.get('entity_type') == 'WABA':
+            return e.get('id')
+    return None
+
+
+def _registrar_mudancas_estado(t, nova_qualidade, novo_status):
+    """Grava em notificacoes_telefone só quando quality_rating ou status_api realmente
+    mudaram em relação ao que já estava salvo — inclusive na primeira checagem
+    (UNKNOWN/None → primeiro valor real), por decisão explícita do usuário."""
+    from database import criar_notificacao_telefone
+
+    velha_qualidade = t.get('quality_rating')
+    if velha_qualidade != nova_qualidade:
+        de = velha_qualidade or 'nunca checado'
+        criar_notificacao_telefone(
+            t['id'], t['produto_id'], 'quality_rating_change',
+            f"Qualidade mudou de {de} para {nova_qualidade}",
+            payload_raw={'de': velha_qualidade, 'para': nova_qualidade, 'origem': 'polling'}
+        )
+
+    velho_status = t.get('status_api')
+    if novo_status and velho_status != novo_status:
+        de = velho_status or 'nunca checado'
+        criar_notificacao_telefone(
+            t['id'], t['produto_id'], 'status_change',
+            f"Status mudou de {de} para {novo_status}",
+            payload_raw={'de': velho_status, 'para': novo_status, 'origem': 'polling'}
+        )
+
+
 def _checar_qualidade_telefone(t, _TAG, WHATSAPP_API_URL):
     """Consulta a Graph API pra um número e persiste o resultado. Roda em thread própria
     (chamada via ThreadPoolExecutor) — cada chamada usa sua própria conexão do pool do MySQL,
     então é segura em paralelo. Retorna True em caso de sucesso, False em falha."""
     import requests
-    from database import get_whatsapp_token, atualizar_qualidade_telefone, registrar_erro_qualidade_telefone
+    from database import (get_whatsapp_token, atualizar_qualidade_telefone,
+                           registrar_erro_qualidade_telefone, normalizar_quality_rating)
 
     telefone_id = t['id']
     try:
@@ -390,15 +426,22 @@ def _checar_qualidade_telefone(t, _TAG, WHATSAPP_API_URL):
         resp = requests.get(
             f"{WHATSAPP_API_URL}{t['api_phone_number_id']}",
             headers={"Authorization": f"Bearer {token}"},
-            params={"fields": "quality_rating,status,name_status"},
+            params={"fields": "quality_rating,status,name_status,health_status"},
             timeout=15,
         )
         if not resp.ok:
             registrar_erro_qualidade_telefone(telefone_id, f"HTTP {resp.status_code}: {resp.text[:200]}")
             logger.warning(f"[{_TAG}] ⚠️ Telefone #{telefone_id} ({t['telefone']}): HTTP {resp.status_code} — {resp.text[:200]}")
             return False
+
         data = resp.json()
-        atualizar_qualidade_telefone(telefone_id, data.get('quality_rating'), data.get('status'), data.get('name_status'))
+        nova_qualidade = normalizar_quality_rating(data.get('quality_rating'))
+        novo_status = data.get('status')
+        waba_id = _extrair_waba_id(data)
+
+        _registrar_mudancas_estado(t, nova_qualidade, novo_status)
+
+        atualizar_qualidade_telefone(telefone_id, nova_qualidade, novo_status, data.get('name_status'), waba_id)
         return True
     except Exception as e:
         registrar_erro_qualidade_telefone(telefone_id, str(e)[:255])

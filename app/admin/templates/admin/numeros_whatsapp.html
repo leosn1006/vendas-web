@@ -36,9 +36,18 @@
         <h1 class="page-title">Números WhatsApp</h1>
         <p class="page-subtitle">{{ produto.nome }}</p>
     </div>
-    <button id="btn-atualizar-qualidade" class="btn btn-secondary" onclick="atualizarQualidade()">
-        ↻ Atualizar qualidade agora
-    </button>
+    <div style="display: flex; gap: 8px;">
+        <a href="{{ url_for('admin.notificacoes_conta_whatsapp_produto', produto_id=produto.id) }}"
+           class="btn btn-secondary" style="position: relative;">
+            Notificações
+            {% if notif_conta_recentes %}
+                <span class="badge badge-red" style="position: absolute; top: -8px; right: -8px;">{{ notif_conta_recentes }}</span>
+            {% endif %}
+        </a>
+        <button id="btn-atualizar-qualidade" class="btn btn-secondary" onclick="atualizarQualidade()">
+            ↻ Atualizar qualidade agora
+        </button>
+    </div>
 </div>
 
 <div class="card">
@@ -100,7 +109,7 @@
                         </button>
                         <a href="{{ url_for('admin.historico_numero_whatsapp', produto_id=produto.id, telefone_id=t.id) }}"
                            class="btn btn-secondary btn-sm" style="position: relative; display: inline-block;">
-                            Consultar histórico
+                            Histórico de estados
                             {% if notif_recentes.get(t.id) %}
                                 <span class="badge badge-yellow" style="position: absolute; top: -8px; right: -8px;">{{ notif_recentes[t.id] }}</span>
                             {% endif %}

@@ -13,6 +13,7 @@ from Whatsapp_config import ativa_whatsapp
 from database import (db,
     listar_telefones_produto, adicionar_telefone_produto, remover_telefone_produto, atualizar_telefone_produto,
     contar_notificacoes_telefone_recentes, listar_notificacoes_telefone,
+    contar_notificacoes_conta_recentes, listar_notificacoes_conta_whatsapp_produto,
     listar_mensagens_sugeridas, adicionar_mensagem_sugerida, remover_mensagem_sugerida,
     listar_acoes_fluxo, get_acao_fluxo,
     adicionar_acao_fluxo, atualizar_acao_fluxo, remover_acao_fluxo,
@@ -977,8 +978,9 @@ def numeros_whatsapp(produto_id):
         return redirect(url_for('admin.dashboard'))
     telefones = listar_telefones_produto(produto_id)
     notif_recentes = contar_notificacoes_telefone_recentes(produto_id, horas=24)
+    notif_conta_recentes = contar_notificacoes_conta_recentes(produto_id, horas=24)
     return render_template('admin/numeros_whatsapp.html', produto=produto, telefones=telefones,
-                            notif_recentes=notif_recentes)
+                            notif_recentes=notif_recentes, notif_conta_recentes=notif_conta_recentes)
 
 
 @admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/adicionar', methods=['POST'])
@@ -1067,6 +1069,20 @@ def atualizar_qualidade_numeros_whatsapp(produto_id):
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro ao disparar checagem de qualidade: {e}")
         return jsonify({'ok': False, 'msg': f'Erro ao iniciar checagem: {e}'}), 500
+
+
+@admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/notificacoes-conta')
+@requer_acesso_produto
+def notificacoes_conta_whatsapp_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = db.execute_query(
+        "SELECT id, nome FROM produtos WHERE id = %s", (produto_id,), fetch_one=True
+    )
+    if not produto:
+        flash('Produto não encontrado.', 'danger')
+        return redirect(url_for('admin.dashboard'))
+    notificacoes = listar_notificacoes_conta_whatsapp_produto(produto_id)
+    return render_template('admin/produto_notificacoes_conta.html', produto=produto, notificacoes=notificacoes)
 
 
 @admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/<int:telefone_id>/historico')

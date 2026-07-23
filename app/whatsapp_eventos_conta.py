@@ -50,6 +50,21 @@ def _resumir_evento_telefone(field, value):
     return f"{field}: {value}"
 
 
+def _resumir_evento_conta(field, value):
+    """Monta uma mensagem legível a partir dos formatos conhecidos do payload de nível
+    conta/WABA. Cai no dump bruto pra formatos ainda não mapeados."""
+    if 'violation_info' in value:
+        return f"Violação de política: {value['violation_info'].get('violation_type', '?')}"
+    if 'restriction_info' in value:
+        tipos = [r.get('restriction_type', '?') for r in value.get('restriction_info', [])]
+        return f"Restrição aplicada: {', '.join(tipos)}"
+    if 'ban_info' in value:
+        return f"Estado de banimento: {value['ban_info'].get('waba_ban_state', '?')}"
+    if 'decision' in value:
+        return f"Revisão de conta: {value['decision']}"
+    return f"{field}: {value}"
+
+
 def _dedup_key(entry, field, change):
     """Chave de deduplicação por evento individual — a Meta reentrega webhooks (at-least-once),
     e sem isso cada reentrega vira uma linha duplicada em notificacoes_telefone/conta_whatsapp."""
@@ -96,5 +111,7 @@ def processar_evento_conta(mensagem_whatsapp):
             if field in _EVENTOS_CONTA:
                 waba_id = entry.get('id')  # id da WABA é o entry.id nesses eventos
                 business_id = value.get('business_id') or (value.get('business') or {}).get('id')
-                criar_notificacao_conta_whatsapp(field, waba_id=waba_id, business_id=business_id, payload_raw=change)
+                mensagem = _resumir_evento_conta(field, value)
+                criar_notificacao_conta_whatsapp(field, waba_id=waba_id, business_id=business_id,
+                                                  payload_raw=change, mensagem=mensagem)
                 logger.info(f"[EVENTOS-CONTA] 🔔 '{field}' persistido (waba_id={waba_id})")
