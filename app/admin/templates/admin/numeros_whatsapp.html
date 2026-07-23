@@ -36,6 +36,9 @@
         <h1 class="page-title">Números WhatsApp</h1>
         <p class="page-subtitle">{{ produto.nome }}</p>
     </div>
+    <button id="btn-atualizar-qualidade" class="btn btn-secondary" onclick="atualizarQualidade()">
+        ↻ Atualizar qualidade agora
+    </button>
 </div>
 
 <div class="card">
@@ -50,6 +53,7 @@
                     <th>Token env key</th>
                     <th>Cadastrado em</th>
                     <th style="text-align: right;">Usos</th>
+                    <th>Qualidade</th>
                     <th></th>
                 </tr>
             </thead>
@@ -71,6 +75,19 @@
                     <td style="text-align: right; font-family: var(--mono); font-size: 14px;">
                         {{ t.contador_uso or 0 }}
                     </td>
+                    <td>
+                        {% set cor_qualidade = {'GREEN': 'badge-green', 'YELLOW': 'badge-yellow', 'RED': 'badge-red', 'UNKNOWN': 'badge-blue'}.get(t.quality_rating or 'UNKNOWN', 'badge-blue') %}
+                        <span class="badge {{ cor_qualidade }}">{{ t.quality_rating or 'UNKNOWN' }}</span>
+                        {% if t.status_api and t.status_api != 'CONNECTED' %}
+                            <span class="badge badge-yellow" title="status da API">{{ t.status_api }}</span>
+                        {% endif %}
+                        {% if t.qualidade_erro %}
+                            <span class="badge badge-red" title="{{ t.qualidade_erro }}">⚠ erro na checagem</span>
+                        {% endif %}
+                        <div style="color: var(--muted); font-size: 11px; margin-top: 4px;">
+                            {{ t.qualidade_atualizada_em.strftime('%d/%m %H:%M') if t.qualidade_atualizada_em else 'nunca checado' }}
+                        </div>
+                    </td>
                     <td style="text-align: right; white-space: nowrap;">
                         <button type="button" class="btn btn-secondary btn-sm"
                                 data-id="{{ t.id }}"
@@ -81,6 +98,13 @@
                                 onclick="abrirModalEditar(this)">
                             Alterar
                         </button>
+                        <a href="{{ url_for('admin.historico_numero_whatsapp', produto_id=produto.id, telefone_id=t.id) }}"
+                           class="btn btn-secondary btn-sm" style="position: relative; display: inline-block;">
+                            Consultar histórico
+                            {% if notif_recentes.get(t.id) %}
+                                <span class="badge badge-yellow" style="position: absolute; top: -8px; right: -8px;">{{ notif_recentes[t.id] }}</span>
+                            {% endif %}
+                        </a>
                         <form method="POST" style="display: inline;"
                               action="{{ url_for('admin.remover_numero_whatsapp', produto_id=produto.id, telefone_id=t.id) }}"
                               onsubmit="return confirm('Remover o número {{ t.telefone }}?')">
@@ -191,6 +215,30 @@ function abrirModalEditar(btn) {
 
 function fecharModal(id) {
     document.getElementById(id).classList.remove('open');
+}
+
+function atualizarQualidade() {
+    const btn = document.getElementById('btn-atualizar-qualidade');
+    btn.disabled = true;
+    btn.textContent = 'Atualizando...';
+    fetch('{{ url_for("admin.atualizar_qualidade_numeros_whatsapp", produto_id=produto.id) }}', { method: 'POST' })
+        .then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })))
+        .then(({ ok, status, data }) => {
+            if (ok) {
+                btn.textContent = '✓ Iniciado';
+                setTimeout(() => location.reload(), 5000);
+            } else {
+                const msg = data?.msg || `Erro ao atualizar qualidade (HTTP ${status})`;
+                alert(msg);
+                btn.disabled = false;
+                btn.textContent = '↻ Atualizar qualidade agora';
+            }
+        })
+        .catch(err => {
+            alert('Erro na requisição: ' + (err.message || 'Tente novamente'));
+            btn.disabled = false;
+            btn.textContent = '↻ Atualizar qualidade agora';
+        });
 }
 
 document.querySelectorAll('.modal-backdrop').forEach(function(el) {

@@ -1,0 +1,55 @@
+{% extends "admin/base.html" %}
+{% block title %}Histórico — {{ telefone_atual.telefone }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Histórico de notificações</h1>
+        <p class="page-subtitle">{{ telefone_atual.telefone }} ({{ telefone_atual.api_phone_number_id or '—' }})</p>
+    </div>
+    <div>
+        <label for="seletor-telefone" style="font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px;">
+            Trocar de número
+        </label>
+        <select id="seletor-telefone" onchange="if (this.value) window.location = this.value;">
+            {% for t in telefones %}
+            <option value="{{ url_for('admin.historico_numero_whatsapp', produto_id=produto_id, telefone_id=t.id) }}"
+                    {% if t.id == telefone_atual.id %}selected{% endif %}>
+                {{ t.telefone }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="card">
+    {% if notificacoes %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Mensagem</th>
+                    <th>Quando</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for n in notificacoes %}
+                <tr>
+                    <td><span class="badge badge-blue">{{ n.tipo_evento }}</span></td>
+                    <td style="max-width: 480px; white-space: pre-wrap;">{{ n.mensagem }}</td>
+                    <td style="color: var(--muted); font-size: 13px; white-space: nowrap;">
+                        {{ n.created_at.strftime('%d/%m/%Y %H:%M:%S') if n.created_at else '—' }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--muted); font-size: 14px; padding: 8px 0;">
+        Nenhuma notificação registrada para este número ainda.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

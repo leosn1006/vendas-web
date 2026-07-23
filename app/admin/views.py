@@ -12,6 +12,7 @@ from admin.auth import requer_login, requer_admin, requer_acesso_produto, usuari
 from Whatsapp_config import ativa_whatsapp
 from database import (db,
     listar_telefones_produto, adicionar_telefone_produto, remover_telefone_produto, atualizar_telefone_produto,
+    contar_notificacoes_telefone_recentes, listar_notificacoes_telefone,
     listar_mensagens_sugeridas, adicionar_mensagem_sugerida, remover_mensagem_sugerida,
     listar_acoes_fluxo, get_acao_fluxo,
     adicionar_acao_fluxo, atualizar_acao_fluxo, remover_acao_fluxo,
@@ -975,7 +976,9 @@ def numeros_whatsapp(produto_id):
         flash('Produto não encontrado.', 'danger')
         return redirect(url_for('admin.dashboard'))
     telefones = listar_telefones_produto(produto_id)
-    return render_template('admin/numeros_whatsapp.html', produto=produto, telefones=telefones)
+    notif_recentes = contar_notificacoes_telefone_recentes(produto_id, horas=24)
+    return render_template('admin/numeros_whatsapp.html', produto=produto, telefones=telefones,
+                            notif_recentes=notif_recentes)
 
 
 @admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/adicionar', methods=['POST'])
@@ -1052,6 +1055,33 @@ def ativar_numero_whatsapp(produto_id):
     else:
         flash(f'Falha ao ativar o número {api_phone_number_id}. Verifique os logs.', 'danger')
     return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+
+
+@admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/atualizar-qualidade', methods=['POST'])
+@requer_acesso_produto
+def atualizar_qualidade_numeros_whatsapp(produto_id):
+    try:
+        from celery_app import celery_app
+        celery_app.send_task('tasks.verificar_qualidade_whatsapp_produto', args=[produto_id])
+        return jsonify({'ok': True, 'msg': 'Checagem de qualidade iniciada. Aguarde alguns segundos e atualize a página.'})
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao disparar checagem de qualidade: {e}")
+        return jsonify({'ok': False, 'msg': f'Erro ao iniciar checagem: {e}'}), 500
+
+
+@admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/<int:telefone_id>/historico')
+@requer_acesso_produto
+def historico_numero_whatsapp(produto_id, telefone_id):
+    session['produto_ativo_id'] = produto_id
+    telefones = listar_telefones_produto(produto_id)
+    telefone_atual = next((t for t in telefones if t['id'] == telefone_id), None)
+    if not telefone_atual:
+        flash('Número não encontrado.', 'danger')
+        return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+    notificacoes = listar_notificacoes_telefone(telefone_id)
+    return render_template('admin/numero_notificacoes.html',
+                            produto_id=produto_id, telefones=telefones,
+                            telefone_atual=telefone_atual, notificacoes=notificacoes)
 
 
 # ============================================================

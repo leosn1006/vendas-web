@@ -592,8 +592,16 @@
             <span class="icon">📋</span> Dados Básicos
         </a>
         <a href="{{ url_for('admin.numeros_whatsapp', produto_id=produto_ativo.id) }}"
-           class="nav-link {% if request.endpoint == 'admin.numeros_whatsapp' %}active{% endif %}">
-            <span class="icon">📞</span> Números WhatsApp
+           class="nav-link {% if request.endpoint in ['admin.numeros_whatsapp','admin.historico_numero_whatsapp'] %}active{% endif %}"
+           style="display:flex;align-items:center;justify-content:space-between">
+            <span><span class="icon">📞</span> Números WhatsApp</span>
+            {% if badge_qualidade_cor == 'red' %}
+            <span class="badge badge-red">{{ badge_qualidade_qtd }}</span>
+            {% elif badge_qualidade_cor == 'yellow' %}
+            <span class="badge badge-yellow">{{ badge_qualidade_qtd }}</span>
+            {% elif badge_qualidade_cor == 'green' %}
+            <span class="badge badge-green">●</span>
+            {% endif %}
         </a>
         {% endif %}
 

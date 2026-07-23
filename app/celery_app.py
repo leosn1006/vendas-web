@@ -64,6 +64,11 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute=10),  # toda hora no :10 — hoje sempre; ontem também entre 00h–04h
         'options': {'queue': 'baixa'},
     },
+    'qualidade-whatsapp-horario': {
+        'task': 'tasks.verificar_qualidade_whatsapp',
+        'schedule': crontab(minute=20),  # toda hora no :20
+        'options': {'queue': 'baixa'},
+    },
 }
 
 from celery.signals import worker_process_init
@@ -106,6 +111,7 @@ celery_app.conf.update(
         "tasks.enviar_confirmacao_web":             {"queue": "normal"},
         "tasks.enviar_email_entrega":               {"queue": "normal"},
         "tasks.followup_interesse_dinamico":             {"queue": "normal"},
+        "tasks.processar_evento_conta_whatsapp":         {"queue": "normal"},
         # BAIXA — background/agendados
         "tasks.followup_pagamento_dinamico":             {"queue": "baixa"},
         "tasks.processar_uploads_google_ads":            {"queue": "baixa"},
@@ -114,6 +120,8 @@ celery_app.conf.update(
         "tasks.processar_pagamentos_pix_fechamento":     {"queue": "baixa"},
         "tasks.verificar_pagamentos_pendentes":          {"queue": "baixa"},
         "tasks.processar_orcamento_sheets":              {"queue": "baixa"},
+        "tasks.verificar_qualidade_whatsapp":            {"queue": "baixa"},
+        "tasks.verificar_qualidade_whatsapp_produto":     {"queue": "normal"},
         # NF-e
         "tasks.emitir_nfe":                              {"queue": "normal"},
         "tasks.reprocessar_nfe_pendentes":               {"queue": "baixa"},

@@ -372,6 +372,125 @@ def processar_orcamento_sheets(self, data_str=None):
         _redis.delete(lock_key)
 
 
+def _checar_qualidade_telefone(t, _TAG, WHATSAPP_API_URL):
+    """Consulta a Graph API pra um número e persiste o resultado. Roda em thread própria
+    (chamada via ThreadPoolExecutor) — cada chamada usa sua própria conexão do pool do MySQL,
+    então é segura em paralelo. Retorna True em caso de sucesso, False em falha."""
+    import requests
+    from database import get_whatsapp_token, atualizar_qualidade_telefone, registrar_erro_qualidade_telefone
+
+    telefone_id = t['id']
+    try:
+        token = get_whatsapp_token(t['api_phone_number_id'])
+    except ValueError as e:
+        registrar_erro_qualidade_telefone(telefone_id, str(e)[:255])
+        logger.warning(f"[{_TAG}] ⚠️ Telefone #{telefone_id} ({t['telefone']}): {e}")
+        return False
+    try:
+        resp = requests.get(
+            f"{WHATSAPP_API_URL}{t['api_phone_number_id']}",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"fields": "quality_rating,status,name_status"},
+            timeout=15,
+        )
+        if not resp.ok:
+            registrar_erro_qualidade_telefone(telefone_id, f"HTTP {resp.status_code}: {resp.text[:200]}")
+            logger.warning(f"[{_TAG}] ⚠️ Telefone #{telefone_id} ({t['telefone']}): HTTP {resp.status_code} — {resp.text[:200]}")
+            return False
+        data = resp.json()
+        atualizar_qualidade_telefone(telefone_id, data.get('quality_rating'), data.get('status'), data.get('name_status'))
+        return True
+    except Exception as e:
+        registrar_erro_qualidade_telefone(telefone_id, str(e)[:255])
+        logger.warning(f"[{_TAG}] ⚠️ Telefone #{telefone_id} ({t['telefone']}): erro — {e}")
+        return False
+
+
+def _executar_checagem_qualidade(telefones, _TAG):
+    """Roda _checar_qualidade_telefone em paralelo pra uma lista de números e loga o
+    resultado. Compartilhado pela rodada horária (todos os números) e pela rodada sob
+    demanda (só os números de um produto)."""
+    from concurrent.futures import ThreadPoolExecutor
+    from config import WHATSAPP_API_URL
+
+    logger.info(f"[{_TAG}] 🔍 Checando qualidade de {len(telefones)} números...")
+
+    # Chamadas de rede em paralelo (I/O-bound) — o pool de conexões do MySQL tem
+    # pool_size=5, então limitamos a mesma quantidade de threads simultâneas.
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        resultados = list(pool.map(lambda t: _checar_qualidade_telefone(t, _TAG, WHATSAPP_API_URL), telefones))
+
+    ok = sum(1 for r in resultados if r)
+    falhas = len(resultados) - ok
+    logger.info(f"[{_TAG}] ✅ Concluído: {ok} ok, {falhas} falha(s) de {len(telefones)}")
+    # Alerta só em falha generalizada (ex: WHATSAPP_API_URL errado, Graph API fora do ar) —
+    # não a cada execução por causa de 1-2 tokens já conhecidos como quebrados (ex: placeholder
+    # não preenchido), senão o alerta vira ruído e passa a ser ignorado.
+    if telefones and falhas / len(telefones) >= 0.3:
+        notificar_admin_erro_sistema(f"{_TAG} | {falhas} de {len(telefones)} número(s) com falha na checagem — pode ser problema sistêmico")
+    return ok, falhas
+
+
+@shared_task(name="tasks.verificar_qualidade_whatsapp", bind=True, max_retries=0)
+def verificar_qualidade_whatsapp(self):
+    """Checa quality_rating/status/name_status de todos os números cadastrados, via Graph API,
+    e persiste em telefones_produto. Roda de hora em hora (min :20). Substitui a checagem
+    manual via scripts/diagnostico_whatsapp_estado.py."""
+    _TAG = "TASK-QUALIDADE-WPP"
+    lock_key = "lock:qualidade_whatsapp"
+    if not _redis.set(lock_key, 1, nx=True, ex=3300):  # TTL 55 min — evita sobreposição entre execuções horárias
+        logger.info(f"[{_TAG}] ⏭ Outra instância já em execução — ignorando")
+        return
+    try:
+        from database import listar_telefones_com_token
+        _executar_checagem_qualidade(listar_telefones_com_token(), _TAG)
+    except Exception as exc:
+        logger.error(f"[{_TAG}] ❌ Erro geral: {exc}")
+        import traceback
+        traceback.print_exc()
+        notificar_admin_erro_sistema(f"{_TAG} | erro geral: {type(exc).__name__}")
+    finally:
+        _redis.delete(lock_key)
+
+
+@shared_task(name="tasks.verificar_qualidade_whatsapp_produto", bind=True, max_retries=0)
+def verificar_qualidade_whatsapp_produto(self, produto_id):
+    """Versão sob demanda de verificar_qualidade_whatsapp, escopada a um produto — disparada
+    pelo botão 'Atualizar agora' em admin/numeros_whatsapp.html. Lock próprio (curto, só
+    contra clique duplo) pra não disputar com a rodada horária global."""
+    _TAG = "TASK-QUALIDADE-WPP-PRODUTO"
+    lock_key = f"lock:qualidade_whatsapp:produto:{produto_id}"
+    if not _redis.set(lock_key, 1, nx=True, ex=30):
+        logger.info(f"[{_TAG}] ⏭ Já em execução pro produto #{produto_id} — ignorando clique duplicado")
+        return
+    try:
+        from database import listar_telefones_com_token
+        _executar_checagem_qualidade(listar_telefones_com_token(produto_id), _TAG)
+    except Exception as exc:
+        logger.error(f"[{_TAG}] ❌ Erro geral (produto #{produto_id}): {exc}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        _redis.delete(lock_key)
+
+
+@shared_task(name="tasks.processar_evento_conta_whatsapp", bind=True, max_retries=1)
+def processar_evento_conta_whatsapp(self, body):
+    """Persiste eventos de webhook de nível-número (qualidade, nome) e de nível-conta
+    (WABA/Business Manager). Roteada na fila 'normal' — separada da fila 'urgente' usada
+    por tasks.processar_webhook (fluxo de mensagens/vendas)."""
+    try:
+        from whatsapp_eventos_conta import processar_evento_conta
+        processar_evento_conta(body)
+    except Exception as exc:
+        logger.error(f"[TASK-EVENTO-CONTA] ❌ Erro: {exc}")
+        import traceback
+        traceback.print_exc()
+        if self.request.retries >= self.max_retries:
+            notificar_admin_erro_sistema(f"TASK-EVENTO-CONTA | falha definitiva: {type(exc).__name__}")
+        raise self.retry(exc=exc, countdown=60)
+
+
 @shared_task(bind=True, max_retries=0)
 def processar_pagamentos_pix(self):
     try:

@@ -4,6 +4,7 @@ from lead_incluir import persistir_lead
 from notificacoes import notificador, notificar_erro
 from error_handlers import registrar_error_handlers
 from celery_app import celery_app
+from whatsapp_eventos_conta import EVENTOS_CONTA_OU_TELEFONE, classificar_webhook
 from logging_setup import setup_rotating_file_logging
 from flask_login import LoginManager
 from admin import admin_bp
@@ -91,10 +92,22 @@ def webhook_receive():
 
         logger.info(f"[WAP-WEBHOOK] 📦 Dados recebidos: {body}")
 
-        # Joga na fila e responde 200 imediatamente
-        celery_app.send_task("tasks.processar_webhook", args=[body])
+        # Decide a(s) fila(s) pelos tipos de evento presentes no payload: mensagens seguem
+        # urgente (fluxo de venda); eventos de conta/número (qualidade, revisão, banimento) vão
+        # pra fila normal. Varre TODOS os entry/changes (não só o primeiro) — a Meta pode
+        # entregar mais de um por POST, e um payload misto (mensagem + evento) precisa acionar
+        # as duas filas, senão um dos dois é perdido silenciosamente.
+        fields = classificar_webhook(body)
+        tem_evento_conta = bool(fields & EVENTOS_CONTA_OU_TELEFONE)
+        tem_outro_campo = (not fields) or bool(fields - EVENTOS_CONTA_OU_TELEFONE)
 
-        logger.info("[WAP-WEBHOOK] ✅ Mensagem enfileirada!")
+        if tem_evento_conta:
+            celery_app.send_task("tasks.processar_evento_conta_whatsapp", args=[body])
+            logger.info(f"[WAP-WEBHOOK] ✅ Evento(s) de conta/telefone enfileirado(s) (fila normal): {fields & EVENTOS_CONTA_OU_TELEFONE}")
+        if tem_outro_campo:
+            celery_app.send_task("tasks.processar_webhook", args=[body])
+            logger.info("[WAP-WEBHOOK] ✅ Mensagem enfileirada (fila urgente)!")
+
         return jsonify({'status': 'ok'}), 200
 
     except Exception as e:

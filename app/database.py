@@ -927,7 +927,8 @@ def listar_telefones_produto(produto_id):
         list: Lista de dicts com id, telefone, api_phone_number_id, token_env_key, created_at
     """
     query = """
-        SELECT id, telefone, api_phone_number_id, token_env_key, created_at, contador_uso
+        SELECT id, telefone, api_phone_number_id, token_env_key, created_at, contador_uso,
+               quality_rating, status_api, name_status_api, qualidade_atualizada_em, qualidade_erro
         FROM telefones_produto
         WHERE produto_id = %s
         ORDER BY created_at ASC
@@ -990,6 +991,150 @@ def adicionar_telefone_produto(telefone, produto_id, api_phone_number_id=None, t
 def remover_telefone_produto(telefone_id, produto_id):
     query = "DELETE FROM telefones_produto WHERE id = %s AND produto_id = %s"
     db.execute_query(query, (telefone_id, produto_id))
+
+
+def listar_telefones_com_token(produto_id=None):
+    """
+    Números com api_phone_number_id preenchido, para a task de checagem de qualidade horária.
+
+    Args:
+        produto_id: se informado, restringe a um produto. Se None, lista de todos.
+
+    Returns:
+        list: dicts com id, produto_id, telefone, api_phone_number_id, token_env_key
+    """
+    query = """
+        SELECT id, produto_id, telefone, api_phone_number_id, token_env_key
+        FROM telefones_produto
+        WHERE api_phone_number_id IS NOT NULL AND api_phone_number_id != ''
+    """
+    params = ()
+    if produto_id is not None:
+        query += " AND produto_id = %s"
+        params = (produto_id,)
+    return db.execute_query(query, params, fetch_all=True) or []
+
+
+_QUALITY_RATINGS_VALIDOS = {'GREEN', 'YELLOW', 'RED'}
+
+
+def atualizar_qualidade_telefone(telefone_id, quality_rating, status_api=None, name_status_api=None):
+    """Grava o resultado bem-sucedido de uma checagem de qualidade. Limpa qualidade_erro.
+
+    Normaliza qualquer valor fora de GREEN/YELLOW/RED para 'UNKNOWN' antes de gravar —
+    a coluna é um ENUM restrito a essas 4 opções, mas a Graph API documenta outros valores
+    possíveis (ex: 'NA' para número sem rating calculado ainda), que sem essa normalização
+    fariam o UPDATE falhar e o número ficar preso mostrando erro de checagem."""
+    if quality_rating not in _QUALITY_RATINGS_VALIDOS:
+        quality_rating = 'UNKNOWN'
+    db.execute_query(
+        """UPDATE telefones_produto
+           SET quality_rating = %s, status_api = %s, name_status_api = %s,
+               qualidade_atualizada_em = NOW(), qualidade_erro = NULL
+           WHERE id = %s""",
+        (quality_rating, status_api, name_status_api, telefone_id)
+    )
+
+
+def registrar_erro_qualidade_telefone(telefone_id, erro_msg):
+    """Grava falha da checagem (token inválido, número deletado, etc.) sem sobrescrever
+    o último quality_rating conhecido — só marca que a checagem falhou."""
+    db.execute_query(
+        "UPDATE telefones_produto SET qualidade_erro = %s, qualidade_atualizada_em = NOW() WHERE id = %s",
+        (erro_msg[:255], telefone_id)
+    )
+
+
+def contar_telefones_por_qualidade(produto_id):
+    """Retorna dict {'RED': n, 'YELLOW': n, 'GREEN': n, 'UNKNOWN': n} para o produto — usado no badge do menu."""
+    rows = db.execute_query(
+        """SELECT quality_rating, COUNT(*) AS total
+           FROM telefones_produto
+           WHERE produto_id = %s AND api_phone_number_id IS NOT NULL AND api_phone_number_id != ''
+           GROUP BY quality_rating""",
+        (produto_id,), fetch_all=True
+    ) or []
+    contagem = {'RED': 0, 'YELLOW': 0, 'GREEN': 0, 'UNKNOWN': 0}
+    for r in rows:
+        contagem[r['quality_rating']] = r['total']
+    return contagem
+
+
+def get_telefone_produto_by_phone_number_id(api_phone_number_id):
+    """Busca o registro de telefones_produto (id, produto_id, telefone) por api_phone_number_id.
+    Usado para associar eventos de webhook de nível-número (qualidade, nome) ao telefone cadastrado."""
+    return db.execute_query(
+        "SELECT id, produto_id, telefone FROM telefones_produto WHERE api_phone_number_id = %s LIMIT 1",
+        (api_phone_number_id,), fetch_one=True
+    )
+
+
+# ── notificacoes_telefone ─────────────────────────────────────────────────────
+
+def criar_notificacao_telefone(telefone_id, produto_id, tipo_evento, mensagem, payload_raw=None):
+    """Persiste um evento de webhook de nível-número (quality_update, name_update)."""
+    import json as _json
+    query = """
+        INSERT INTO notificacoes_telefone (telefone_id, produto_id, tipo_evento, mensagem, payload_raw)
+        VALUES (%s, %s, %s, %s, %s)
+    """
+    return db.execute_query(
+        query,
+        (telefone_id, produto_id, tipo_evento, mensagem,
+         _json.dumps(payload_raw, ensure_ascii=False) if payload_raw is not None else None)
+    )
+
+
+def listar_notificacoes_telefone(telefone_id, limit=100):
+    """Lista notificações de um número, mais recentes primeiro."""
+    return db.execute_query(
+        """SELECT id, telefone_id, tipo_evento, mensagem, created_at
+           FROM notificacoes_telefone
+           WHERE telefone_id = %s
+           ORDER BY created_at DESC
+           LIMIT %s""",
+        (telefone_id, limit), fetch_all=True
+    ) or []
+
+
+def contar_notificacoes_telefone_recentes(produto_id, horas=24):
+    """Retorna {telefone_id: total} de notificações nas últimas N horas, por telefone do produto.
+    Usado para decidir o badge amarelo no botão 'Consultar histórico' de cada linha da listagem."""
+    rows = db.execute_query(
+        """SELECT telefone_id, COUNT(*) AS total
+           FROM notificacoes_telefone
+           WHERE produto_id = %s AND created_at >= NOW() - INTERVAL %s HOUR
+           GROUP BY telefone_id""",
+        (produto_id, horas), fetch_all=True
+    ) or []
+    return {r['telefone_id']: r['total'] for r in rows}
+
+
+# ── notificacoes_conta_whatsapp (captura crua, sem UI nesta fase) ─────────────
+
+def criar_notificacao_conta_whatsapp(tipo_evento, waba_id=None, business_id=None, payload_raw=None):
+    """Persiste evento de nível WABA/Business Manager (account_update, account_review_update,
+    account_alerts, business_capability_update). Sem UI dedicada ainda — ver plano de fase 2."""
+    import json as _json
+    return db.execute_query(
+        """INSERT INTO notificacoes_conta_whatsapp (tipo_evento, waba_id, business_id, payload_raw)
+           VALUES (%s, %s, %s, %s)""",
+        (tipo_evento, waba_id, business_id, _json.dumps(payload_raw, ensure_ascii=False))
+    )
+
+
+def listar_notificacoes_conta_whatsapp(waba_id=None, limit=200):
+    """Lista eventos de nível WABA/Business Manager, mais recentes primeiro. Sem UI dedicada
+    ainda (fase 2) — mas já existe caminho de leitura pra não depender de SQL manual em caso
+    de incidente (ver migrations/045_notificacoes_conta_whatsapp.sql)."""
+    query = "SELECT id, tipo_evento, waba_id, business_id, payload_raw, created_at FROM notificacoes_conta_whatsapp"
+    params = ()
+    if waba_id is not None:
+        query += " WHERE waba_id = %s"
+        params = (waba_id,)
+    query += " ORDER BY created_at DESC LIMIT %s"
+    params = params + (limit,)
+    return db.execute_query(query, params, fetch_all=True) or []
 
 
 # ── mensagens_sugeridas_produto ───────────────────────────────────────────────
