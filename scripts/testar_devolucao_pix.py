@@ -27,10 +27,15 @@ from datetime import datetime, timedelta, timezone
 import requests
 from dotenv import load_dotenv
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+_AQUI = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _AQUI)
+sys.path.insert(0, os.path.join(_AQUI, '..'))
 load_dotenv()
 
-from app import bb_pix  # noqa: E402  (precisa vir depois do load_dotenv)
+try:
+    from app import bb_pix  # execução local, fora do container (repo root)
+except ImportError:
+    import bb_pix  # execução dentro do container (WORKDIR /app == app/ do repo)
 
 TZ_BR = timezone(timedelta(hours=-3))
 
