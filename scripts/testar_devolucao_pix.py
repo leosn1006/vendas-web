@@ -78,18 +78,19 @@ def consultar_com_filtro(inicio: datetime, fim: datetime, devolucao_presente: bo
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', help='Data (YYYY-MM-DD) do Pix original. Padrao: hoje.')
-    parser.add_argument('--valor', default='341.00', help='Valor do Pix a localizar (padrao: 341.00).')
+    parser.add_argument('--data', help='Data (YYYY-MM-DD) final da janela. Padrao: hoje.')
+    parser.add_argument('--valor', default='341.88', help='Valor do Pix a localizar (padrao: 341.88).')
+    parser.add_argument('--dias', type=int, default=0,
+                         help='Quantos dias voltar a partir de --data/hoje (janela retroativa). Padrao: 0 (so o dia).')
     args = parser.parse_args()
 
     if args.data:
-        dia = datetime.strptime(args.data, '%Y-%m-%d').replace(tzinfo=TZ_BR)
-        inicio = dia.replace(hour=0, minute=0, second=0, microsecond=0)
-        fim = dia.replace(hour=23, minute=59, second=59, microsecond=0)
+        fim_dia = datetime.strptime(args.data, '%Y-%m-%d').replace(tzinfo=TZ_BR)
+        fim = fim_dia.replace(hour=23, minute=59, second=59, microsecond=0)
     else:
-        agora = datetime.now(TZ_BR)
-        inicio = agora.replace(hour=0, minute=0, second=0, microsecond=0)
-        fim = agora
+        fim = datetime.now(TZ_BR)
+
+    inicio = (fim - timedelta(days=args.dias)).replace(hour=0, minute=0, second=0, microsecond=0)
 
     print(f'Periodo consultado: {inicio.isoformat()} ate {fim.isoformat()}\n')
 
@@ -125,8 +126,8 @@ def main():
         com_devolucao = consultar_com_filtro(inicio, fim, devolucao_presente=True)
         print(f'Total de Pix com devolucao associada no periodo: {len(com_devolucao)}')
         for p in com_devolucao:
-            print(f"  endToEndId={p.get('endToEndId')} valor={p.get('valor')} "
-                  f"devolucoes={json.dumps(p.get('devolucoes'), ensure_ascii=False)}")
+            print(json.dumps(p, indent=2, ensure_ascii=False))
+            print(f"  >>> txid presente: {bool(p.get('txid'))}  (txid={p.get('txid')!r})")
     except requests.HTTPError as e:
         print(f'ERRO ao consultar com filtro devolucaoPresente=true: {e}')
 
