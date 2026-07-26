@@ -1920,9 +1920,18 @@ def bloquear_pedido(pedido_id: int) -> None:
 # ─── NF-e ────────────────────────────────────────────────────────────────────
 
 def buscar_nfe_configuracao_ativa() -> dict | None:
-    """Retorna a configuração NF-e ativa (tenant único por enquanto)."""
+    """Retorna a configuração NF-e ativa (primeiro registro ativo)."""
     return db.execute_query(
         "SELECT * FROM nfe_configuracao WHERE ativo = 1 LIMIT 1",
+        fetch_one=True,
+    )
+
+
+def buscar_nfe_configuracao_por_slug(slug: str) -> dict | None:
+    """Retorna a configuração NF-e de um tenant específico pelo slug."""
+    return db.execute_query(
+        "SELECT * FROM nfe_configuracao WHERE tenant_slug = %s AND ativo = 1",
+        (slug,),
         fetch_one=True,
     )
 

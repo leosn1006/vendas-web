@@ -21,8 +21,11 @@ from nfelib.nfe.bindings.v4_0.leiaute_nfe_v4_00 import (
     IdeTpNf, IdeIdDest, IdeTpImp, IdeTpEmis, IdeIndFinal, IdeIndPres, IdeIndIntermed,
     Icms40Cst, Icms40MotDesIcms, PisntCst, CofinsntCst,
 )
+from nfelib.nfe.bindings.v4_0.dfe_tipos_basicos_v1_00 import TtribNfe
 
 _ZERO = '0.00'
+# TODO: confirmar alíquota com contador na segunda-feira (homologação usando 12% — bens essenciais DF)
+_ALIQ_ICMS_DESON_DF = Decimal('0.12')
 
 # Dados fixos do emitente (DF)
 _EMIT = {
@@ -77,14 +80,15 @@ def _endereco_dest_fallback(e: dict) -> Tendereco:
     )
 
 
-def _icms_livro() -> Tnfe.InfNfe.Det.Imposto.Icms:
+def _icms_livro(valor: str) -> Tnfe.InfNfe.Det.Imposto.Icms:
     # CST 41 = Não tributado — imunidade constitucional art. 150 VI d (livros com ISBN)
-    # motDesICMS=90 (Outros) + vICMSDeson=0 exigidos pelo DF quando cBenef informado
+    # vICMSDeson = ICMS que seria cobrado sem a imunidade (base × alíquota interna DF)
+    v_deson = _fmt_valor(Decimal(str(valor)) * _ALIQ_ICMS_DESON_DF)
     return Tnfe.InfNfe.Det.Imposto.Icms(
         ICMS40=Tnfe.InfNfe.Det.Imposto.Icms.Icms40(
             orig=Torig('0'),
             CST=Icms40Cst('41'),
-            vICMSDeson=_ZERO,
+            vICMSDeson=v_deson,
             motDesICMS=Icms40MotDesIcms('90'),
         )
     )
@@ -141,7 +145,8 @@ def montar_nfe(
     ncm      = config.get('ncm') or '49011000'   # livro digital — VALIDAR COM CONTADOR
     cfop     = config.get('cfop') or '5102'       # venda de mercadoria a não-contribuinte (confirmar com contador)
     c_benef  = config.get('c_benef') or None      # cBenef obrigatório quando CST=40 — ex: DF811004 (livros DF)
-    valor    = _fmt_valor(pagamento.get('valor', '0'))
+    valor       = _fmt_valor(pagamento.get('valor', '0'))
+    v_icms_deson = _fmt_valor(Decimal(str(pagamento.get('valor', '0'))) * _ALIQ_ICMS_DESON_DF)
     cpf_cnpj = ''.join(filter(str.isdigit, str(pagamento.get('cpf_cnpj') or '')))
     # Homologação exige xNome exato do destinatário (cStat=598 se diferente)
     if int(tp_amb) == 2:
@@ -212,14 +217,19 @@ def montar_nfe(
             indTot='1',
         ),
         imposto=Tnfe.InfNfe.Det.Imposto(
-            ICMS=_icms_livro(),
+            ICMS=_icms_livro(valor),
             PIS=_pis_livro(),
             COFINS=_cofins_livro(),
+            # TODO (segunda): confirmar com contador CST e cClassTrib do IBS/CBS para livros com
+            # imunidade constitucional (art. 150 VI d CF/88). Testado: CST=400 existe no SEFAZ
+            # mas nenhum cClassTrib encontrado por força bruta — necessário tabela NT 2024.001 RFB.
+            # Perguntar: 1) CST IBS/CBS livros (400=Imune?), 2) cClassTrib de 6 dígitos.
+            IBSCBS=TtribNfe(CST='400', cClassTrib='410001'),
         ),
     )
 
     icms_tot = Tnfe.InfNfe.Total.Icmstot(
-        vBC=_ZERO, vICMS=_ZERO, vICMSDeson=_ZERO,
+        vBC=_ZERO, vICMS=_ZERO, vICMSDeson=v_icms_deson,
         vFCPUFDest=_ZERO, vICMSUFDest=_ZERO, vICMSUFRemet=_ZERO,
         vFCP=_ZERO, vBCST=_ZERO, vST=_ZERO, vFCPST=_ZERO, vFCPSTRet=_ZERO,
         vProd=valor, vFrete=_ZERO, vSeg=_ZERO, vDesc=_ZERO,

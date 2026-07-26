@@ -5,13 +5,14 @@ Excluídos da suite padrão (`pytest`) para não exigir banco em CI.
 Rodar localmente antes de habilitar a NF-e em produção.
 
 Camada 1 — configuração do banco (leitura):
-    python -m pytest tests/fiscal/test_nfe_integracao.py -v
+    python -m pytest tests/fiscal/test_nfe_integracao.py -m integration -v
+    python -m pytest tests/fiscal/test_nfe_integracao.py -m integration -v --tenant lbe-livros
 
 Camada 2 — pipeline com dados reais (sem envio para SEFAZ):
-    NF_CERT_SENHA="..." python -m pytest tests/fiscal/test_nfe_integracao.py -v
+    NF_CERT_SENHA_LBE="..." python -m pytest tests/fiscal/test_nfe_integracao.py -m integration -v --tenant lbe-livros
 
 Camada 3 — envio real para SEFAZ homologação:
-    NF_CERT_SENHA="..." python -m pytest tests/fiscal/test_nfe_integracao.py -v -m sefaz
+    NF_CERT_SENHA_LBE="..." python -m pytest tests/fiscal/test_nfe_integracao.py -m "integration or sefaz" -v --tenant lbe-livros
 """
 import os
 import sys
@@ -25,14 +26,19 @@ pytestmark = pytest.mark.integration
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
-def _carregar_config():
+def _carregar_config(tenant_slug=None):
     try:
-        from database import buscar_nfe_configuracao_ativa
-        config = buscar_nfe_configuracao_ativa()
+        if tenant_slug:
+            from database import buscar_nfe_configuracao_por_slug
+            config = buscar_nfe_configuracao_por_slug(tenant_slug)
+        else:
+            from database import buscar_nfe_configuracao_ativa
+            config = buscar_nfe_configuracao_ativa()
     except Exception as e:
         pytest.skip(f'Banco indisponível: {e}')
     if not config:
-        pytest.skip('Nenhuma nfe_configuracao ativa no banco')
+        slug_info = f' (tenant={tenant_slug!r})' if tenant_slug else ''
+        pytest.skip(f'Nenhuma nfe_configuracao ativa no banco{slug_info}')
     return config
 
 
@@ -63,48 +69,48 @@ def _senha(config) -> str:
 
 # ─── Camada 1: configuração do banco ─────────────────────────────────────────
 
-def test_config_cnpj_preenchido():
-    config = _carregar_config()
+def test_config_cnpj_preenchido(tenant_slug):
+    config = _carregar_config(tenant_slug)
     assert config.get('cnpj'), 'cnpj vazio em nfe_configuracao'
 
 
-def test_config_ie_nao_isento():
-    config = _carregar_config()
+def test_config_ie_nao_isento(tenant_slug):
+    config = _carregar_config(tenant_slug)
     ie = (config.get('ie') or '').strip().upper()
     assert ie and ie != 'ISENTO', (
         f'IE ainda como "{ie}" — preencher com IE real do SEFAZ-DF antes de ativar'
     )
 
 
-def test_config_ncm_preenchido():
-    config = _carregar_config()
+def test_config_ncm_preenchido(tenant_slug):
+    config = _carregar_config(tenant_slug)
     ncm = config.get('ncm') or ''
     assert len(ncm) == 8, f'NCM inválido: "{ncm}" (deve ter 8 dígitos)'
 
 
-def test_config_cfop_preenchido():
-    config = _carregar_config()
+def test_config_cfop_preenchido(tenant_slug):
+    config = _carregar_config(tenant_slug)
     cfop = config.get('cfop') or ''
     assert len(cfop) == 4, f'CFOP inválido: "{cfop}" (deve ter 4 dígitos)'
 
 
-def test_config_certificado_existe():
-    config = _carregar_config()
+def test_config_certificado_existe(tenant_slug):
+    config = _carregar_config(tenant_slug)
     path = config.get('certificado_path', '')
     assert path, 'certificado_path vazio em nfe_configuracao'
     assert os.path.exists(path), f'Arquivo de certificado não encontrado: {path}'
 
 
-def test_config_senha_env_definida():
-    config = _carregar_config()
+def test_config_senha_env_definida(tenant_slug):
+    config = _carregar_config(tenant_slug)
     _senha(config)  # pula se a env var não estiver definida
 
 
 # ─── Camada 2: pipeline com dados reais (sem envio para SEFAZ) ───────────────
 
-def test_pipeline_monta_e_valida_xml():
+def test_pipeline_monta_e_valida_xml(tenant_slug):
     """Lê config + PIX real do banco, roda gerar_chave → montar → assinar → XSD."""
-    config = _carregar_config()
+    config = _carregar_config(tenant_slug)
     pix    = _carregar_pix_recente()
     senha  = _senha(config)
 
@@ -125,9 +131,9 @@ def test_pipeline_monta_e_valida_xml():
     assert not erros, f'XML inválido contra XSD com dados reais: {erros}'
 
 
-def test_pipeline_gera_danfe():
+def test_pipeline_gera_danfe(tenant_slug):
     """Verifica que o XML com dados reais gera um PDF DANFE sem erros."""
-    config = _carregar_config()
+    config = _carregar_config(tenant_slug)
     pix    = _carregar_pix_recente()
     senha  = _senha(config)
 
@@ -151,13 +157,13 @@ def test_pipeline_gera_danfe():
 # ─── Camada 3: envio real para SEFAZ homologação ─────────────────────────────
 
 @pytest.mark.sefaz
-def test_envio_homologacao_retorna_http_200():
+def test_envio_homologacao_retorna_http_200(tenant_slug):
     """
     Envia NF-e para SVRS homologação e confirma que a comunicação funciona.
     Não grava no banco — só testa o pipeline de comunicação.
-    cStat esperado: 104/209 (209 = IE inválida, esperado até IE chegar do SEFAZ-DF).
+    cStat=100 = autorizado. IE=ISENTO retorna cStat=209 (esperado até IE chegar do SEFAZ-DF).
     """
-    config = _carregar_config()
+    config = _carregar_config(tenant_slug)
     pix    = _carregar_pix_recente()
     senha  = _senha(config)
 
@@ -192,6 +198,6 @@ def test_envio_homologacao_retorna_http_200():
     assert resultado['status_http'] == 200, f'HTTP inesperado: {resultado["status_http"]}'
     assert resultado['c_stat'], 'cStat ausente no retorno SEFAZ'
 
-    print(f"\n  cStat={resultado['c_stat']} — {resultado['x_motivo']}")
+    print(f"\n  tenant={config['tenant_slug']} | cStat={resultado['c_stat']} — {resultado['x_motivo']}")
     if resultado['prot_c_stat']:
         print(f"  protCStat={resultado['prot_c_stat']} — {resultado['prot_x_motivo']}")

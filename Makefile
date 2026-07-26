@@ -1,4 +1,4 @@
-.PHONY: help upload-google-ads-now upload-google-sheets-now buscar-pix orcamento-sheets-now logs-worker logs-worker-normal logs-worker-baixa logs-files restart-worker restart-nginx atualizar-senha criar-usuario
+.PHONY: help upload-google-ads-now upload-google-sheets-now buscar-pix orcamento-sheets-now exportar-mensagens logs-worker logs-worker-normal logs-worker-baixa logs-files restart-worker restart-nginx atualizar-senha criar-usuario
 
 help:
 	@echo "Comandos disponíveis:"
@@ -8,6 +8,7 @@ help:
 	@echo "  make orcamento-sheets-now data=2026-06-01  # Reprocessa uma data específica (yyyy-mm-dd)"
 	@echo "  make buscar-pix                        # Busca PIX de hoje e persiste no banco"
 	@echo "  make buscar-pix data=31/03/2026   # Busca PIX de uma data específica (dd/mm/yyyy)"
+	@echo "  make exportar-mensagens produto=9 dias=30  # Exporta mensagens do produto (default: últimos 15 dias)"
 	@echo "  make logs-worker                  # Acompanha logs do worker-urgente"
 	@echo "  make logs-worker-normal           # Acompanha logs do worker-normal"
 	@echo "  make logs-worker-baixa            # Acompanha logs do worker-baixa"
@@ -36,6 +37,10 @@ buscar-pix:
 	@docker compose exec worker-baixa python -c "\
 from fluxos.fluxo_pix_bb import executar; \
 executar($(if $(data),'$(data)',None))"
+
+exportar-mensagens:
+	@echo "Exportando mensagens do produto $(produto) (últimos $(if $(dias),$(dias),15) dias)..."
+	python scripts/exportar_mensagens_produto.py --produto-id $(produto) --dias $(if $(dias),$(dias),15)
 
 logs-worker:
 	docker compose logs -f worker-urgente

@@ -2,9 +2,25 @@
 Fixtures compartilhadas pelos testes fiscais.
 Gera certificado auto-assinado efêmero para testes locais — sem depender
 do certificado A1 real (que nunca deve entrar no repositório).
+
+Opção CLI extra:
+    --tenant SLUG   seleciona tenant na nfe_configuracao (default: primeiro ativo)
 """
 import datetime
 import pytest
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        '--tenant',
+        default=None,
+        help='tenant_slug da nfe_configuracao a usar nos testes de integração (ex: lbe-livros)',
+    )
+
+
+@pytest.fixture(scope='session')
+def tenant_slug(request):
+    return request.config.getoption('--tenant')
 
 from cryptography import x509
 from cryptography.x509.oid import NameOID
