@@ -40,7 +40,7 @@ executar($(if $(data),'$(data)',None))"
 
 exportar-mensagens:
 	@echo "Exportando mensagens do produto $(produto) (últimos $(if $(dias),$(dias),15) dias)..."
-	python scripts/exportar_mensagens_produto.py --produto-id $(produto) --dias $(if $(dias),$(dias),15)
+	python3 scripts/exportar_mensagens_produto.py --produto-id $(produto) --dias $(if $(dias),$(dias),15)
 
 logs-worker:
 	docker compose logs -f worker-urgente
