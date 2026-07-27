@@ -301,6 +301,15 @@ def pudim_e3():
 def tempero():
     return render_template('tempero.html')
 
+@app.get("/tempero-e")
+def tempero_e():
+    from web.checkout import rastrear_visita_funil, COOKIE_MAX_AGE_FUNIL
+    produto_id = 11
+    pedido_id = rastrear_visita_funil(request, produto_id, estado_novo=1004)
+    resp = make_response(render_template('tempero-e.html'))
+    resp.set_cookie(f'pedido_web_{produto_id}', str(pedido_id), max_age=COOKIE_MAX_AGE_FUNIL)
+    return resp
+
 @app.get("/fatia")
 def fatia():
     return render_template('fatia.html')
