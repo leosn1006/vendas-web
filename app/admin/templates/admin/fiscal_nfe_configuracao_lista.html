@@ -1,0 +1,56 @@
+{% extends 'admin/base.html' %}
+{% block title %}Configurações NF-e{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Configurações NF-e</div>
+        <div class="page-subtitle">Empresas emitentes cadastradas</div>
+    </div>
+    <a href="{{ url_for('admin.fiscal_nfe_configuracao_novo') }}" class="btn btn-primary">+ Nova Config</a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for category, message in messages %}
+<div class="alert alert-{{ category }}">{{ message }}</div>
+{% endfor %}
+{% endwith %}
+
+<div class="card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Tenant</th>
+                <th>Razão Social</th>
+                <th>CNPJ</th>
+                <th>Ambiente</th>
+                <th>Ativo</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for c in configs %}
+            <tr>
+                <td><code>{{ c.tenant_slug }}</code></td>
+                <td>{{ c.razao_social }}</td>
+                <td>{{ c.cnpj[:2] }}.{{ c.cnpj[2:5] }}.{{ c.cnpj[5:8] }}/{{ c.cnpj[8:12] }}-{{ c.cnpj[12:] }}</td>
+                <td>
+                    {% if c.ambiente == 1 %}
+                    <span class="badge badge-success">Produção</span>
+                    {% else %}
+                    <span class="badge badge-warning">Homologação</span>
+                    {% endif %}
+                </td>
+                <td>{{ '✓' if c.ativo else '—' }}</td>
+                <td>
+                    <a href="{{ url_for('admin.fiscal_nfe_configuracao_editar', config_id=c.id) }}"
+                       class="btn btn-sm btn-secondary">Editar</a>
+                </td>
+            </tr>
+        {% else %}
+            <tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Nenhuma configuração cadastrada.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

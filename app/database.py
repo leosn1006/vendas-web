@@ -1938,7 +1938,10 @@ def buscar_nfe_configuracao_por_slug(slug: str) -> dict | None:
 
 def buscar_pagamento_pix_por_id(pagamento_pix_id: int) -> dict | None:
     return db.execute_query(
-        "SELECT * FROM pagamento_pix WHERE id = %s",
+        """SELECT pp.*, p.nome AS x_prod
+           FROM pagamento_pix pp
+           LEFT JOIN produtos p ON p.id = pp.produto_id
+           WHERE pp.id = %s""",
         (pagamento_pix_id,), fetch_one=True,
     )
 
@@ -2045,21 +2048,29 @@ def gravar_log_soap(
     )
 
 
-def buscar_pagamentos_pix_sem_nfe(limite: int = 500, dias_atras: int = 1) -> list[int]:
+def buscar_pagamentos_pix_sem_nfe(
+    limite: int = 500,
+    dias_atras: int = 1,
+    config_id: int | None = None,
+) -> list[int]:
     """
     IDs de pagamento_pix dos últimos N dias sem NF-e autorizada.
     Inclui: sem tentativa alguma (ne.id IS NULL) ou com tentativa em erro (para retry).
     Exclui: rejeitadas (precisam de intervenção humana) e enviando (em progresso).
+    config_id filtra pelo tenant via produtos.nfe_config_id (evita emitir NF-e com CNPJ errado).
     """
-    rows = db.execute_query(
-        """SELECT pp.id
-           FROM pagamento_pix pp
-           LEFT JOIN nfe_emitidas ne ON ne.pagamento_pix_id = pp.id
-           WHERE pp.nfe_emitida_id IS NULL
-             AND (ne.id IS NULL OR ne.status_emissao = 'erro')
-             AND pp.horario >= NOW() - INTERVAL %s DAY
-           ORDER BY pp.id ASC
-           LIMIT %s""",
-        (dias_atras, limite), fetch_all=True,
-    )
+    sql = """SELECT pp.id
+             FROM pagamento_pix pp
+             LEFT JOIN produtos p ON p.id = pp.produto_id
+             LEFT JOIN nfe_emitidas ne ON ne.pagamento_pix_id = pp.id
+             WHERE pp.nfe_emitida_id IS NULL
+               AND (ne.id IS NULL OR ne.status_emissao = 'erro')
+               AND pp.horario >= NOW() - INTERVAL %s DAY"""
+    params: list = [dias_atras]
+    if config_id is not None:
+        sql += " AND p.nfe_config_id = %s"
+        params.append(config_id)
+    sql += " ORDER BY pp.id ASC LIMIT %s"
+    params.append(limite)
+    rows = db.execute_query(sql, params, fetch_all=True)
     return [r['id'] for r in rows] if rows else []

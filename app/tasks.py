@@ -595,12 +595,12 @@ def enviar_email_entrega(self, pedido_id: int):
 
 
 @shared_task(name='tasks.emitir_nfe', bind=True, max_retries=3)
-def emitir_nfe(self, pagamento_pix_id: int):
+def emitir_nfe(self, pagamento_pix_id: int, config_id: int | None = None):
     """Emite NF-e para um pagamento PIX. Retry com backoff exponencial."""
     _TAG = 'TASK-NFE'
     try:
         from fiscal.nfe_service import emitir_nfe as _emitir
-        resultado = _emitir(pagamento_pix_id)
+        resultado = _emitir(pagamento_pix_id, config_id=config_id)
         status = resultado.get('status', '?')
         nfe_id = resultado.get('nfe_id')
         logger.info(f'[{_TAG}] PIX={pagamento_pix_id} nfe_id={nfe_id} → {status}')
@@ -621,18 +621,18 @@ def emitir_nfe(self, pagamento_pix_id: int):
 
 
 @shared_task(name='tasks.reprocessar_nfe_pendentes', bind=True, max_retries=0)
-def reprocessar_nfe_pendentes(self):
+def reprocessar_nfe_pendentes(self, config_id: int | None = None, limite: int = 50):
     """Beat task — recupera PIX das últimas 24h sem NF-e, reagendando emissão."""
     _TAG = 'TASK-NFE-REPRO'
     try:
         from database import buscar_pagamentos_pix_sem_nfe
-        ids = buscar_pagamentos_pix_sem_nfe(dias_atras=1)
+        ids = buscar_pagamentos_pix_sem_nfe(limite=limite, dias_atras=1, config_id=config_id)
         if not ids:
             logger.debug(f'[{_TAG}] Nenhum PIX pendente')
             return
-        logger.info(f'[{_TAG}] {len(ids)} PIX pendente(s) → agendando emissão')
+        logger.info(f'[{_TAG}] {len(ids)} PIX pendente(s) → agendando emissão (config_id={config_id})')
         for pix_id in ids:
-            emitir_nfe.apply_async(args=[pix_id])
+            emitir_nfe.apply_async(args=[pix_id], kwargs={'config_id': config_id})
     except Exception as exc:
         logger.error(f'[{_TAG}] ❌ Erro: {exc}')
         import traceback

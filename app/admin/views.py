@@ -2830,6 +2830,262 @@ def financeiro_produto(produto_id):
     )
 
 
+@admin_bp.route('/fiscal/configuracao')
+@requer_admin
+def fiscal_nfe_configuracao_lista():
+    configs = db.execute_query(
+        "SELECT id, tenant_slug, razao_social, cnpj, ambiente, ativo FROM nfe_configuracao ORDER BY id",
+        fetch_all=True,
+    ) or []
+    return render_template('admin/fiscal_nfe_configuracao_lista.html', configs=configs)
+
+
+_NFE_CONFIG_DEFAULTS = {
+    'id': None,
+    'tenant_slug': '',
+    'razao_social': '', 'nome_fantasia': '', 'cnpj': '', 'ie': '', 'crt': 3,
+    'logradouro': '', 'numero': '', 'complemento': '', 'bairro': '',
+    'cep': '', 'x_mun': 'Brasilia', 'c_mun': '5300108', 'uf': 'DF',
+    'fone': '', 'email': '',
+    'x_prod': 'Livro Digital',
+    'ncm': '49011000', 'cfop': '5102',
+    'nat_op': 'VENDA DE PRODUTO DIGITAL',
+    'c_benef': 'DF811004',
+    'cst_icms': '41', 'aliq_icms_deson': '0.1200', 'mot_des_icms': '90',
+    'cst_pis': '06', 'cst_cofins': '06',
+    'cst_ibs_cbs': '410', 'c_class_trib': '410009',
+    'ambiente': 2, 'serie_padrao': '001', 'ultimo_numero_nfe': 0,
+    'certificado_path': '/app/empresa/cert/empresa.pfx',
+    'certificado_senha_env': 'NF_CERT_SENHA_EMPRESA',
+    'ca_bundle_path': '', 'ativo': 1,
+}
+
+
+def _validar_nfe_config_form() -> tuple[dict | None, str | None]:
+    """
+    Valida e extrai os campos do formulário de nfe_configuracao.
+    Retorna (campos_dict, None) em caso de sucesso ou (None, mensagem_de_erro).
+    """
+    aliq_raw = request.form.get('aliq_icms_deson', '').replace(',', '.').strip()
+    aliq_dec = None
+    if aliq_raw:
+        try:
+            aliq_pct = float(aliq_raw)
+        except ValueError:
+            return None, 'Alíquota ICMS inválida.'
+        if not (0 <= aliq_pct <= 100):
+            return None, 'Alíquota ICMS deve estar entre 0 e 100 (ex: 12 para 12%).'
+        aliq_dec = round(aliq_pct / 100, 4)
+
+    cnpj = ''.join(filter(str.isdigit, request.form.get('cnpj', '')))
+    if len(cnpj) != 14:
+        return None, 'CNPJ deve ter exatamente 14 dígitos.'
+
+    campos = dict(
+        razao_social=request.form.get('razao_social', '').strip(),
+        nome_fantasia=request.form.get('nome_fantasia', '').strip() or None,
+        cnpj=cnpj,
+        ie=request.form.get('ie', '').strip() or None,
+        crt=request.form.get('crt', '3'),
+        logradouro=request.form.get('logradouro', '').strip(),
+        numero=request.form.get('numero', '').strip(),
+        complemento=request.form.get('complemento', '').strip() or None,
+        bairro=request.form.get('bairro', '').strip(),
+        cep=''.join(filter(str.isdigit, request.form.get('cep', ''))),
+        x_mun=request.form.get('x_mun', '').strip(),
+        c_mun=request.form.get('c_mun', '').strip(),
+        uf=request.form.get('uf', '').strip().upper(),
+        fone=request.form.get('fone', '').strip() or None,
+        email=request.form.get('email', '').strip() or None,
+        x_prod=request.form.get('x_prod', '').strip() or None,
+        ncm=request.form.get('ncm', '').strip() or None,
+        cfop=request.form.get('cfop', '').strip() or None,
+        nat_op=request.form.get('nat_op', '').strip() or None,
+        c_benef=request.form.get('c_benef', '').strip() or None,
+        cst_icms=request.form.get('cst_icms', '').strip() or None,
+        aliq_icms_deson=aliq_dec,
+        mot_des_icms=request.form.get('mot_des_icms', '').strip() or None,
+        cst_pis=request.form.get('cst_pis', '').strip() or None,
+        cst_cofins=request.form.get('cst_cofins', '').strip() or None,
+        cst_ibs_cbs=request.form.get('cst_ibs_cbs', '').strip() or None,
+        c_class_trib=request.form.get('c_class_trib', '').strip() or None,
+        ambiente=int(request.form.get('ambiente', 2)),
+        serie_padrao=request.form.get('serie_padrao', '001').strip(),
+        certificado_path=request.form.get('certificado_path', '').strip(),
+        certificado_senha_env=request.form.get('certificado_senha_env', '').strip(),
+        ca_bundle_path=request.form.get('ca_bundle_path', '').strip() or None,
+        ativo=1 if request.form.get('ativo') else 0,
+    )
+    return campos, None
+
+
+@admin_bp.route('/fiscal/configuracao/novo', methods=['GET', 'POST'])
+@requer_admin
+def fiscal_nfe_configuracao_novo():
+    aliq_pct_form = '12'
+    if request.method == 'POST':
+        aliq_pct_form = request.form.get('aliq_icms_deson', '12')
+        campos, erro = _validar_nfe_config_form()
+        if erro:
+            flash(erro, 'danger')
+        else:
+            try:
+                db.execute_query(
+                    """INSERT INTO nfe_configuracao
+                       (tenant_slug, api_key, razao_social, nome_fantasia, cnpj, ie, crt,
+                        logradouro, numero, complemento, bairro, cep, x_mun, c_mun, uf, fone, email,
+                        x_prod, ncm, cfop, nat_op, c_benef,
+                        cst_icms, aliq_icms_deson, mot_des_icms, cst_pis, cst_cofins,
+                        cst_ibs_cbs, c_class_trib,
+                        ambiente, serie_padrao, certificado_path, certificado_senha_env,
+                        ca_bundle_path, ativo)
+                       VALUES (%s, UUID(), %s, %s, %s, %s, %s,
+                               %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                               %s, %s, %s, %s, %s,
+                               %s, %s, %s, %s, %s,
+                               %s, %s,
+                               %s, %s, %s, %s,
+                               %s, %s)""",
+                    (
+                        request.form.get('tenant_slug', '').strip().lower(),
+                        campos['razao_social'], campos['nome_fantasia'], campos['cnpj'],
+                        campos['ie'], campos['crt'],
+                        campos['logradouro'], campos['numero'], campos['complemento'],
+                        campos['bairro'], campos['cep'], campos['x_mun'], campos['c_mun'],
+                        campos['uf'], campos['fone'], campos['email'],
+                        campos['x_prod'], campos['ncm'], campos['cfop'],
+                        campos['nat_op'], campos['c_benef'],
+                        campos['cst_icms'], campos['aliq_icms_deson'], campos['mot_des_icms'],
+                        campos['cst_pis'], campos['cst_cofins'],
+                        campos['cst_ibs_cbs'], campos['c_class_trib'],
+                        campos['ambiente'], campos['serie_padrao'],
+                        campos['certificado_path'], campos['certificado_senha_env'],
+                        campos['ca_bundle_path'], campos['ativo'],
+                    ),
+                )
+                flash('Configuração criada com sucesso.', 'success')
+                logger.info(f'[ADMIN] Nova NF-e config criada por {current_user.email}')
+                return redirect(url_for('admin.fiscal_nfe_configuracao_lista'))
+            except Exception as e:
+                logger.error(f'[ADMIN] Erro ao criar NF-e config: {e}')
+                # Exibe mensagem genérica para não vazar detalhes do banco para o admin
+                if 'Duplicate entry' in str(e):
+                    flash('Tenant slug já cadastrado. Escolha um identificador diferente.', 'danger')
+                else:
+                    flash('Erro ao salvar. Verifique os dados e tente novamente.', 'danger')
+
+    config = dict(_NFE_CONFIG_DEFAULTS)
+    return render_template(
+        'admin/fiscal_nfe_configuracao_editar.html',
+        config=config,
+        aliq_pct=aliq_pct_form,
+        novo=True,
+    )
+
+
+@admin_bp.route('/fiscal/configuracao/<int:config_id>', methods=['GET', 'POST'])
+@requer_admin
+def fiscal_nfe_configuracao_editar(config_id):
+    config = db.execute_query(
+        "SELECT * FROM nfe_configuracao WHERE id = %s", (config_id,), fetch_one=True
+    )
+    if not config:
+        flash('Configuração NF-e não encontrada.', 'danger')
+        return redirect(url_for('admin.fiscal_nfe_configuracao_lista'))
+
+    if request.method == 'POST':
+        campos, erro = _validar_nfe_config_form()
+        if erro:
+            flash(erro, 'danger')
+        else:
+            try:
+                db.execute_query(
+                    """UPDATE nfe_configuracao SET
+                        razao_social=%s, nome_fantasia=%s, cnpj=%s, ie=%s, crt=%s,
+                        logradouro=%s, numero=%s, complemento=%s, bairro=%s,
+                        cep=%s, x_mun=%s, c_mun=%s, uf=%s, fone=%s, email=%s,
+                        x_prod=%s, ncm=%s, cfop=%s, nat_op=%s, c_benef=%s,
+                        cst_icms=%s, aliq_icms_deson=%s, mot_des_icms=%s,
+                        cst_pis=%s, cst_cofins=%s, cst_ibs_cbs=%s, c_class_trib=%s,
+                        ambiente=%s, serie_padrao=%s,
+                        certificado_path=%s, certificado_senha_env=%s, ca_bundle_path=%s,
+                        ativo=%s
+                       WHERE id=%s""",
+                    (
+                        campos['razao_social'], campos['nome_fantasia'], campos['cnpj'],
+                        campos['ie'], campos['crt'],
+                        campos['logradouro'], campos['numero'], campos['complemento'],
+                        campos['bairro'], campos['cep'], campos['x_mun'], campos['c_mun'],
+                        campos['uf'], campos['fone'], campos['email'],
+                        campos['x_prod'], campos['ncm'], campos['cfop'],
+                        campos['nat_op'], campos['c_benef'],
+                        campos['cst_icms'], campos['aliq_icms_deson'], campos['mot_des_icms'],
+                        campos['cst_pis'], campos['cst_cofins'],
+                        campos['cst_ibs_cbs'], campos['c_class_trib'],
+                        campos['ambiente'], campos['serie_padrao'],
+                        campos['certificado_path'], campos['certificado_senha_env'],
+                        campos['ca_bundle_path'], campos['ativo'],
+                        config_id,
+                    ),
+                )
+                flash('Configuração salva com sucesso.', 'success')
+                logger.info(f'[ADMIN] NF-e config id={config_id} atualizada por {current_user.email}')
+                return redirect(url_for('admin.fiscal_nfe_configuracao_editar', config_id=config_id))
+            except Exception as e:
+                logger.error(f'[ADMIN] Erro ao salvar NF-e config id={config_id}: {e}')
+                flash('Erro ao salvar. Verifique os dados e tente novamente.', 'danger')
+
+    aliq_pct = ''
+    if config.get('aliq_icms_deson') is not None:
+        aliq_pct = f"{float(config['aliq_icms_deson']) * 100:.2f}".rstrip('0').rstrip('.')
+
+    return render_template(
+        'admin/fiscal_nfe_configuracao_editar.html',
+        config=config,
+        aliq_pct=aliq_pct,
+    )
+
+
+@admin_bp.route('/fiscal/configuracao/<int:config_id>/testar', methods=['POST'])
+@requer_admin
+def fiscal_nfe_testar_conexao(config_id):
+    from flask import jsonify
+    import os
+    config = db.execute_query(
+        "SELECT * FROM nfe_configuracao WHERE id = %s", (config_id,), fetch_one=True
+    )
+    if not config:
+        return jsonify({'ok': False, 'mensagem': 'Configuração não encontrada.'}), 404
+
+    try:
+        cert_path = config.get('certificado_path', '')
+        if not os.path.exists(cert_path):
+            return jsonify({'ok': False, 'mensagem': f'Certificado não encontrado: {cert_path}'})
+
+        senha_env = config.get('certificado_senha_env', '')
+        senha = os.getenv(senha_env, '')
+        if not senha:
+            return jsonify({'ok': False, 'mensagem': f'Variável {senha_env!r} não definida no ambiente do servidor.'})
+
+        from fiscal.nfe_soap import consultar_status_servico
+        ca_bundle = config.get('ca_bundle_path') or False
+        resultado = consultar_status_servico(
+            cert_pfx=cert_path,
+            cert_senha=senha,
+            ambiente=int(config.get('ambiente', 2)),
+            verify=ca_bundle,
+        )
+        ok = resultado.get('c_stat') == '107'
+        return jsonify({
+            'ok': ok,
+            'c_stat': resultado.get('c_stat', ''),
+            'mensagem': resultado.get('x_motivo', ''),
+        })
+    except Exception as e:
+        logger.error(f'[ADMIN] Erro ao testar SEFAZ config={config_id}: {e}')
+        return jsonify({'ok': False, 'mensagem': 'Erro ao conectar ao SEFAZ. Verifique os logs do servidor.'})
+
+
 @admin_bp.route('/fiscal/nfe/<int:nfe_id>/danfe')
 @requer_admin
 def fiscal_danfe(nfe_id):

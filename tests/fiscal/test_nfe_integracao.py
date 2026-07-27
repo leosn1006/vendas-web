@@ -46,10 +46,12 @@ def _carregar_pix_recente():
     try:
         from database import db
         pix = db.execute_query(
-            """SELECT id, cpf_cnpj, nome_pagador, valor
-               FROM pagamento_pix
-               WHERE cpf_cnpj IS NOT NULL AND cpf_cnpj != ''
-               ORDER BY horario DESC LIMIT 1""",
+            """SELECT pp.id, pp.cpf_cnpj, pp.nome_pagador, pp.valor,
+                      p.nome AS x_prod
+               FROM pagamento_pix pp
+               LEFT JOIN produtos p ON p.id = pp.produto_id
+               WHERE pp.cpf_cnpj IS NOT NULL AND pp.cpf_cnpj != ''
+               ORDER BY pp.horario DESC LIMIT 1""",
             fetch_one=True,
         )
     except Exception as e:

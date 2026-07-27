@@ -631,6 +631,12 @@
         {% endif %}
 
         {% if current_user.is_admin() %}
+        <div class="nav-section">Fiscal</div>
+        <a href="{{ url_for('admin.fiscal_nfe_configuracao_lista') }}"
+           class="nav-link {% if 'fiscal_nfe' in request.endpoint %}active{% endif %}">
+            <span class="icon">◎</span> Config NF-e
+        </a>
+
         <div class="nav-section">Gestão</div>
         <a href="{{ url_for('admin.listar_usuarios') }}"
            class="nav-link {% if 'usuario' in request.endpoint %}active{% endif %}">

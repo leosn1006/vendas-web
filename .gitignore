@@ -91,3 +91,11 @@ teste.py
 # Configuração do Google Ads
 google-ads.yaml
 static-mensagens/
+
+# Artefatos de teste NF-e (DANFEs, XMLs de envio/retorno)
+testes-nfe/
+
+# Certificados digitais A1 (nunca versionar)
+infra/empresa/cert/
+*.pfx
+danfe_*.pdf

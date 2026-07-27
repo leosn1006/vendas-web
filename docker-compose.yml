@@ -324,9 +324,12 @@ services:
       - BB_PIX_OAUTH_URL=${BB_PIX_OAUTH_URL:-https://oauth.bb.com.br/oauth/token}
       - BB_PIX_CERT_PEM=${BB_PIX_CERT_PEM:-/app/certs/lsnlivros_chain.pem}
       - BB_PIX_CERT_KEY=${BB_PIX_CERT_KEY:-/app/certs/lsnlivros.key}
+      - NF_CERT_SENHA=${NF_CERT_SENHA:-}
+      - NF_CERT_SENHA_LBE=${NF_CERT_SENHA_LBE:-}
     volumes:
       - ./storage:/app/storage
       - ./infra/nginx/certs:/app/certs:ro
+      - ./infra/empresa/cert:/app/empresa/cert:ro
     networks:
       - webnet
 

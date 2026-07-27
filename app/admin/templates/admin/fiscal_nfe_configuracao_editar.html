@@ -1,0 +1,334 @@
+{% extends 'admin/base.html' %}
+{% block title %}{% if novo %}Nova Configuração NF-e{% else %}NF-e — {{ config.razao_social }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">{% if novo %}Nova Configuração NF-e{% else %}Configuração NF-e{% endif %}</div>
+        <div class="page-subtitle">{% if novo %}Preencha os dados da nova empresa emitente{% else %}{{ config.razao_social }}{% endif %}</div>
+    </div>
+    <a href="{{ url_for('admin.fiscal_nfe_configuracao_lista') }}" class="btn btn-secondary">← Voltar</a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for category, message in messages %}
+<div class="alert alert-{{ category }}">{{ message }}</div>
+{% endfor %}
+{% endwith %}
+
+<style>
+.tab-nav { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:1.5rem; }
+.tab-btn { padding:.6rem 1.2rem; background:none; border:none; border-bottom:2px solid transparent;
+           margin-bottom:-2px; cursor:pointer; color:var(--text-muted); font-size:.9rem; font-weight:500; }
+.tab-btn.active { border-bottom-color:var(--primary); color:var(--primary); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+#testar-resultado { margin-top:.75rem; padding:.6rem .9rem; border-radius:6px; font-size:.9rem; display:none; }
+#testar-resultado.ok  { background:#d1fae5; color:#065f46; }
+#testar-resultado.err { background:#fee2e2; color:#991b1b; }
+</style>
+
+<form method="POST" id="nfe-form"
+      action="{% if novo %}{{ url_for('admin.fiscal_nfe_configuracao_novo') }}{% else %}{{ url_for('admin.fiscal_nfe_configuracao_editar', config_id=config.id) }}{% endif %}">
+
+<div class="tab-nav">
+    <button type="button" class="tab-btn active" data-tab="emitente">Emitente</button>
+    <button type="button" class="tab-btn" data-tab="tributacao">Tributação</button>
+    <button type="button" class="tab-btn" data-tab="sistema">Sistema</button>
+</div>
+
+<!-- ABA 1: EMITENTE -->
+<div class="tab-panel active" id="tab-emitente">
+<div class="card">
+    <div class="form-grid">
+        <div class="form-group span-2">
+            <label for="razao_social">Razão Social</label>
+            <input type="text" id="razao_social" name="razao_social" maxlength="60"
+                   value="{{ config.razao_social or '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="nome_fantasia">Nome Fantasia</label>
+            <input type="text" id="nome_fantasia" name="nome_fantasia" maxlength="60"
+                   value="{{ config.nome_fantasia or '' }}">
+        </div>
+        <div class="form-group">
+            <label for="cnpj">CNPJ <small>(só números)</small></label>
+            <input type="text" id="cnpj" name="cnpj" maxlength="18"
+                   value="{{ config.cnpj or '' }}" placeholder="00000000000000" required>
+        </div>
+        <div class="form-group">
+            <label for="ie">IE — Inscrição Estadual</label>
+            <input type="text" id="ie" name="ie" maxlength="14"
+                   value="{{ config.ie or '' }}" placeholder="0000000000000">
+        </div>
+        <div class="form-group">
+            <label for="crt">CRT — Regime Tributário</label>
+            <select id="crt" name="crt">
+                <option value="1" {% if config.crt == 1 %}selected{% endif %}>1 — Simples Nacional</option>
+                <option value="2" {% if config.crt == 2 %}selected{% endif %}>2 — Simples Nacional — Excesso</option>
+                <option value="3" {% if config.crt == 3 %}selected{% endif %}>3 — Lucro Presumido / Real</option>
+            </select>
+        </div>
+        <div class="form-group span-2">
+            <label for="logradouro">Logradouro</label>
+            <input type="text" id="logradouro" name="logradouro" maxlength="60"
+                   value="{{ config.logradouro or '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="numero">Número</label>
+            <input type="text" id="numero" name="numero" maxlength="60"
+                   value="{{ config.numero or '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="complemento">Complemento</label>
+            <input type="text" id="complemento" name="complemento" maxlength="60"
+                   value="{{ config.complemento or '' }}">
+        </div>
+        <div class="form-group">
+            <label for="bairro">Bairro</label>
+            <input type="text" id="bairro" name="bairro" maxlength="60"
+                   value="{{ config.bairro or '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="cep">CEP <small>(só números)</small></label>
+            <input type="text" id="cep" name="cep" maxlength="9"
+                   value="{{ config.cep or '' }}" placeholder="00000000" required>
+        </div>
+        <div class="form-group">
+            <label for="x_mun">Município</label>
+            <input type="text" id="x_mun" name="x_mun" maxlength="60"
+                   value="{{ config.x_mun or '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="c_mun">Código IBGE do Município</label>
+            <input type="text" id="c_mun" name="c_mun" maxlength="7"
+                   value="{{ config.c_mun or '' }}" placeholder="5300108" required>
+        </div>
+        <div class="form-group">
+            <label for="uf">UF</label>
+            <input type="text" id="uf" name="uf" maxlength="2"
+                   value="{{ config.uf or 'DF' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="fone">Telefone</label>
+            <input type="text" id="fone" name="fone" maxlength="15"
+                   value="{{ config.fone or '' }}">
+        </div>
+        <div class="form-group">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" name="email" maxlength="60"
+                   value="{{ config.email or '' }}">
+        </div>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Salvar</button>
+    </div>
+</div>
+</div>
+
+<!-- ABA 2: TRIBUTAÇÃO -->
+<div class="tab-panel" id="tab-tributacao">
+<div class="card">
+    <div class="form-grid">
+        <div class="form-group span-2">
+            <label for="x_prod">Descrição genérica do produto <small>(fallback quando produto não tem nome)</small></label>
+            <input type="text" id="x_prod" name="x_prod" maxlength="120"
+                   value="{{ config.x_prod or '' }}" placeholder="Livro Digital">
+        </div>
+        <div class="form-group">
+            <label for="ncm">NCM <small>(8 dígitos)</small></label>
+            <input type="text" id="ncm" name="ncm" maxlength="8"
+                   value="{{ config.ncm or '' }}" placeholder="49011000">
+        </div>
+        <div class="form-group">
+            <label for="cfop">CFOP <small>(4 dígitos)</small></label>
+            <input type="text" id="cfop" name="cfop" maxlength="4"
+                   value="{{ config.cfop or '' }}" placeholder="5102">
+        </div>
+        <div class="form-group span-2">
+            <label for="nat_op">Natureza da Operação</label>
+            <input type="text" id="nat_op" name="nat_op" maxlength="60"
+                   value="{{ config.nat_op or '' }}" placeholder="VENDA DE PRODUTO DIGITAL">
+        </div>
+        <div class="form-group">
+            <label for="c_benef">cBenef <small>(benefício fiscal — ex: DF811004)</small></label>
+            <input type="text" id="c_benef" name="c_benef" maxlength="10"
+                   value="{{ config.c_benef or '' }}" placeholder="DF811004">
+        </div>
+
+        <div class="form-group" style="grid-column:1/-1;margin-top:.5rem">
+            <p class="field-hint" style="font-weight:600;font-size:.85rem;color:var(--text)">ICMS</p>
+        </div>
+        <div class="form-group">
+            <label for="cst_icms">CST ICMS</label>
+            <input type="text" id="cst_icms" name="cst_icms" maxlength="3"
+                   value="{{ config.cst_icms or '' }}" placeholder="41">
+            <p class="field-hint">40 = isento · 41 = não tributado (imunidade)</p>
+        </div>
+        <div class="form-group">
+            <label for="aliq_icms_deson">Alíquota vICMSDeson <small>(%)</small></label>
+            <input type="number" id="aliq_icms_deson" name="aliq_icms_deson"
+                   step="0.01" min="0" max="100"
+                   value="{{ aliq_pct }}" placeholder="12">
+            <p class="field-hint">Alíquota interna DF — confirmar com contador</p>
+        </div>
+        <div class="form-group">
+            <label for="mot_des_icms">motDesICMS</label>
+            <input type="text" id="mot_des_icms" name="mot_des_icms" maxlength="2"
+                   value="{{ config.mot_des_icms or '' }}" placeholder="90">
+            <p class="field-hint">90 = outros</p>
+        </div>
+
+        <div class="form-group" style="grid-column:1/-1;margin-top:.5rem">
+            <p class="field-hint" style="font-weight:600;font-size:.85rem;color:var(--text)">PIS / COFINS</p>
+        </div>
+        <div class="form-group">
+            <label for="cst_pis">CST PIS</label>
+            <input type="text" id="cst_pis" name="cst_pis" maxlength="2"
+                   value="{{ config.cst_pis or '' }}" placeholder="06">
+            <p class="field-hint">06 = alíquota zero</p>
+        </div>
+        <div class="form-group">
+            <label for="cst_cofins">CST COFINS</label>
+            <input type="text" id="cst_cofins" name="cst_cofins" maxlength="2"
+                   value="{{ config.cst_cofins or '' }}" placeholder="06">
+            <p class="field-hint">06 = alíquota zero</p>
+        </div>
+
+        <div class="form-group" style="grid-column:1/-1;margin-top:.5rem">
+            <p class="field-hint" style="font-weight:600;font-size:.85rem;color:var(--text)">IBS / CBS — Reforma Tributária 2026</p>
+        </div>
+        <div class="form-group">
+            <label for="cst_ibs_cbs">CST IBS/CBS</label>
+            <input type="text" id="cst_ibs_cbs" name="cst_ibs_cbs" maxlength="3"
+                   value="{{ config.cst_ibs_cbs or '' }}" placeholder="410">
+            <p class="field-hint">410 = imune</p>
+        </div>
+        <div class="form-group">
+            <label for="c_class_trib">cClassTrib</label>
+            <input type="text" id="c_class_trib" name="c_class_trib" maxlength="10"
+                   value="{{ config.c_class_trib or '' }}" placeholder="410009">
+            <p class="field-hint">410009 = livros com imunidade</p>
+        </div>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Salvar</button>
+    </div>
+</div>
+</div>
+
+<!-- ABA 3: SISTEMA -->
+<div class="tab-panel" id="tab-sistema">
+<div class="card">
+    <div class="form-grid">
+        <div class="form-group">
+            {% if novo %}
+            <label for="tenant_slug">Tenant Slug <small>(identificador único, ex: minha-empresa)</small></label>
+            <input type="text" id="tenant_slug" name="tenant_slug" maxlength="50"
+                   value="{{ config.tenant_slug or '' }}" placeholder="minha-empresa" required>
+            {% else %}
+            <label>Tenant Slug <small>(read-only)</small></label>
+            <input type="text" value="{{ config.tenant_slug }}" disabled>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>Último número NF-e <small>(read-only)</small></label>
+            <input type="text" value="{{ config.ultimo_numero_nfe }}" disabled>
+        </div>
+        <div class="form-group">
+            <label for="serie_padrao">Série</label>
+            <input type="text" id="serie_padrao" name="serie_padrao" maxlength="3"
+                   value="{{ config.serie_padrao or '001' }}" placeholder="001">
+        </div>
+        <div class="form-group">
+            <label for="ambiente">Ambiente</label>
+            <select id="ambiente" name="ambiente">
+                <option value="2" {% if config.ambiente == 2 %}selected{% endif %}>2 — Homologação (testes)</option>
+                <option value="1" {% if config.ambiente == 1 %}selected{% endif %}>1 — Produção</option>
+            </select>
+        </div>
+        <div class="form-group span-2">
+            <label for="certificado_path">Caminho do certificado A1 (.pfx)</label>
+            <input type="text" id="certificado_path" name="certificado_path"
+                   value="{{ config.certificado_path or '' }}"
+                   placeholder="/app/empresa/cert/empresa.pfx">
+        </div>
+        <div class="form-group span-2">
+            <label for="certificado_senha_env">Nome da variável de ambiente com a senha</label>
+            <input type="text" id="certificado_senha_env" name="certificado_senha_env"
+                   value="{{ config.certificado_senha_env or '' }}"
+                   placeholder="NF_CERT_SENHA_LBE">
+            <p class="field-hint">⚠️ Digite o <strong>nome</strong> da variável (ex: NF_CERT_SENHA_LBE), não a senha em si.</p>
+        </div>
+        <div class="form-group span-2">
+            <label for="ca_bundle_path">CA bundle ICP-Brasil <small>(opcional — produção)</small></label>
+            <input type="text" id="ca_bundle_path" name="ca_bundle_path"
+                   value="{{ config.ca_bundle_path or '' }}"
+                   placeholder="/app/certs/icp-brasil.pem">
+            <p class="field-hint">Deixe vazio em homologação. Necessário em produção se o servidor não tiver o CA da ICP-Brasil.</p>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="ativo" value="1" {% if config.ativo %}checked{% endif %}>
+                Configuração ativa
+            </label>
+        </div>
+    </div>
+    <div class="form-actions" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+        <button type="submit" class="btn btn-primary">{% if novo %}Criar{% else %}Salvar{% endif %}</button>
+        {% if not novo %}
+        <button type="button" id="btn-testar" class="btn btn-secondary">
+            Testar conexão SEFAZ
+        </button>
+        <div id="testar-resultado"></div>
+        {% endif %}
+    </div>
+</div>
+</div>
+
+</form>
+
+<script>
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+});
+
+{% if not novo %}
+// Testar SEFAZ
+document.getElementById('btn-testar').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-testar');
+    const resultado = document.getElementById('testar-resultado');
+    btn.disabled = true;
+    btn.textContent = 'Testando...';
+    resultado.style.display = 'none';
+    try {
+        const resp = await fetch('{{ url_for("admin.fiscal_nfe_testar_conexao", config_id=config.id) }}', {
+            method: 'POST',
+        });
+        const data = await resp.json();
+        resultado.style.display = 'block';
+        if (data.ok) {
+            resultado.className = 'ok';
+            resultado.textContent = '✓ ' + data.mensagem + (data.c_stat ? ' (cStat=' + data.c_stat + ')' : '');
+        } else {
+            resultado.className = 'err';
+            resultado.textContent = '✗ ' + data.mensagem;
+        }
+    } catch (e) {
+        resultado.style.display = 'block';
+        resultado.className = 'err';
+        resultado.textContent = '✗ Erro de rede: ' + e;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Testar conexão SEFAZ';
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

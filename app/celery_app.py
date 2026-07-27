@@ -53,10 +53,12 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute=5, hour=0),  # 00h05 — captura PIX de 23:15–23:59 do dia anterior
         'options': {'queue': 'baixa'},
     },
-    # NF-e desabilitada temporariamente — reabilitar após configurar IE no banco
-    # 'reprocessar-nfe-pendentes': {
+    # NF-e — LBE LIVROS LTDA (config_id=2)
+    # Habilitar quando conta corrente LBE estiver configurada e PIX fluindo pela LBE
+    # 'reprocessar-nfe-pendentes-lbe': {
     #     'task': 'tasks.reprocessar_nfe_pendentes',
     #     'schedule': crontab(minute='*/30'),
+    #     'kwargs': {'config_id': 2, 'limite': 50},
     #     'options': {'queue': 'baixa'},
     # },
     'orcamento-sheets-horario': {

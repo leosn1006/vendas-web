@@ -21,11 +21,9 @@ from nfelib.nfe.bindings.v4_0.leiaute_nfe_v4_00 import (
     IdeTpNf, IdeIdDest, IdeTpImp, IdeTpEmis, IdeIndFinal, IdeIndPres, IdeIndIntermed,
     Icms40Cst, Icms40MotDesIcms, PisntCst, CofinsntCst,
 )
-from nfelib.nfe.bindings.v4_0.dfe_tipos_basicos_v1_00 import TtribNfe
+from nfelib.nfe.bindings.v4_0.dfe_tipos_basicos_v1_00 import TtribNfe, TibscbsmonoTot
 
 _ZERO = '0.00'
-# TODO: confirmar alíquota com contador na segunda-feira (homologação usando 12% — bens essenciais DF)
-_ALIQ_ICMS_DESON_DF = Decimal('0.12')
 
 # Dados fixos do emitente (DF)
 _EMIT = {
@@ -80,35 +78,29 @@ def _endereco_dest_fallback(e: dict) -> Tendereco:
     )
 
 
-def _icms_livro(valor: str) -> Tnfe.InfNfe.Det.Imposto.Icms:
-    # CST 41 = Não tributado — imunidade constitucional art. 150 VI d (livros com ISBN)
-    # vICMSDeson = ICMS que seria cobrado sem a imunidade (base × alíquota interna DF)
-    v_deson = _fmt_valor(Decimal(str(valor)) * _ALIQ_ICMS_DESON_DF)
+def _icms_livro(valor: str, cst: str, aliq: Decimal, mot: str) -> Tnfe.InfNfe.Det.Imposto.Icms:
+    # CST 40/41 = Não tributado — imunidade constitucional art. 150 VI d (livros com ISBN)
+    # vICMSDeson = ICMS que seria cobrado sem a imunidade (base × alíquota interna)
+    v_deson = _fmt_valor(Decimal(str(valor)) * aliq)
     return Tnfe.InfNfe.Det.Imposto.Icms(
         ICMS40=Tnfe.InfNfe.Det.Imposto.Icms.Icms40(
             orig=Torig('0'),
-            CST=Icms40Cst('41'),
+            CST=Icms40Cst(cst),
             vICMSDeson=v_deson,
-            motDesICMS=Icms40MotDesIcms('90'),
+            motDesICMS=Icms40MotDesIcms(mot),
         )
     )
 
 
-def _pis_livro() -> Tnfe.InfNfe.Det.Imposto.Pis:
-    # CST 06 = Operação Tributável a Alíquota Zero (livros com ISBN)
+def _pis_livro(cst: str) -> Tnfe.InfNfe.Det.Imposto.Pis:
     return Tnfe.InfNfe.Det.Imposto.Pis(
-        PISNT=Tnfe.InfNfe.Det.Imposto.Pis.Pisnt(
-            CST=PisntCst('06'),
-        )
+        PISNT=Tnfe.InfNfe.Det.Imposto.Pis.Pisnt(CST=PisntCst(cst))
     )
 
 
-def _cofins_livro() -> Tnfe.InfNfe.Det.Imposto.Cofins:
-    # CST 06 = Operação Tributável a Alíquota Zero (livros com ISBN)
+def _cofins_livro(cst: str) -> Tnfe.InfNfe.Det.Imposto.Cofins:
     return Tnfe.InfNfe.Det.Imposto.Cofins(
-        COFINSNT=Tnfe.InfNfe.Det.Imposto.Cofins.Cofinsnt(
-            CST=CofinsntCst('06'),
-        )
+        COFINSNT=Tnfe.InfNfe.Det.Imposto.Cofins.Cofinsnt(CST=CofinsntCst(cst))
     )
 
 
@@ -141,12 +133,21 @@ def montar_nfe(
     # XSD aceita série sem zeros à esquerda: padrão '0|[1-9][0-9]{0,2}'
     # Na chave de acesso usa-se zfill(3), mas no elemento XML o valor é numérico
     serie    = str(int(config.get('serie_padrao', '1')))
-    x_prod   = config.get('x_prod', 'Livro Digital')
-    ncm      = config.get('ncm') or '49011000'   # livro digital — VALIDAR COM CONTADOR
-    cfop     = config.get('cfop') or '5102'       # venda de mercadoria a não-contribuinte (confirmar com contador)
-    c_benef  = config.get('c_benef') or None      # cBenef obrigatório quando CST=40 — ex: DF811004 (livros DF)
-    valor       = _fmt_valor(pagamento.get('valor', '0'))
-    v_icms_deson = _fmt_valor(Decimal(str(pagamento.get('valor', '0'))) * _ALIQ_ICMS_DESON_DF)
+    x_prod   = (pagamento.get('x_prod') or config.get('x_prod') or 'Livro Digital').strip()
+    ncm      = config.get('ncm') or '49011000'
+    cfop     = config.get('cfop') or '5102'
+    c_benef  = config.get('c_benef') or None
+    nat_op   = config.get('nat_op') or 'VENDA DE PRODUTO DIGITAL'
+    cst_icms = config.get('cst_icms') or '41'
+    mot_icms = config.get('mot_des_icms') or '90'
+    aliq_raw = config.get('aliq_icms_deson')
+    aliq_icms_deson = Decimal(str(aliq_raw)) if aliq_raw is not None else Decimal('0.12')
+    cst_pis    = config.get('cst_pis') or '06'
+    cst_cofins = config.get('cst_cofins') or '06'
+    cst_ibs_cbs  = config.get('cst_ibs_cbs') or '410'
+    c_class_trib = config.get('c_class_trib') or '410009'
+    valor        = _fmt_valor(pagamento.get('valor', '0'))
+    v_icms_deson = _fmt_valor(Decimal(str(pagamento.get('valor', '0'))) * aliq_icms_deson)
     cpf_cnpj = ''.join(filter(str.isdigit, str(pagamento.get('cpf_cnpj') or '')))
     # Homologação exige xNome exato do destinatário (cStat=598 se diferente)
     if int(tp_amb) == 2:
@@ -217,14 +218,10 @@ def montar_nfe(
             indTot='1',
         ),
         imposto=Tnfe.InfNfe.Det.Imposto(
-            ICMS=_icms_livro(valor),
-            PIS=_pis_livro(),
-            COFINS=_cofins_livro(),
-            # TODO (segunda): confirmar com contador CST e cClassTrib do IBS/CBS para livros com
-            # imunidade constitucional (art. 150 VI d CF/88). Testado: CST=400 existe no SEFAZ
-            # mas nenhum cClassTrib encontrado por força bruta — necessário tabela NT 2024.001 RFB.
-            # Perguntar: 1) CST IBS/CBS livros (400=Imune?), 2) cClassTrib de 6 dígitos.
-            IBSCBS=TtribNfe(CST='400', cClassTrib='410001'),
+            ICMS=_icms_livro(valor, cst_icms, aliq_icms_deson, mot_icms),
+            PIS=_pis_livro(cst_pis),
+            COFINS=_cofins_livro(cst_cofins),
+            IBSCBS=TtribNfe(CST=cst_ibs_cbs, cClassTrib=c_class_trib),
         ),
     )
 
@@ -253,7 +250,7 @@ def montar_nfe(
         ide=Tnfe.InfNfe.Ide(
             cUF=TcodUfIbge('53'),
             cNF=c_nf,
-            natOp='VENDA DE PRODUTO DIGITAL',
+            natOp=nat_op,
             mod=Tmod('55'),
             serie=serie,
             nNF=str(n_nf),
@@ -275,7 +272,27 @@ def montar_nfe(
         emit=emit,
         dest=dest,
         det=[det],
-        total=Tnfe.InfNfe.Total(ICMSTot=icms_tot),
+        total=Tnfe.InfNfe.Total(
+            ICMSTot=icms_tot,
+            IBSCBSTot=TibscbsmonoTot(
+                vBCIBSCBS=_ZERO,
+                gIBS=TibscbsmonoTot.GIbs(
+                    gIBSUF=TibscbsmonoTot.GIbs.GIbsuf(
+                        vDif=_ZERO, vDevTrib=_ZERO, vIBSUF=_ZERO,
+                    ),
+                    gIBSMun=TibscbsmonoTot.GIbs.GIbsmun(
+                        vDif=_ZERO, vDevTrib=_ZERO, vIBSMun=_ZERO,
+                    ),
+                    vIBS=_ZERO,
+                    vCredPres=_ZERO,
+                    vCredPresCondSus=_ZERO,
+                ),
+                gCBS=TibscbsmonoTot.GCbs(
+                    vDif=_ZERO, vDevTrib=_ZERO, vCBS=_ZERO,
+                    vCredPres=_ZERO, vCredPresCondSus=_ZERO,
+                ),
+            ),
+        ),
         transp=Tnfe.InfNfe.Transp(
             modFrete=TranspModFrete('9'),  # 9 = Sem frete (produto digital)
         ),
