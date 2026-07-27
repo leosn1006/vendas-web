@@ -1,7 +1,7 @@
 -- Migration 048: adiciona colunas de parametrizacao fiscal a nfe_configuracao
--- c_benef ja existe; adiciona apenas as colunas que faltam
 
 ALTER TABLE nfe_configuracao
+    ADD COLUMN c_benef         VARCHAR(10)  NULL AFTER cfop,
     ADD COLUMN nat_op          VARCHAR(60)  NULL AFTER c_benef,
     ADD COLUMN aliq_icms_deson DECIMAL(5,4) NULL AFTER nat_op,
     ADD COLUMN mot_des_icms    CHAR(2)      NULL AFTER aliq_icms_deson,
