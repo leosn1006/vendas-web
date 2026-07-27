@@ -173,6 +173,21 @@
                 </label>
             </div>
 
+            {% if configs_nfe %}
+            <div class="form-group">
+                <label for="nfe_config_id">Empresa emissora de NF-e</label>
+                <select name="nfe_config_id" id="nfe_config_id" class="form-control">
+                    <option value="">— Nenhuma (não emite NF-e) —</option>
+                    {% for c in configs_nfe %}
+                    <option value="{{ c.id }}"
+                        {% if produto and produto.nfe_config_id == c.id %}selected{% endif %}>
+                        {{ c.razao_social }} ({{ c.tenant_slug }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
         </div>
 
         {% if current_user.is_admin() %}

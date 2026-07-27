@@ -7,6 +7,8 @@ ALTER TABLE produtos
     ADD CONSTRAINT fk_produtos_nfe_config
         FOREIGN KEY (nfe_config_id) REFERENCES nfe_configuracao(id);
 
--- Produtos confirmados como LBE LIVROS LTDA (config_id=2, CNPJ 68184503000106).
+-- Produtos confirmados como LBE LIVROS LTDA (CNPJ 68184503000106).
 -- Demais produtos (nfe_config_id NULL) usam a configuração ativa padrão (LSN).
-UPDATE produtos SET nfe_config_id = 2 WHERE id IN (8, 10);
+UPDATE produtos
+SET nfe_config_id = (SELECT id FROM nfe_configuracao WHERE tenant_slug = 'lbe-livros')
+WHERE id IN (8, 10, 11, 12);

@@ -174,6 +174,11 @@ def editar_produto(produto_id):
         flash('Produto não encontrado.', 'danger')
         return redirect(url_for('admin.listar_produtos'))
 
+    configs_nfe = db.execute_query(
+        "SELECT id, tenant_slug, razao_social FROM nfe_configuracao ORDER BY id",
+        fetch_all=True,
+    ) or []
+
     if request.method == 'POST':
         try:
             db.execute_query("""
@@ -204,7 +209,8 @@ def editar_produto(produto_id):
                     ativo                               = %s,
                     numero_convenio_bb                  = %s,
                     disponivel_web                      = %s,
-                    url_pagina_vendas                   = %s
+                    url_pagina_vendas                   = %s,
+                    nfe_config_id                       = %s
                 WHERE id = %s
             """, (
                 request.form.get('nome'),
@@ -234,6 +240,7 @@ def editar_produto(produto_id):
                 request.form.get('numero_convenio_bb') or None,
                 1 if request.form.get('disponivel_web') else 0,
                 request.form.get('url_pagina_vendas') or None,
+                request.form.get('nfe_config_id') or None,
                 produto_id
             ))
             flash('Produto atualizado com sucesso!', 'success')
@@ -244,7 +251,7 @@ def editar_produto(produto_id):
             logger.error(f"[ADMIN] ❌ Erro ao atualizar produto: {e}")
             flash(f'Erro ao atualizar produto: {e}', 'danger')
 
-    return render_template('admin/produto_form.html', produto=produto, acao='editar')
+    return render_template('admin/produto_form.html', produto=produto, acao='editar', configs_nfe=configs_nfe)
 
 @admin_bp.route('/produtos/<int:produto_id>/agente-vendas', methods=['GET', 'POST'])
 @requer_acesso_produto
