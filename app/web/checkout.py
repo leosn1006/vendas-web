@@ -15,7 +15,7 @@ import qrcode as qrcode_lib
 
 logger = logging.getLogger(__name__)
 
-COOKIE_MAX_AGE_FUNIL = 3600  # 1h — janela de "mesma visita" pro funil landing→checkout
+COOKIE_MAX_AGE_FUNIL = 86400  # 24h — alinhado à validade do PIX do BB Pay (gerar_pix: expiracao = now + 24h)
 
 
 def rastrear_visita_funil(request_obj, produto_id: int, estado_novo: int) -> int:
@@ -58,6 +58,30 @@ def rastrear_visita_funil(request_obj, produto_id: int, estado_novo: int) -> int
         placement=args.get('placement', ''),
         video_id=args.get('video_id', ''),
     )
+
+
+def get_pedido_finalizado_via_cookie(request_obj, produto_id: int):
+    """
+    Verifica se o cookie pedido_web_<produto_id> aponta pra um pedido que já saiu da
+    pré-identificação (1000 pago, 1001 identidade preenchida, 1002 aguardando pix).
+    Usado por /pay/<produto_id> pra decidir se redireciona pro fluxo de retomada
+    (?pedido=<id>, já tratado pelo JS de checkout.html) em vez de criar um pedido
+    1003 novo via rastrear_visita_funil.
+
+    Retorna o pedido_id nesse caso, ou None (cookie ausente/expirado, pedido de
+    outro produto, ou ainda em 1004/1003 — segue fluxo normal).
+    """
+    from database import get_pedido
+
+    cookie_nome = f'pedido_web_{produto_id}'
+    pedido_id_cookie = request_obj.cookies.get(cookie_nome, '')
+    if not pedido_id_cookie.isdigit():
+        return None
+
+    pedido = get_pedido(int(pedido_id_cookie))
+    if pedido and pedido['produto_id'] == produto_id and pedido['estado_id'] in (1000, 1001, 1002):
+        return pedido['id']
+    return None
 
 
 def _formatar_documento(numero: str, tipo: int) -> str:

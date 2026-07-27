@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, send_file, render_template, make_response
+from flask import Blueprint, jsonify, request, send_file, render_template, make_response, redirect
 
 web_bp = Blueprint('web', __name__)
 
@@ -11,7 +11,8 @@ def guia_paes():
 @web_bp.get('/pay/<int:produto_id>')
 def checkout(produto_id):
     from database import get_produto_disponivel_web, listar_bonus_produto, listar_bump_produto
-    from web.checkout import rastrear_visita_funil, COOKIE_MAX_AGE_FUNIL
+    from web.checkout import (rastrear_visita_funil, get_pedido_finalizado_via_cookie,
+                               COOKIE_MAX_AGE_FUNIL)
     produto = get_produto_disponivel_web(produto_id)
     if not produto:
         return 'Produto não encontrado', 404
@@ -21,6 +22,15 @@ def checkout(produto_id):
     # novo nesse caso.
     pedido_id_inicial = None
     if not request.args.get('pedido'):
+        pedido_id_retomar = get_pedido_finalizado_via_cookie(request, produto_id)
+        if pedido_id_retomar is not None:
+            # Cliente já saiu de 1003/1004 nessa visita (pago, aguardando identidade, ou
+            # aguardando pix) — reaproveita o fluxo já existente do link de retorno do BB Pay
+            # (?pedido=<id>) em vez de duplicar em Python a lógica pago→downloads /
+            # pendente→retomar pix, que o JS de checkout.html já sabe fazer.
+            resp = redirect(f'/pay/{produto_id}?pedido={pedido_id_retomar}')
+            resp.set_cookie(f'pedido_web_{produto_id}', str(pedido_id_retomar), max_age=COOKIE_MAX_AGE_FUNIL)
+            return resp
         pedido_id_inicial = rastrear_visita_funil(request, produto_id, estado_novo=1003)
 
     resp = make_response(render_template(
