@@ -290,8 +290,14 @@ def baixar_item_pedido(pedido_id: int, item_id: int):
     if not pedido or pedido.get('estado_id') != 1000:
         return None, 403
 
+    # produto_bonus/produto_bump.path_arquivo é preenchido no admin como URL pública completa
+    # (convenção do fluxo WhatsApp, que precisa de link pra enviar como mídia) — aqui só
+    # interessa o nome do arquivo em si, pra juntar com as pastas locais. os.path.basename
+    # funciona tanto pra URL completa quanto pra nome puro (caso do produto principal).
+    nome_arquivo_fisico = os.path.basename(item['path_arquivo'])
+
     caminho = os.path.join(os.path.dirname(__file__), '..', 'storage', 'entregaveis',
-                            item['path_arquivo'])
+                            nome_arquivo_fisico)
 
     if not os.path.exists(caminho):
         # Auto-cura: se ninguém copiou o arquivo pra cá ainda (ex: bônus/bump cadastrado
@@ -300,19 +306,19 @@ def baixar_item_pedido(pedido_id: int, item_id: int):
         # Nunca deixa um erro de I/O (permissão, disco cheio, corrida entre duas requisições
         # copiando ao mesmo tempo) derrubar a requisição — na pior hipótese, cai no 404 abaixo.
         origem = os.path.join(os.path.dirname(__file__), '..', '..', 'static', 'arquivos',
-                              item['path_arquivo'])
+                              nome_arquivo_fisico)
         try:
             if os.path.exists(origem):
                 os.makedirs(os.path.dirname(caminho), exist_ok=True)
                 tmp = f'{caminho}.tmp-{os.getpid()}'
                 shutil.copyfile(origem, tmp)
                 os.replace(tmp, caminho)  # atômico — evita servir arquivo parcialmente copiado
-                logger.info(f'[WEB-CHECKOUT] Copiado automaticamente para storage/entregaveis: {item["path_arquivo"]}')
+                logger.info(f'[WEB-CHECKOUT] Copiado automaticamente para storage/entregaveis: {nome_arquivo_fisico}')
             else:
-                logger.error(f'[WEB-CHECKOUT] Arquivo não encontrado em static/arquivos/: {item["path_arquivo"]}')
+                logger.error(f'[WEB-CHECKOUT] Arquivo não encontrado em static/arquivos/: {nome_arquivo_fisico}')
                 return None, 404
         except OSError as e:
-            logger.error(f'[WEB-CHECKOUT] Falha ao copiar {item["path_arquivo"]} para storage/entregaveis: {e}')
+            logger.error(f'[WEB-CHECKOUT] Falha ao copiar {nome_arquivo_fisico} para storage/entregaveis: {e}')
             return None, 500
 
     return caminho, item['nome_arquivo']
