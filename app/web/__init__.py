@@ -60,15 +60,23 @@ def pix_gerar():
 @web_bp.get('/api/v1/pix/pedido/<int:pedido_id>')
 def pix_pedido(pedido_id):
     from database import get_pedido, listar_itens_pedido
+    from web.checkout import _gerar_qrcode_base64
     pedido = get_pedido(pedido_id)
     if not pedido:
         return jsonify({'error': 'não encontrado'}), 404
     # pedido_itens já existe desde a criação do lead (antes do pagamento), então devolvemos
     # a lista sempre — permite mostrar o resumo do que está sendo pago mesmo antes de confirmar.
+    # qrcode_texto/qrcode_base64/url_bbpay são reconstruídos a partir do que foi salvo em
+    # gerar_pix() — necessário pra tela de retomada (?pedido=<id>) conseguir reexibir o mesmo
+    # PIX, e não só o card vazio com "Carregando...".
+    qrcode_texto = pedido.get('qr_code_pix') or ''
     resposta = {
         'txid': pedido.get('numero_solicitacao_bb'),
         'estado': pedido.get('estado_id'),
         'pago': pedido.get('estado_id') == 1000,
+        'qrcode_texto': qrcode_texto,
+        'qrcode_base64': _gerar_qrcode_base64(qrcode_texto) if qrcode_texto else '',
+        'url_bbpay': pedido.get('url_bbpay') or '',
         'itens': [
             {'id': item['id'], 'tipo': item['tipo'], 'nome': item['nome'], 'valor': float(item['valor'])}
             for item in listar_itens_pedido(pedido_id)

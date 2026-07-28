@@ -369,35 +369,39 @@
 
 <div class="container">
 
-    <!-- Resumo do produto (vira uma listinha de itens quando um bump é marcado) -->
-    <div class="card">
-        <div class="resumo-label">Detalhes da sua compra:</div>
-        <div id="resumoItens" class="resumo-itens">
-            <div class="linha-item linha-item-principal">
-                <span>{{ produto.descricao }}</span>
-                <span>R$ {{ "%.2f"|format(produto.preco) }}</span>
+    <!-- Resumo do produto + bônus — só faz sentido no formulário; a tela de PIX já repete a
+         lista de itens no próprio card, então some daqui pra não duplicar. -->
+    <div id="resumoTopo">
+        <!-- Resumo do produto (vira uma listinha de itens quando um bump é marcado) -->
+        <div class="card">
+            <div class="resumo-label">Detalhes da sua compra:</div>
+            <div id="resumoItens" class="resumo-itens">
+                <div class="linha-item linha-item-principal">
+                    <span>{{ produto.descricao }}</span>
+                    <span>R$ {{ "%.2f"|format(produto.preco) }}</span>
+                </div>
+            </div>
+            <div class="resumo-total-wrap">
+                <span>Total</span>
+                <strong id="resumoTotal">R$ {{ "%.2f"|format(produto.preco) }}</strong>
             </div>
         </div>
-        <div class="resumo-total-wrap">
-            <span>Total</span>
-            <strong id="resumoTotal">R$ {{ "%.2f"|format(produto.preco) }}</strong>
-        </div>
-    </div>
 
-    {% if bonus %}
-    <!-- Bônus incluídos -->
-    <div class="bonus-box">
-        <div class="bonus-titulo">🎁 Você também recebe de bônus</div>
-        {% for b in bonus %}
-        <div class="bonus-item">
-            <span class="check">✓</span>
-            <span>
-                <strong>{{ b.nome }}</strong>{% if b.descricao %} — {{ b.descricao }}{% endif %}
-            </span>
+        {% if bonus %}
+        <!-- Bônus incluídos -->
+        <div class="bonus-box">
+            <div class="bonus-titulo">🎁 Você também recebe de bônus</div>
+            {% for b in bonus %}
+            <div class="bonus-item">
+                <span class="check">✓</span>
+                <span>
+                    <strong>{{ b.nome }}</strong>{% if b.descricao %} — {{ b.descricao }}{% endif %}
+                </span>
+            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
-    {% endif %}
+        {% endif %}
+    </div><!-- /resumoTopo -->
 
     <!-- Formulário de checkout -->
     <div id="estado-form">
@@ -721,6 +725,10 @@
         });
         if (estado === 'form') document.getElementById('estado-form').style.display = 'block';
         else document.getElementById('estado-' + estado).style.display = 'block';
+
+        // Resumo do topo só faz sentido no formulário — nos outros estados a lista de itens
+        // já aparece dentro do próprio card (ex: pixItens em estado-pix).
+        document.getElementById('resumoTopo').style.display = (estado === 'form') ? '' : 'none';
     }
 
     // ── Validação ──
@@ -847,6 +855,36 @@
         iniciarPolling();
     }
 
+    // Preenche o card de PIX (itens, QR code, copia-e-cola, link BB Pay) — usado tanto na
+    // geração inicial (btnFinalizar) quanto na retomada de um pedido já iniciado (?pedido=<id>),
+    // que devolve os mesmos campos reconstruídos a partir do que foi salvo em gerar_pix().
+    function exibirPix(data, itens) {
+        renderizarLinhasItens('pixItens', itens);
+        const totalItens = itens.reduce((soma, item) => soma + item.preco, 0);
+        document.getElementById('pixPreco').textContent =
+            formatarReal(data.valor != null ? parseFloat(data.valor) : totalItens);
+
+        const qrImg = document.getElementById('qrImg');
+        if (data.qrcode_base64) {
+            qrImg.src = 'data:image/png;base64,' + data.qrcode_base64;
+            qrImg.style.display = '';
+        } else {
+            qrImg.style.display = 'none';
+        }
+        document.getElementById('qrTexto').textContent = data.qrcode_texto || '';
+
+        const linkBB = document.getElementById('linkBBPay');
+        const separador = document.getElementById('bbpaySeparator');
+        if (data.url_bbpay) {
+            linkBB.href = data.url_bbpay;
+            linkBB.style.display = 'flex';
+            separador.style.display = 'flex';
+        } else {
+            linkBB.style.display = 'none';
+            separador.style.display = 'none';
+        }
+    }
+
     // Volta ao formulário sem recarregar (cliente quer corrigir os dados)
     function voltarFormulario() {
         // Reseta o botão para o estado inicial
@@ -870,9 +908,9 @@
                     pagamentoConfirmado(data.itens || []);
                 } else if (data.txid) {
                     const itensServidor = (data.itens || []).map(i => ({ nome: i.nome, preco: i.valor }));
-                    if (itensServidor.length) renderizarLinhasItens('pixItens', itensServidor);
-                    mostrarEstado('pix');
+                    exibirPix(data, itensServidor);
                     currentTxid = data.txid;
+                    mostrarEstado('pix');
                     iniciarPolling();
                 } else {
                     mostrarEstado('form');
@@ -891,7 +929,7 @@
 
         const bumpIds = bumpIdsSelecionados();
         const itensAntesDoEnvio = itensSelecionados();
-        const totalExibido = recalcularTotal();
+        recalcularTotal();
 
         try {
             const resp = await fetch('/api/v1/pix/gerar', {
@@ -910,25 +948,9 @@
             }
 
             currentTxid = data.txid;
-            const precoDisplay = formatarReal(data.valor != null ? parseFloat(data.valor) : totalExibido);
 
             // PIX: mostra QR Code e inicia polling
-            renderizarLinhasItens('pixItens', itensAntesDoEnvio);
-            document.getElementById('pixPreco').textContent = precoDisplay;
-            const qrImg = document.getElementById('qrImg');
-            if (data.qrcode_base64) {
-                qrImg.src = 'data:image/png;base64,' + data.qrcode_base64;
-                qrImg.style.display = '';
-            } else {
-                qrImg.style.display = 'none';
-            }
-            document.getElementById('qrTexto').textContent = data.qrcode_texto || '';
-            if (data.url_bbpay) {
-                const linkBB = document.getElementById('linkBBPay');
-                linkBB.href = data.url_bbpay;
-                linkBB.style.display = 'flex';
-                document.getElementById('bbpaySeparator').style.display = 'flex';
-            }
+            exibirPix(data, itensAntesDoEnvio);
             mostrarEstado('pix');
             iniciarPolling();
 
