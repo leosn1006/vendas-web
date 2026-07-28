@@ -46,7 +46,7 @@ def executar(pedido_id: int) -> None:
     destinatario = pedido['email']
     nome_cliente = (pedido.get('contact_name') or '').split()[0] or 'cliente'
     remetente    = (produto or {}).get('email_remetente') or os.getenv('EMAIL_FROM', '')
-    nome_produto = (produto or {}).get('descricao', 'Guia Digital')
+    nome_produto = (produto or {}).get('nome', 'Guia Digital')
     pedido_num   = f'#{pedido_id:04d}'
     subject      = f'Pedido {pedido_num} ✅ Pronto para baixar: {nome_produto}!'
 
