@@ -1,4 +1,4 @@
-.PHONY: help upload-google-ads-now upload-google-sheets-now buscar-pix orcamento-sheets-now exportar-mensagens logs-worker logs-worker-normal logs-worker-baixa logs-files restart-worker restart-nginx atualizar-senha criar-usuario
+.PHONY: help upload-google-ads-now upload-google-sheets-now buscar-pix orcamento-sheets-now exportar-mensagens exportar-telefones-google-ads logs-worker logs-worker-normal logs-worker-baixa logs-files restart-worker restart-nginx atualizar-senha criar-usuario
 
 help:
 	@echo "Comandos disponíveis:"
@@ -9,6 +9,7 @@ help:
 	@echo "  make buscar-pix                        # Busca PIX de hoje e persiste no banco"
 	@echo "  make buscar-pix data=31/03/2026   # Busca PIX de uma data específica (dd/mm/yyyy)"
 	@echo "  make exportar-mensagens produto=9 dias=30  # Exporta mensagens do produto (default: últimos 15 dias)"
+	@echo "  make exportar-telefones-google-ads valor=10  # Exporta telefones de pedidos pagos para Google Sheets (default: valor > 10)"
 	@echo "  make logs-worker                  # Acompanha logs do worker-urgente"
 	@echo "  make logs-worker-normal           # Acompanha logs do worker-normal"
 	@echo "  make logs-worker-baixa            # Acompanha logs do worker-baixa"
@@ -41,6 +42,10 @@ executar($(if $(data),'$(data)',None))"
 exportar-mensagens:
 	@echo "Exportando mensagens do produto $(produto) (últimos $(if $(dias),$(dias),15) dias)..."
 	python3 scripts/exportar_mensagens_produto.py --produto-id $(produto) --dias $(if $(dias),$(dias),15)
+
+exportar-telefones-google-ads:
+	@echo "Exportando telefones de pedidos pagos (valor > $(if $(valor),$(valor),10)) para Google Sheets..."
+	python3 scripts/exportar_telefones_google_ads.py --valor-minimo $(if $(valor),$(valor),10)
 
 logs-worker:
 	docker compose logs -f worker-urgente
