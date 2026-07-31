@@ -148,6 +148,10 @@ def _is_lbe_livros():
     host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
     return 'lbe-livros.site' in host
 
+def _is_lb_livros():
+    host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return 'lb-livros.site' in host
+
 @app.get("/")
 def index():
     produtos = busca_produtos_disponiveis_web()
@@ -167,6 +171,8 @@ def index():
         tmpl = 'portifolio-lsreceitas.html'
     elif _is_lbe_livros():
         tmpl = 'portifolio-lbe.html'
+    elif _is_lb_livros():
+        tmpl = 'portifolio-lb.html'
     else:
         tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
@@ -190,6 +196,8 @@ def portifolio():
         tmpl = 'portifolio-lsreceitas.html'
     elif _is_lbe_livros():
         tmpl = 'portifolio-lbe.html'
+    elif _is_lb_livros():
+        tmpl = 'portifolio-lb.html'
     else:
         tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
@@ -212,6 +220,8 @@ def politica_privacidade():
         tmpl = 'politica-privacidade-lsreceitas.html'
     elif _is_lbe_livros():
         tmpl = 'politica-privacidade-lbe.html'
+    elif _is_lb_livros():
+        tmpl = 'politica-privacidade-lb.html'
     else:
         tmpl = 'politica-privacidade.html'
     return render_template(tmpl)
@@ -234,6 +244,8 @@ def termos_de_uso():
         tmpl = 'termos-de-uso-lsreceitas.html'
     elif _is_lbe_livros():
         tmpl = 'termos-de-uso-lbe.html'
+    elif _is_lb_livros():
+        tmpl = 'termos-de-uso-lb.html'
     else:
         tmpl = 'termos-de-uso.html'
     return render_template(tmpl)
@@ -256,6 +268,8 @@ def contato():
         tmpl = 'contato-lsreceitas.html'
     elif _is_lbe_livros():
         tmpl = 'contato-lbe.html'
+    elif _is_lb_livros():
+        tmpl = 'contato-lb.html'
     else:
         tmpl = 'contato.html'
     return render_template(tmpl)
