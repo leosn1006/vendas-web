@@ -36,6 +36,106 @@ def marcar_como_lida(message_id: str, phone_number_id: str = None):
     response.raise_for_status()
     return response.json()
 
+def enviar_reacao(message_id: str, numero: str, emoji: str, phone_number_id: str = None):
+    """Reage a uma mensagem específica do cliente (wamid) em vez de enviar uma mensagem de texto nova."""
+    phone_number_id = phone_number_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
+    url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+    token = get_whatsapp_token(phone_number_id)
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json; charset=utf-8",
+        "Accept": "application/json"
+    }
+
+    dados = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": numero,
+        "type": "reaction",
+        "reaction": {
+            "message_id": message_id,
+            "emoji": emoji
+        }
+    }
+
+    logger.info(f"[REACAO-ENVIAR] Reagindo a {message_id} para {numero} com '{emoji}'")
+
+    response = requests.post(url, headers=headers, json=dados, timeout=30)
+
+    if response.status_code == 200:
+        id_message = response.json().get('messages', [{}])[0].get('id')
+        logger.info(f"[REACAO-ENVIAR] Reação enviada com sucesso! ID da mensagem: {id_message}")
+        return id_message
+
+    msg = f"[REACAO-ENVIAR] ❌ Erro ao enviar reação: status={response.status_code} body={response.text}"
+    if response.status_code >= 500:
+        raise ErroTransienteWhatsApp(msg)
+    raise ValueError(msg)
+
+
+def bloquear_numero_whatsapp(numero: str, phone_number_id: str = None):
+    """Bloqueia o contato de fato na Cloud API da Meta (Block Users API), além da flag interna `pedidos.bloqueado`."""
+    phone_number_id = phone_number_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
+    url = f"{WHATSAPP_API_URL}{phone_number_id}/block_users"
+    token = get_whatsapp_token(phone_number_id)
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json; charset=utf-8",
+        "Accept": "application/json"
+    }
+
+    dados = {
+        "messaging_product": "whatsapp",
+        "block_users": [{"user": numero}]
+    }
+
+    logger.info(f"[BLOQUEAR-NUMERO] Bloqueando {numero} na Cloud API")
+
+    response = requests.post(url, headers=headers, json=dados, timeout=30)
+
+    if response.status_code == 200:
+        logger.info(f"[BLOQUEAR-NUMERO] Número {numero} bloqueado com sucesso na Cloud API")
+        return response.json()
+
+    msg = f"[BLOQUEAR-NUMERO] ❌ Erro ao bloquear número: status={response.status_code} body={response.text}"
+    if response.status_code >= 500:
+        raise ErroTransienteWhatsApp(msg)
+    raise ValueError(msg)
+
+
+def desbloquear_numero_whatsapp(numero: str, phone_number_id: str = None):
+    """Reverte bloquear_numero_whatsapp() — útil caso o bloqueio tenha sido um engano."""
+    phone_number_id = phone_number_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
+    url = f"{WHATSAPP_API_URL}{phone_number_id}/block_users"
+    token = get_whatsapp_token(phone_number_id)
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json; charset=utf-8",
+        "Accept": "application/json"
+    }
+
+    dados = {
+        "messaging_product": "whatsapp",
+        "block_users": [{"user": numero}]
+    }
+
+    logger.info(f"[DESBLOQUEAR-NUMERO] Desbloqueando {numero} na Cloud API")
+
+    response = requests.delete(url, headers=headers, json=dados, timeout=30)
+
+    if response.status_code == 200:
+        logger.info(f"[DESBLOQUEAR-NUMERO] Número {numero} desbloqueado com sucesso na Cloud API")
+        return response.json()
+
+    msg = f"[DESBLOQUEAR-NUMERO] ❌ Erro ao desbloquear número: status={response.status_code} body={response.text}"
+    if response.status_code >= 500:
+        raise ErroTransienteWhatsApp(msg)
+    raise ValueError(msg)
+
+
 def enviar_audio(pedido: Pedido, url_audio: str):
     if pedido is None:
         raise ValueError("[AUDIO-ENVIAR] Não é possível enviar mensagem sem um pedido associado.")
