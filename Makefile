@@ -1,4 +1,4 @@
-.PHONY: help upload-google-ads-now upload-google-sheets-now buscar-pix orcamento-sheets-now exportar-mensagens exportar-telefones-google-ads logs-worker logs-worker-normal logs-worker-baixa logs-files restart-worker restart-nginx atualizar-senha criar-usuario
+.PHONY: help upload-google-ads-now upload-google-sheets-now buscar-pix orcamento-sheets-now exportar-mensagens exportar-telefones-google-ads logs-worker logs-worker-normal logs-worker-baixa logs-files restart-worker restart-nginx reload-nginx atualizar-senha criar-usuario
 
 help:
 	@echo "Comandos disponíveis:"
@@ -15,7 +15,8 @@ help:
 	@echo "  make logs-worker-baixa            # Acompanha logs do worker-baixa"
 	@echo "  make logs-files                   # Lista arquivos de logs rotacionados"
 	@echo "  make restart-worker               # Reinicia os três workers"
-	@echo "  make restart-nginx                # Reinicia apenas o container nginx"
+	@echo "  make restart-nginx                # Reinicia apenas o container nginx (derruba tudo se a config estiver quebrada)"
+	@echo "  make reload-nginx                 # Testa e recarrega a config do nginx sem derrubar o container (use isso, não restart-nginx, ao mexer em default.conf)"
 	@echo "  make atualizar-senha email=x senha=y  # Atualiza senha de um usuário admin"
 	@echo "  make criar-usuario email=x senha=y nome=z perfil=admin  # Cria novo usuário"
 
@@ -64,6 +65,10 @@ restart-worker:
 
 restart-nginx:
 	docker compose restart nginx
+
+reload-nginx:
+	docker compose exec nginx nginx -t
+	docker compose exec nginx nginx -s reload
 
 atualizar-senha:
 	@echo "Atualizando senha para $(email)..."

@@ -59,6 +59,12 @@ logs/
 infra/nginx/certs/*
 !infra/nginx/certs/.gitkeep
 
+# Let's Encrypt (certbot) - challenges e certificados emitidos
+infra/certbot/www/*
+!infra/certbot/www/.gitkeep
+infra/certbot/conf/*
+!infra/certbot/conf/.gitkeep
+
 # Backups
 backup_*/
 *.backup
