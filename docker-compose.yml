@@ -395,7 +395,7 @@ services:
     environment:
       - TZ=America/Sao_Paulo
     volumes:
-      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infra/nginx/conf.d:/etc/nginx/conf.d:ro
       - ./infra/nginx/certs:/etc/nginx/certs:ro
       - ./static:/usr/share/nginx/static:ro
       - ./infra/certbot/www:/var/www/certbot:ro

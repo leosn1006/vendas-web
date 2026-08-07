@@ -59,7 +59,7 @@ executada — fica como direção futura.
 1. **Pré-requisito**: A record do domínio (e `www.` se for usar) apontando
    pro VPS. Conferir com `dig +short <dominio> A`.
 
-2. Adicionar um bloco HTTP (porta 80) em `infra/nginx/default.conf` com a
+2. Adicionar um bloco HTTP (porta 80) em `infra/nginx/conf.d/default.conf` com a
    location do ACME challenge, redirecionando o resto pra HTTPS. Modelo (ver
    os blocos de `livrinhosdigitais.site`/`leituraemais.site` no próprio
    arquivo como exemplo — por padrão sem `www`, a não ser que o domínio
@@ -96,7 +96,7 @@ executada — fica como direção futura.
    (adicionar `-d www.seu-dominio.site` também, só se o `www` estiver
    configurado no DNS — o certbot falha se pedir um nome que não resolve.)
 
-4. Adicionar o bloco HTTPS em `infra/nginx/default.conf`, copiando o padrão
+4. Adicionar o bloco HTTPS em `infra/nginx/conf.d/default.conf`, copiando o padrão
    de segurança de qualquer domínio `.site` existente, trocando só:
 
    ```nginx
@@ -160,4 +160,36 @@ que já estavam certos.
 antes de aplicar; se for inválida, mantém a config antiga rodando e nenhum
 domínio cai. Por isso todo o runbook acima usa `reload-nginx`, nunca
 `restart-nginx` — use `restart-nginx` só quando for preciso reiniciar o
+
+## Pegadinha resolvida: bind mount de arquivo único + `git pull`
+
+Até a correção descrita aqui, o `docker-compose.yml` montava o `default.conf`
+como bind mount de **arquivo único**
+(`./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro`). O problema:
+`git pull`/`checkout` não editam um arquivo em memória — escrevem um arquivo
+novo e fazem `rename()` por cima do caminho antigo (escrita atômica, padrão
+do Git e da maioria dos editores). Isso troca o **inode** daquele caminho no
+host. Só que o bind mount de arquivo único do Docker prende o container a um
+inode específico, fixado no momento da criação do container — depois de um
+`git pull`, o container continuava enxergando o inode **antigo e órfão**,
+mesmo com `cat`/`grep` no host já mostrando o conteúdo novo. Nem
+`nginx -s reload` nem `docker compose restart nginx` resolviam isso (nenhum
+dos dois recria o container, só o processo dentro dele) — só um
+`docker compose up -d --force-recreate nginx` (ou `rm`+`up`) reestabelece o
+mount no inode atual.
+
+Isso já causou uma emissão "fantasma" na prática: os certificados de
+`livrinhosdigitais.site`/`leituraemais.site` foram emitidos e o `default.conf`
+no host estava correto, mas o nginx em execução continuou servindo o
+certificado errado por vários ciclos de `reload-nginx`, porque o container
+tinha sido criado antes do `git pull` trazer a versão final do arquivo.
+
+**Correção estrutural aplicada**: o mount passou a ser do **diretório**
+inteiro (`./infra/nginx/conf.d:/etc/nginx/conf.d:ro`, com `default.conf`
+dentro de `infra/nginx/conf.d/`), não do arquivo isolado. Mounts de diretório
+não sofrem desse problema — o container enxerga a listagem do diretório
+dinamicamente, então uma troca de inode de um arquivo lá dentro (via
+`git pull`) aparece imediatamente. Com isso, `make reload-nginx` volta a ser
+suficiente para aplicar mudanças de `default.conf` depois de um `git pull`,
+sem precisar recriar o container.
 processo de verdade (ex.: travado).
