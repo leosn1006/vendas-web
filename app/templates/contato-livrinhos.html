@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contato — Livrinhos Digitais</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --azul:       #1e3a5f;
+            --azul-med:   #2d6a9f;
+            --azul-claro: #5a9fd4;
+            --dourado:    #c9a227;
+            --creme:      #f5f0e8;
+            --escuro:     #1a2a3a;
+            --texto:      #2c2c2c;
+            --cinza:      #666;
+            --branco:     #ffffff;
+            --sombra:     0 4px 24px rgba(0,0,0,0.10);
+        }
+
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Lato', sans-serif; background: var(--creme); color: var(--texto); }
+
+        .site-header { background: linear-gradient(135deg, var(--azul), #2d5080); padding: 0 24px; }
+
+        .header-inner {
+            max-width: 900px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 0;
+        }
+
+        .logo-link { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+
+        .logo-icon {
+            width: 36px; height: 36px;
+            background: rgba(255,255,255,0.2); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; font-size: 18px;
+        }
+
+        .logo-text { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; color: #fff; }
+
+        .header-nav { display: flex; gap: 20px; }
+        .header-nav a { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 13px; font-weight: 700; transition: color 0.2s; }
+        .header-nav a:hover { color: #fff; }
+
+        .page-hero { background: linear-gradient(135deg, var(--azul), #2d5080); padding: 48px 24px 56px; text-align: center; }
+
+        .page-hero-tag {
+            display: inline-block;
+            background: rgba(255,255,255,0.18); color: #fff;
+            font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+            padding: 5px 14px; border-radius: 20px; margin-bottom: 14px;
+        }
+
+        .page-hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 900; color: #fff; margin-bottom: 10px; }
+        .page-hero p { color: rgba(255,255,255,0.8); font-size: 14px; }
+
+        .page-content { max-width: 900px; margin: 0 auto; padding: 40px 24px 60px; }
+
+        .contact-grid { display: grid; gap: 20px; margin-bottom: 20px; }
+
+        @media (min-width: 600px) { .contact-grid { grid-template-columns: 1fr 1fr; } }
+
+        .contact-card {
+            background: var(--branco); border-radius: 16px; padding: 28px 24px;
+            box-shadow: var(--sombra);
+            display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .contact-card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,0.14); }
+
+        .contact-icon {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; flex-shrink: 0;
+        }
+
+        .icon-azul    { background: #ddeaf8; }
+        .icon-creme   { background: var(--creme); }
+
+        .contact-card h2 { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; color: var(--escuro); }
+
+        .contact-card p { font-size: 13px; color: var(--cinza); line-height: 1.6; }
+
+        .contact-card a { color: var(--azul-med); text-decoration: none; font-weight: 700; font-size: 14px; word-break: break-all; }
+        .contact-card a:hover { text-decoration: underline; }
+
+        .main-card {
+            background: var(--branco); border-radius: 16px; padding: 36px 32px;
+            box-shadow: var(--sombra);
+        }
+
+        .main-card h2 { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; color: var(--escuro); margin-bottom: 12px; }
+
+        .main-card p { font-size: 14px; color: var(--cinza); line-height: 1.7; margin-bottom: 20px; }
+
+        .btn-email {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--azul-med), var(--azul));
+            color: #fff; font-family: 'Lato', sans-serif; font-size: 15px; font-weight: 700;
+            border: none; border-radius: 50px; cursor: pointer;
+            box-shadow: 0 6px 20px rgba(30,58,95,0.3);
+            text-decoration: none; transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .btn-email:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(30,58,95,0.4); }
+
+        footer { background: var(--azul); padding: 32px 24px; text-align: center; }
+
+        .footer-inner { max-width: 900px; margin: 0 auto; }
+        footer p { color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 12px; }
+
+        .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+        .footer-links a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 12px; padding: 4px 8px; border-radius: 4px; transition: color 0.2s; }
+        .footer-links a:hover { color: #fff; }
+        .footer-links span { color: rgba(255,255,255,0.3); font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<header class="site-header">
+    <div class="header-inner">
+        <a href="/" class="logo-link">
+            <div class="logo-icon">📚</div>
+            <span class="logo-text">Livrinhos Digitais</span>
+        </a>
+        <nav class="header-nav">
+            <a href="/politica-privacidade">Privacidade</a>
+            <a href="/termos-de-uso">Termos</a>
+            <a href="/contato">Contato</a>
+        </nav>
+    </div>
+</header>
+
+<div class="page-hero">
+    <span class="page-hero-tag">Fale Conosco</span>
+    <h1>Contato</h1>
+    <p>Estamos prontos para te atender. Escolha o canal que preferir.</p>
+</div>
+
+<div class="page-content">
+
+    <div class="contact-grid">
+        <div class="contact-card">
+            <div class="contact-icon icon-azul">📧</div>
+            <h2>E-mail</h2>
+            <p>Para suporte, dúvidas sobre pedidos e informações gerais.</p>
+            <a href="mailto:lilianmarins9753@kuvioemail.com">lilianmarins9753@kuvioemail.com</a>
+        </div>
+        <div class="contact-card">
+            <div class="contact-icon icon-creme">🏢</div>
+            <h2>Empresa</h2>
+            <p>VANESSA TEIXEIRA DO NASCIMENTO<br>CNPJ: 67.831.716/0001-01<br>livrinhosdigitais.site</p>
+        </div>
+    </div>
+
+    <div class="main-card">
+        <h2>Prefere falar por e-mail?</h2>
+        <p>Nossa equipe está disponível para tirar dúvidas sobre os e-books, confirmar pagamentos e enviar os arquivos diretamente por e-mail. Respondemos o mais rápido possível.</p>
+        <a href="mailto:lilianmarins9753@kuvioemail.com" class="btn-email">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+            </svg>
+            Enviar e-mail
+        </a>
+    </div>
+
+</div>
+
+<footer>
+    <div class="footer-inner">
+        <p><strong style="color:rgba(255,255,255,0.9);">Livrinhos Digitais</strong> &nbsp;·&nbsp; © 2026. Todos os direitos reservados.</p>
+        <div class="footer-links">
+            <a href="/politica-privacidade">Política de Privacidade</a>
+            <span>|</span>
+            <a href="/termos-de-uso">Termos de Uso</a>
+            <span>|</span>
+            <a href="/contato">Contato</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

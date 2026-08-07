@@ -39,6 +39,8 @@ class WhatsAppSecurity:
         'lbe-livros.site': 'WHATSAPP_APP_SECRET_LBE',
         'lb-livros.site': 'WHATSAPP_APP_SECRET_LB',
         'breplivros.site': 'WHATSAPP_APP_SECRET_BREP',
+        'leituraemais.site': 'WHATSAPP_APP_SECRET_LEITURAEMAIS',
+        'livrinhosdigitais.site': 'WHATSAPP_APP_SECRET_LIVRINHOS',
     }
 
     _HOST_ACCESS_TOKEN_MAP = {
@@ -53,6 +55,8 @@ class WhatsAppSecurity:
         'lbe-livros.site': 'WHATSAPP_ACCESS_TOKEN_LBE',
         'lb-livros.site': 'WHATSAPP_ACCESS_TOKEN_LB',
         'breplivros.site': 'WHATSAPP_ACCESS_TOKEN_BREP',
+        'leituraemais.site': 'WHATSAPP_ACCESS_TOKEN_LEITURAEMAIS',
+        'livrinhosdigitais.site': 'WHATSAPP_ACCESS_TOKEN_LIVRINHOS',
     }
 
     def _secret_para_payload(self) -> str:

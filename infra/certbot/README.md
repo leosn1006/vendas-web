@@ -47,8 +47,8 @@ nenhum domínio hoje.
 |---|---|
 | 8 domínios `.com.br` legados (`lneditor`, `lssolucoesdigitais`, `lsdigitalsolucoes`, `kpnlivros`, `lsfb-livros`, `rc-livros`, `lclivros`, `ju-livros`, `lsreceitas`) + `breplivros.site`, `lb-livros.site`, `lbe-livros.site` | RapidSSL (pago, manual) |
 | `lsnlivros.com.br` | RapidSSL — **fica assim de propósito**: esse certificado é reaproveitado como client cert mTLS da API Pix do Banco do Brasil (`BB_PIX_CERT_PEM`/`BB_PIX_CERT_KEY` no `docker-compose.yml`). Trocar de CA exigiria validar antes com o BB. |
-| `livrinhosdigitais.site` | Let's Encrypt (em emissão) |
-| `leituraemais.site` | Let's Encrypt (em emissão) |
+| `livrinhosdigitais.site` | Let's Encrypt (em emissão — blocos nginx 80 e 443 já no `default.conf`, aguardando o `certbot certonly` rodar no VPS) |
+| `leituraemais.site` | Let's Encrypt (em emissão — blocos nginx 80 e 443 já no `default.conf`, aguardando o `certbot certonly` rodar no VPS) |
 
 Migração dos domínios legados para Let's Encrypt é possível (ideia discutida:
 deixar o certificado pago vencer e emitir Let's Encrypt no lugar), mas não foi

@@ -156,6 +156,14 @@ def _is_brep_livros():
     host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
     return 'breplivros.site' in host
 
+def _is_leituraemais():
+    host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return 'leituraemais.site' in host
+
+def _is_livrinhos():
+    host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return 'livrinhosdigitais.site' in host
+
 @app.get("/")
 def index():
     produtos = busca_produtos_disponiveis_web()
@@ -179,6 +187,10 @@ def index():
         tmpl = 'portifolio-lb.html'
     elif _is_brep_livros():
         tmpl = 'portifolio-brep.html'
+    elif _is_leituraemais():
+        tmpl = 'portifolio-leituraemais.html'
+    elif _is_livrinhos():
+        tmpl = 'portifolio-livrinhos.html'
     else:
         tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
@@ -206,6 +218,10 @@ def portifolio():
         tmpl = 'portifolio-lb.html'
     elif _is_brep_livros():
         tmpl = 'portifolio-brep.html'
+    elif _is_leituraemais():
+        tmpl = 'portifolio-leituraemais.html'
+    elif _is_livrinhos():
+        tmpl = 'portifolio-livrinhos.html'
     else:
         tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
@@ -232,6 +248,10 @@ def politica_privacidade():
         tmpl = 'politica-privacidade-lb.html'
     elif _is_brep_livros():
         tmpl = 'politica-privacidade-brep.html'
+    elif _is_leituraemais():
+        tmpl = 'politica-privacidade-leituraemais.html'
+    elif _is_livrinhos():
+        tmpl = 'politica-privacidade-livrinhos.html'
     else:
         tmpl = 'politica-privacidade.html'
     return render_template(tmpl)
@@ -258,6 +278,10 @@ def termos_de_uso():
         tmpl = 'termos-de-uso-lb.html'
     elif _is_brep_livros():
         tmpl = 'termos-de-uso-brep.html'
+    elif _is_leituraemais():
+        tmpl = 'termos-de-uso-leituraemais.html'
+    elif _is_livrinhos():
+        tmpl = 'termos-de-uso-livrinhos.html'
     else:
         tmpl = 'termos-de-uso.html'
     return render_template(tmpl)
@@ -284,6 +308,10 @@ def contato():
         tmpl = 'contato-lb.html'
     elif _is_brep_livros():
         tmpl = 'contato-brep.html'
+    elif _is_leituraemais():
+        tmpl = 'contato-leituraemais.html'
+    elif _is_livrinhos():
+        tmpl = 'contato-livrinhos.html'
     else:
         tmpl = 'contato.html'
     return render_template(tmpl)
