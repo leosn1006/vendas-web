@@ -409,7 +409,6 @@ services:
     volumes:
       - ./infra/certbot/www:/var/www/certbot
       - ./infra/certbot/conf:/etc/letsencrypt
-    entrypoint: "true"
 
 networks:
   webnet:
