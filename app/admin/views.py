@@ -22,6 +22,7 @@ from database import (db,
     adicionar_bump_produto, atualizar_bump_produto, remover_bump_produto,
     get_pedido, get_ultimo_pedido_by_phone, salvar_mensagem_pedido,
     buscar_todas_mensagens_pedido,
+    pedido_dentro_da_janela_24h, buscar_data_ultima_mensagem_recebida_pedido,
     buscar_pedido_por_nome, acertar_valor_pedido,
     listar_chaves_pix_produto, adicionar_chave_pix_produto, desativar_chave_pix_produto,
     busca_financeiro_pix,
@@ -819,9 +820,13 @@ def conversa_pedido(produto_id, pedido_id):
 
     mensagens = buscar_todas_mensagens_pedido(pedido_id)
     notificacao_ativa = buscar_notificacao_em_analise_pedido(pedido_id)
+    dentro_da_janela = pedido_dentro_da_janela_24h(pedido_id)
+    ultima_mensagem_cliente_em = buscar_data_ultima_mensagem_recebida_pedido(pedido_id)
     return render_template('admin/produto_conversas.html',
                            produto=produto, pedido=pedido, mensagens=mensagens,
-                           notificacao_ativa=notificacao_ativa)
+                           notificacao_ativa=notificacao_ativa,
+                           dentro_da_janela=dentro_da_janela,
+                           ultima_mensagem_cliente_em=ultima_mensagem_cliente_em)
 
 
 @admin_bp.route('/produto/<int:produto_id>/conversas/<int:pedido_id>/bloquear-followup', methods=['POST'])
@@ -856,6 +861,11 @@ def conversa_enviar_mensagem(produto_id, pedido_id):
     if not pedido or pedido.get('produto_id') != produto_id:
         flash('Pedido não encontrado.', 'danger')
         return redirect(url_for('admin.conversas_produto', produto_id=produto_id))
+
+    if not pedido_dentro_da_janela_24h(pedido_id):
+        flash('Não é possível enviar: fora da janela de 24h da API do WhatsApp '
+              '(nenhuma mensagem do cliente nas últimas 24h). Aguarde o cliente responder.', 'danger')
+        return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
 
     tipo = request.form.get('tipo', 'texto')
     try:

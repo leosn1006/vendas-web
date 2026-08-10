@@ -190,6 +190,18 @@
 
 <!-- Chat -->
 <div class="card">
+    {% if not dentro_da_janela %}
+    <div class="alert alert-warning" style="margin-bottom: 16px;">
+        ⏰ Fora da janela de 24h da API do WhatsApp —
+        {% if ultima_mensagem_cliente_em %}
+            última mensagem do cliente em {{ ultima_mensagem_cliente_em.strftime('%d/%m/%Y às %H:%M') }}.
+        {% else %}
+            o cliente ainda não enviou nenhuma mensagem.
+        {% endif %}
+        Não é possível enviar mensagens manuais até que o cliente responda.
+    </div>
+    {% endif %}
+
     <div class="chat-toolbar">
         <button onclick="history.back()" class="btn btn-ghost btn-sm">← Voltar</button>
         <a href="{{ url_for('admin.conversa_pedido', produto_id=produto.id, pedido_id=pedido.id) }}"
@@ -251,6 +263,7 @@
         {% endif %}
     </div>
 
+    {% if dentro_da_janela %}
     <div class="send-area">
         <form method="POST"
               action="{{ url_for('admin.conversa_enviar_mensagem', produto_id=produto.id, pedido_id=pedido.id) }}">
@@ -281,6 +294,13 @@
             </div>
         </form>
     </div>
+    {% else %}
+    <div class="send-area">
+        <p style="color: var(--muted); font-size: 14px;">
+            Envio de mensagens desabilitado — fora da janela de 24h.
+        </p>
+    </div>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}

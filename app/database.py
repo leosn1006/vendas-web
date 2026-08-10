@@ -425,6 +425,33 @@ def contar_comprovantes_recebidos_recentes(pedido_id: int, minutos: int = 5) -> 
     return row['total'] if row else 0
 
 
+def pedido_dentro_da_janela_24h(pedido_id: int) -> bool:
+    """True se há mensagem RECEBIDA do cliente nas últimas 24h (comparação em SQL,
+    usando NOW() do próprio MySQL — evita mismatch de timezone app/banco).
+    Pedido sem nenhuma mensagem recebida retorna False (não há janela aberta)."""
+    query = """
+        SELECT COUNT(*) AS total
+        FROM mensagens_pedidos
+        WHERE pedido_id = %s
+          AND tipo_mensagem = 'recebida'
+          AND data_mensagem >= NOW() - INTERVAL 24 HOUR
+    """
+    row = db.execute_query(query, (pedido_id,), fetch_one=True)
+    return bool(row and row['total'] > 0)
+
+
+def buscar_data_ultima_mensagem_recebida_pedido(pedido_id: int):
+    """Datetime da última mensagem recebida do cliente neste pedido, ou None
+    se ele nunca enviou nada. Usado só para exibição no banner."""
+    query = """
+        SELECT MAX(data_mensagem) AS ultima
+        FROM mensagens_pedidos
+        WHERE pedido_id = %s AND tipo_mensagem = 'recebida'
+    """
+    row = db.execute_query(query, (pedido_id,), fetch_one=True)
+    return row['ultima'] if row else None
+
+
 def contar_total_mensagens_pedido(pedido_id: int) -> int:
     """Retorna o sequencial máximo de mensagens do pedido (equivale ao total acumulado)."""
     query = "SELECT COALESCE(MAX(sequencial_mensagem), 0) AS total FROM mensagens_pedidos WHERE pedido_id = %s"
