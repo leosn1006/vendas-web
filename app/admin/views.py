@@ -975,7 +975,7 @@ def selecionar_produto():
             flash('Você não tem acesso a este produto.', 'danger')
             return redirect(url_for('admin.dashboard'))
         session['produto_ativo_id'] = produto_id
-        return redirect(url_for('admin.analytics_produto', produto_id=produto_id))
+        return redirect(url_for('admin.roi_produto', produto_id=produto_id))
     session.pop('produto_ativo_id', None)
     return redirect(url_for('admin.dashboard'))
 
