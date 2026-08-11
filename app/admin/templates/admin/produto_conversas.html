@@ -202,6 +202,21 @@
     </div>
     {% endif %}
 
+    {% if not numero_operacional %}
+    <div class="alert alert-warning" style="margin-bottom: 16px;">
+        📵
+        {% if status_numero_empresa %}
+            O número da empresa vinculado a este pedido ({{ status_numero_empresa.telefone }}) está com
+            status "{{ status_numero_empresa.status_api }}" na Meta — pode estar banido, restrito ou
+            desconectado.
+        {% else %}
+            O número da empresa vinculado a este pedido não está mais cadastrado na base de números
+            ativos (removido ou nunca vinculado).
+        {% endif %}
+        Não é possível enviar mensagens manuais até que o chip seja regularizado.
+    </div>
+    {% endif %}
+
     <div class="chat-toolbar">
         <button onclick="history.back()" class="btn btn-ghost btn-sm">← Voltar</button>
         <a href="{{ url_for('admin.conversa_pedido', produto_id=produto.id, pedido_id=pedido.id) }}"
@@ -263,7 +278,7 @@
         {% endif %}
     </div>
 
-    {% if dentro_da_janela %}
+    {% if pode_enviar_mensagem %}
     <div class="send-area">
         <form method="POST"
               action="{{ url_for('admin.conversa_enviar_mensagem', produto_id=produto.id, pedido_id=pedido.id) }}">
@@ -297,7 +312,14 @@
     {% else %}
     <div class="send-area">
         <p style="color: var(--muted); font-size: 14px;">
-            Envio de mensagens desabilitado — fora da janela de 24h.
+            Envio de mensagens desabilitado —
+            {% if not dentro_da_janela and not numero_operacional %}
+                fora da janela de 24h e número da empresa indisponível.
+            {% elif not dentro_da_janela %}
+                fora da janela de 24h.
+            {% else %}
+                número da empresa indisponível.
+            {% endif %}
         </p>
     </div>
     {% endif %}

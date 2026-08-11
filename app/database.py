@@ -1566,6 +1566,31 @@ def phone_number_id_cadastrado(api_phone_number_id: str) -> bool:
         return False
 
 
+def buscar_status_numero_empresa(api_phone_number_id: str):
+    """Telefone e status_api do chip cadastrado em telefones_produto pelo api_phone_number_id.
+    None se api_phone_number_id vazio ou não cadastrado (excluído da base)."""
+    if not api_phone_number_id:
+        return None
+    query = """
+        SELECT telefone, status_api
+        FROM telefones_produto
+        WHERE api_phone_number_id = %s
+        LIMIT 1
+    """
+    return db.execute_query(query, (api_phone_number_id,), fetch_one=True)
+
+
+def numero_empresa_operacional(api_phone_number_id: str) -> bool:
+    """True se o chip ainda está cadastrado em telefones_produto e sem status de problema
+    (mesmo critério do badge em numeros_whatsapp.html: status_api preenchido e != 'CONNECTED'
+    bloqueia; status_api NULL — nunca checado — não bloqueia)."""
+    info = buscar_status_numero_empresa(api_phone_number_id)
+    if info is None:
+        return False
+    status = info.get('status_api')
+    return not status or status == 'CONNECTED'
+
+
 def get_phone_number_id_produto(produto_id: int):
     """Retorna o api_phone_number_id (ID da API Meta) associado ao produto ou None."""
     row = db.execute_query(

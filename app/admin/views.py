@@ -23,6 +23,7 @@ from database import (db,
     get_pedido, get_ultimo_pedido_by_phone, salvar_mensagem_pedido,
     buscar_todas_mensagens_pedido,
     pedido_dentro_da_janela_24h, buscar_data_ultima_mensagem_recebida_pedido,
+    numero_empresa_operacional, buscar_status_numero_empresa,
     buscar_pedido_por_nome, acertar_valor_pedido,
     listar_chaves_pix_produto, adicionar_chave_pix_produto, desativar_chave_pix_produto,
     busca_financeiro_pix,
@@ -822,11 +823,17 @@ def conversa_pedido(produto_id, pedido_id):
     notificacao_ativa = buscar_notificacao_em_analise_pedido(pedido_id)
     dentro_da_janela = pedido_dentro_da_janela_24h(pedido_id)
     ultima_mensagem_cliente_em = buscar_data_ultima_mensagem_recebida_pedido(pedido_id)
+    numero_operacional = numero_empresa_operacional(pedido.get('phone_number_id'))
+    status_numero_empresa = None if numero_operacional else buscar_status_numero_empresa(pedido.get('phone_number_id'))
+    pode_enviar_mensagem = dentro_da_janela and numero_operacional
     return render_template('admin/produto_conversas.html',
                            produto=produto, pedido=pedido, mensagens=mensagens,
                            notificacao_ativa=notificacao_ativa,
                            dentro_da_janela=dentro_da_janela,
-                           ultima_mensagem_cliente_em=ultima_mensagem_cliente_em)
+                           ultima_mensagem_cliente_em=ultima_mensagem_cliente_em,
+                           numero_operacional=numero_operacional,
+                           status_numero_empresa=status_numero_empresa,
+                           pode_enviar_mensagem=pode_enviar_mensagem)
 
 
 @admin_bp.route('/produto/<int:produto_id>/conversas/<int:pedido_id>/bloquear-followup', methods=['POST'])
@@ -865,6 +872,17 @@ def conversa_enviar_mensagem(produto_id, pedido_id):
     if not pedido_dentro_da_janela_24h(pedido_id):
         flash('Não é possível enviar: fora da janela de 24h da API do WhatsApp '
               '(nenhuma mensagem do cliente nas últimas 24h). Aguarde o cliente responder.', 'danger')
+        return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
+
+    if not numero_empresa_operacional(pedido.get('phone_number_id')):
+        status_info = buscar_status_numero_empresa(pedido.get('phone_number_id'))
+        if status_info:
+            flash(f"Não é possível enviar: o número da empresa ({status_info['telefone']}) está "
+                  f"com status \"{status_info['status_api']}\" na Meta (possível banimento/restrição). "
+                  f"Contate o time técnico.", 'danger')
+        else:
+            flash('Não é possível enviar: o número da empresa vinculado a este pedido não está mais '
+                  'cadastrado na base de números ativos (removido ou nunca vinculado).', 'danger')
         return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
 
     tipo = request.form.get('tipo', 'texto')
