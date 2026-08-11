@@ -161,7 +161,8 @@
         overflow: hidden;
     }
 
-    #comprovanteModal {
+    #comprovanteModal,
+    #itensPedidoModal {
         position: fixed;
         inset: 0;
         z-index: 1060;
@@ -171,7 +172,8 @@
         padding: 20px;
     }
 
-    #comprovanteModal.show {
+    #comprovanteModal.show,
+    #itensPedidoModal.show {
         display: flex;
     }
 
@@ -181,22 +183,58 @@
         margin: 0;
     }
 
-    #comprovanteModal .modal-content {
-        max-height: 94vh;
+    #itensPedidoModal .modal-dialog {
+        width: 100%;
+        margin: 0;
+    }
+
+    #comprovanteModal .modal-content,
+    #itensPedidoModal .modal-content {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
         display: flex;
         flex-direction: column;
         border-radius: 10px;
     }
 
-    #comprovanteModal .modal-header,
-    #comprovanteModal .modal-footer {
-        flex: 0 0 auto;
+    #comprovanteModal .modal-content {
+        max-height: 94vh;
     }
 
-    #comprovanteModal .modal-body {
+    #itensPedidoModal .modal-content {
+        max-height: 90vh;
+    }
+
+    #comprovanteModal .modal-header,
+    #comprovanteModal .modal-footer,
+    #itensPedidoModal .modal-header,
+    #itensPedidoModal .modal-footer {
+        flex: 0 0 auto;
+        padding: 14px 16px;
+    }
+
+    #comprovanteModal .modal-header,
+    #itensPedidoModal .modal-header {
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    #comprovanteModal .modal-footer,
+    #itensPedidoModal .modal-footer {
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    #comprovanteModal .modal-body,
+    #itensPedidoModal .modal-body {
         flex: 1 1 auto;
         overflow: auto;
-        padding: 12px;
+        padding: 12px 16px;
     }
 
     .modal-backdrop {
@@ -207,11 +245,13 @@
     }
 
     @media (max-width: 768px) {
-        #comprovanteModal {
+        #comprovanteModal,
+        #itensPedidoModal {
             padding: 10px;
         }
 
-        #comprovanteModal .modal-content {
+        #comprovanteModal .modal-content,
+        #itensPedidoModal .modal-content {
             max-height: 94vh;
         }
     }
