@@ -3166,11 +3166,18 @@ def financeiro_atualizar_pix(produto_id):
 
 PAGAMENTOS_POR_PAGINA = 50
 
+# estado_id: 0 = pago via WhatsApp, 1000 = pago via Web (Pix/BB Pay)
+ORIGEM_ESTADOS = {
+    'todos': (0, 1000),
+    'whatsapp': (0,),
+    'web': (1000,),
+}
+
 _SQL_PAGAMENTOS_TOTAL = """
     SELECT COUNT(*) as total
     FROM pedidos
     WHERE produto_id = %s
-      AND estado_id = 0
+      AND estado_id IN ({placeholders})
       AND data_pagamento BETWEEN %s AND %s
 """
 
@@ -3184,10 +3191,11 @@ _SQL_PAGAMENTOS_LISTA = """
         contact_name,
         contact_phone,
         nome_pagador,
-        valor_pago
+        valor_pago,
+        estado_id
     FROM pedidos
     WHERE produto_id = %s
-      AND estado_id = 0
+      AND estado_id IN ({placeholders})
       AND data_pagamento BETWEEN %s AND %s
     ORDER BY data_pagamento DESC
     LIMIT %s
@@ -3198,7 +3206,19 @@ _SQL_PAGAMENTOS_RECEITA = """
     SELECT SUM(valor_pago) AS receita_total
     FROM pedidos
     WHERE produto_id = %s
-      AND estado_id = 0
+      AND estado_id IN ({placeholders})
+      AND data_pagamento BETWEEN %s AND %s
+"""
+
+# Contadores por origem, independentes do filtro selecionado (alimentam os botões do seletor).
+# 0 e 1000 aqui são literais fixos, não vêm de input do usuário -- seguro embutir na SQL.
+_SQL_PAGAMENTOS_COUNTS_ORIGEM = """
+    SELECT
+        COUNT(CASE WHEN estado_id = 0    THEN 1 END) AS total_whatsapp,
+        COUNT(CASE WHEN estado_id = 1000 THEN 1 END) AS total_web
+    FROM pedidos
+    WHERE produto_id = %s
+      AND estado_id IN (0, 1000)
       AND data_pagamento BETWEEN %s AND %s
 """
 
@@ -3215,6 +3235,12 @@ def pagamentos_produto(produto_id):
     data_ini_str = request.args.get('data_ini', hoje.isoformat())
     data_fim_str = request.args.get('data_fim', hoje.isoformat())
     pagina_str = request.args.get('page', '1')
+
+    origem = request.args.get('origem', 'todos')
+    if origem not in ORIGEM_ESTADOS:
+        origem = 'todos'
+    estados = ORIGEM_ESTADOS[origem]
+    placeholders = ','.join(['%s'] * len(estados))
 
     try:
         data_ini = datetime.datetime.fromisoformat(data_ini_str)
@@ -3234,9 +3260,13 @@ def pagamentos_produto(produto_id):
     except (ValueError, TypeError):
         pagina_atual = 1
 
+    sql_total = _SQL_PAGAMENTOS_TOTAL.format(placeholders=placeholders)
+    sql_lista = _SQL_PAGAMENTOS_LISTA.format(placeholders=placeholders)
+    sql_receita = _SQL_PAGAMENTOS_RECEITA.format(placeholders=placeholders)
+
     try:
         # Contar total de registros
-        total_result = db.execute_query(_SQL_PAGAMENTOS_TOTAL, (produto_id, data_ini, data_fim), fetch_one=True)
+        total_result = db.execute_query(sql_total, (produto_id, *estados, data_ini, data_fim), fetch_one=True)
         total_registros = total_result['total'] if total_result else 0
         total_paginas = (total_registros + PAGAMENTOS_POR_PAGINA - 1) // PAGAMENTOS_POR_PAGINA or 1
 
@@ -3246,6 +3276,7 @@ def pagamentos_produto(produto_id):
                                   produto_id=produto_id,
                                   data_ini=data_ini_str,
                                   data_fim=data_fim_str,
+                                  origem=origem,
                                   page=total_paginas))
 
         # Calcular offset
@@ -3253,14 +3284,19 @@ def pagamentos_produto(produto_id):
 
         # Buscar pedidos da página
         pedidos = db.execute_query(
-            _SQL_PAGAMENTOS_LISTA,
-            (produto_id, data_ini, data_fim, PAGAMENTOS_POR_PAGINA, offset),
+            sql_lista,
+            (produto_id, *estados, data_ini, data_fim, PAGAMENTOS_POR_PAGINA, offset),
             fetch_all=True
         )
 
         # Buscar receita do período
-        receita_result = db.execute_query(_SQL_PAGAMENTOS_RECEITA, (produto_id, data_ini, data_fim), fetch_one=True)
+        receita_result = db.execute_query(sql_receita, (produto_id, *estados, data_ini, data_fim), fetch_one=True)
         receita_total = receita_result['receita_total'] or 0 if receita_result else 0
+
+        # Contadores por origem (independentes do filtro selecionado, para os botões do seletor)
+        counts_result = db.execute_query(_SQL_PAGAMENTOS_COUNTS_ORIGEM, (produto_id, data_ini, data_fim), fetch_one=True)
+        count_whatsapp = (counts_result['total_whatsapp'] or 0) if counts_result else 0
+        count_web = (counts_result['total_web'] or 0) if counts_result else 0
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro ao carregar pagamentos produto #{produto_id}: {e}")
         flash('Erro ao carregar pagamentos.', 'danger')
@@ -3269,6 +3305,8 @@ def pagamentos_produto(produto_id):
         total_registros = 0
         total_paginas = 1
         pagina_atual = 1
+        count_whatsapp = 0
+        count_web = 0
 
     return render_template('admin/produto_pagamentos.html',
         produto=produto,
@@ -3280,6 +3318,10 @@ def pagamentos_produto(produto_id):
         total_paginas=total_paginas,
         total_registros=total_registros,
         pagamentos_por_pagina=PAGAMENTOS_POR_PAGINA,
+        origem=origem,
+        count_whatsapp=count_whatsapp,
+        count_web=count_web,
+        count_todos=count_whatsapp + count_web,
     )
 
 

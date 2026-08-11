@@ -229,6 +229,21 @@
 
 {% include 'admin/includes/_filtro_periodo.html' %}
 
+<div class="origem-filtro" style="display:flex; gap:8px; margin-bottom:16px;">
+    <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, origem='todos') }}"
+       class="btn btn-sm {{ 'btn-primary' if origem == 'todos' else 'btn-outline-secondary' }}">
+        Todos ({{ count_todos }})
+    </a>
+    <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, origem='whatsapp') }}"
+       class="btn btn-sm {{ 'btn-primary' if origem == 'whatsapp' else 'btn-outline-secondary' }}">
+        📱 WhatsApp ({{ count_whatsapp }})
+    </a>
+    <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, origem='web') }}"
+       class="btn btn-sm {{ 'btn-primary' if origem == 'web' else 'btn-outline-secondary' }}">
+        🌐 Web ({{ count_web }})
+    </a>
+</div>
+
 {% if pedidos %}
 
 <div class="pagamentos-header">
@@ -253,6 +268,7 @@
                     <th style="width: 60px;">ID</th>
                     <th style="width: 100px; text-align: right;">Valor</th>
                     <th style="width: 150px;">Data Pagamento</th>
+                    <th style="width: 110px;">Origem</th>
                     <th style="width: 180px;">Pagador</th>
                     <th style="width: 150px;">Data Contato</th>
                     <th style="width: 150px;">Follow-up</th>
@@ -281,6 +297,14 @@
                                 {{ pedido.data_pagamento.strftime('%H:%M') }}
                             {% endif %}
                         </div>
+                    </td>
+
+                    <td style="text-align: center;">
+                        {% if pedido.estado_id == 1000 %}
+                            <span class="badge badge-blue">🌐 Web</span>
+                        {% else %}
+                            <span class="badge badge-green">📱 WhatsApp</span>
+                        {% endif %}
                     </td>
 
                     <td style="font-size: 13px; color: var(--text);">
@@ -327,6 +351,15 @@
                                     &#128269;
                                 </button>
                             </div>
+                        {% elif pedido.estado_id == 1000 %}
+                            <div class="comprovante-actions">
+                                <button type="button" class="btn-comprovante tooltip" disabled data-tooltip="Pago via Web — sem comprovante">
+                                    Abrir
+                                </button>
+                                <button type="button" class="btn-comprovante-sec" disabled title="Pago via Web — sem comprovante" aria-label="Pago via Web — sem comprovante">
+                                    &#128269;
+                                </button>
+                            </div>
                         {% else %}
                             <div class="comprovante-actions">
                                 <button type="button" class="btn-comprovante tooltip" disabled data-tooltip="Não enviado">
@@ -355,7 +388,7 @@
         <div style="display: flex; gap: 8px;">
             <!-- Botão Anterior -->
             {% if pagina_atual > 1 %}
-                <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, page=pagina_atual-1) }}"
+                <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, origem=origem, page=pagina_atual-1) }}"
                    class="btn btn-sm btn-outline-secondary">
                     ← Anterior
                 </a>
@@ -368,7 +401,7 @@
             {% set end_page = [total_paginas, pagina_atual + 2]|min %}
 
             {% if start_page > 1 %}
-                <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, page=1) }}"
+                <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, origem=origem, page=1) }}"
                    class="btn btn-sm btn-outline-secondary">1</a>
                 {% if start_page > 2 %}<span class="btn btn-sm" style="pointer-events: none; color: var(--muted);">...</span>{% endif %}
             {% endif %}
@@ -377,20 +410,20 @@
                 {% if p == pagina_atual %}
                     <button class="btn btn-sm btn-primary" disabled>{{ p }}</button>
                 {% else %}
-                    <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, page=p) }}"
+                    <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, origem=origem, page=p) }}"
                        class="btn btn-sm btn-outline-secondary">{{ p }}</a>
                 {% endif %}
             {% endfor %}
 
             {% if end_page < total_paginas %}
                 {% if end_page < total_paginas - 1 %}<span class="btn btn-sm" style="pointer-events: none; color: var(--muted);">...</span>{% endif %}
-                <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, page=total_paginas) }}"
+                <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, origem=origem, page=total_paginas) }}"
                    class="btn btn-sm btn-outline-secondary">{{ total_paginas }}</a>
             {% endif %}
 
             <!-- Botão Próximo -->
             {% if pagina_atual < total_paginas %}
-                <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, page=pagina_atual+1) }}"
+                <a href="{{ url_for('admin.pagamentos_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, origem=origem, page=pagina_atual+1) }}"
                    class="btn btn-sm btn-outline-secondary">
                     Próximo →
                 </a>

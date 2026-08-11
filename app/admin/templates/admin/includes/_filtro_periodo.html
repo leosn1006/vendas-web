@@ -1,4 +1,7 @@
 <form method="GET" action="{{ request.path }}" class="period-form">
+    {% if origem is defined %}
+    <input type="hidden" name="origem" value="{{ origem }}">
+    {% endif %}
     <div class="form-group">
         <label>Data inicial</label>
         <input type="date" name="data_ini" value="{{ data_ini }}" class="period-date-input">
