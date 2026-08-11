@@ -733,6 +733,24 @@ def buscar_pedidos_followup( horas_sem_atualizacao: int) -> list:
     """
     return db.execute_query(query, (horas_sem_atualizacao,), fetch_all=True)
 
+def buscar_pedidos_followup_pagamento_web(minutos_sem_atualizacao: int = 60) -> list:
+    query = """
+        SELECT *
+        FROM pedidos
+        WHERE estado_id = 1002 -- estado 'Aguardando pagamento BB Pay'
+        AND email IS NOT NULL AND email != ''
+        AND data_followup_pagamento_web IS NULL
+        AND data_ultima_atualizacao <= NOW() - INTERVAL %s MINUTE
+        AND expiracao_solicitacao_bb > NOW()
+    """
+    return db.execute_query(query, (minutos_sem_atualizacao,), fetch_all=True)
+
+def marcar_followup_pagamento_web_enviado(pedido_id: int) -> None:
+    db.execute_query(
+        "UPDATE pedidos SET data_followup_pagamento_web = CURRENT_TIMESTAMP WHERE id = %s",
+        (pedido_id,)
+    )
+
 def buscar_pedidos_followup_interesse_1() -> list:
     query = """
         SELECT *

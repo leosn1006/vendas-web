@@ -12,19 +12,11 @@ Fluxo:
 """
 
 import os
-import json as _json
 import logging
-import base64
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.utils import formataddr
 
-from google.oauth2.service_account import Credentials
-from googleapiclient.discovery import build
+from fluxos._email_gmail import enviar as _enviar_gmail, lighten_hex as _lighten_hex
 
 logger = logging.getLogger(__name__)
-
-_GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 
 def executar(pedido_id: int) -> None:
@@ -44,7 +36,7 @@ def executar(pedido_id: int) -> None:
         return
 
     destinatario = pedido['email']
-    nome_cliente = (pedido.get('contact_name') or '').split()[0] or 'cliente'
+    nome_cliente = (pedido.get('contact_name') or 'cliente').split()[0]
     remetente    = (produto or {}).get('email_remetente') or os.getenv('EMAIL_FROM', '')
     nome_produto = (produto or {}).get('nome', 'Guia Digital')
     pedido_num   = f'#{pedido_id:04d}'
@@ -65,7 +57,7 @@ def executar(pedido_id: int) -> None:
         for item in db.listar_itens_pedido(pedido_id)
     ]
 
-    _enviar(
+    _enviar_gmail(
         destinatario=destinatario,
         remetente=remetente,
         nome_remetente=f'{nome_remetente_email} — {nome_produto}',
@@ -75,60 +67,6 @@ def executar(pedido_id: int) -> None:
     )
     db.marcar_ebook_enviado(pedido_id)
     logger.info(f'[EMAIL] ✅ Pedido #{pedido_id} entregue para {destinatario}')
-
-
-def _enviar(destinatario: str, remetente: str, nome_remetente: str,
-            subject: str, html: str) -> None:
-    # Usa sempre a SA do produto 6 (conta empresarial com Google Workspace)
-    # TODO: migrar produto 1 para Workspace e usar GOOGLE_SA_JSON_P{produto_id}
-    sa_json = os.getenv('GOOGLE_SA_JSON_P6')
-    if not sa_json:
-        raise RuntimeError('[EMAIL] GOOGLE_SA_JSON_P6 não configurada')
-
-    creds = Credentials.from_service_account_info(
-        _json.loads(sa_json),
-        scopes=_GMAIL_SCOPES,
-        subject='admin@lsnlivros.com.br',  # TODO: usar remetente quando produto 1 migrar para Workspace
-        # subject=remetente,
-    )
-    service = build('gmail', 'v1', credentials=creds)
-
-    msg = MIMEMultipart('alternative')
-    msg['to']      = destinatario
-    msg['from']    = formataddr((nome_remetente, remetente))
-    msg['subject'] = subject
-    msg.attach(MIMEText(html, 'html'))
-
-    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
-    service.users().messages().send(userId='me', body={'raw': raw}).execute()
-
-
-def _lighten_hex(hex_color: str, amount: float = 0.3) -> str:
-    """
-    Clareia uma cor hexadecimal.
-
-    Args:
-        hex_color: Cor em formato hex (#RRGGBB)
-        amount: Quantidade para clarear (0.0 a 1.0), padrão 0.3 = 30% mais claro
-
-    Returns:
-        Cor clareada em formato hex
-    """
-    # Remove '#' se presente
-    hex_color = hex_color.lstrip('#')
-
-    # Converte hex para RGB
-    r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
-
-    # Clareia cada componente (move em direção ao branco 255)
-    r = int(r + (255 - r) * amount)
-    g = int(g + (255 - g) * amount)
-    b = int(b + (255 - b) * amount)
-
-    # Garante que não ultrapasse 255
-    r, g, b = min(255, r), min(255, g), min(255, b)
-
-    return f'#{r:02x}{g:02x}{b:02x}'
 
 
 def _corpo_html(nome: str, nome_produto: str,

@@ -27,6 +27,11 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute='*/5', hour='7-22'),  # a cada 5min das 7h às 22h55
         'options': {'queue': 'normal'},
     },
+    'followup-pagamento-web': {
+        'task': 'tasks.followup_pagamento_web',
+        'schedule': crontab(minute='5,35'),  # a cada 30min, nos minutos :05 e :35
+        'options': {'queue': 'baixa'},
+    },
 #parar um por enquanto, certificado de acesso com problemas
 #    'upload-conversoes-google-ads': {
 #        'task': 'tasks.processar_uploads_google_ads',
@@ -116,6 +121,7 @@ celery_app.conf.update(
         "tasks.processar_evento_conta_whatsapp":         {"queue": "normal"},
         # BAIXA — background/agendados
         "tasks.followup_pagamento_dinamico":             {"queue": "baixa"},
+        "tasks.followup_pagamento_web":                  {"queue": "baixa"},
         "tasks.processar_uploads_google_ads":            {"queue": "baixa"},
         "tasks.processar_uploads_google_sheets":         {"queue": "baixa"},
         "tasks.processar_pagamentos_pix":                {"queue": "baixa"},
