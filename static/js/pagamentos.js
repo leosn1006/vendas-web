@@ -252,23 +252,218 @@ function mostrarErroModal(mensagem) {
 }
 
 /**
- * Fecha modal ao clicar fora (backdrop)
+ * Gerenciamento de Modal de Detalhes do Pedido (bônus + order bump, pedidos web)
+ */
+
+let itensModalPedidoAtual = null;
+
+const TIPO_ITEM_INFO = {
+    principal: { icon: '📦', label: 'Produto principal' },
+    bonus:     { icon: '🎁', label: 'Bônus' },
+    bump:      { icon: '➕', label: 'Order Bump' },
+};
+
+function formatarMoeda(valor) {
+    return `R$ ${Number(valor || 0).toFixed(2).replace('.', ',')}`;
+}
+
+async function buscarItensPedido(pedidoId) {
+    const response = await fetch(`/admin/pedido/${pedidoId}/itens`, {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+    });
+
+    const rawBody = await response.text();
+    let data = null;
+    try {
+        data = rawBody ? JSON.parse(rawBody) : null;
+    } catch (parseError) {
+        data = null;
+    }
+
+    if (!response.ok || !data || data.ok === false) {
+        const htmlResponse = (rawBody || '').trim().toLowerCase().startsWith('<!doctype') || (rawBody || '').trim().toLowerCase().startsWith('<html');
+        const msg = data && data.msg
+            ? data.msg
+            : htmlResponse
+                ? 'Sessão expirada ou resposta inválida do servidor. Atualize a página e tente novamente.'
+                : `Falha ao carregar detalhes (HTTP ${response.status})`;
+
+        console.error('Falha na API de itens do pedido', {
+            pedidoId,
+            status: response.status,
+            statusText: response.statusText,
+            bodyPreview: (rawBody || '').slice(0, 300)
+        });
+        throw new Error(msg);
+    }
+
+    return data;
+}
+
+/**
+ * Abre modal com o detalhe do pedido (produto principal + bônus + order bumps)
+ */
+async function abrirModalItensPedido(button) {
+    let pedidoId;
+    try {
+        pedidoId = extrairPedidoId(button);
+    } catch (error) {
+        console.error('Pedido ID inválido:', error);
+        mostrarErroModalItens('ID de pedido inválido');
+        return;
+    }
+
+    itensModalPedidoAtual = pedidoId;
+
+    const modal = document.getElementById('itensPedidoModal');
+    document.getElementById('itensPedidoModalId').textContent = pedidoId;
+    document.getElementById('itensPedidoViewer').innerHTML = `
+        <div style="display: flex; justify-content: center; align-items: center; height: 150px;">
+            <div style="text-align: center; color: var(--muted); font-size: 13px;">Carregando detalhes...</div>
+        </div>
+    `;
+    modal.classList.add('show');
+    modal.style.display = 'flex';
+    document.body.classList.add('modal-open');
+
+    let backdrop = document.querySelector('.modal-backdrop');
+    if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop fade show';
+        document.body.appendChild(backdrop);
+    }
+
+    try {
+        const data = await buscarItensPedido(pedidoId);
+        renderizarItensPedido(data);
+    } catch (error) {
+        console.error('Erro ao abrir modal de itens:', error);
+        mostrarErroModalItens(error.message || 'Erro ao carregar detalhes');
+    }
+}
+
+/**
+ * Renderiza a lista de itens estilo recibo (seguro contra XSS)
+ */
+function renderizarItensPedido(data) {
+    const viewer = document.getElementById('itensPedidoViewer');
+    viewer.innerHTML = '';
+
+    (data.itens || []).forEach((item) => {
+        const info = TIPO_ITEM_INFO[item.tipo] || { icon: '•', label: item.tipo };
+
+        const row = document.createElement('div');
+        row.className = 'recibo-item';
+
+        const nomeWrap = document.createElement('div');
+        nomeWrap.className = 'recibo-nome';
+
+        const icon = document.createElement('span');
+        icon.textContent = info.icon;
+        nomeWrap.appendChild(icon);
+
+        const nome = document.createElement('span');
+        nome.textContent = item.nome || info.label;
+        nomeWrap.appendChild(nome);
+
+        const valor = document.createElement('span');
+        valor.textContent = formatarMoeda(item.valor);
+
+        row.appendChild(nomeWrap);
+        row.appendChild(valor);
+        viewer.appendChild(row);
+    });
+
+    const totalRow = document.createElement('div');
+    totalRow.className = 'recibo-total';
+
+    const totalLabel = document.createElement('span');
+    totalLabel.textContent = 'Total';
+
+    const totalValor = document.createElement('span');
+    totalValor.textContent = formatarMoeda(data.pedido ? data.pedido.valor_pago : 0);
+
+    totalRow.appendChild(totalLabel);
+    totalRow.appendChild(totalValor);
+    viewer.appendChild(totalRow);
+}
+
+/**
+ * Fecha modal de itens e retorna ao pedido
+ */
+function fecharModalItens() {
+    const modal = document.getElementById('itensPedidoModal');
+
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+
+    const backdrop = document.querySelector('.modal-backdrop');
+    if (backdrop) {
+        backdrop.remove();
+    }
+
+    document.getElementById('itensPedidoModalId').textContent = '';
+    document.getElementById('itensPedidoViewer').innerHTML = '';
+
+    if (itensModalPedidoAtual) {
+        const pedidoElement = document.getElementById(`pedido-${itensModalPedidoAtual}`);
+        if (pedidoElement) {
+            setTimeout(() => {
+                pedidoElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        }
+        itensModalPedidoAtual = null;
+    }
+}
+
+/**
+ * Exibe erro no modal de itens (seguro contra XSS)
+ */
+function mostrarErroModalItens(mensagem) {
+    const viewer = document.getElementById('itensPedidoViewer');
+    viewer.innerHTML = '';
+
+    const container = document.createElement('div');
+    container.style.cssText = 'padding: 40px 20px; color: #d32f2f; text-align: center;';
+
+    const icon = document.createElement('div');
+    icon.textContent = '❌';
+    icon.style.cssText = 'font-size: 48px; margin-bottom: 12px;';
+    container.appendChild(icon);
+
+    const msg = document.createElement('div');
+    msg.textContent = mensagem;
+    container.appendChild(msg);
+
+    viewer.appendChild(container);
+}
+
+/**
+ * Fecha modais ao clicar fora (backdrop) ou pressionar Escape
  */
 document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('comprovanteModal');
+    const modais = [
+        { modal: document.getElementById('comprovanteModal'), fechar: fecharModal },
+        { modal: document.getElementById('itensPedidoModal'), fechar: fecharModalItens },
+    ];
 
-    if (modal) {
+    modais.forEach(({ modal, fechar }) => {
+        if (!modal) {
+            return;
+        }
+
         modal.addEventListener('click', function(e) {
             if (e.target === modal) {
-                fecharModal();
+                fechar();
             }
         });
 
-        // Tecla Escape para fechar
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && modal.classList.contains('show')) {
-                fecharModal();
+                fechar();
             }
         });
-    }
+    });
 });

@@ -20,7 +20,7 @@ from database import (db,
     listar_bonus_produto, adicionar_bonus_produto, remover_bonus_produto,
     listar_bump_produto, get_bump_produto,
     adicionar_bump_produto, atualizar_bump_produto, remover_bump_produto,
-    get_pedido, get_ultimo_pedido_by_phone, salvar_mensagem_pedido,
+    get_pedido, get_ultimo_pedido_by_phone, salvar_mensagem_pedido, listar_itens_pedido,
     buscar_todas_mensagens_pedido,
     pedido_dentro_da_janela_24h, buscar_data_ultima_mensagem_recebida_pedido,
     numero_empresa_operacional, buscar_status_numero_empresa,
@@ -3323,6 +3323,39 @@ def pagamentos_produto(produto_id):
         count_web=count_web,
         count_todos=count_whatsapp + count_web,
     )
+
+
+@admin_bp.route('/pedido/<int:pedido_id>/itens')
+@requer_login
+def visualizar_itens_pedido(pedido_id):
+    """AJAX endpoint: retorna os itens (principal/bônus/bump) de um pedido para o popup de detalhe"""
+    try:
+        pedido = get_pedido(pedido_id)
+        if not pedido:
+            return jsonify({'ok': False, 'msg': 'Pedido não encontrado'}), 404
+
+        if (not current_user.is_admin()) and (not usuario_tem_acesso_produto(current_user.id, pedido['produto_id'])):
+            logger.warning(f"[ADMIN] ⚠️ Acesso negado aos itens do pedido: user={current_user.email} pedido_id={pedido_id} produto_id={pedido['produto_id']}")
+            return jsonify({'ok': False, 'msg': 'Acesso negado'}), 403
+
+        itens = listar_itens_pedido(pedido_id)
+
+        return jsonify({
+            'ok': True,
+            'pedido': {
+                'id': pedido_id,
+                'valor_pago': float(pedido['valor_pago'] or 0),
+                'nome_pagador': pedido.get('nome_pagador') or pedido.get('contact_name'),
+                'data_pagamento': pedido['data_pagamento'].strftime('%d/%m/%Y %H:%M') if pedido.get('data_pagamento') else None,
+            },
+            'itens': [
+                {'tipo': item['tipo'], 'nome': item['nome'], 'valor': float(item['valor'] or 0)}
+                for item in itens
+            ],
+        })
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao carregar itens do pedido #{pedido_id}: {e}")
+        return jsonify({'ok': False, 'msg': f'Erro ao carregar detalhes: {e}'}), 500
 
 
 @admin_bp.route('/pedido/<int:pedido_id>/comprovante')

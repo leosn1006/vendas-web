@@ -216,6 +216,29 @@
         }
     }
 
+    .recibo-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 4px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+    }
+
+    .recibo-item .recibo-nome {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .recibo-total {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 4px 4px;
+        font-weight: 700;
+        font-family: var(--mono);
+    }
+
 </style>
 {% endblock %}
 
@@ -352,14 +375,9 @@
                                 </button>
                             </div>
                         {% elif pedido.estado_id == 1000 %}
-                            <div class="comprovante-actions">
-                                <button type="button" class="btn-comprovante tooltip" disabled data-tooltip="Pago via Web — sem comprovante">
-                                    Abrir
-                                </button>
-                                <button type="button" class="btn-comprovante-sec" disabled title="Pago via Web — sem comprovante" aria-label="Pago via Web — sem comprovante">
-                                    &#128269;
-                                </button>
-                            </div>
+                            <button type="button" class="btn-comprovante" onclick="abrirModalItensPedido(this)" data-pedido-id="{{ pedido.id }}">
+                                🧾 Detalhes
+                            </button>
                         {% else %}
                             <div class="comprovante-actions">
                                 <button type="button" class="btn-comprovante tooltip" disabled data-tooltip="Não enviado">
@@ -472,6 +490,33 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" onclick="abrirComprovanteDoModalEmNovaAba()">Abrir em nova aba</button>
                 <button type="button" class="btn btn-secondary" onclick="fecharModal()">Voltar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalhes do Pedido (bônus + order bump, pedidos web) -->
+<div id="itensPedidoModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="itensPedidoModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document" style="max-width: 480px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="itensPedidoModalLabel">
+                    Detalhes — Pedido <span id="itensPedidoModalId"></span>
+                </h5>
+                <button type="button" class="close" aria-label="Close" onclick="fecharModalItens()">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="itensPedidoViewer">
+                <div style="display: flex; justify-content: center; align-items: center; height: 150px;">
+                    <div style="text-align: center;">
+                        <div style="border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 12px;"></div>
+                        <div style="font-size: 13px; color: var(--muted);">Carregando detalhes...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="fecharModalItens()">Voltar</button>
             </div>
         </div>
     </div>
