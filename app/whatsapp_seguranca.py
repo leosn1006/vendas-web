@@ -41,6 +41,7 @@ class WhatsAppSecurity:
         'breplivros.site': 'WHATSAPP_APP_SECRET_BREP',
         'leituraemais.site': 'WHATSAPP_APP_SECRET_LEITURAEMAIS',
         'livrinhosdigitais.site': 'WHATSAPP_APP_SECRET_LIVRINHOS',
+        'vitrinidaju.site': 'WHATSAPP_APP_SECRET_VITRINI',
     }
 
     _HOST_ACCESS_TOKEN_MAP = {
@@ -57,6 +58,7 @@ class WhatsAppSecurity:
         'breplivros.site': 'WHATSAPP_ACCESS_TOKEN_BREP',
         'leituraemais.site': 'WHATSAPP_ACCESS_TOKEN_LEITURAEMAIS',
         'livrinhosdigitais.site': 'WHATSAPP_ACCESS_TOKEN_LIVRINHOS',
+        'vitrinidaju.site': 'WHATSAPP_ACCESS_TOKEN_VITRINI',
     }
 
     def _secret_para_payload(self) -> str:
