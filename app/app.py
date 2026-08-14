@@ -168,6 +168,10 @@ def _is_vitrini():
     host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
     return 'vitrinidaju.site' in host
 
+def _is_livrosemais():
+    host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return 'livrosemais.site' in host
+
 @app.get("/")
 def index():
     produtos = busca_produtos_disponiveis_web()
@@ -197,6 +201,8 @@ def index():
         tmpl = 'portifolio-livrinhos.html'
     elif _is_vitrini():
         tmpl = 'portifolio-vitrini.html'
+    elif _is_livrosemais():
+        tmpl = 'portifolio-livrosemais.html'
     else:
         tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
@@ -230,6 +236,8 @@ def portifolio():
         tmpl = 'portifolio-livrinhos.html'
     elif _is_vitrini():
         tmpl = 'portifolio-vitrini.html'
+    elif _is_livrosemais():
+        tmpl = 'portifolio-livrosemais.html'
     else:
         tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
@@ -262,6 +270,8 @@ def politica_privacidade():
         tmpl = 'politica-privacidade-livrinhos.html'
     elif _is_vitrini():
         tmpl = 'politica-privacidade-vitrini.html'
+    elif _is_livrosemais():
+        tmpl = 'politica-privacidade-livrosemais.html'
     else:
         tmpl = 'politica-privacidade.html'
     return render_template(tmpl)
@@ -294,6 +304,8 @@ def termos_de_uso():
         tmpl = 'termos-de-uso-livrinhos.html'
     elif _is_vitrini():
         tmpl = 'termos-de-uso-vitrini.html'
+    elif _is_livrosemais():
+        tmpl = 'termos-de-uso-livrosemais.html'
     else:
         tmpl = 'termos-de-uso.html'
     return render_template(tmpl)
@@ -326,6 +338,8 @@ def contato():
         tmpl = 'contato-livrinhos.html'
     elif _is_vitrini():
         tmpl = 'contato-vitrini.html'
+    elif _is_livrosemais():
+        tmpl = 'contato-livrosemais.html'
     else:
         tmpl = 'contato.html'
     return render_template(tmpl)
