@@ -73,7 +73,7 @@ def fluxo_enviar_introducao_dinamico(self, pedido, mensagem_whatsapp=None, ordem
 
         todas_acoes = listar_acoes_fluxo(produto_id, 'introducao')
         acoes = filtrar_e_ordenar(todas_acoes, ('sempre',))
-        acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
+        acoes = selecionar_variantes(acoes)
 
         if not acoes:
             raise ValueError(f"[{_TAG}] Nenhuma ação configurada para 'introducao' do produto {produto_id}")
@@ -152,7 +152,7 @@ def fluxo_enviar_pedido_dinamico(self, pedido, mensagem_whatsapp=None, ordem=1, 
 
         todas_acoes = listar_acoes_fluxo(produto_id, 'pedido')
         acoes = filtrar_e_ordenar(todas_acoes, tuple(condicoes))
-        acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
+        acoes = selecionar_variantes(acoes)
 
         if not acoes:
             raise ValueError(f"[{_TAG}] Nenhuma ação configurada para 'pedido' do produto {produto_id}")

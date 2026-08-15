@@ -40,7 +40,7 @@ def executar(pedido, mensagem_whatsapp):
         # filtrar_e_ordenar devolve a lista ordenada por 'ordem'.
         todas_acoes = listar_acoes_fluxo(produto_id, 'pedido')
         acoes = filtrar_e_ordenar(todas_acoes, ('sempre', condicao_ativa))
-        acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
+        acoes = selecionar_variantes(acoes)
 
         if not acoes:
             raise ValueError(

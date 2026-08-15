@@ -24,7 +24,7 @@ def executar(pedido, mensagem_whatsapp):
         # Busca e filtra ações (introducao só tem 'sempre')
         todas_acoes = listar_acoes_fluxo(produto_id, 'introducao')
         acoes = filtrar_e_ordenar(todas_acoes, ('sempre',))
-        acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
+        acoes = selecionar_variantes(acoes)
 
         if not acoes:
             raise ValueError(

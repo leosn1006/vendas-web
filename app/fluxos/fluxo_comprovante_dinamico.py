@@ -166,7 +166,7 @@ def executar(pedido, mensagem_whatsapp):
         todas_acoes = listar_acoes_fluxo(produto_id, 'comprovante')
         condicoes   = ('sempre', 'pagamento_valido') if comprovante_valido else ('sempre', 'pagamento_invalido')
         acoes       = filtrar_e_ordenar(todas_acoes, condicoes)
-        acoes       = selecionar_variantes(acoes, pedido.get('phone_number_id'))
+        acoes       = selecionar_variantes(acoes)
 
         if not acoes:
             raise ValueError(

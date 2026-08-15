@@ -55,6 +55,17 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
         tag: prefixo para os logs (ex: 'FLUXO-PEDIDO-DIN')
         aplicar_delay: False quando o delay já foi consumido como countdown Celery
     """
+    grupo_variantes = acao.get('_variantes_grupo')
+    if grupo_variantes and pedido.get('phone_number_id'):
+        # Resolve a variante de verdade (atômico, com lock) só agora, no momento
+        # exato do envio — ver selecionar_variantes() para o motivo de não fazer
+        # isso antecipadamente na montagem da lista.
+        escolhida_numero = selecionar_e_avancar_variante(
+            pedido['phone_number_id'], acao['produto_id'], acao['fluxo'],
+            acao['condicao'], acao['ordem'], grupo_variantes
+        )
+        acao = next(v for v in grupo_variantes if v['variante'] == escolhida_numero)
+
     tipo = acao['acao']
 
     if aplicar_delay:
@@ -151,20 +162,24 @@ def filtrar_e_ordenar(todas_acoes: list, condicoes: tuple) -> list:
     )
 
 
-def selecionar_variantes(acoes: list, phone_number_id: str) -> list:
+def selecionar_variantes(acoes: list) -> list:
     """
     Colapsa grupos de variantes (mesmo produto_id+fluxo+condicao+ordem) em 1 linha
-    por passo, escolhendo a PRÓXIMA variante em rodízio cíclico após a última
-    reservada para este phone_number_id (número emissor, nosso WhatsApp Business —
-    não o telefone do cliente) neste passo. Ex.: variantes 1,2,3,4 — se a última
-    foi a 4, a próxima é a 1. Se nunca houve envio, começa pela de menor número.
-    O ciclo é global por número emissor: o padrão repetitivo que arrisca detecção
-    de SPAM é o que o número que ENVIA produz, não o que cada cliente recebe.
+    "placeholder" por passo — usa a variante de menor número apenas para fins de
+    montagem da lista (cálculo do delay de agendamento do próximo passo, e o
+    bookkeeping de retomada via Celery, que depende de existir só 1 linha por
+    'ordem'). A escolha REAL, atômica e com rodízio, só acontece dentro de
+    executar_acao() no momento exato do envio (ver database.selecionar_e_avancar_variante).
 
-    A escolha e o avanço do cursor são atômicos (ver
-    database.selecionar_e_avancar_variante, com lock de linha), aplicados de forma
-    uniforme a QUALQUER tipo de ação (texto, áudio, imagem, arquivo, template) —
-    não depende de cada branch de executar_acao() lembrar de avançar o cursor.
+    Importante: esta função NÃO toca no banco. Fluxos com múltiplos passos
+    (introducao, pedido) reconstroem `acoes` do zero a cada retomada agendada via
+    apply_async — se a escolha real (com avanço de cursor) acontecesse aqui, o
+    cursor avançaria uma vez por retomada, não uma vez por envio real. Como o
+    número de retomadas de um fluxo é fixo, isso "cancelava" o rodízio sempre que
+    esse número era par (ex: 4 retomadas com 2 variantes = 0 avanços líquidos —
+    todo mundo recebia sempre a mesma variante). Por isso o avanço de verdade
+    precisa ficar amarrado à execução real da ação, que só acontece 1 vez por
+    passo em todo o fluxo, não importa quantas vezes a task seja retomada.
 
     Chamada logo após filtrar_e_ordenar() e ANTES de qualquer lógica de retomada
     (ex: filtro `ordem >= X` do reagendamento Celery em tasks.py) — garante que o
@@ -181,17 +196,9 @@ def selecionar_variantes(acoes: list, phone_number_id: str) -> list:
             continue
 
         variantes = sorted(variantes, key=lambda v: v['variante'])
-        if not phone_number_id:
-            resultado.append(variantes[0])
-            continue
-
-        primeira = variantes[0]
-        numeros = [v['variante'] for v in variantes]
-        proximo_numero = selecionar_e_avancar_variante(
-            phone_number_id, primeira['produto_id'], primeira['fluxo'],
-            primeira['condicao'], primeira['ordem'], numeros
-        )
-        resultado.append(next(v for v in variantes if v['variante'] == proximo_numero))
+        placeholder = dict(variantes[0])
+        placeholder['_variantes_grupo'] = variantes
+        resultado.append(placeholder)
 
     return resultado
 

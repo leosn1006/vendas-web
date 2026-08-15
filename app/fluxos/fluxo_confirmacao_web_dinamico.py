@@ -30,7 +30,7 @@ def executar(pedido_id: int):
 
     todas_acoes = listar_acoes_fluxo(produto_id, 'confirmacao_web')
     acoes = filtrar_e_ordenar(todas_acoes, ('sempre',))
-    acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
+    acoes = selecionar_variantes(acoes)
 
     if not acoes:
         logger.warning(

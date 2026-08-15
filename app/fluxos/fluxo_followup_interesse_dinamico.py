@@ -25,7 +25,7 @@ def _executar_rodada(pedidos, nome_fluxo, marcar_fn):
 
             todas_acoes = listar_acoes_fluxo(produto_id, nome_fluxo)
             acoes = filtrar_e_ordenar(todas_acoes, ('sempre',))
-            acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
+            acoes = selecionar_variantes(acoes)
 
             if not acoes:
                 logger.warning(

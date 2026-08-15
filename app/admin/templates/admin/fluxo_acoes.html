@@ -295,8 +295,9 @@
             </div>
         </div>
 
-        <div style="margin-top: 16px;">
+        <div style="margin-top: 16px; display: flex; gap: 8px;">
             <button type="submit" class="btn btn-primary btn-sm">+ Adicionar ação</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="cancelarNovaAcao()">Cancelar</button>
         </div>
     </form>
 </div>
@@ -327,6 +328,11 @@ function preencherVariante(el) {
     document.querySelector('#add-form-wrap input[name="variante"]').value = el.dataset.proximaVariante;
     toggleContentFields();
     document.getElementById('add-form-wrap').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+function cancelarNovaAcao() {
+    document.querySelector('#add-form-wrap form').reset();
+    toggleContentFields();
 }
 </script>
 {% endblock %}

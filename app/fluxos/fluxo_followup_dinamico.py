@@ -35,7 +35,7 @@ def executar():
 
             todas_acoes = listar_acoes_fluxo(produto_id, 'followup')
             acoes = filtrar_e_ordenar(todas_acoes, ('sempre', condicao_ativa))
-            acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
+            acoes = selecionar_variantes(acoes)
 
             if not acoes:
                 logger.warning(

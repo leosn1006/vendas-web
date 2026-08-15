@@ -1335,7 +1335,7 @@ def tipo_acao_variantes_existentes(produto_id, fluxo, condicao, ordem, excluir_a
 # Cursor de rodízio de variantes por número emissor (tabela variantes_fluxo_cursor)
 # ============================================================
 
-def selecionar_e_avancar_variante(phone_number_id, produto_id, fluxo, condicao, ordem, numeros_disponiveis):
+def selecionar_e_avancar_variante(phone_number_id, produto_id, fluxo, condicao, ordem, variantes_disponiveis):
     """
     Escolhe atomicamente a próxima variante em rodízio cíclico (a seguinte à
     última reservada) e já avança o cursor na MESMA transação, com lock de linha
@@ -1343,17 +1343,20 @@ def selecionar_e_avancar_variante(phone_number_id, produto_id, fluxo, condicao, 
     pedidos diferentes para o mesmo phone_number_id+passo, leiam o mesmo estado e
     escolham a mesma variante (race condition).
 
-    O avanço acontece na seleção, antes do envio de fato (não dá pra manter o lock
-    de linha aberto durante a chamada HTTP à API do WhatsApp — isso seria um risco
-    de contenção/lock muito pior). Se o envio falhar depois, aquela variante fica
-    "gasta" no ciclo sem ter sido entregue — aceitável, já que o objetivo é apenas
-    evitar repetição, não garantir cobertura perfeita de todas as variantes.
+    Deve ser chamada exatamente 1 vez por envio real (dentro de executar_acao(),
+    no momento do envio) — nunca numa pré-varredura da lista de ações que pode
+    rodar mais de uma vez por cliente (ex: fluxos com múltiplos retomadas via
+    apply_async), senão o cursor avança múltiplas vezes por cliente e o rodízio
+    pode "cancelar" (ex: 4 avanços com período 2 = nenhum avanço líquido).
 
-    numeros_disponiveis: lista dos números de variante configurados para este
-    passo, em ordem ascendente.
+    variantes_disponiveis: lista de linhas de acoes_fluxo_produto (dicts com pelo
+    menos 'variante' e 'id') deste passo, em qualquer ordem.
 
     Retorna o número da variante escolhida.
     """
+    numeros = sorted(v['variante'] for v in variantes_disponiveis)
+    ids_por_variante = {v['variante']: v['id'] for v in variantes_disponiveis}
+
     with db.get_cursor() as cursor:
         # Garante que a linha do cursor exista antes de travar (idempotente).
         # ultima_variante=0 é um sentinel de "nunca enviado" — variantes reais
@@ -1372,15 +1375,15 @@ def selecionar_e_avancar_variante(phone_number_id, produto_id, fluxo, condicao, 
         )
         ultima = cursor.fetchone()['ultima_variante']
 
-        if ultima in numeros_disponiveis:
-            proximo = numeros_disponiveis[(numeros_disponiveis.index(ultima) + 1) % len(numeros_disponiveis)]
+        if ultima in numeros:
+            proximo = numeros[(numeros.index(ultima) + 1) % len(numeros)]
         else:
-            proximo = numeros_disponiveis[0]
+            proximo = numeros[0]
 
         cursor.execute(
-            """UPDATE variantes_fluxo_cursor SET ultima_variante=%s
+            """UPDATE variantes_fluxo_cursor SET ultima_variante=%s, acao_id=%s
                WHERE phone_number_id=%s AND produto_id=%s AND fluxo=%s AND condicao=%s AND ordem=%s""",
-            (proximo, phone_number_id, produto_id, fluxo, condicao, ordem)
+            (proximo, ids_por_variante[proximo], phone_number_id, produto_id, fluxo, condicao, ordem)
         )
     return proximo
 
