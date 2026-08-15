@@ -4,7 +4,7 @@ from database import (
     buscar_pedidos_followup_interesse_1, buscar_pedidos_followup_interesse_2,
     listar_acoes_fluxo, marcar_followup_interesse_1, marcar_followup_interesse_2,
 )
-from fluxos._executor_acao import executar_acao, filtrar_e_ordenar
+from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, selecionar_variantes
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ def _executar_rodada(pedidos, nome_fluxo, marcar_fn):
 
             todas_acoes = listar_acoes_fluxo(produto_id, nome_fluxo)
             acoes = filtrar_e_ordenar(todas_acoes, ('sempre',))
+            acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
 
             if not acoes:
                 logger.warning(

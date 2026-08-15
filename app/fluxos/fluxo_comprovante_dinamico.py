@@ -9,7 +9,7 @@ from database import (
 from whatsapp_upload import receber_comprovante
 from whatsapp import criar_notificacao_admin
 from agente_valida_comprovante import validar_comprovante_com_ia
-from fluxos._executor_acao import executar_acao, filtrar_e_ordenar
+from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, selecionar_variantes
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +166,7 @@ def executar(pedido, mensagem_whatsapp):
         todas_acoes = listar_acoes_fluxo(produto_id, 'comprovante')
         condicoes   = ('sempre', 'pagamento_valido') if comprovante_valido else ('sempre', 'pagamento_invalido')
         acoes       = filtrar_e_ordenar(todas_acoes, condicoes)
+        acoes       = selecionar_variantes(acoes, pedido.get('phone_number_id'))
 
         if not acoes:
             raise ValueError(

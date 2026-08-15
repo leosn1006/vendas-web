@@ -54,7 +54,7 @@ def processar_webhook(self, body):
 @shared_task(name="tasks.enviar_introducao_dinamico", bind=True, max_retries=0)
 def fluxo_enviar_introducao_dinamico(self, pedido, mensagem_whatsapp=None, ordem=1, message_id=None):
     from database import listar_acoes_fluxo, salvar_mensagem_pedido, atualizar_estado_pedido
-    from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, calcular_delay
+    from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, calcular_delay, selecionar_variantes
 
     _TAG = "TASK-INTRODUCAO-DIN"
     produto_id = pedido['produto_id']
@@ -73,6 +73,7 @@ def fluxo_enviar_introducao_dinamico(self, pedido, mensagem_whatsapp=None, ordem
 
         todas_acoes = listar_acoes_fluxo(produto_id, 'introducao')
         acoes = filtrar_e_ordenar(todas_acoes, ('sempre',))
+        acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
 
         if not acoes:
             raise ValueError(f"[{_TAG}] Nenhuma ação configurada para 'introducao' do produto {produto_id}")
@@ -123,7 +124,7 @@ def fluxo_enviar_pedido_dinamico(self, pedido, mensagem_whatsapp=None, ordem=1, 
         listar_acoes_fluxo, salvar_mensagem_pedido, atualizar_estado_pedido,
         atualizar_pedido_com_interesse_produto, atualizar_pedido_com_data_envio_pedido,
     )
-    from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, calcular_delay
+    from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, calcular_delay, selecionar_variantes
     from agente_verifica_interesse import classificar_interesse_compra
 
     _TAG = "TASK-PEDIDO-DIN"
@@ -151,6 +152,7 @@ def fluxo_enviar_pedido_dinamico(self, pedido, mensagem_whatsapp=None, ordem=1, 
 
         todas_acoes = listar_acoes_fluxo(produto_id, 'pedido')
         acoes = filtrar_e_ordenar(todas_acoes, tuple(condicoes))
+        acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
 
         if not acoes:
             raise ValueError(f"[{_TAG}] Nenhuma ação configurada para 'pedido' do produto {produto_id}")

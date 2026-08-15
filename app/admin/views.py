@@ -16,7 +16,7 @@ from database import (db,
     contar_notificacoes_conta_recentes, listar_notificacoes_conta_whatsapp_produto,
     listar_mensagens_sugeridas, adicionar_mensagem_sugerida, remover_mensagem_sugerida,
     listar_acoes_fluxo, get_acao_fluxo,
-    adicionar_acao_fluxo, atualizar_acao_fluxo, remover_acao_fluxo,
+    adicionar_acao_fluxo, atualizar_acao_fluxo, remover_acao_fluxo, tipo_acao_variantes_existentes,
     listar_bonus_produto, adicionar_bonus_produto, remover_bonus_produto,
     listar_bump_produto, get_bump_produto,
     adicionar_bump_produto, atualizar_bump_produto, remover_bump_produto,
@@ -734,7 +734,8 @@ def clonar_produto(produto_id):
                     caption=acao['caption'],
                     nome_arquivo=acao['nome_arquivo'],
                     delay_inicial=acao['delay_inicial'],
-                    delay_final=acao['delay_final']
+                    delay_final=acao['delay_final'],
+                    variante=acao['variante']
                 )
                 contador_acoes += 1
 
@@ -1230,12 +1231,16 @@ def fluxo_acoes(produto_id, fluxo):
         return redirect(url_for('admin.dashboard'))
 
     acoes = listar_acoes_fluxo(produto_id, fluxo)
+    grupos_variantes = {}
+    for a in acoes:
+        grupos_variantes.setdefault((a['condicao'], a['ordem']), []).append(a['variante'])
     return render_template('admin/fluxo_acoes.html',
                            produto=produto,
                            fluxo=fluxo,
                            fluxos=_FLUXOS,
                            fluxos_labels=_FLUXOS_LABELS,
                            acoes=acoes,
+                           grupos_variantes=grupos_variantes,
                            readonly=fluxo in _FLUXOS_READONLY)
 
 
@@ -1246,11 +1251,23 @@ def adicionar_acao_fluxo_view(produto_id, fluxo):
         flash('Este fluxo é somente leitura.', 'warning')
         return redirect(url_for('admin.fluxo_acoes', produto_id=produto_id, fluxo=fluxo))
     try:
+        ordem = int(request.form['ordem'])
+        condicao = request.form['condicao']
+        tipo_acao = request.form['acao']
+        variante = max(1, int(request.form.get('variante') or 1))
+
+        tipo_existente = tipo_acao_variantes_existentes(produto_id, fluxo, condicao, ordem)
+        if tipo_existente and tipo_existente != tipo_acao:
+            raise ValueError(
+                f"As variantes do passo ordem={ordem} ({condicao}) já usam a ação "
+                f"'{tipo_existente}'. Todas as variantes do mesmo passo devem ter o mesmo tipo de ação."
+            )
+
         adicionar_acao_fluxo(
             produto_id, fluxo,
-            ordem=int(request.form['ordem']),
-            condicao=request.form['condicao'],
-            acao=request.form['acao'],
+            ordem=ordem,
+            condicao=condicao,
+            acao=tipo_acao,
             url=request.form.get('url'),
             mensagem=request.form.get('mensagem'),
             caption=request.form.get('caption'),
@@ -1259,6 +1276,7 @@ def adicionar_acao_fluxo_view(produto_id, fluxo):
             delay_final=float(request.form.get('delay_final') or 0),
             param1=request.form.get('param1'),
             param2=request.form.get('param2'),
+            variante=variante,
         )
         flash('Ação adicionada com sucesso!', 'success')
         logger.info(f"[ADMIN] ✅ Ação adicionada ao fluxo '{fluxo}' produto #{produto_id} por {current_user.email}")
@@ -1286,11 +1304,23 @@ def editar_acao_fluxo(produto_id, fluxo, acao_id):
 
     if request.method == 'POST':
         try:
+            ordem = int(request.form['ordem'])
+            condicao = request.form['condicao']
+            tipo_acao = request.form['acao']
+            variante = max(1, int(request.form.get('variante') or 1))
+
+            tipo_existente = tipo_acao_variantes_existentes(produto_id, fluxo, condicao, ordem, excluir_acao_id=acao_id)
+            if tipo_existente and tipo_existente != tipo_acao:
+                raise ValueError(
+                    f"As variantes do passo ordem={ordem} ({condicao}) já usam a ação "
+                    f"'{tipo_existente}'. Todas as variantes do mesmo passo devem ter o mesmo tipo de ação."
+                )
+
             atualizar_acao_fluxo(
                 acao_id,
-                ordem=int(request.form['ordem']),
-                condicao=request.form['condicao'],
-                acao=request.form['acao'],
+                ordem=ordem,
+                condicao=condicao,
+                acao=tipo_acao,
                 url=request.form.get('url'),
                 mensagem=request.form.get('mensagem'),
                 caption=request.form.get('caption'),
@@ -1299,6 +1329,7 @@ def editar_acao_fluxo(produto_id, fluxo, acao_id):
                 delay_final=float(request.form.get('delay_final') or 0),
                 param1=request.form.get('param1'),
                 param2=request.form.get('param2'),
+                variante=variante,
             )
             flash('Ação atualizada com sucesso!', 'success')
             logger.info(f"[ADMIN] ✅ Ação #{acao_id} do fluxo '{fluxo}' atualizada por {current_user.email}")

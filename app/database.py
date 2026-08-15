@@ -1253,9 +1253,9 @@ def remover_mensagem_sugerida(mensagem_id):
 # ============================================================
 
 def listar_acoes_fluxo(produto_id, fluxo):
-    """Retorna todas as ações de um fluxo para um produto, ordenadas por condicao e ordem."""
+    """Retorna todas as ações de um fluxo para um produto, ordenadas por condicao, ordem e variante."""
     return db.execute_query(
-        "SELECT * FROM acoes_fluxo_produto WHERE produto_id = %s AND fluxo = %s ORDER BY condicao, ordem",
+        "SELECT * FROM acoes_fluxo_produto WHERE produto_id = %s AND fluxo = %s ORDER BY condicao, ordem, variante",
         (produto_id, fluxo), fetch_all=True
     ) or []
 
@@ -1271,37 +1271,37 @@ def get_acao_fluxo(acao_id):
 def adicionar_acao_fluxo(produto_id, fluxo, ordem, condicao, acao,
                           url, mensagem, caption, nome_arquivo,
                           delay_inicial, delay_final,
-                          param1=None, param2=None):
+                          param1=None, param2=None, variante=1):
     """Insere uma nova ação de fluxo. Retorna o ID criado."""
     return db.execute_query(
         """INSERT INTO acoes_fluxo_produto
                (produto_id, fluxo, ordem, condicao, acao,
                 url, mensagem, caption, nome_arquivo, delay_inicial, delay_final,
-                param1, param2)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                param1, param2, variante)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
         (produto_id, fluxo, ordem, condicao, acao,
          url or None, mensagem or None, caption or None, nome_arquivo or None,
          delay_inicial, delay_final,
-         param1 or None, param2 or None)
+         param1 or None, param2 or None, variante or 1)
     )
 
 
 def atualizar_acao_fluxo(acao_id, ordem, condicao, acao,
                           url, mensagem, caption, nome_arquivo,
                           delay_inicial, delay_final,
-                          param1=None, param2=None):
+                          param1=None, param2=None, variante=1):
     """Atualiza uma ação existente pelo ID."""
     db.execute_query(
         """UPDATE acoes_fluxo_produto SET
                ordem=%s, condicao=%s, acao=%s,
                url=%s, mensagem=%s, caption=%s, nome_arquivo=%s,
                delay_inicial=%s, delay_final=%s,
-               param1=%s, param2=%s
+               param1=%s, param2=%s, variante=%s
            WHERE id=%s""",
         (ordem, condicao, acao,
          url or None, mensagem or None, caption or None, nome_arquivo or None,
          delay_inicial, delay_final,
-         param1 or None, param2 or None,
+         param1 or None, param2 or None, variante or 1,
          acao_id)
     )
 
@@ -1309,6 +1309,80 @@ def atualizar_acao_fluxo(acao_id, ordem, condicao, acao,
 def remover_acao_fluxo(acao_id):
     """Remove uma ação de fluxo pelo ID."""
     db.execute_query("DELETE FROM acoes_fluxo_produto WHERE id = %s", (acao_id,))
+
+
+def tipo_acao_variantes_existentes(produto_id, fluxo, condicao, ordem, excluir_acao_id=None):
+    """
+    Retorna o tipo de ação (coluna 'acao') já usado pelas variantes existentes
+    deste passo (produto_id+fluxo+condicao+ordem), ou None se o passo ainda não
+    tiver nenhuma linha. Usado para impedir que duas variantes do mesmo passo
+    tenham tipos de conteúdo diferentes (ex: variante 1 = texto, variante 2 =
+    imagem), o que faria o rodízio alternar o TIPO de mensagem enviada, não só o
+    texto/mídia.
+    """
+    query = """SELECT acao FROM acoes_fluxo_produto
+               WHERE produto_id=%s AND fluxo=%s AND condicao=%s AND ordem=%s"""
+    params = [produto_id, fluxo, condicao, ordem]
+    if excluir_acao_id:
+        query += " AND id != %s"
+        params.append(excluir_acao_id)
+    query += " LIMIT 1"
+    row = db.execute_query(query, tuple(params), fetch_one=True)
+    return row['acao'] if row else None
+
+
+# ============================================================
+# Cursor de rodízio de variantes por número emissor (tabela variantes_fluxo_cursor)
+# ============================================================
+
+def selecionar_e_avancar_variante(phone_number_id, produto_id, fluxo, condicao, ordem, numeros_disponiveis):
+    """
+    Escolhe atomicamente a próxima variante em rodízio cíclico (a seguinte à
+    última reservada) e já avança o cursor na MESMA transação, com lock de linha
+    (SELECT ... FOR UPDATE) — evita que dois workers Celery concorrentes, processando
+    pedidos diferentes para o mesmo phone_number_id+passo, leiam o mesmo estado e
+    escolham a mesma variante (race condition).
+
+    O avanço acontece na seleção, antes do envio de fato (não dá pra manter o lock
+    de linha aberto durante a chamada HTTP à API do WhatsApp — isso seria um risco
+    de contenção/lock muito pior). Se o envio falhar depois, aquela variante fica
+    "gasta" no ciclo sem ter sido entregue — aceitável, já que o objetivo é apenas
+    evitar repetição, não garantir cobertura perfeita de todas as variantes.
+
+    numeros_disponiveis: lista dos números de variante configurados para este
+    passo, em ordem ascendente.
+
+    Retorna o número da variante escolhida.
+    """
+    with db.get_cursor() as cursor:
+        # Garante que a linha do cursor exista antes de travar (idempotente).
+        # ultima_variante=0 é um sentinel de "nunca enviado" — variantes reais
+        # começam em 1, então nunca colide com um número de variante real.
+        cursor.execute(
+            """INSERT IGNORE INTO variantes_fluxo_cursor
+                   (phone_number_id, produto_id, fluxo, condicao, ordem, ultima_variante)
+               VALUES (%s, %s, %s, %s, %s, 0)""",
+            (phone_number_id, produto_id, fluxo, condicao, ordem)
+        )
+        cursor.execute(
+            """SELECT ultima_variante FROM variantes_fluxo_cursor
+               WHERE phone_number_id=%s AND produto_id=%s AND fluxo=%s AND condicao=%s AND ordem=%s
+               FOR UPDATE""",
+            (phone_number_id, produto_id, fluxo, condicao, ordem)
+        )
+        ultima = cursor.fetchone()['ultima_variante']
+
+        if ultima in numeros_disponiveis:
+            proximo = numeros_disponiveis[(numeros_disponiveis.index(ultima) + 1) % len(numeros_disponiveis)]
+        else:
+            proximo = numeros_disponiveis[0]
+
+        cursor.execute(
+            """UPDATE variantes_fluxo_cursor SET ultima_variante=%s
+               WHERE phone_number_id=%s AND produto_id=%s AND fluxo=%s AND condicao=%s AND ordem=%s""",
+            (proximo, phone_number_id, produto_id, fluxo, condicao, ordem)
+        )
+    return proximo
 
 
 # ============================================================

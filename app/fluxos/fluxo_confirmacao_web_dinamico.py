@@ -1,6 +1,6 @@
 import logging
 from database import get_pedido, listar_acoes_fluxo, marcar_ebook_enviado
-from fluxos._executor_acao import executar_acao, filtrar_e_ordenar
+from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, selecionar_variantes
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ def executar(pedido_id: int):
 
     todas_acoes = listar_acoes_fluxo(produto_id, 'confirmacao_web')
     acoes = filtrar_e_ordenar(todas_acoes, ('sempre',))
+    acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
 
     if not acoes:
         logger.warning(

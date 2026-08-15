@@ -17,7 +17,7 @@ from whatsapp import (
     enviar_produto_whatsapp,
     ErroTransienteWhatsApp,
 )
-from database import salvar_mensagem_pedido
+from database import salvar_mensagem_pedido, selecionar_e_avancar_variante
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +149,51 @@ def filtrar_e_ordenar(todas_acoes: list, condicoes: tuple) -> list:
         [a for a in todas_acoes if a['condicao'] in condicoes],
         key=lambda x: x['ordem']
     )
+
+
+def selecionar_variantes(acoes: list, phone_number_id: str) -> list:
+    """
+    Colapsa grupos de variantes (mesmo produto_id+fluxo+condicao+ordem) em 1 linha
+    por passo, escolhendo a PRÓXIMA variante em rodízio cíclico após a última
+    reservada para este phone_number_id (número emissor, nosso WhatsApp Business —
+    não o telefone do cliente) neste passo. Ex.: variantes 1,2,3,4 — se a última
+    foi a 4, a próxima é a 1. Se nunca houve envio, começa pela de menor número.
+    O ciclo é global por número emissor: o padrão repetitivo que arrisca detecção
+    de SPAM é o que o número que ENVIA produz, não o que cada cliente recebe.
+
+    A escolha e o avanço do cursor são atômicos (ver
+    database.selecionar_e_avancar_variante, com lock de linha), aplicados de forma
+    uniforme a QUALQUER tipo de ação (texto, áudio, imagem, arquivo, template) —
+    não depende de cada branch de executar_acao() lembrar de avançar o cursor.
+
+    Chamada logo após filtrar_e_ordenar() e ANTES de qualquer lógica de retomada
+    (ex: filtro `ordem >= X` do reagendamento Celery em tasks.py) — garante que o
+    restante do código continue vendo no máximo 1 ação por passo.
+    """
+    grupos = {}
+    for a in acoes:
+        grupos.setdefault((a['ordem'], a['condicao']), []).append(a)
+
+    resultado = []
+    for variantes in grupos.values():
+        if len(variantes) == 1:
+            resultado.append(variantes[0])
+            continue
+
+        variantes = sorted(variantes, key=lambda v: v['variante'])
+        if not phone_number_id:
+            resultado.append(variantes[0])
+            continue
+
+        primeira = variantes[0]
+        numeros = [v['variante'] for v in variantes]
+        proximo_numero = selecionar_e_avancar_variante(
+            phone_number_id, primeira['produto_id'], primeira['fluxo'],
+            primeira['condicao'], primeira['ordem'], numeros
+        )
+        resultado.append(next(v for v in variantes if v['variante'] == proximo_numero))
+
+    return resultado
 
 
 def _exige_campo(acao: dict, campo: str, tag: str):

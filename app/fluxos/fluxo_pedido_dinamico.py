@@ -4,7 +4,7 @@ from database import (
     atualizar_pedido_com_interesse_produto, atualizar_pedido_com_data_envio_pedido,
 )
 from agente_verifica_interesse import classificar_interesse_compra
-from fluxos._executor_acao import executar_acao, filtrar_e_ordenar
+from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, selecionar_variantes
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ def executar(pedido, mensagem_whatsapp):
         # filtrar_e_ordenar devolve a lista ordenada por 'ordem'.
         todas_acoes = listar_acoes_fluxo(produto_id, 'pedido')
         acoes = filtrar_e_ordenar(todas_acoes, ('sempre', condicao_ativa))
+        acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
 
         if not acoes:
             raise ValueError(

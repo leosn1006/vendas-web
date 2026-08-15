@@ -82,7 +82,7 @@
 
     .field-grid {
         display: grid;
-        grid-template-columns: 80px 1fr 1fr 1fr 90px 90px;
+        grid-template-columns: 80px 70px 1fr 1fr 1fr 90px 90px;
         gap: 12px;
         align-items: end;
     }
@@ -162,6 +162,9 @@
             <tr>
                 <td>
                     <span style="font-family: var(--mono); font-weight: 600; color: #3d2510;">{{ a.ordem }}</span>
+                    {% if grupos_variantes.get((a.condicao, a.ordem), [1]) | length > 1 %}
+                        <span class="badge badge-yellow" style="margin-left: 4px;" title="Variante {{ a.variante }}">V{{ a.variante }}</span>
+                    {% endif %}
                 </td>
                 <td>
                     {% if a.acao == 'marcar_lida' %}<span class="badge badge-blue">👁 marcar lida</span>
@@ -193,6 +196,14 @@
                     <div style="display: flex; gap: 6px;">
                         <a href="{{ url_for('admin.editar_acao_fluxo', produto_id=produto.id, fluxo=fluxo, acao_id=a.id) }}"
                            class="btn btn-ghost btn-sm">Editar</a>
+                        {% if current_user.is_admin() %}
+                        <a href="#add-form-wrap" class="btn btn-ghost btn-sm"
+                           data-ordem="{{ a.ordem }}" data-condicao="{{ a.condicao }}" data-acao="{{ a.acao }}"
+                           data-proxima-variante="{{ (grupos_variantes.get((a.condicao, a.ordem), [0]) | max) + 1 }}"
+                           onclick="preencherVariante(this)">
+                            + Variante
+                        </a>
+                        {% endif %}
                         <form method="POST"
                               action="{{ url_for('admin.remover_acao_fluxo_view', produto_id=produto.id, fluxo=fluxo, acao_id=a.id) }}"
                               onsubmit="return confirm('Remover esta ação?')">
@@ -220,13 +231,17 @@
 
 <!-- Formulário de adição (somente para fluxos editáveis e admins) -->
 {% if not readonly and current_user.is_admin() %}
-<div class="add-form-wrap">
+<div class="add-form-wrap" id="add-form-wrap">
     <div class="add-form-title">+ Nova ação</div>
     <form method="POST" action="{{ url_for('admin.adicionar_acao_fluxo_view', produto_id=produto.id, fluxo=fluxo) }}">
         <div class="field-grid">
             <div class="field-group">
                 <span class="field-label">Ordem</span>
                 <input type="number" name="ordem" min="1" max="99" value="1" required>
+            </div>
+            <div class="field-group">
+                <span class="field-label">Variante</span>
+                <input type="number" name="variante" min="1" max="99" value="1">
             </div>
             <div class="field-group">
                 <span class="field-label">Condição</span>
@@ -304,5 +319,14 @@ function toggleContentFields() {
 }
 // init
 toggleContentFields();
+
+function preencherVariante(el) {
+    document.querySelector('#add-form-wrap input[name="ordem"]').value = el.dataset.ordem;
+    document.querySelector('#add-form-wrap select[name="condicao"]').value = el.dataset.condicao;
+    document.getElementById('acao-select').value = el.dataset.acao;
+    document.querySelector('#add-form-wrap input[name="variante"]').value = el.dataset.proximaVariante;
+    toggleContentFields();
+    document.getElementById('add-form-wrap').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
 </script>
 {% endblock %}

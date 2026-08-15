@@ -1,6 +1,6 @@
 import logging
 from database import listar_acoes_fluxo, salvar_mensagem_pedido, atualizar_estado_pedido
-from fluxos._executor_acao import executar_acao, filtrar_e_ordenar
+from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, selecionar_variantes
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ def executar(pedido, mensagem_whatsapp):
         # Busca e filtra ações (introducao só tem 'sempre')
         todas_acoes = listar_acoes_fluxo(produto_id, 'introducao')
         acoes = filtrar_e_ordenar(todas_acoes, ('sempre',))
+        acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
 
         if not acoes:
             raise ValueError(

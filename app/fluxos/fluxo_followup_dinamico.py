@@ -4,7 +4,7 @@ from database import (
     buscar_pedidos_followup, listar_acoes_fluxo,
     atualizar_estado_pedido, atualizar_pedido_com_data_followup,
 )
-from fluxos._executor_acao import executar_acao, filtrar_e_ordenar
+from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, selecionar_variantes
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,7 @@ def executar():
 
             todas_acoes = listar_acoes_fluxo(produto_id, 'followup')
             acoes = filtrar_e_ordenar(todas_acoes, ('sempre', condicao_ativa))
+            acoes = selecionar_variantes(acoes, pedido.get('phone_number_id'))
 
             if not acoes:
                 logger.warning(

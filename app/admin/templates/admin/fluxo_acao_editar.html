@@ -38,6 +38,12 @@
             </div>
 
             <div class="form-group">
+                <label>Variante</label>
+                <input type="number" name="variante" min="1" max="99"
+                       value="{{ acao.variante }}">
+            </div>
+
+            <div class="form-group">
                 <label>Condição</label>
                 <select name="condicao">
                     {% for val, lbl in [
