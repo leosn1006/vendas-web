@@ -146,11 +146,11 @@ def _is_lsreceitas():
 
 def _is_lbe_livros():
     host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
-    return 'lbe-livros.site' in host
+    return 'lbe-livros.site' in host or 'lbelivros.com.br' in host
 
 def _is_lb_livros():
     host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
-    return 'lb-livros.site' in host
+    return 'lb-livros.site' in host or 'lblivros.com.br' in host
 
 def _is_brep_livros():
     host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
