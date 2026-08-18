@@ -45,6 +45,7 @@ class WhatsAppSecurity:
         'livrinhosdigitais.site': 'WHATSAPP_APP_SECRET_LIVRINHOS',
         'vitrinidaju.site': 'WHATSAPP_APP_SECRET_VITRINI',
         'livrosemais.site': 'WHATSAPP_APP_SECRET_LIVROSEMAIS',
+        'stracklivros.com.br': 'WHATSAPP_APP_SECRET_STRACKLIVROS',
     }
 
     _HOST_ACCESS_TOKEN_MAP = {
@@ -65,6 +66,7 @@ class WhatsAppSecurity:
         'livrinhosdigitais.site': 'WHATSAPP_ACCESS_TOKEN_LIVRINHOS',
         'vitrinidaju.site': 'WHATSAPP_ACCESS_TOKEN_VITRINI',
         'livrosemais.site': 'WHATSAPP_ACCESS_TOKEN_LIVROSEMAIS',
+        'stracklivros.com.br': 'WHATSAPP_ACCESS_TOKEN_STRACKLIVROS',
     }
 
     def _secret_para_payload(self) -> str:

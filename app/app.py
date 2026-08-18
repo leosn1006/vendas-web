@@ -172,6 +172,10 @@ def _is_livrosemais():
     host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
     return 'livrosemais.site' in host
 
+def _is_stracklivros():
+    host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return 'stracklivros.com.br' in host
+
 @app.get("/")
 def index():
     produtos = busca_produtos_disponiveis_web()
@@ -203,6 +207,8 @@ def index():
         tmpl = 'portifolio-vitrini.html'
     elif _is_livrosemais():
         tmpl = 'portifolio-livrosemais.html'
+    elif _is_stracklivros():
+        tmpl = 'portifolio-stracklivros.html'
     else:
         tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
@@ -238,6 +244,8 @@ def portifolio():
         tmpl = 'portifolio-vitrini.html'
     elif _is_livrosemais():
         tmpl = 'portifolio-livrosemais.html'
+    elif _is_stracklivros():
+        tmpl = 'portifolio-stracklivros.html'
     else:
         tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
