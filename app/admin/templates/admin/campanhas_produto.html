@@ -12,7 +12,8 @@
 <div class="card">
     <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px;">
         Campaign IDs encontrados nos pedidos deste produto. Cadastre um nome para cada ID aparecer
-        legível no analytics.
+        legível no analytics. Marque "Venda Web" para campanhas cujo investimento deve entrar no
+        cálculo de <a href="{{ url_for('admin.roi_produto', produto_id=produto.id) }}">ROI Real Web</a>.
     </p>
 
     {% if campanhas %}
@@ -22,6 +23,7 @@
                 <tr>
                     <th>Campaign ID</th>
                     <th>Nome</th>
+                    <th style="text-align:center;">Venda Web</th>
                     <th style="text-align:right;">Pedidos</th>
                     <th></th>
                 </tr>
@@ -33,7 +35,7 @@
                         <span style="font-family: var(--mono); font-size: 13px;">{{ c.campaignid }}</span>
                     </td>
                     <td>
-                        <form method="POST"
+                        <form id="form-campanha-{{ loop.index }}" method="POST"
                               action="{{ url_for('admin.salvar_campanha', produto_id=produto.id) }}"
                               style="display: flex; gap: 8px; align-items: center; min-width: 260px;">
                             <input type="hidden" name="campaignid" value="{{ c.campaignid }}">
@@ -47,6 +49,10 @@
                                 {{ 'Atualizar' if c.nome else 'Salvar' }}
                             </button>
                         </form>
+                    </td>
+                    <td style="text-align:center;">
+                        <input type="checkbox" name="venda_web" form="form-campanha-{{ loop.index }}"
+                               {% if c.venda_web %}checked{% endif %}>
                     </td>
                     <td style="text-align:right; font-family: var(--mono); font-size: 13px; color: var(--muted);">
                         {{ c.total_pedidos }}

@@ -23,7 +23,7 @@
     .roi-summary-sub { font-size: 12px; color: var(--muted); }
     .roi-summary-grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 12px;
     }
     .roi-summary-item {
@@ -44,11 +44,108 @@
         line-height: 1.2;
     }
 
+    .imposto-card {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 10px 16px;
+        margin-bottom: 16px;
+    }
+    .imposto-label {
+        font-size: 13px;
+        color: var(--muted);
+        white-space: nowrap;
+    }
+    .imposto-input {
+        width: 72px;
+        font-family: var(--mono);
+        font-size: 14px;
+        text-align: right;
+        padding: 5px 8px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--text);
+    }
+    .imposto-pct {
+        font-size: 13px;
+        color: var(--text);
+    }
+
     @media (max-width: 900px) {
         .roi-summary-grid { grid-template-columns: 1fr; }
     }
 </style>
 {% endblock %}
+
+{% macro roi_summary_card(titulo, subtitulo, recebido_label, recebido, investido, taxa, erro=false) %}
+<div class="card roi-summary-card">
+    {% if erro %}
+        <div class="roi-summary-head">
+            <div class="roi-summary-title">{{ titulo }}</div>
+            <div class="roi-summary-sub">Não foi possível carregar os dados agora</div>
+        </div>
+        <div class="empty-state">Dados indisponíveis no momento. Tente novamente em instantes.</div>
+    {% else %}
+        {% set imposto = recebido * taxa / 100 %}
+        {% set resultado = recebido - imposto - investido %}
+        <div class="roi-summary-head">
+            <div class="roi-summary-title">{{ titulo }}</div>
+            <div class="roi-summary-sub">{{ subtitulo }}</div>
+        </div>
+        <div class="roi-summary-grid">
+            <div class="roi-summary-item">
+                <div class="roi-summary-label">Investido no período</div>
+                <div class="roi-summary-value">R$ {{ '%.2f'|format(investido) }}</div>
+            </div>
+            <div class="roi-summary-item">
+                <div class="roi-summary-label">{{ recebido_label }}</div>
+                <div class="roi-summary-value">R$ {{ '%.2f'|format(recebido) }}</div>
+            </div>
+            <div class="roi-summary-item">
+                <div class="roi-summary-label">Imposto ({{ '%.1f'|format(taxa) }}%)</div>
+                <div class="roi-summary-value">
+                    {% if imposto > 0.005 %}
+                        R$ {{ '%.2f'|format(imposto) }}
+                    {% else %}
+                        <span class="roi-muted">—</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="roi-summary-item">
+                <div class="roi-summary-label">ROI Real</div>
+                <div class="roi-summary-value">
+                    {% if investido > 0 %}
+                        {% set roi_val = (recebido - imposto) / investido %}
+                        {% if roi_val < 1 %}
+                            <span class="roi-red">{{ '%.2f'|format(roi_val) }}×</span>
+                        {% elif roi_val <= 1.005 %}
+                            <span class="roi-yellow">{{ '%.2f'|format(roi_val) }}×</span>
+                        {% else %}
+                            <span class="roi-green">{{ '%.2f'|format(roi_val) }}×</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="roi-muted" style="font-family:inherit; font-size:14px;">Sem Orçamento para o período</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="roi-summary-item">
+                <div class="roi-summary-label">Resultado Real</div>
+                <div class="roi-summary-value">
+                    {% if resultado < -0.005 %}
+                        <span class="roi-red">R$ {{ '%.2f'|format(resultado) }}</span>
+                    {% elif resultado < 0.005 %}
+                        <span class="roi-muted" style="font-family:inherit;">R$ 0.00</span>
+                    {% else %}
+                        <span class="roi-blue">+R$ {{ '%.2f'|format(resultado) }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endmacro %}
 
 {% block content %}
 <div class="page-header">
@@ -60,62 +157,35 @@
 
 {% include 'admin/includes/_filtro_periodo.html' %}
 
-<div class="card roi-summary-card">
-    {% if roi_real_erro %}
-        <div class="roi-summary-head">
-            <div class="roi-summary-title">ROI Real (PIX)</div>
-            <div class="roi-summary-sub">Não foi possível carregar os dados agora</div>
-        </div>
-        <div class="empty-state">Dados indisponíveis no momento. Tente novamente em instantes.</div>
-    {% else %}
-        {% set total_pix_real = roi_real.total_pix | float %}
-        {% set total_investido_real = roi_real.total_investido | float %}
-        {% set total_resultado_real = total_pix_real - total_investido_real %}
-        <div class="roi-summary-head">
-            <div class="roi-summary-title">ROI Real (PIX)</div>
-            <div class="roi-summary-sub">Todos os pagamentos PIX recebidos no período</div>
-        </div>
-        <div class="roi-summary-grid">
-            <div class="roi-summary-item">
-                <div class="roi-summary-label">Investido no período</div>
-                <div class="roi-summary-value">R$ {{ '%.2f'|format(total_investido_real) }}</div>
-            </div>
-            <div class="roi-summary-item">
-                <div class="roi-summary-label">Recebido via PIX</div>
-                <div class="roi-summary-value">R$ {{ '%.2f'|format(total_pix_real) }}</div>
-            </div>
-            <div class="roi-summary-item">
-                <div class="roi-summary-label">ROI Real</div>
-                <div class="roi-summary-value">
-                    {% if total_investido_real > 0 %}
-                        {% set roi_real_val = total_pix_real / total_investido_real %}
-                        {% if roi_real_val < 1 %}
-                            <span class="roi-red">{{ '%.2f'|format(roi_real_val) }}×</span>
-                        {% elif roi_real_val <= 1.005 %}
-                            <span class="roi-yellow">{{ '%.2f'|format(roi_real_val) }}×</span>
-                        {% else %}
-                            <span class="roi-green">{{ '%.2f'|format(roi_real_val) }}×</span>
-                        {% endif %}
-                    {% else %}
-                        <span class="roi-muted" style="font-family:inherit; font-size:14px;">Sem Orçamento para o período</span>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="roi-summary-item">
-                <div class="roi-summary-label">Resultado Real</div>
-                <div class="roi-summary-value">
-                    {% if total_resultado_real < -0.005 %}
-                        <span class="roi-red">R$ {{ '%.2f'|format(total_resultado_real) }}</span>
-                    {% elif total_resultado_real < 0.005 %}
-                        <span class="roi-muted" style="font-family:inherit;">R$ 0.00</span>
-                    {% else %}
-                        <span class="roi-blue">+R$ {{ '%.2f'|format(total_resultado_real) }}</span>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+<div class="card imposto-card">
+    <span class="imposto-label">Imposto sobre faturamento</span>
+    <input id="imposto-input" class="imposto-input" type="number"
+           min="0" max="100" step="0.1" value="{{ '%.1f'|format(taxa_imposto) }}">
+    <span class="imposto-pct">%</span>
+    <button id="btn-imposto-3" class="btn btn-sm" type="button">3%</button>
+    <button id="btn-calcular-imposto" class="btn btn-sm btn-primary" type="button">Calcular</button>
+    {% if taxa_imposto > 0 %}
+    <span class="imposto-label" style="margin-left:4px;">
+        aplicando {{ '%.1f'|format(taxa_imposto) }}% sobre a receita de cada card abaixo
+    </span>
     {% endif %}
 </div>
+
+{% set pix_recebido = (roi_real.total_pix | float) if not roi_real_erro else 0 %}
+{% set pix_investido = (roi_real.total_investido | float) if not roi_real_erro else 0 %}
+{% set pix_recebido_sem_duplicidade = (roi_real.total_pix_sem_duplicidade_web | float) if not roi_real_erro else 0 %}
+{% set web_recebido = (roi_real_web.total_web | float) if not roi_real_web_erro else 0 %}
+{% set web_investido = (roi_real_web.total_investido | float) if not roi_real_web_erro else 0 %}
+{% set total_erro = roi_real_erro or roi_real_web_erro %}
+
+{{ roi_summary_card('ROI Real (PIX)', 'Todos os pagamentos PIX recebidos no período (investido = campanhas não marcadas como Venda Web)',
+    'Recebido via PIX', pix_recebido, pix_investido, taxa_imposto, roi_real_erro) }}
+
+{{ roi_summary_card('ROI Real Web', 'Pedidos pagos via checkout web (BB Pay) no período, contra campanhas marcadas como Venda Web',
+    'Recebido via Web', web_recebido, web_investido, taxa_imposto, roi_real_web_erro) }}
+
+{{ roi_summary_card('ROI Real Total', 'Todas as campanhas do produto, contra PIX + Web recebidos no período (sem contar 2x o mesmo PIX)',
+    'Recebido (PIX + Web)', pix_recebido_sem_duplicidade + web_recebido, pix_investido + web_investido, taxa_imposto, total_erro) }}
 
 {% if rows %}
 <div class="card">
@@ -225,4 +295,44 @@
 
 {% block extra_js %}
 {% include 'admin/includes/_filtro_periodo_js.html' %}
+<script>
+(function () {
+    const form = document.querySelector('.period-form');
+    const impostoInput = document.getElementById('imposto-input');
+    if (!form || !impostoInput) return;
+
+    function getImpostoValue() {
+        const v = parseFloat(impostoInput.value);
+        return isNaN(v) ? '2.5' : Math.max(0, Math.min(100, v)).toString();
+    }
+
+    function injectImposto() {
+        let h = form.querySelector('input[name="imposto"]');
+        if (!h) {
+            h = document.createElement('input');
+            h.type = 'hidden';
+            h.name = 'imposto';
+            form.appendChild(h);
+        }
+        h.value = getImpostoValue();
+    }
+
+    const _origSubmit = HTMLFormElement.prototype.submit.bind(form);
+    form.submit = function () {
+        injectImposto();
+        _origSubmit();
+    };
+
+    form.addEventListener('submit', injectImposto);
+
+    document.getElementById('btn-calcular-imposto')
+        ?.addEventListener('click', () => form.submit());
+
+    document.getElementById('btn-imposto-3')
+        ?.addEventListener('click', () => {
+            impostoInput.value = '3';
+            form.submit();
+        });
+})();
+</script>
 {% endblock %}

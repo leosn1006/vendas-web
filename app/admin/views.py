@@ -2395,6 +2395,7 @@ _SQL_LISTA_CAMPANHAS = """
     SELECT
         p.campaignid,
         c.nome,
+        COALESCE(c.venda_web, FALSE) AS venda_web,
         COUNT(*) AS total_pedidos
     FROM pedidos p
     LEFT JOIN campanhas c ON c.produto_id = p.produto_id AND c.campaignid = p.campaignid
@@ -2421,18 +2422,19 @@ def campanhas_produto(produto_id):
 def salvar_campanha(produto_id):
     campaignid = request.form.get('campaignid', '').strip()
     nome = request.form.get('nome', '').strip()
+    venda_web = request.form.get('venda_web') == 'on'
     if not campaignid or not nome:
         flash('Informe o Campaign ID e o nome.', 'warning')
         return redirect(url_for('admin.campanhas_produto', produto_id=produto_id))
     try:
         db.execute_query(
-            """INSERT INTO campanhas (produto_id, campaignid, nome)
-               VALUES (%s, %s, %s)
-               ON DUPLICATE KEY UPDATE nome = VALUES(nome)""",
-            (produto_id, campaignid, nome)
+            """INSERT INTO campanhas (produto_id, campaignid, nome, venda_web)
+               VALUES (%s, %s, %s, %s)
+               ON DUPLICATE KEY UPDATE nome = VALUES(nome), venda_web = VALUES(venda_web)""",
+            (produto_id, campaignid, nome, venda_web)
         )
         flash(f'Nome "{nome}" salvo para a campanha {campaignid}.', 'success')
-        logger.info(f"[ADMIN] ✅ Campanha {campaignid} → '{nome}' salva no produto #{produto_id} por {current_user.email}")
+        logger.info(f"[ADMIN] ✅ Campanha {campaignid} → '{nome}' (venda_web={venda_web}) salva no produto #{produto_id} por {current_user.email}")
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro ao salvar campanha: {e}")
         flash(f'Erro ao salvar campanha: {e}', 'danger')
@@ -2526,10 +2528,45 @@ _SQL_ROI_REAL = """
               AND pp.horario BETWEEN %s AND %s
         ), 0) AS total_pix,
         COALESCE((
+            SELECT SUM(pp.valor)
+            FROM pagamento_pix pp
+            WHERE pp.produto_id = %s
+              AND pp.horario BETWEEN %s AND %s
+              AND NOT EXISTS (
+                  SELECT 1 FROM pedidos ped
+                  WHERE ped.estado_id = 1000
+                    AND ped.e2e_id = pp.e2e_id
+                    AND ped.e2e_id != ''
+              )
+        ), 0) AS total_pix_sem_duplicidade_web,
+        COALESCE((
             SELECT SUM(oc.valor_investido)
             FROM orcamento_campanha oc
+            LEFT JOIN campanhas cam
+                ON cam.produto_id = oc.produto_id AND cam.campaignid = oc.campaignid
             WHERE oc.produto_id = %s
               AND oc.data BETWEEN %s AND %s
+              AND COALESCE(cam.venda_web, FALSE) = FALSE
+        ), 0) AS total_investido
+"""
+
+_SQL_ROI_REAL_WEB = """
+    SELECT
+        COALESCE((
+            SELECT SUM(p.valor_pago)
+            FROM pedidos p
+            WHERE p.produto_id = %s
+              AND p.estado_id = 1000
+              AND p.data_pagamento BETWEEN %s AND %s
+        ), 0) AS total_web,
+        COALESCE((
+            SELECT SUM(oc.valor_investido)
+            FROM orcamento_campanha oc
+            JOIN campanhas cam
+                ON cam.produto_id = oc.produto_id AND cam.campaignid = oc.campaignid
+            WHERE oc.produto_id = %s
+              AND oc.data BETWEEN %s AND %s
+              AND cam.venda_web = TRUE
         ), 0) AS total_investido
 """
 
@@ -2556,6 +2593,14 @@ _SQL_ROI_TODOS_PRODUTOS = """
     WHERE p.ativo = TRUE
     ORDER BY total_pix DESC
 """
+
+
+def _parse_taxa_imposto(default: float = 2.5) -> float:
+    """Lê e limita a `?imposto=` da query string a uma faixa válida de percentual (0-100)."""
+    try:
+        return max(0.0, min(100.0, float(request.args.get('imposto', str(default)) or default)))
+    except (ValueError, TypeError):
+        return default
 
 
 @admin_bp.route('/roi-produtos')
@@ -2588,10 +2633,7 @@ def roi_todos_produtos():
         flash('Erro ao carregar ROI dos produtos.', 'danger')
         rows = []
 
-    try:
-        taxa = max(0.0, min(100.0, float(request.args.get('imposto', '2.5') or '2.5')))
-    except (ValueError, TypeError):
-        taxa = 2.5
+    taxa = _parse_taxa_imposto()
 
     for r in rows:
         investido = float(r['total_investido'])
@@ -2711,12 +2753,13 @@ def roi_produto(produto_id):
     data_ini_date = data_ini.date().isoformat()
     data_fim_date = data_fim.date().isoformat()
 
-    roi_real = {'total_pix': 0, 'total_investido': 0}
+    roi_real = {'total_pix': 0, 'total_pix_sem_duplicidade_web': 0, 'total_investido': 0}
     roi_real_erro = False
     try:
         roi_real_row = db.execute_query(
             _SQL_ROI_REAL,
             (produto_id, data_ini, data_fim,
+             produto_id, data_ini, data_fim,
              produto_id, data_ini_date, data_fim_date),
             fetch_one=True
         )
@@ -2726,6 +2769,24 @@ def roi_produto(produto_id):
         roi_real_erro = True
         roi_real = None
         logger.error(f"[ADMIN] ❌ Erro ao calcular ROI real do produto #{produto_id}: {e}")
+
+    roi_real_web = {'total_web': 0, 'total_investido': 0}
+    roi_real_web_erro = False
+    try:
+        roi_real_web_row = db.execute_query(
+            _SQL_ROI_REAL_WEB,
+            (produto_id, data_ini, data_fim,
+             produto_id, data_ini_date, data_fim_date),
+            fetch_one=True
+        )
+        if roi_real_web_row:
+            roi_real_web = roi_real_web_row
+    except Exception as e:
+        roi_real_web_erro = True
+        roi_real_web = None
+        logger.error(f"[ADMIN] ❌ Erro ao calcular ROI real web do produto #{produto_id}: {e}")
+
+    taxa_imposto = _parse_taxa_imposto()
 
     try:
         rows = db.execute_query(
@@ -2743,7 +2804,10 @@ def roi_produto(produto_id):
         rows = []
 
     return render_template('admin/roi_produto.html',
-        produto=produto, rows=rows, roi_real=roi_real, roi_real_erro=roi_real_erro,
+        produto=produto, rows=rows,
+        roi_real=roi_real, roi_real_erro=roi_real_erro,
+        roi_real_web=roi_real_web, roi_real_web_erro=roi_real_web_erro,
+        taxa_imposto=taxa_imposto,
         data_ini=data_ini_str, data_fim=data_fim_str)
 
 
