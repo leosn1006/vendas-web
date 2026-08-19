@@ -76,6 +76,11 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute=20),  # toda hora no :20
         'options': {'queue': 'baixa'},
     },
+    'verificar-emails-clientes': {
+        'task': 'tasks.verificar_emails_clientes',
+        'schedule': crontab(minute='*/10'),  # a cada 10 minutos
+        'options': {'queue': 'baixa'},
+    },
 }
 
 from celery.signals import worker_process_init
@@ -130,6 +135,7 @@ celery_app.conf.update(
         "tasks.processar_orcamento_sheets":              {"queue": "baixa"},
         "tasks.verificar_qualidade_whatsapp":            {"queue": "baixa"},
         "tasks.verificar_qualidade_whatsapp_produto":     {"queue": "normal"},
+        "tasks.verificar_emails_clientes":               {"queue": "baixa"},
         # NF-e
         "tasks.emitir_nfe":                              {"queue": "normal"},
         "tasks.reprocessar_nfe_pendentes":               {"queue": "baixa"},

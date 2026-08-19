@@ -302,6 +302,27 @@ def fluxo_followup_pagamento_web(self):
         import traceback
         traceback.print_exc()
 
+@shared_task(name="tasks.verificar_emails_clientes", bind=True, max_retries=0)
+def verificar_emails_clientes(self):
+    """Polling da caixa admin@lsnlivros.com.br — lê respostas de clientes a e-mails de pedidos
+    web e aciona o agente de e-mail dedicado. Roda a cada 10min (ver celery_app.py)."""
+    _TAG = "TASK-EMAIL-CONVERSAS"
+    lock_key = "lock:email_conversas"
+    if not _redis.set(lock_key, 1, nx=True, ex=590):  # TTL 9m50s — evita sobreposição entre rodadas de 10min
+        logger.info(f"[{_TAG}] ⏭ Outra instância já em execução — ignorando")
+        return
+    try:
+        from fluxos.fluxo_email_conversas import executar
+        executar()
+        logger.info(f"[{_TAG}] ✅ rotina executada com sucesso!")
+    except Exception as exc:
+        logger.error(f"[{_TAG}] ❌ Erro: {exc}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        _redis.delete(lock_key)
+
+
 @shared_task(name="tasks.enviar_confirmacao_web", bind=True, max_retries=2)
 def fluxo_enviar_confirmacao_web(self, pedido_id: int):
     logger.info("=" * 120)

@@ -1,0 +1,108 @@
+{% extends 'admin/base.html' %}
+{% block title %}Sugestões de E-mail — {{ produto.nome }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notif-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+    .notif-table th {
+        text-align: left;
+        padding: 10px 12px;
+        font-size: 11px;
+        font-family: var(--mono);
+        text-transform: uppercase;
+        color: var(--muted);
+        border-bottom: 1px solid var(--border);
+    }
+    .notif-table td {
+        padding: 12px 12px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+    }
+    .notif-table tr:last-child td {
+        border-bottom: none;
+    }
+    .notif-table tr:hover td {
+        background: var(--surface);
+    }
+    .mensagem-preview {
+        max-width: 380px;
+        color: var(--muted);
+        font-size: 13px;
+    }
+    .empty-state {
+        text-align: center;
+        color: var(--muted);
+        font-size: 14px;
+        padding: 56px 0;
+    }
+    .actions-cell {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">
+            📧 Sugestões de Resposta por E-mail
+            {% if sugestoes %}
+            <span class="badge badge-red" style="margin-left:8px;font-size:13px">{{ sugestoes|length }}</span>
+            {% endif %}
+        </div>
+        <div class="page-subtitle">{{ produto.nome }} — rascunho da IA aguardando aprovação humana</div>
+    </div>
+</div>
+
+<div class="card">
+    {% if sugestoes %}
+    <table class="notif-table">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Pedido</th>
+                <th>Cliente</th>
+                <th>Rascunho da IA</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for n in sugestoes %}
+            <tr>
+                <td style="white-space:nowrap;color:var(--muted);font-size:13px">
+                    {{ n.created_at.strftime('%d/%m %H:%M') }}
+                </td>
+                <td>
+                    <strong>#{{ n.pedido_id }}</strong>
+                </td>
+                <td style="font-size:13px">
+                    {{ n.contact_name or '—' }}<br>
+                    <span style="color:var(--muted);font-size:12px">{{ n.email or '' }}</span>
+                </td>
+                <td>
+                    <div class="mensagem-preview">{{ n.mensagem|striptags|truncate(220) if n.mensagem else '—' }}</div>
+                </td>
+                <td>
+                    <div class="actions-cell">
+                        <a href="{{ url_for('admin.conversa_email_pedido', produto_id=produto.id, pedido_id=n.pedido_id) }}"
+                           class="btn btn-sm btn-primary">Ver e responder</a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        ✓ Nenhuma sugestão pendente
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

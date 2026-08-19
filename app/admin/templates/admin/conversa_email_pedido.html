@@ -1,0 +1,267 @@
+{% extends 'admin/base.html' %}
+{% block title %}Conversa E-mail #{{ pedido.id }} — {{ produto.nome }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .pedido-info {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+        font-size: 14px;
+        color: var(--text);
+    }
+    .pedido-info span {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .pedido-info .label {
+        font-size: 11px;
+        font-family: var(--mono);
+        text-transform: uppercase;
+        color: var(--muted);
+    }
+
+    .chat-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 560px;
+        overflow-y: auto;
+        padding: 4px 0 16px;
+    }
+
+    .bubble-wrap { display: flex; flex-direction: column; }
+    .bubble-wrap.left  { align-items: flex-start; }
+    .bubble-wrap.right { align-items: flex-end; }
+
+    .bubble-label {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 3px;
+        font-family: var(--mono);
+    }
+
+    .bubble {
+        max-width: 70%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 14px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+    .bubble.left  { background: #f0e8dc; color: var(--text); border-bottom-left-radius: 3px; }
+    .bubble.right { background: var(--accent); color: #fff; border-bottom-right-radius: 3px; }
+    .bubble.right a { color: #fff; }
+
+    .anexos-lista {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-top: 4px;
+    }
+    .anexo-link {
+        font-size: 12px;
+        color: var(--accent);
+        text-decoration: none;
+    }
+    .anexo-link:hover { text-decoration: underline; }
+
+    .send-area {
+        margin-top: 20px;
+        border-top: 1px solid var(--border);
+        padding-top: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .send-area textarea {
+        resize: vertical;
+        min-height: 160px;
+        font-family: var(--mono);
+        font-size: 13px;
+    }
+    .send-area .send-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .send-hint {
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+    #preview-frame {
+        display: none;
+        width: 100%;
+        height: 320px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-top: 10px;
+        background: #fff;
+    }
+
+    .empty-chat {
+        text-align: center;
+        color: var(--muted);
+        font-size: 14px;
+        padding: 40px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Conversa E-mail</div>
+        <div class="page-subtitle">{{ produto.nome }}</div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 20px;">
+    <div class="pedido-info">
+        <span>
+            <span class="label">Pedido</span>
+            #{{ pedido.id }}
+        </span>
+        <span>
+            <span class="label">Cliente</span>
+            {{ pedido.contact_name or '—' }}
+        </span>
+        <span>
+            <span class="label">E-mail</span>
+            {{ pedido.email or '—' }}
+        </span>
+        <span>
+            <span class="label">Estado</span>
+            {{ pedido.estado_id }}
+        </span>
+    </div>
+</div>
+
+<div class="card">
+    {% if notificacao_sugestao %}
+    <div class="alert alert-warning" style="margin-bottom: 16px;">
+        🤖 A IA sugeriu uma resposta — revise, edite se precisar e envie (ou marque como respondido
+        sem enviar nada, se preferir responder por fora).
+    </div>
+    {% endif %}
+
+    <div class="chat-toolbar">
+        <button onclick="history.back()" class="btn btn-ghost btn-sm">← Voltar</button>
+        <a href="{{ url_for('admin.conversa_email_pedido', produto_id=produto.id, pedido_id=pedido.id) }}"
+           class="btn btn-ghost btn-sm">↻ Recarregar</a>
+        {% if notificacao_sugestao %}
+        <form method="POST"
+              action="{{ url_for('admin.responder_notificacao', produto_id=produto.id, notificacao_id=notificacao_sugestao.id) }}"
+              style="display:inline">
+            <button type="submit" class="btn btn-sm btn-primary"
+                    onclick="return confirm('Marcar como respondido sem enviar e-mail?')">
+                ✓ Respondido
+            </button>
+        </form>
+        {% endif %}
+        {% if not pedido.email_bloqueado %}
+        <form method="POST"
+              action="{{ url_for('admin.bloquear_conversa_email', produto_id=produto.id, pedido_id=pedido.id) }}"
+              style="display:inline">
+            <button type="submit" class="btn btn-sm btn-danger"
+                    onclick="return confirm('Bloquear e-mail deste pedido? A IA não vai mais sugerir resposta (WhatsApp não é afetado).')">
+                🚫 Bloquear e-mail
+            </button>
+        </form>
+        {% else %}
+        <span class="btn btn-sm" style="opacity:.5;cursor:default">🚫 E-mail bloqueado</span>
+        {% endif %}
+    </div>
+
+    <div class="chat-container">
+        {% if mensagens %}
+            {% for msg in mensagens %}
+                {% set lado = 'left' if msg.direcao == 'recebida' else 'right' %}
+                <div class="bubble-wrap {{ lado }}">
+                    <span class="bubble-label">
+                        {{ pedido.contact_name if msg.direcao == 'recebida' else 'Sistema' }}
+                        {% if msg.data_mensagem %} — {{ msg.data_mensagem.strftime('%d/%m/%Y às %H:%M') }}{% endif %}
+                    </span>
+                    <div class="bubble {{ lado }}">
+                        {% if msg.corpo_html %}{{ msg.corpo_html|safe }}{% else %}{{ msg.corpo_texto or '(sem conteúdo)' }}{% endif %}
+                    </div>
+                    {% if anexos_por_mensagem.get(msg.id) %}
+                    <div class="anexos-lista">
+                        {% for anexo in anexos_por_mensagem[msg.id] %}
+                        <a class="anexo-link" target="_blank" rel="noopener noreferrer"
+                           href="{{ url_for('admin.visualizar_anexo_email', pedido_id=pedido.id, anexo_id=anexo.id) }}">
+                            📎 {{ anexo.nome_arquivo }} ({{ (anexo.tamanho_bytes / 1024)|round(1) }} KB)
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-chat">Nenhuma mensagem de e-mail registrada para este pedido ainda.</div>
+        {% endif %}
+    </div>
+
+    {% if pedido.email %}
+    <div class="send-area">
+        <form method="POST" id="form-resposta"
+              action="{{ url_for('admin.conversa_email_enviar_mensagem', produto_id=produto.id, pedido_id=pedido.id) }}">
+            {% if notificacao_sugestao %}
+            <input type="hidden" name="notificacao_id" value="{{ notificacao_sugestao.id }}">
+            {% endif %}
+            <textarea name="corpo_html" id="corpo-html-input"
+                      placeholder="&lt;p&gt;Escreva a resposta em HTML simples (ou aprove/edite a sugestão da IA)…&lt;/p&gt;">{{ rascunho_ia }}</textarea>
+            <div class="send-actions">
+                <span class="send-hint">HTML-fonte — sem &lt;html&gt;/&lt;body&gt;, só o conteúdo da resposta.</span>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" id="btn-preview" class="btn btn-ghost btn-sm">👁 Pré-visualizar</button>
+                    <button type="submit" class="btn btn-primary">Enviar</button>
+                </div>
+            </div>
+        </form>
+        <iframe id="preview-frame" sandbox title="Pré-visualização do e-mail"></iframe>
+    </div>
+    {% else %}
+    <div class="send-area">
+        <p style="color: var(--muted); font-size: 14px;">Pedido sem e-mail cadastrado — não é possível responder.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const chat = document.querySelector('.chat-container');
+    if (chat) chat.scrollTop = chat.scrollHeight;
+
+    const btnPreview = document.getElementById('btn-preview');
+    const frame = document.getElementById('preview-frame');
+    if (btnPreview) {
+        btnPreview.addEventListener('click', async () => {
+            const html = document.getElementById('corpo-html-input').value;
+            try {
+                const resp = await fetch("{{ url_for('admin.preview_email_html', produto_id=produto.id) }}", {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'html=' + encodeURIComponent(html),
+                });
+                const limpo = await resp.text();
+                frame.srcdoc = limpo;
+                frame.style.display = 'block';
+            } catch (e) {
+                alert('Falha ao gerar pré-visualização.');
+            }
+        });
+    }
+</script>
+{% endblock %}

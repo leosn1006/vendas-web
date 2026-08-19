@@ -42,11 +42,13 @@ def inject_produto_ativo():
         has_produto_acesso = produto_ativo is not None
 
         badge_notificacoes = 0
+        badge_sugestoes_email = 0
         badge_qualidade_cor = None   # None | 'green' | 'yellow' | 'red'
         badge_qualidade_qtd = 0
         if produto_ativo:
             from database import contar_notificacoes_em_analise
             badge_notificacoes = contar_notificacoes_em_analise(produto_ativo['id'])
+            badge_sugestoes_email = contar_notificacoes_em_analise(produto_ativo['id'], motivo='sugestao_resposta_email')
 
             # Try/except isolado: uma falha aqui (ex: migration de qualidade ainda não aplicada
             # nesse ambiente) não pode apagar o badge_notificacoes calculado acima, que é uma
@@ -64,13 +66,14 @@ def inject_produto_ativo():
                 pass  # badge de qualidade fica None/0; resto da navegação segue normal
 
         return dict(
-            produtos_lista      = produtos,
-            produto_ativo       = produto_ativo,
-            has_produto_acesso  = has_produto_acesso,
-            badge_notificacoes  = badge_notificacoes,
-            badge_qualidade_cor = badge_qualidade_cor,
-            badge_qualidade_qtd = badge_qualidade_qtd,
+            produtos_lista        = produtos,
+            produto_ativo         = produto_ativo,
+            has_produto_acesso    = has_produto_acesso,
+            badge_notificacoes    = badge_notificacoes,
+            badge_sugestoes_email = badge_sugestoes_email,
+            badge_qualidade_cor   = badge_qualidade_cor,
+            badge_qualidade_qtd   = badge_qualidade_qtd,
         )
     except Exception:
         return dict(produtos_lista=[], produto_ativo=None, has_produto_acesso=False, badge_notificacoes=0,
-                     badge_qualidade_cor=None, badge_qualidade_qtd=0)
+                     badge_sugestoes_email=0, badge_qualidade_cor=None, badge_qualidade_qtd=0)

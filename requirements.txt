@@ -38,3 +38,6 @@ signxml==5.0.0  # subclasse _NFeSigner/_NFeVerifier bypassa bloqueio SHA1 (exigi
 gspread==6.1.2
 google-auth==2.29.0
 google-api-python-client>=2.120.0
+
+# Sanitização de HTML de e-mail (conversas por e-mail — mensagens de cliente e respostas)
+bleach==6.1.0

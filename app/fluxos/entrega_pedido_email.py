@@ -12,9 +12,11 @@ Fluxo:
 """
 
 import os
+import time
 import logging
+from datetime import datetime
 
-from fluxos._email_gmail import enviar as _enviar_gmail, lighten_hex as _lighten_hex
+from fluxos._email_gmail import enviar as _enviar_gmail, wrapper_html as _wrapper_html
 
 logger = logging.getLogger(__name__)
 
@@ -57,15 +59,39 @@ def executar(pedido_id: int) -> None:
         for item in db.listar_itens_pedido(pedido_id)
     ]
 
-    _enviar_gmail(
+    html_entrega = _corpo_html(nome_cliente, nome_produto, itens,
+                               nome_remetente_email, cor_primaria, cor_secundaria)
+
+    resultado = _enviar_gmail(
         destinatario=destinatario,
         remetente=remetente,
         nome_remetente=f'{nome_remetente_email} — {nome_produto}',
         subject=subject,
-        html=_corpo_html(nome_cliente, nome_produto, itens,
-                        nome_remetente_email, cor_primaria, cor_secundaria),
-    )
+        html=html_entrega,
+    ) or {}
     db.marcar_ebook_enviado(pedido_id)
+
+    thread_id = resultado.get('threadId')
+    if thread_id:
+        db.definir_gmail_thread_pedido(pedido_id, thread_id)
+
+    # Registra o próprio e-mail de entrega na timeline de conversas — sem isso a tela "Conversa
+    # E-mail" começaria vazia até a primeira resposta do cliente, e não teríamos o Message-ID
+    # necessário pra ancorar o In-Reply-To/References dessa primeira resposta.
+    db.salvar_mensagem_email_pedido(
+        pedido_id=pedido_id,
+        direcao='enviada',
+        gmail_message_id=resultado.get('id') or f'local-{pedido_id}-{int(time.time())}',
+        gmail_thread_id=thread_id or '',
+        rfc_message_id=resultado.get('rfcMessageId'),
+        assunto=subject,
+        remetente=remetente,
+        destinatario=destinatario,
+        corpo_texto=None,
+        corpo_html=html_entrega,
+        data_mensagem=datetime.now(),
+    )
+
     logger.info(f'[EMAIL] ✅ Pedido #{pedido_id} entregue para {destinatario}')
 
 
@@ -86,9 +112,6 @@ def _corpo_html(nome: str, nome_produto: str,
         cor_primaria: Cor do header em hex (ex: '#2d6a1f')
         cor_secundaria: Cor dos botões em hex (ex: '#b45309')
     """
-    # Calcula versão mais clara da cor primária para gradient (+30% lightness)
-    cor_primaria_clara = _lighten_hex(cor_primaria, 0.3)
-
     def _botao(item: dict, principal: bool = False) -> str:
         rotulo = f"📥 Baixar meu {nome_produto}" if principal else f"🎁 Baixar {item['nome']}"
         tamanho = '17px' if principal else '15px'
@@ -116,31 +139,7 @@ def _corpo_html(nome: str, nome_produto: str,
             {botoes_extras}
     '''
 
-    return f"""<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: Arial, sans-serif; background:#f9f5ef; margin:0; padding:0;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f5ef; padding:24px 0;">
-    <tr><td align="center">
-      <table width="100%" style="max-width:560px; background:#ffffff; border-radius:16px;
-                                  overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.08);">
-
-        <!-- Cabeçalho -->
-        <tr>
-          <td style="background:linear-gradient(135deg,{cor_primaria},{cor_primaria_clara}); padding:28px 32px; text-align:center;">
-            <h1 style="color:#ffffff; font-size:24px; font-weight:bold; margin:0; font-family:Georgia,serif;">
-              ✅ Seu {nome_produto} chegou, {nome}!
-            </h1>
-          </td>
-        </tr>
-
-        <!-- Corpo -->
-        <tr>
-          <td style="padding:32px;">
-
+    corpo_interno = f"""
             <p style="font-size:16px; color:#333; margin:0 0 16px;">
               Aqui é a <strong>{nome_remetente}</strong>. Seu pagamento foi confirmado — parabéns pela decisão! 🎉
             </p>
@@ -219,22 +218,16 @@ def _corpo_html(nome: str, nome_produto: str,
             <p style="font-size:14px; color:#666; margin:0;">
               Com carinho,<br>
               <strong style="color:{cor_primaria};">{nome_remetente}</strong>
-            </p>
-          </td>
-        </tr>
+            </p>"""
 
-        <!-- Rodapé -->
-        <tr>
-          <td style="background:#f0f0f0; padding:16px 32px; text-align:center;">
-            <p style="font-size:11px; color:#999; margin:0;">
-              Você recebeu este e-mail porque realizou uma compra em lsnlivros.com.br.<br>
-              Guarde este e-mail para ter sempre acesso ao seu link de download.
-            </p>
-          </td>
-        </tr>
+    rodape = ('Você recebeu este e-mail porque realizou uma compra em lsnlivros.com.br.<br>'
+               'Guarde este e-mail para ter sempre acesso ao seu link de download.')
 
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>"""
+    return _wrapper_html(
+        titulo_header=f'✅ Seu {nome_produto} chegou, {nome}!',
+        corpo_interno_html=corpo_interno,
+        nome_remetente=nome_remetente,
+        cor_primaria=cor_primaria,
+        cor_secundaria=cor_secundaria,
+        rodape=rodape,
+    )

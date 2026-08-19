@@ -3,6 +3,7 @@ import os
 import datetime
 import subprocess
 import tempfile
+import bleach
 from zoneinfo import ZoneInfo
 from flask import render_template, redirect, url_for, request, flash, session, current_app, jsonify, send_file
 from flask_login import current_user
@@ -29,7 +30,10 @@ from database import (db,
     busca_financeiro_pix,
     listar_planilhas_dns_produto, adicionar_planilha_dns, atualizar_planilha_dns, remover_planilha_dns,
     listar_notificacoes_em_analise, marcar_notificacao_respondida, bloquear_pedido,
-    buscar_notificacao_em_analise_pedido, bloquear_followup_pedido)
+    buscar_notificacao_em_analise_pedido, bloquear_followup_pedido,
+    listar_pedidos_conversas_email, buscar_mensagens_email_pedido, buscar_anexos_email_pedido,
+    buscar_notificacao_email_pedido, bloquear_pedido_email, buscar_anexo_email_por_id,
+    buscar_notificacao_por_id)
 
 _FLUXOS = ['introducao', 'pedido', 'comprovante', 'responder', 'followup', 'confirmacao_web', 'followup_interesse_1', 'followup_interesse_2']
 _FLUXOS_READONLY = {'responder'}
@@ -774,7 +778,10 @@ def notificacoes_produto(produto_id):
 @admin_bp.route('/produto/<int:produto_id>/notificacoes/<int:notificacao_id>/responder', methods=['POST'])
 @requer_acesso_produto
 def responder_notificacao(produto_id, notificacao_id):
+    notificacao = buscar_notificacao_por_id(notificacao_id, produto_id)
     marcar_notificacao_respondida(notificacao_id, produto_id)
+    if notificacao and notificacao['motivo'] == 'sugestao_resposta_email':
+        return redirect(url_for('admin.conversa_email_pedido', produto_id=produto_id, pedido_id=notificacao['pedido_id']))
     return redirect(url_for('admin.notificacoes_produto', produto_id=produto_id))
 
 
@@ -921,6 +928,158 @@ def conversa_enviar_mensagem(produto_id, pedido_id):
         flash(f'Erro ao enviar: {e}', 'danger')
 
     return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
+
+
+# ============================================================
+# Conversas por e-mail (pedidos web 1000-1004) — tela própria, não reaproveita
+# produto_conversas.html (evita condicionais grandes misturando WhatsApp/e-mail).
+# ============================================================
+_TAGS_HTML_EMAIL_PERMITIDAS = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'a', 'ul', 'ol', 'li', 'blockquote']
+_ATRIBUTOS_HTML_EMAIL_PERMITIDOS = {'a': ['href', 'title']}
+
+
+def _sanitizar_html_email(html: str) -> str:
+    """Sanitiza HTML de e-mail (recebido do cliente ou editado pelo admin) antes de renderizar
+    ou enviar — remove <script>, on*=, javascript: etc. Sem 'style' na allowlist de propósito:
+    evita ter que sanitizar CSS à parte (url(), expression()) só para preservar formatação de
+    um remetente não confiável."""
+    return bleach.clean(html or '', tags=_TAGS_HTML_EMAIL_PERMITIDAS,
+                        attributes=_ATRIBUTOS_HTML_EMAIL_PERMITIDOS,
+                        protocols=['http', 'https', 'mailto'], strip=True)
+
+
+@admin_bp.route('/produto/<int:produto_id>/emails/sugestoes')
+@requer_acesso_produto
+def sugestoes_email_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = db.execute_query("SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True)
+    if produto is None:
+        flash('Produto não encontrado.', 'danger')
+        return redirect(url_for('admin.listar_produtos'))
+    sugestoes = listar_notificacoes_em_analise(produto_id, motivo='sugestao_resposta_email')
+    return render_template('admin/produto_sugestoes_email.html', produto=produto, sugestoes=sugestoes)
+
+
+@admin_bp.route('/produto/<int:produto_id>/emails/conversas', methods=['GET', 'POST'])
+@requer_acesso_produto
+def conversas_email_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = db.execute_query("SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True)
+    if produto is None:
+        flash('Produto não encontrado.', 'danger')
+        return redirect(url_for('admin.listar_produtos'))
+
+    termo = None
+    if request.method == 'POST':
+        termo = (request.form.get('q') or '').strip()
+        if termo.isdigit():
+            pedido = get_pedido(int(termo))
+            if pedido and pedido.get('produto_id') == produto_id:
+                return redirect(url_for('admin.conversa_email_pedido', produto_id=produto_id, pedido_id=pedido['id']))
+
+    pedidos = listar_pedidos_conversas_email(produto_id, termo)
+    return render_template('admin/produto_conversas_email.html', produto=produto, pedidos=pedidos, termo=termo)
+
+
+@admin_bp.route('/produto/<int:produto_id>/emails/conversas/<int:pedido_id>')
+@requer_acesso_produto
+def conversa_email_pedido(produto_id, pedido_id):
+    session['produto_ativo_id'] = produto_id
+    produto = db.execute_query("SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True)
+    pedido  = get_pedido(pedido_id)
+
+    if not produto or not pedido or pedido.get('produto_id') != produto_id:
+        flash('Conversa não encontrada.', 'danger')
+        return redirect(url_for('admin.conversas_email_produto', produto_id=produto_id))
+
+    mensagens = buscar_mensagens_email_pedido(pedido_id)
+    for msg in mensagens:
+        if msg.get('corpo_html'):
+            msg['corpo_html'] = _sanitizar_html_email(msg['corpo_html'])
+
+    anexos_por_mensagem = {}
+    for anexo in buscar_anexos_email_pedido(pedido_id):
+        anexos_por_mensagem.setdefault(anexo['mensagem_id'], []).append(anexo)
+
+    notificacao_sugestao = buscar_notificacao_email_pedido(pedido_id)
+    rascunho_ia = notificacao_sugestao['mensagem'] if notificacao_sugestao else ''
+
+    return render_template('admin/conversa_email_pedido.html',
+                           produto=produto, pedido=pedido, mensagens=mensagens,
+                           anexos_por_mensagem=anexos_por_mensagem,
+                           notificacao_sugestao=notificacao_sugestao,
+                           rascunho_ia=rascunho_ia)
+
+
+@admin_bp.route('/produto/<int:produto_id>/emails/conversas/<int:pedido_id>/enviar', methods=['POST'])
+@requer_acesso_produto
+def conversa_email_enviar_mensagem(produto_id, pedido_id):
+    from fluxos.fluxo_resposta_email import enviar_resposta
+    pedido = get_pedido(pedido_id)
+    if not pedido or pedido.get('produto_id') != produto_id:
+        flash('Pedido não encontrado.', 'danger')
+        return redirect(url_for('admin.conversas_email_produto', produto_id=produto_id))
+
+    corpo_html = (request.form.get('corpo_html') or '').strip()
+    if not corpo_html:
+        flash('Mensagem não pode ser vazia.', 'danger')
+        return redirect(url_for('admin.conversa_email_pedido', produto_id=produto_id, pedido_id=pedido_id))
+
+    notificacao_id = request.form.get('notificacao_id', type=int)
+    corpo_html = _sanitizar_html_email(corpo_html)  # defesa em profundidade — não confia só no client-side
+
+    try:
+        enviar_resposta(pedido_id, corpo_html, notificacao_id=notificacao_id)
+        logger.info(f"[ADMIN] ✅ Resposta de e-mail enviada ao pedido #{pedido_id} por {current_user.email}")
+        flash('Resposta enviada com sucesso!', 'success')
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao enviar resposta de e-mail: {e}")
+        flash(f'Erro ao enviar: {e}', 'danger')
+
+    return redirect(url_for('admin.conversa_email_pedido', produto_id=produto_id, pedido_id=pedido_id))
+
+
+@admin_bp.route('/produto/<int:produto_id>/emails/conversas/<int:pedido_id>/bloquear', methods=['POST'])
+@requer_acesso_produto
+def bloquear_conversa_email(produto_id, pedido_id):
+    pedido = get_pedido(pedido_id)
+    if not pedido or pedido.get('produto_id') != produto_id:
+        flash('Pedido não encontrado.', 'danger')
+        return redirect(url_for('admin.conversas_email_produto', produto_id=produto_id))
+    bloquear_pedido_email(pedido_id)
+    flash('E-mail bloqueado. O agente não vai mais sugerir resposta para este pedido (WhatsApp não é afetado).', 'success')
+    return redirect(url_for('admin.conversa_email_pedido', produto_id=produto_id, pedido_id=pedido_id))
+
+
+@admin_bp.route('/produto/<int:produto_id>/emails/preview', methods=['POST'])
+@requer_acesso_produto
+def preview_email_html(produto_id):
+    """AJAX: sanitiza o HTML atual do textarea de resposta para o botão 'Pré-visualizar'."""
+    return _sanitizar_html_email(request.form.get('html', ''))
+
+
+@admin_bp.route('/pedido/<int:pedido_id>/email/anexo/<int:anexo_id>')
+@requer_login
+def visualizar_anexo_email(pedido_id, anexo_id):
+    """Entrega um anexo de e-mail sempre como download forçado (nunca inline/preview) —
+    aceitamos qualquer tipo de arquivo do cliente, então nunca executamos/renderizamos no servidor."""
+    pedido = get_pedido(pedido_id)
+    if not pedido:
+        return jsonify({'ok': False, 'msg': 'Pedido não encontrado'}), 404
+    if (not current_user.is_admin()) and (not usuario_tem_acesso_produto(current_user.id, pedido['produto_id'])):
+        return jsonify({'ok': False, 'msg': 'Acesso negado'}), 403
+
+    anexo = buscar_anexo_email_por_id(anexo_id)
+    if not anexo or anexo['pedido_id'] != pedido_id:
+        return jsonify({'ok': False, 'msg': 'Anexo não encontrado'}), 404
+
+    from fluxos.fluxo_email_conversas import resolver_caminho_anexo
+    caminho = resolver_caminho_anexo(anexo['caminho_arquivo'])
+    if not caminho:
+        return jsonify({'ok': False, 'msg': 'Arquivo não encontrado'}), 404
+
+    logger.info(f"[ADMIN] 👀 Usuário {current_user.email} baixou anexo de e-mail do pedido #{pedido_id}: {anexo['nome_arquivo']}")
+    return send_file(caminho, as_attachment=True, download_name=anexo['nome_arquivo'])
 
 
 # ============================================================

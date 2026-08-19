@@ -1990,14 +1990,17 @@ def salvar_pagamento_pix(pix: dict, produto_id) -> bool:
 # ============================================================
 
 def criar_notificacao_pedido(pedido_id: int, produto_id: int, motivo: str, mensagem: str = '') -> bool:
-    """Cria notificação se não houver uma em_analise para o pedido. Retorna True se inseriu."""
+    """Cria notificação se não houver uma em_analise para o pedido. Retorna True se inseriu.
+    Ignora notificações com motivo='sugestao_resposta_email' na checagem de duplicidade — um
+    rascunho de e-mail aguardando aprovação não é um alerta que deva bloquear uma escalação
+    (WhatsApp ou e-mail) nova para o mesmo pedido."""
     with db.get_cursor() as cursor:
         cursor.execute(
             """INSERT INTO notificacoes_pedido (pedido_id, produto_id, motivo, mensagem)
                SELECT %s, %s, %s, %s
                WHERE NOT EXISTS (
                    SELECT 1 FROM notificacoes_pedido
-                   WHERE pedido_id = %s AND estado = 'em_analise'
+                   WHERE pedido_id = %s AND estado = 'em_analise' AND motivo != 'sugestao_resposta_email'
                )""",
             (pedido_id, produto_id, motivo, mensagem, pedido_id),
         )
@@ -2005,35 +2008,50 @@ def criar_notificacao_pedido(pedido_id: int, produto_id: int, motivo: str, mensa
 
 
 def tem_notificacao_em_analise(pedido_id: int) -> bool:
-    """Retorna True se houver notificação em_analise para o pedido."""
+    """Retorna True se houver notificação em_analise (que exige atenção humana) para o pedido.
+    Exclui sugestao_resposta_email — um rascunho de e-mail aguardando aprovação não deve
+    silenciar o agente (WhatsApp ou escalonamento de e-mail) para esse pedido."""
     row = db.execute_query(
-        "SELECT 1 FROM notificacoes_pedido WHERE pedido_id = %s AND estado = 'em_analise' LIMIT 1",
+        "SELECT 1 FROM notificacoes_pedido WHERE pedido_id = %s AND estado = 'em_analise' "
+        "AND motivo != 'sugestao_resposta_email' LIMIT 1",
         (pedido_id,),
         fetch_one=True,
     )
     return row is not None
 
 
-def contar_notificacoes_em_analise(produto_id: int) -> int:
-    """Retorna quantidade de notificações em_analise para o produto (usado no badge)."""
+def contar_notificacoes_em_analise(produto_id: int, motivo: str = None) -> int:
+    """Retorna quantidade de notificações em_analise para o produto (usado no badge).
+    Por padrão exclui sugestões de resposta de e-mail — badge próprio, ver
+    contar_notificacoes_em_analise(produto_id, motivo='sugestao_resposta_email')."""
+    if motivo:
+        condicao_motivo, params = "AND motivo = %s", (produto_id, motivo)
+    else:
+        condicao_motivo, params = "AND motivo != 'sugestao_resposta_email'", (produto_id,)
     row = db.execute_query(
-        "SELECT COUNT(*) AS total FROM notificacoes_pedido WHERE produto_id = %s AND estado = 'em_analise'",
-        (produto_id,),
+        f"SELECT COUNT(*) AS total FROM notificacoes_pedido WHERE produto_id = %s AND estado = 'em_analise' {condicao_motivo}",
+        params,
         fetch_one=True,
     )
     return int(row['total']) if row else 0
 
 
-def listar_notificacoes_em_analise(produto_id: int) -> list:
-    """Lista notificações em_analise do produto, mais antigas primeiro, com dados do pedido."""
+def listar_notificacoes_em_analise(produto_id: int, motivo: str = None) -> list:
+    """Lista notificações em_analise do produto, mais antigas primeiro, com dados do pedido.
+    Por padrão exclui sugestões de resposta de e-mail (têm tela própria — ver
+    sugestoes_email_produto); passe motivo='sugestao_resposta_email' para listar só essas."""
+    if motivo:
+        condicao_motivo, params = "AND n.motivo = %s", (produto_id, motivo)
+    else:
+        condicao_motivo, params = "AND n.motivo != 'sugestao_resposta_email'", (produto_id,)
     return db.execute_query(
-        """SELECT n.id, n.pedido_id, n.motivo, n.mensagem, n.created_at,
-                  p.contact_name, p.contact_phone
+        f"""SELECT n.id, n.pedido_id, n.motivo, n.mensagem, n.created_at,
+                  p.contact_name, p.contact_phone, p.email
            FROM notificacoes_pedido n
            JOIN pedidos p ON p.id = n.pedido_id
-           WHERE n.produto_id = %s AND n.estado = 'em_analise'
+           WHERE n.produto_id = %s AND n.estado = 'em_analise' {condicao_motivo}
            ORDER BY n.created_at ASC""",
-        (produto_id,),
+        params,
         fetch_all=True,
     ) or []
 
@@ -2046,22 +2064,220 @@ def marcar_notificacao_respondida(notificacao_id: int, produto_id: int) -> None:
     )
 
 
-def buscar_notificacao_em_analise_pedido(pedido_id: int):
-    """Retorna a notificação em_analise ativa do pedido, ou None."""
+def buscar_notificacao_por_id(notificacao_id: int, produto_id: int):
+    """Pedido_id e motivo da notificação — usado pra decidir de volta pra onde redirecionar
+    depois de marcar como respondida (tela de notificações do WhatsApp vs conversa de e-mail)."""
     return db.execute_query(
-        "SELECT id FROM notificacoes_pedido WHERE pedido_id = %s AND estado = 'em_analise' LIMIT 1",
+        "SELECT id, pedido_id, motivo FROM notificacoes_pedido WHERE id = %s AND produto_id = %s",
+        (notificacao_id, produto_id), fetch_one=True,
+    )
+
+
+def buscar_notificacao_em_analise_pedido(pedido_id: int):
+    """Retorna a notificação em_analise ativa do pedido (exclui sugestao_resposta_email — tem
+    banner/tela própria, ver buscar_notificacao_email_pedido), ou None."""
+    return db.execute_query(
+        "SELECT id FROM notificacoes_pedido WHERE pedido_id = %s AND estado = 'em_analise' "
+        "AND motivo != 'sugestao_resposta_email' LIMIT 1",
         (pedido_id,), fetch_one=True
     )
 
 
 def bloquear_pedido(pedido_id: int) -> None:
-    """Marca pedido como bloqueado e resolve qualquer notificação em_analise ativa (atômico)."""
+    """Marca pedido como bloqueado (WhatsApp) e resolve notificações em_analise do WhatsApp
+    (atômico) — não mexe numa sugestão de e-mail pendente, que é de outro canal e o admin ainda
+    não viu."""
     with db.get_cursor() as cursor:
         cursor.execute("UPDATE pedidos SET bloqueado = 1 WHERE id = %s", (pedido_id,))
         cursor.execute(
-            "UPDATE notificacoes_pedido SET estado = 'respondido' WHERE pedido_id = %s AND estado = 'em_analise'",
+            "UPDATE notificacoes_pedido SET estado = 'respondido' "
+            "WHERE pedido_id = %s AND estado = 'em_analise' AND motivo != 'sugestao_resposta_email'",
             (pedido_id,),
         )
+
+
+def criar_sugestao_resposta_email(pedido_id: int, produto_id: int, mensagem: str) -> bool:
+    """Cria notificação de sugestão de resposta de e-mail. Dedupe restrito ao próprio motivo
+    (diferente de criar_notificacao_pedido, que dedupe por QUALQUER notificação em_analise do
+    pedido) — um pedido web pode ter uma notificação do WhatsApp aberta e ainda assim precisa
+    da sugestão de e-mail visível, senão o rascunho da IA seria descartado silenciosamente."""
+    with db.get_cursor() as cursor:
+        cursor.execute(
+            """INSERT INTO notificacoes_pedido (pedido_id, produto_id, motivo, mensagem)
+               SELECT %s, %s, 'sugestao_resposta_email', %s
+               WHERE NOT EXISTS (
+                   SELECT 1 FROM notificacoes_pedido
+                   WHERE pedido_id = %s AND estado = 'em_analise' AND motivo = 'sugestao_resposta_email'
+               )""",
+            (pedido_id, produto_id, mensagem, pedido_id),
+        )
+        return cursor.rowcount > 0
+
+
+def buscar_notificacao_email_pedido(pedido_id: int):
+    """Retorna a notificação de sugestão de resposta de e-mail em_analise do pedido, ou None."""
+    return db.execute_query(
+        "SELECT id, mensagem FROM notificacoes_pedido "
+        "WHERE pedido_id = %s AND estado = 'em_analise' AND motivo = 'sugestao_resposta_email' LIMIT 1",
+        (pedido_id,), fetch_one=True,
+    )
+
+
+def bloquear_pedido_email(pedido_id: int) -> None:
+    """Marca pedido como email_bloqueado e resolve notificações de sugestão de e-mail em_analise
+    (atômico). Independente de pedidos.bloqueado — não mexe nas notificações do WhatsApp."""
+    with db.get_cursor() as cursor:
+        cursor.execute("UPDATE pedidos SET email_bloqueado = 1 WHERE id = %s", (pedido_id,))
+        cursor.execute(
+            "UPDATE notificacoes_pedido SET estado = 'respondido' "
+            "WHERE pedido_id = %s AND estado = 'em_analise' AND motivo = 'sugestao_resposta_email'",
+            (pedido_id,),
+        )
+
+
+# ============================================================
+# Conversas por e-mail (pedidos web 1000-1004)
+# ============================================================
+
+def definir_gmail_thread_pedido(pedido_id: int, thread_id: str) -> None:
+    """Ancora o pedido à thread do Gmail — usado tanto no envio da entrega quanto no fallback
+    por assunto durante o polling, para as próximas mensagens da mesma thread baterem direto."""
+    db.execute_query(
+        "UPDATE pedidos SET gmail_thread_id = %s WHERE id = %s",
+        (thread_id, pedido_id),
+    )
+
+
+def resolver_pedido_por_thread_gmail(thread_id: str):
+    """Busca o pedido dono de uma thread do Gmail (match direto, caminho preferencial do polling)."""
+    return db.execute_query(
+        "SELECT * FROM pedidos WHERE gmail_thread_id = %s LIMIT 1",
+        (thread_id,), fetch_one=True,
+    )
+
+
+def salvar_mensagem_email_pedido(pedido_id: int, direcao: str, gmail_message_id: str,
+                                  gmail_thread_id: str, assunto: str, remetente: str,
+                                  destinatario: str, corpo_texto: str, corpo_html: str,
+                                  data_mensagem, rfc_message_id: str = None) -> int | None:
+    """Persiste uma mensagem de e-mail do pedido. Retorna o id inserido, ou None se
+    gmail_message_id já existir — dedupe/idempotência do polling (roda a cada 10min e pode
+    revisitar a mesma mensagem). rfc_message_id (header Message-ID) é o que ancora o threading
+    da próxima resposta — ver buscar_ultima_mensagem_email_pedido."""
+    try:
+        return db.execute_query(
+            """INSERT INTO mensagens_email_pedido
+               (pedido_id, direcao, gmail_message_id, gmail_thread_id, rfc_message_id, assunto,
+                remetente, destinatario, corpo_texto, corpo_html, data_mensagem)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (pedido_id, direcao, gmail_message_id, gmail_thread_id, rfc_message_id, assunto,
+             remetente, destinatario, corpo_texto, corpo_html, data_mensagem),
+        )
+    except IntegrityError as e:
+        if e.errno == 1062:
+            logger.info(f"[EMAIL] Mensagem {gmail_message_id} já persistida — ignorando duplicata")
+            return None
+        raise
+
+
+def buscar_mensagens_email_pedido(pedido_id: int) -> list:
+    """Timeline de mensagens de e-mail do pedido, mais antiga primeiro."""
+    return db.execute_query(
+        "SELECT * FROM mensagens_email_pedido WHERE pedido_id = %s ORDER BY data_mensagem ASC",
+        (pedido_id,), fetch_all=True,
+    ) or []
+
+
+def buscar_ultima_mensagem_email_pedido(pedido_id: int):
+    """Última mensagem de e-mail (qualquer direção) do pedido — usada pra threading da próxima
+    resposta: rfc_message_id vira In-Reply-To/References, assunto vira base do 'Re: ...'."""
+    return db.execute_query(
+        "SELECT assunto, rfc_message_id FROM mensagens_email_pedido "
+        "WHERE pedido_id = %s ORDER BY data_mensagem DESC LIMIT 1",
+        (pedido_id,), fetch_one=True,
+    )
+
+
+def buscar_historico_email_conversa(pedido_id: int, limite: int = 10) -> list:
+    """Últimas mensagens de e-mail do pedido formatadas para a OpenAI (mesmo formato de
+    buscar_historico_conversa, usado no WhatsApp). Respostas do admin (direcao='enviada') só têm
+    corpo_html — nesse caso extrai o texto das tags pra não perder o histórico do que já foi
+    dito ao cliente."""
+    import re as _re
+    query = """
+        SELECT direcao, corpo_texto, corpo_html
+        FROM mensagens_email_pedido
+        WHERE pedido_id = %s
+        ORDER BY data_mensagem DESC
+        LIMIT %s
+    """
+    mensagens = db.execute_query(query, (pedido_id, limite), fetch_all=True)
+    if not mensagens:
+        return []
+    mensagens = list(reversed(mensagens))
+    resultado = []
+    for msg in mensagens:
+        conteudo = msg['corpo_texto']
+        if not conteudo and msg.get('corpo_html'):
+            conteudo = _re.sub('<[^>]+>', ' ', msg['corpo_html'])
+        resultado.append({
+            "role": "assistant" if msg['direcao'] == 'enviada' else "user",
+            "content": (conteudo or '').strip(),
+        })
+    return resultado
+
+
+def salvar_anexo_email_mensagem(mensagem_id: int, nome_arquivo: str, caminho_arquivo: str,
+                                 mime_type: str, tamanho_bytes: int) -> int:
+    return db.execute_query(
+        """INSERT INTO mensagens_email_pedido_anexos
+           (mensagem_id, nome_arquivo, caminho_arquivo, mime_type, tamanho_bytes)
+           VALUES (%s, %s, %s, %s, %s)""",
+        (mensagem_id, nome_arquivo, caminho_arquivo, mime_type, tamanho_bytes),
+    )
+
+
+def buscar_anexos_email_pedido(pedido_id: int) -> list:
+    """Todos os anexos de todas as mensagens de e-mail do pedido (agrupar por mensagem_id no
+    template/view)."""
+    return db.execute_query(
+        """SELECT a.* FROM mensagens_email_pedido_anexos a
+           JOIN mensagens_email_pedido m ON m.id = a.mensagem_id
+           WHERE m.pedido_id = %s""",
+        (pedido_id,), fetch_all=True,
+    ) or []
+
+
+def buscar_anexo_email_por_id(anexo_id: int):
+    """Anexo de e-mail + pedido_id da mensagem dona (para checagem de acesso na view)."""
+    return db.execute_query(
+        """SELECT a.*, m.pedido_id FROM mensagens_email_pedido_anexos a
+           JOIN mensagens_email_pedido m ON m.id = a.mensagem_id
+           WHERE a.id = %s""",
+        (anexo_id,), fetch_one=True,
+    )
+
+
+def listar_pedidos_conversas_email(produto_id: int, termo: str = None) -> list:
+    """Lista pedidos web (estado_id 1000-1004) com e-mail cadastrado, ordenados pela mensagem de
+    e-mail mais recente (pedidos sem nenhuma mensagem ainda vão por último, por data do pedido)."""
+    condicao_termo, params = "", [produto_id]
+    if termo:
+        condicao_termo = " AND (p.contact_name LIKE %s OR p.email LIKE %s OR p.id = %s)"
+        like = f"%{termo}%"
+        params += [like, like, int(termo) if termo.isdigit() else 0]
+    query = f"""
+        SELECT p.id, p.contact_name, p.email, p.estado_id,
+               MAX(m.data_mensagem) AS ultima_mensagem
+        FROM pedidos p
+        LEFT JOIN mensagens_email_pedido m ON m.pedido_id = p.id
+        WHERE p.produto_id = %s AND p.estado_id IN (1000, 1001, 1002, 1003, 1004)
+          AND p.email IS NOT NULL AND p.email != ''
+          {condicao_termo}
+        GROUP BY p.id, p.contact_name, p.email, p.estado_id
+        ORDER BY ultima_mensagem IS NULL, ultima_mensagem DESC, p.data_pedido DESC
+    """
+    return db.execute_query(query, tuple(params), fetch_all=True) or []
 
 
 # ─── NF-e ────────────────────────────────────────────────────────────────────
