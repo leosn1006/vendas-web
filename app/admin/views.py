@@ -1015,6 +1015,7 @@ def conversa_email_pedido(produto_id, pedido_id):
 @requer_acesso_produto
 def conversa_email_enviar_mensagem(produto_id, pedido_id):
     from fluxos.fluxo_resposta_email import enviar_resposta
+    from agente_resposta_email_produto import _garantir_html as _garantir_html_email
     pedido = get_pedido(pedido_id)
     if not pedido or pedido.get('produto_id') != produto_id:
         flash('Pedido não encontrado.', 'danger')
@@ -1026,6 +1027,10 @@ def conversa_email_enviar_mensagem(produto_id, pedido_id):
         return redirect(url_for('admin.conversa_email_pedido', produto_id=produto_id, pedido_id=pedido_id))
 
     notificacao_id = request.form.get('notificacao_id', type=int)
+    # Mesma rede de segurança do agente (_garantir_html): se o admin apagou o rascunho e digitou
+    # só texto corrido, sem nenhuma tag, embrulha em <p> — senão a quebra de linha simplesmente
+    # some no e-mail final (confirmado em teste real: texto puro editado saiu sem <p> nenhuma).
+    corpo_html = _garantir_html_email(corpo_html)
     corpo_html = _sanitizar_html_email(corpo_html)  # defesa em profundidade — não confia só no client-side
 
     try:
@@ -1058,11 +1063,17 @@ def preview_email_html(produto_id):
     return _sanitizar_html_email(request.form.get('html', ''))
 
 
+_EXTENSOES_PREVIEW_SEGURO_EMAIL = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+
 @admin_bp.route('/pedido/<int:pedido_id>/email/anexo/<int:anexo_id>')
 @requer_login
 def visualizar_anexo_email(pedido_id, anexo_id):
-    """Entrega um anexo de e-mail sempre como download forçado (nunca inline/preview) —
-    aceitamos qualquer tipo de arquivo do cliente, então nunca executamos/renderizamos no servidor."""
+    """Entrega um anexo de e-mail. Aceitamos qualquer tipo de arquivo do cliente, então por
+    padrão força download (nunca deixa o navegador tentar renderizar algo potencialmente
+    perigoso — .html/.svg disfarçados — dentro da sessão logada do admin). Só abre inline pra
+    uma allowlist de tipos seguros (imagem/PDF), mesmo padrão de visualizar_comprovante_arquivo
+    — a extensão vem do nome do arquivo, nunca do mime_type autoinformado pelo remetente."""
     pedido = get_pedido(pedido_id)
     if not pedido:
         return jsonify({'ok': False, 'msg': 'Pedido não encontrado'}), 404
@@ -1078,8 +1089,12 @@ def visualizar_anexo_email(pedido_id, anexo_id):
     if not caminho:
         return jsonify({'ok': False, 'msg': 'Arquivo não encontrado'}), 404
 
-    logger.info(f"[ADMIN] 👀 Usuário {current_user.email} baixou anexo de e-mail do pedido #{pedido_id}: {anexo['nome_arquivo']}")
-    return send_file(caminho, as_attachment=True, download_name=anexo['nome_arquivo'])
+    nome = anexo['nome_arquivo']
+    extensao = nome.rsplit('.', 1)[-1].lower() if '.' in nome else ''
+    seguro_para_visualizar = extensao in _EXTENSOES_PREVIEW_SEGURO_EMAIL
+
+    logger.info(f"[ADMIN] 👀 Usuário {current_user.email} abriu anexo de e-mail do pedido #{pedido_id}: {nome}")
+    return send_file(caminho, as_attachment=not seguro_para_visualizar, download_name=nome, conditional=True)
 
 
 # ============================================================

@@ -87,7 +87,11 @@ def executar(pedido_id: int) -> None:
         assunto=subject,
         remetente=remetente,
         destinatario=destinatario,
-        corpo_texto=None,
+        # Resumo curto, não o HTML inteiro — isso aqui vira "histórico" no contexto passado pro
+        # agente (buscar_historico_email_conversa prefere corpo_texto quando presente); a
+        # moldura da marca com botões/instruções de download não é conversa, é ruído e gasta
+        # tokens à toa. O HTML completo continua guardado em corpo_html pra exibição na tela.
+        corpo_texto=f'[E-book entregue: {nome_produto} — link de download enviado por e-mail]',
         corpo_html=html_entrega,
         data_mensagem=datetime.now(),
     )

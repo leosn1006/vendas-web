@@ -10,6 +10,11 @@ audios/**/*.opus
 audios/**/*.mp3
 audios/**/*.wav
 
+# Ignorar anexos de e-mail de clientes (aceita qualquer tipo de arquivo, então sem allowlist
+# de extensão aqui — diferente de comprovantes/audios acima)
+email_anexos/**
+
 # Manter a estrutura de diretórios
 !comprovantes/.gitkeep
 !audios/.gitkeep
+!email_anexos/.gitkeep

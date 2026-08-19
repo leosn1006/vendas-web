@@ -1,5 +1,6 @@
 import json
 import logging
+from html import escape as _escapar_html
 from openai import OpenAI, RateLimitError, AuthenticationError, APIConnectionError, APITimeoutError
 
 from agente_resposta_produto import (
@@ -21,6 +22,19 @@ _INSTRUCOES_TOM_EMAIL = (
     "listas com <ul>/<li> quando ajudar a organizar a resposta. NÃO inclua <html>, <head> ou "
     "<body> — apenas o fragmento de corpo, que será inserido dentro do template de e-mail da marca."
 )
+
+
+def _garantir_html(texto: str) -> str:
+    """Rede de segurança: o modelo às vezes ignora a instrução de responder em HTML (visto em
+    teste real — respostas curtas tendem a sair em texto puro com \\n\\n). Sem isso, a quebra de
+    linha simplesmente some no e-mail final (HTML ignora \\n fora de tag)."""
+    if '<' in texto and '>' in texto:
+        return texto  # já parece HTML — não mexe
+    paragrafos = [p.strip() for p in texto.split('\n\n') if p.strip()]
+    return ''.join(
+        f'<p>{_escapar_html(p).replace(chr(10), "<br>")}</p>'
+        for p in paragrafos
+    )
 
 
 def responder_cliente_email_com_historico_produto(
@@ -94,4 +108,4 @@ def responder_cliente_email_com_historico_produto(
         )
         return None
 
-    return resposta
+    return _garantir_html(resposta)

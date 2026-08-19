@@ -18,6 +18,7 @@ import re
 import base64
 import logging
 import time
+import html as _html_entities  # nome diferente da variável local `html` (corpo HTML da mensagem)
 from datetime import datetime
 from pathlib import Path
 from email.utils import parseaddr
@@ -32,14 +33,19 @@ _GMAIL_SCOPES_LEITURA = ['https://www.googleapis.com/auth/gmail.modify']
 _PREFIXOS_BOUNCE = ('mailer-daemon@', 'postmaster@', 'noreply@', 'no-reply@', 'donotreply@')
 _TAMANHO_MAX_MB = 25
 _REGEX_PEDIDO_ASSUNTO = re.compile(r'#(\d{4,})')
-_STORAGE_ANEXOS = Path(__file__).parent / 'storage' / 'email_anexos'
+# Base = /app (raiz do volume montado em ./storage:/app/storage — mesma pasta persistente que
+# whatsapp_upload.py usa pra comprovantes). Diferente de Path(__file__).parent, que seria
+# /app/fluxos e NÃO está no volume — qualquer rebuild da imagem apagaria os anexos recebidos,
+# mesmo com a linha continuando no banco (bug real, pego em teste).
+_BASE_APP = Path(__file__).parent.parent
+_STORAGE_ANEXOS = _BASE_APP / 'storage' / 'email_anexos'
 
 
 def resolver_caminho_anexo(caminho_relativo: str) -> Path | None:
     """Resolve o caminho absoluto de um anexo salvo por este módulo, validando que fica dentro
     do diretório de storage esperado (defesa contra path traversal). Usado pela rota do admin
     que serve o download do anexo."""
-    candidato = (Path(__file__).parent / caminho_relativo).resolve()
+    candidato = (_BASE_APP / caminho_relativo).resolve()
     base = _STORAGE_ANEXOS.resolve()
     if candidato != base and base not in candidato.parents:
         return None
@@ -71,16 +77,65 @@ def _decodificar_b64url(data: str) -> bytes:
     return base64.urlsafe_b64decode(data + '==')
 
 
-def _header_parte(part: dict, nome: str) -> str:
-    for h in part.get('headers', []) or []:
-        if h.get('name', '').lower() == nome.lower():
-            return h.get('value', '')
-    return ''
+_REGEX_CITACAO_TEXTO = re.compile(
+    r'(?:^|\n)\s*(em .{0,80} escreveu:|on .{0,80} wrote:|-{2,}\s*mensagem original\s*-{2,}|'
+    r'-{2,}\s*original message\s*-{2,})',
+    re.IGNORECASE,
+)
+
+
+def _truncar_no_blockquote(html_str: str) -> str:
+    """Corta o HTML no primeiro <blockquote> — é onde Gmail/Apple Mail/Outlook embutem o
+    e-mail citado numa resposta. Sem isso, toda resposta traria o e-mail de entrega inteiro
+    (com todos os botões/HTML) de volta como se fosse parte da pergunta do cliente."""
+    if not html_str:
+        return html_str
+    m = re.search(r'<blockquote', html_str, re.IGNORECASE)
+    return html_str[:m.start()] if m else html_str
+
+
+def _texto_de_html(html_str: str) -> str:
+    """Fallback pra clientes de e-mail que só mandam text/html, sem text/plain (comum no Apple
+    Mail/webmail) — sem isso a mensagem ficava com corpo_texto vazio e a IA nunca era acionada."""
+    sem_tags = re.sub(r'<[^>]+>', ' ', html_str or '')
+    sem_tags = _html_entities.unescape(sem_tags)
+    return re.sub(r'\s+', ' ', sem_tags).strip()
+
+
+def _cortar_citacao(texto: str) -> str:
+    """Corta texto plano no cabeçalho de citação ('Em ... escreveu:' / 'On ... wrote:') —
+    mesma ideia do _truncar_no_blockquote, mas pra quando o texto já veio de text/plain."""
+    if not texto:
+        return texto
+    m = _REGEX_CITACAO_TEXTO.search(texto)
+    return texto[:m.start()].strip() if m else texto.strip()
+
+
+_REGEX_ASSINATURA_MOBILE = re.compile(
+    r'(?:^|\n)\s*(enviado (do|via) meu \w+|sent from my \w+|get outlook for \w+)\s*$',
+    re.IGNORECASE,
+)
+
+
+def _remover_assinatura_mobile(texto: str) -> str:
+    """Remove a linha de assinatura padrão de app de e-mail móvel ('Enviado do meu iPhone' etc.)
+    — testado com caso real: um e-mail só com anexo e sem pergunta chega com texto = só essa
+    assinatura, o que bastava pra passar no "há texto?" e acionar a IA com uma pergunta vazia."""
+    if not texto:
+        return texto
+    return _REGEX_ASSINATURA_MOBILE.sub('', texto).strip()
 
 
 def _extrair_conteudo(payload: dict) -> tuple[str, str, list]:
     """Percorre as partes MIME da mensagem: retorna (texto_plano, html, anexos).
-    anexos = lista de {filename, mime_type, attachment_id, data, size}."""
+    anexos = lista de {filename, mime_type, attachment_id, data, size}.
+
+    Captura qualquer parte com nome de arquivo, independente de Content-Disposition. Testado
+    com iPhone Mail real: ele manda foto anexada como `inline` com `<img src="cid:...">` no
+    corpo — exatamente o mesmo mecanismo de um logo de assinatura embutido, sem diferença
+    estrutural nenhuma entre os dois. Tentar filtrar por isso (tentativa anterior) descartava
+    fotos reais de clientes; ocasionalmente listar um logo de assinatura como "anexo" é bem
+    menos grave que perder um anexo de verdade."""
     texto, html, anexos = '', '', []
 
     def _walk(part):
@@ -88,11 +143,7 @@ def _extrair_conteudo(payload: dict) -> tuple[str, str, list]:
         mime = part.get('mimeType', '')
         filename = part.get('filename') or ''
         body = part.get('body', {}) or {}
-        # Content-Disposition: inline com filename é típico de logo/assinatura embutida no
-        # corpo do e-mail (Outlook, Apple Mail…) — não é um anexo que o cliente quis mandar,
-        # então não entra na lista de anexos (nem no texto/html — só é descartada).
-        disposicao = _header_parte(part, 'Content-Disposition').lower()
-        if filename and (body.get('attachmentId') or body.get('data')) and not disposicao.startswith('inline'):
+        if filename and (body.get('attachmentId') or body.get('data')):
             anexos.append({
                 'filename': filename,
                 'mime_type': mime,
@@ -109,7 +160,12 @@ def _extrair_conteudo(payload: dict) -> tuple[str, str, list]:
             _walk(sub)
 
     _walk(payload)
-    return texto.strip(), html.strip(), anexos
+
+    html = _truncar_no_blockquote(html.strip())
+    texto = texto.strip() or _texto_de_html(html)
+    texto = _remover_assinatura_mobile(_cortar_citacao(texto))
+
+    return texto, html, anexos
 
 
 def _salvar_anexo(service, message_id: str, pedido_id: int, anexo: dict) -> dict | None:
@@ -139,7 +195,7 @@ def _salvar_anexo(service, message_id: str, pedido_id: int, anexo: dict) -> dict
 
     return {
         'nome_arquivo': anexo['filename'],
-        'caminho_arquivo': str(caminho_final.relative_to(Path(__file__).parent)),
+        'caminho_arquivo': str(caminho_final.relative_to(_BASE_APP)),
         'mime_type': anexo['mime_type'],
         'tamanho_bytes': len(conteudo),
     }
