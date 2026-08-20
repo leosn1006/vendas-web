@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% block title %}Sugestões de E-mail — {{ produto.nome }}{% endblock %}
+{% block title %}Notificações Web — {{ produto.nome }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -52,9 +52,9 @@
 <div class="page-header">
     <div>
         <div class="page-title">
-            📧 Sugestões de Resposta por E-mail
-            {% if sugestoes %}
-            <span class="badge badge-red" style="margin-left:8px;font-size:13px">{{ sugestoes|length }}</span>
+            🔔 Notificações Web
+            {% if notificacoes %}
+            <span class="badge badge-red" style="margin-left:8px;font-size:13px">{{ notificacoes|length }}</span>
             {% endif %}
         </div>
         <div class="page-subtitle">{{ produto.nome }} — rascunho da IA aguardando aprovação humana</div>
@@ -62,7 +62,7 @@
 </div>
 
 <div class="card">
-    {% if sugestoes %}
+    {% if notificacoes %}
     <table class="notif-table">
         <thead>
             <tr>
@@ -74,7 +74,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for n in sugestoes %}
+            {% for n in notificacoes %}
             <tr>
                 <td style="white-space:nowrap;color:var(--muted);font-size:13px">
                     {{ n.created_at.strftime('%d/%m %H:%M') }}
@@ -101,7 +101,7 @@
     </table>
     {% else %}
     <div class="empty-state">
-        ✓ Nenhuma sugestão pendente
+        ✓ Nenhuma notificação pendente
     </div>
     {% endif %}
 </div>

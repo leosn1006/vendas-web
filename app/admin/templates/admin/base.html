@@ -539,21 +539,21 @@
             <span class="badge badge-red">{{ badge_notificacoes }}</span>
             {% endif %}
         </a>
+        <a href="{{ url_for('admin.notificacoes_web_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.notificacoes_web_produto' %}active{% endif %}"
+           style="display:flex;align-items:center;justify-content:space-between">
+            <span><span class="icon">🔔</span> Notificações Web</span>
+            {% if badge_notificacoes_web > 0 %}
+            <span class="badge badge-red">{{ badge_notificacoes_web }}</span>
+            {% endif %}
+        </a>
         <a href="{{ url_for('admin.conversas_produto', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint in ['admin.conversas_produto','admin.conversa_pedido'] %}active{% endif %}">
             <span class="icon">💬</span> Conversas
         </a>
-        <a href="{{ url_for('admin.sugestoes_email_produto', produto_id=produto_ativo.id) }}"
-           class="nav-link {% if request.endpoint == 'admin.sugestoes_email_produto' %}active{% endif %}"
-           style="display:flex;align-items:center;justify-content:space-between">
-            <span><span class="icon">📧</span> Sugestões E-mail</span>
-            {% if badge_sugestoes_email > 0 %}
-            <span class="badge badge-red">{{ badge_sugestoes_email }}</span>
-            {% endif %}
-        </a>
         <a href="{{ url_for('admin.conversas_email_produto', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint in ['admin.conversas_email_produto','admin.conversa_email_pedido'] %}active{% endif %}">
-            <span class="icon">✉️</span> Conversas E-mail
+            <span class="icon">✉️</span> Conversas Web
         </a>
         <a href="{{ url_for('admin.acertar_valor_produto', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint in ['admin.acertar_valor_produto','admin.acertar_valor_salvar'] %}active{% endif %}">

@@ -1565,10 +1565,20 @@ def buscar_todas_mensagens_pedido(pedido_id: int) -> list:
     return rows if rows else []
 
 
-def buscar_pedido_por_nome(contact_name: str, produto_id: int):
-    """Busca o pedido mais recente de um cliente pelo nome (contact_name)."""
+def buscar_pedido_por_nome(contact_name: str, produto_id: int, canal_web: bool = None):
+    """Busca o pedido mais recente de um cliente pelo nome (contact_name).
+    canal_web=True restringe a pedidos web (estado_id>=1000), False a pedidos WhatsApp
+    (estado_id<1000); None (padrão) não filtra por canal — usado em telas canal-agnósticas
+    como Acertar Valor. Sem esse filtro na própria query, um cliente com pedido em ambos os
+    canais podia ter o pedido do canal errado encontrado (o mais recente) e descartado por
+    uma checagem posterior, mesmo havendo um pedido do canal certo mais antigo."""
+    condicao_canal = ""
+    if canal_web is True:
+        condicao_canal = " AND estado_id >= 1000"
+    elif canal_web is False:
+        condicao_canal = " AND estado_id < 1000"
     return db.execute_query(
-        "SELECT * FROM pedidos WHERE contact_name LIKE %s AND produto_id = %s "
+        f"SELECT * FROM pedidos WHERE contact_name LIKE %s AND produto_id = %s{condicao_canal} "
         "ORDER BY data_pedido DESC LIMIT 1",
         (f"%{contact_name}%", produto_id), fetch_one=True
     )
@@ -2039,7 +2049,7 @@ def contar_notificacoes_em_analise(produto_id: int, motivo: str = None) -> int:
 def listar_notificacoes_em_analise(produto_id: int, motivo: str = None) -> list:
     """Lista notificações em_analise do produto, mais antigas primeiro, com dados do pedido.
     Por padrão exclui sugestões de resposta de e-mail (têm tela própria — ver
-    sugestoes_email_produto); passe motivo='sugestao_resposta_email' para listar só essas."""
+    notificacoes_web_produto); passe motivo='sugestao_resposta_email' para listar só essas."""
     if motivo:
         condicao_motivo, params = "AND n.motivo = %s", (produto_id, motivo)
     else:
@@ -2258,26 +2268,18 @@ def buscar_anexo_email_por_id(anexo_id: int):
     )
 
 
-def listar_pedidos_conversas_email(produto_id: int, termo: str = None) -> list:
-    """Lista pedidos web (estado_id 1000-1004) com e-mail cadastrado, ordenados pela mensagem de
-    e-mail mais recente (pedidos sem nenhuma mensagem ainda vão por último, por data do pedido)."""
-    condicao_termo, params = "", [produto_id]
-    if termo:
-        condicao_termo = " AND (p.contact_name LIKE %s OR p.email LIKE %s OR p.id = %s)"
-        like = f"%{termo}%"
-        params += [like, like, int(termo) if termo.isdigit() else 0]
-    query = f"""
-        SELECT p.id, p.contact_name, p.email, p.estado_id,
-               MAX(m.data_mensagem) AS ultima_mensagem
-        FROM pedidos p
-        LEFT JOIN mensagens_email_pedido m ON m.pedido_id = p.id
-        WHERE p.produto_id = %s AND p.estado_id IN (1000, 1001, 1002, 1003, 1004)
-          AND p.email IS NOT NULL AND p.email != ''
-          {condicao_termo}
-        GROUP BY p.id, p.contact_name, p.email, p.estado_id
-        ORDER BY ultima_mensagem IS NULL, ultima_mensagem DESC, p.data_pedido DESC
-    """
-    return db.execute_query(query, tuple(params), fetch_all=True) or []
+def buscar_pedido_web_por_email(termo: str, produto_id: int):
+    """Pedido web (estado_id 1000-1004) mais recente cujo e-mail bate com o termo — equivalente
+    web de get_ultimo_pedido_by_phone (WhatsApp), usado na busca da tela "Conversas Web"."""
+    if not termo:
+        return None
+    return db.execute_query(
+        """SELECT * FROM pedidos
+           WHERE produto_id = %s AND estado_id IN (1000, 1001, 1002, 1003, 1004)
+             AND email LIKE %s
+           ORDER BY data_pedido DESC LIMIT 1""",
+        (produto_id, f'%{termo}%'), fetch_one=True,
+    )
 
 
 # ─── NF-e ────────────────────────────────────────────────────────────────────

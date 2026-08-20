@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% block title %}Conversas E-mail — {{ produto.nome }}{% endblock %}
+{% block title %}Conversas Web — {{ produto.nome }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -11,91 +11,26 @@
     .search-row input {
         flex: 1;
     }
-    .conversas-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 14px;
-    }
-    .conversas-table th {
-        text-align: left;
-        padding: 10px 12px;
-        font-size: 11px;
-        font-family: var(--mono);
-        text-transform: uppercase;
-        color: var(--muted);
-        border-bottom: 1px solid var(--border);
-    }
-    .conversas-table td {
-        padding: 12px 12px;
-        border-bottom: 1px solid var(--border);
-        vertical-align: top;
-    }
-    .conversas-table tr:last-child td {
-        border-bottom: none;
-    }
-    .conversas-table tr:hover td {
-        background: var(--surface);
-    }
-    .empty-state {
-        text-align: center;
-        color: var(--muted);
-        font-size: 14px;
-        padding: 56px 0;
-    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <div class="page-title">Conversas E-mail</div>
-        <div class="page-subtitle">{{ produto.nome }} — pedidos web (estados 1000-1004)</div>
+        <div class="page-title">Conversas Web</div>
+        <div class="page-subtitle">{{ produto.nome }}</div>
     </div>
 </div>
 
 <div class="card" style="margin-bottom: 20px;">
     <form method="POST" action="{{ url_for('admin.conversas_email_produto', produto_id=produto.id) }}">
         <div class="search-row">
-            <input type="text" name="q" value="{{ termo or '' }}"
-                   placeholder="Nº do pedido, nome ou e-mail do cliente">
+            <input type="text" name="q"
+                   value="{{ request.form.get('q', '') }}"
+                   placeholder="Nº do pedido, e-mail ou nome do cliente"
+                   required>
             <button type="submit" class="btn btn-primary">Buscar</button>
         </div>
     </form>
-</div>
-
-<div class="card">
-    {% if pedidos %}
-    <table class="conversas-table">
-        <thead>
-            <tr>
-                <th>Pedido</th>
-                <th>Cliente</th>
-                <th>E-mail</th>
-                <th>Estado</th>
-                <th>Última mensagem</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in pedidos %}
-            <tr>
-                <td><strong>#{{ p.id }}</strong></td>
-                <td>{{ p.contact_name or '—' }}</td>
-                <td style="color:var(--muted);font-size:13px">{{ p.email or '—' }}</td>
-                <td>{{ p.estado_id }}</td>
-                <td style="white-space:nowrap;color:var(--muted);font-size:13px">
-                    {% if p.ultima_mensagem %}{{ p.ultima_mensagem.strftime('%d/%m %H:%M') }}{% else %}—{% endif %}
-                </td>
-                <td>
-                    <a href="{{ url_for('admin.conversa_email_pedido', produto_id=produto.id, pedido_id=p.id) }}"
-                       class="btn btn-sm">Abrir conversa</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div class="empty-state">Nenhum pedido web encontrado{% if termo %} para "{{ termo }}"{% endif %}.</div>
-    {% endif %}
 </div>
 {% endblock %}

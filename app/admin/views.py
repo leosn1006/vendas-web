@@ -31,7 +31,7 @@ from database import (db,
     listar_planilhas_dns_produto, adicionar_planilha_dns, atualizar_planilha_dns, remover_planilha_dns,
     listar_notificacoes_em_analise, marcar_notificacao_respondida, bloquear_pedido,
     buscar_notificacao_em_analise_pedido, bloquear_followup_pedido,
-    listar_pedidos_conversas_email, buscar_mensagens_email_pedido, buscar_anexos_email_pedido,
+    buscar_pedido_web_por_email, buscar_mensagens_email_pedido, buscar_anexos_email_pedido,
     buscar_notificacao_email_pedido, bloquear_pedido_email, buscar_anexo_email_por_id,
     buscar_notificacao_por_id)
 
@@ -799,6 +799,10 @@ def conversas_produto(produto_id):
 
     if request.method == 'POST':
         q = (request.form.get('q') or '').strip()
+        if not q:
+            flash('Digite um número de pedido, telefone ou nome pra buscar.', 'danger')
+            return render_template('admin/produto_conversas.html', produto=produto)
+
         pedido = None
         if q.isdigit() and len(q) <= 7:
             pedido = get_pedido(int(q))
@@ -807,7 +811,11 @@ def conversas_produto(produto_id):
         if not pedido:
             pedido = get_ultimo_pedido_by_phone(q, produto_id)
         if not pedido:
-            pedido = buscar_pedido_por_nome(q, produto_id)
+            pedido = buscar_pedido_por_nome(q, produto_id, canal_web=False)
+
+        if pedido and pedido.get('estado_id', 0) >= 1000:
+            flash('Esse pedido é uma venda web — use "Conversas Web" pra encontrá-lo pelo e-mail/nome.', 'warning')
+            pedido = None
 
         if pedido:
             return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido['id']))
@@ -948,16 +956,16 @@ def _sanitizar_html_email(html: str) -> str:
                         protocols=['http', 'https', 'mailto'], strip=True)
 
 
-@admin_bp.route('/produto/<int:produto_id>/emails/sugestoes')
+@admin_bp.route('/produto/<int:produto_id>/notificacoes-web')
 @requer_acesso_produto
-def sugestoes_email_produto(produto_id):
+def notificacoes_web_produto(produto_id):
     session['produto_ativo_id'] = produto_id
     produto = db.execute_query("SELECT * FROM produtos WHERE id = %s", (produto_id,), fetch_one=True)
     if produto is None:
         flash('Produto não encontrado.', 'danger')
         return redirect(url_for('admin.listar_produtos'))
-    sugestoes = listar_notificacoes_em_analise(produto_id, motivo='sugestao_resposta_email')
-    return render_template('admin/produto_sugestoes_email.html', produto=produto, sugestoes=sugestoes)
+    notificacoes = listar_notificacoes_em_analise(produto_id, motivo='sugestao_resposta_email')
+    return render_template('admin/produto_notificacoes_web.html', produto=produto, notificacoes=notificacoes)
 
 
 @admin_bp.route('/produto/<int:produto_id>/emails/conversas', methods=['GET', 'POST'])
@@ -969,16 +977,31 @@ def conversas_email_produto(produto_id):
         flash('Produto não encontrado.', 'danger')
         return redirect(url_for('admin.listar_produtos'))
 
-    termo = None
     if request.method == 'POST':
-        termo = (request.form.get('q') or '').strip()
-        if termo.isdigit():
-            pedido = get_pedido(int(termo))
-            if pedido and pedido.get('produto_id') == produto_id:
-                return redirect(url_for('admin.conversa_email_pedido', produto_id=produto_id, pedido_id=pedido['id']))
+        q = (request.form.get('q') or '').strip()
+        if not q:
+            flash('Digite um número de pedido, e-mail ou nome pra buscar.', 'danger')
+            return render_template('admin/produto_conversas_email.html', produto=produto)
 
-    pedidos = listar_pedidos_conversas_email(produto_id, termo)
-    return render_template('admin/produto_conversas_email.html', produto=produto, pedidos=pedidos, termo=termo)
+        pedido = None
+        if q.isdigit() and len(q) <= 7:
+            pedido = get_pedido(int(q))
+            if pedido and pedido.get('produto_id') != produto_id:
+                pedido = None
+        if not pedido:
+            pedido = buscar_pedido_web_por_email(q, produto_id)
+        if not pedido:
+            pedido = buscar_pedido_por_nome(q, produto_id, canal_web=True)
+
+        if pedido and pedido.get('estado_id', 0) < 1000:
+            flash('Esse pedido é uma venda por WhatsApp — use "Conversas" pra encontrá-lo.', 'warning')
+            pedido = None
+
+        if pedido:
+            return redirect(url_for('admin.conversa_email_pedido', produto_id=produto_id, pedido_id=pedido['id']))
+        flash('Nenhuma conversa encontrada para esse pedido, e-mail ou nome.', 'danger')
+
+    return render_template('admin/produto_conversas_email.html', produto=produto)
 
 
 @admin_bp.route('/produto/<int:produto_id>/emails/conversas/<int:pedido_id>')
