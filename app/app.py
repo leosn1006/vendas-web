@@ -176,6 +176,10 @@ def _is_stracklivros():
     host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
     return 'stracklivros.com.br' in host
 
+def _is_barreiroslivros():
+    host = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return 'barreiroslivros.com.br' in host
+
 @app.get("/")
 def index():
     produtos = busca_produtos_disponiveis_web()
@@ -209,6 +213,8 @@ def index():
         tmpl = 'portifolio-livrosemais.html'
     elif _is_stracklivros():
         tmpl = 'portifolio-stracklivros.html'
+    elif _is_barreiroslivros():
+        tmpl = 'portifolio-barreiroslivros.html'
     else:
         tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
@@ -246,6 +252,8 @@ def portifolio():
         tmpl = 'portifolio-livrosemais.html'
     elif _is_stracklivros():
         tmpl = 'portifolio-stracklivros.html'
+    elif _is_barreiroslivros():
+        tmpl = 'portifolio-barreiroslivros.html'
     else:
         tmpl = 'portifolio.html'
     return render_template(tmpl, produtos=produtos)
@@ -280,6 +288,8 @@ def politica_privacidade():
         tmpl = 'politica-privacidade-vitrini.html'
     elif _is_livrosemais():
         tmpl = 'politica-privacidade-livrosemais.html'
+    elif _is_barreiroslivros():
+        tmpl = 'politica-privacidade-barreiroslivros.html'
     else:
         tmpl = 'politica-privacidade.html'
     return render_template(tmpl)
@@ -314,6 +324,8 @@ def termos_de_uso():
         tmpl = 'termos-de-uso-vitrini.html'
     elif _is_livrosemais():
         tmpl = 'termos-de-uso-livrosemais.html'
+    elif _is_barreiroslivros():
+        tmpl = 'termos-de-uso-barreiroslivros.html'
     else:
         tmpl = 'termos-de-uso.html'
     return render_template(tmpl)
@@ -348,6 +360,8 @@ def contato():
         tmpl = 'contato-vitrini.html'
     elif _is_livrosemais():
         tmpl = 'contato-livrosemais.html'
+    elif _is_barreiroslivros():
+        tmpl = 'contato-barreiroslivros.html'
     else:
         tmpl = 'contato.html'
     return render_template(tmpl)
