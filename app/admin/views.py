@@ -2787,7 +2787,8 @@ _SQL_ROI_TODOS_PRODUTOS = """
         p.id,
         p.nome,
         COALESCE(oc.total_investido,  0) AS total_investido,
-        COALESCE(pp.total_pix,        0) AS total_pix
+        COALESCE(pp.total_pix,        0) AS total_pix,
+        COALESCE(pw.total_web,        0) AS total_web
     FROM produtos p
     LEFT JOIN (
         SELECT produto_id, SUM(valor_investido) AS total_investido
@@ -2797,16 +2798,29 @@ _SQL_ROI_TODOS_PRODUTOS = """
     ) oc ON oc.produto_id = p.id
     LEFT JOIN (
         SELECT produto_id, SUM(valor) AS total_pix
-        FROM pagamento_pix
+        FROM pagamento_pix pp_inner
         WHERE horario BETWEEN %(ini)s AND %(fim)s
+          AND NOT EXISTS (
+              SELECT 1 FROM pedidos ped
+              WHERE ped.estado_id = 1000
+                AND ped.e2e_id = pp_inner.e2e_id
+                AND ped.e2e_id != ''
+          )
         GROUP BY produto_id
     ) pp ON pp.produto_id = p.id
+    LEFT JOIN (
+        SELECT produto_id, SUM(valor_pago) AS total_web
+        FROM pedidos
+        WHERE estado_id = 1000
+          AND data_pagamento BETWEEN %(ini)s AND %(fim)s
+        GROUP BY produto_id
+    ) pw ON pw.produto_id = p.id
     WHERE p.ativo = TRUE
     ORDER BY total_pix DESC
 """
 
 
-def _parse_taxa_imposto(default: float = 2.5) -> float:
+def _parse_taxa_imposto(default: float = 7.3) -> float:
     """Lê e limita a `?imposto=` da query string a uma faixa válida de percentual (0-100)."""
     try:
         return max(0.0, min(100.0, float(request.args.get('imposto', str(default)) or default)))
@@ -2849,10 +2863,12 @@ def roi_todos_produtos():
     for r in rows:
         investido = float(r['total_investido'])
         pix = float(r['total_pix'])
-        imposto_valor = pix * taxa / 100
+        web = float(r['total_web'])
+        total_recebido = pix + web
+        imposto_valor = total_recebido * taxa / 100
         r['imposto_valor'] = imposto_valor
-        r['roi_multiplier'] = ((pix - imposto_valor) / investido) if investido > 0 else None
-        r['lucro_liquido'] = pix - investido - imposto_valor
+        r['roi_multiplier'] = ((total_recebido - imposto_valor) / investido) if investido > 0 else None
+        r['lucro_liquido'] = total_recebido - investido - imposto_valor
 
     return render_template('admin/roi_todos_produtos.html',
         rows=rows, data_ini=data_ini_str, data_fim=data_fim_str, taxa_imposto=taxa)
