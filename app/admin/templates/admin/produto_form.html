@@ -85,6 +85,14 @@
             </div>
 
             <div class="form-group">
+                <label>Imagem do checkout (nome do arquivo em static/images)</label>
+                <input type="text" name="imagem_checkout" maxlength="255"
+                       value="{{ produto.imagem_checkout if produto else '' }}"
+                       placeholder="ex: tempero-capa.webp">
+                <small class="form-text text-muted">Suba o arquivo em /admin/arquivos e cole aqui só o nome.</small>
+            </div>
+
+            <div class="form-group">
                 <label>URL Arquivo Produto (PDF)</label>
                 <input type="text" name="url_arquivo_produto"
                        value="{{ produto.url_arquivo_produto if produto else '' }}">

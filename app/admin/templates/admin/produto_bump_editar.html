@@ -58,6 +58,14 @@
                        value="{{ bump.descricao or '' }}">
             </div>
 
+            <div class="form-group span-2">
+                <label>Imagem do checkout (nome do arquivo em static/images)</label>
+                <input type="text" name="imagem_checkout" maxlength="255"
+                       value="{{ bump.imagem_checkout or '' }}"
+                       placeholder="ex: fatia-01.webp">
+                <small class="form-text text-muted">Suba o arquivo em /admin/arquivos e cole aqui só o nome.</small>
+            </div>
+
         </div>
 
         <div class="form-actions">

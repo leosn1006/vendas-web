@@ -208,6 +208,20 @@
         .bump-preco-original { color: var(--sub); text-decoration: line-through; margin-right: 6px; }
         .bump-preco-promo { color: var(--verde); font-weight: 900; font-size: 15px; }
 
+        /* ── Miniatura do order bump ── */
+        .bump-thumb {
+            width: 64px; height: 64px; object-fit: cover;
+            border-radius: 8px; flex-shrink: 0;
+        }
+
+        /* ── Foto do produto principal (resumo) — estilo banner, sempre acima do texto,
+           altura livre conforme a proporção da imagem (sem recorte forçado). ── */
+        .resumo-hero { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+        .resumo-hero-img {
+            width: 100%; height: auto; max-height: 320px; object-fit: cover;
+            border-radius: 10px; display: block;
+        }
+
         .total-linha {
             display: flex; justify-content: space-between; align-items: center;
             font-size: 14px; color: var(--sub); margin-bottom: 10px; padding: 0 2px;
@@ -359,6 +373,18 @@
         .rodape {
             text-align: center; font-size: 12px; color: #aaa; margin-top: 24px;
         }
+
+        /* ── RESPONSIVO — tablet (≥640px) e desktop (≥1024px). Mobile-first: tudo acima é o
+           layout base (celular). Mesma convenção usada em tempero-e.html. ── */
+        @media (min-width: 640px) {
+            .container { max-width: 600px; }
+            .bump-thumb { width: 80px; height: 80px; }
+        }
+
+        @media (min-width: 1024px) {
+            .container { max-width: 720px; }
+            .resumo-hero-img { max-height: 400px; }
+        }
     </style>
 </head>
 <body>
@@ -374,16 +400,26 @@
     <div id="resumoTopo">
         <!-- Resumo do produto (vira uma listinha de itens quando um bump é marcado) -->
         <div class="card">
-            <div class="resumo-label">Detalhes da sua compra:</div>
-            <div id="resumoItens" class="resumo-itens">
-                <div class="linha-item linha-item-principal">
-                    <span>{{ produto.descricao }}</span>
-                    <span>R$ {{ "%.2f"|format(produto.preco) }}</span>
+            <div class="resumo-hero">
+                {% if produto.imagem_checkout %}
+                <img class="resumo-hero-img"
+                     src="{{ url_for('static', filename='images/' + produto.imagem_checkout) }}"
+                     alt="{{ produto.descricao }}"
+                     onerror="this.style.display='none'">
+                {% endif %}
+                <div class="resumo-hero-texto">
+                    <div class="resumo-label">Detalhes da sua compra:</div>
+                    <div id="resumoItens" class="resumo-itens">
+                        <div class="linha-item linha-item-principal">
+                            <span>{{ produto.descricao }}</span>
+                            <span>R$ {{ "%.2f"|format(produto.preco) }}</span>
+                        </div>
+                    </div>
+                    <div class="resumo-total-wrap">
+                        <span>Total</span>
+                        <strong id="resumoTotal">R$ {{ "%.2f"|format(produto.preco) }}</strong>
+                    </div>
                 </div>
-            </div>
-            <div class="resumo-total-wrap">
-                <span>Total</span>
-                <strong id="resumoTotal">R$ {{ "%.2f"|format(produto.preco) }}</strong>
             </div>
         </div>
 
@@ -460,6 +496,12 @@
             {% for b in bumps %}
             <label class="bump-card" data-bump-wrap>
                 <input type="checkbox" class="bump-checkbox" data-id="{{ b.id }}" data-preco="{{ b.preco_promocional }}">
+                {% if b.imagem_checkout %}
+                <img class="bump-thumb"
+                     src="{{ url_for('static', filename='images/' + b.imagem_checkout) }}"
+                     alt="{{ b.nome }}"
+                     onerror="this.style.display='none'">
+                {% endif %}
                 <div>
                     <span class="bump-selo">Oferta exclusiva</span>
                     <div class="bump-nome">{{ b.nome }}</div>

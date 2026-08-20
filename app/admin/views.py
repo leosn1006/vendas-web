@@ -112,6 +112,15 @@ def listar_produtos():
         flash('Erro ao carregar produtos.', 'danger')
         return redirect(url_for('admin.dashboard'))
 
+def _nome_arquivo_imagem(valor):
+    """Extrai só o nome do arquivo de `imagem_checkout` — protege contra o admin colar
+    a URL completa por engano (hábito do campo vizinho url_imagem_complementar) e contra
+    qualquer componente de diretório (ex: '../') no valor digitado."""
+    valor = (valor or '').strip()
+    if not valor:
+        return None
+    return os.path.basename(valor.split('?')[0].rstrip('/')) or None
+
 @admin_bp.route('/produtos/novo', methods=['GET', 'POST'])
 @requer_admin
 def novo_produto():
@@ -121,7 +130,7 @@ def novo_produto():
                 INSERT INTO produtos (
                     nome, preco, descricao, prompt_vendas,
                     url_faq_produto, url_audio_introducao, url_audio_explicativo,
-                    url_audio_pedido_entregue, url_imagem_complementar,
+                    url_audio_pedido_entregue, url_imagem_complementar, imagem_checkout,
                     url_arquivo_produto, caption_arquivo_produto, nome_arquivo_produto,
                     mensagem_introducao, mensagem_pedido_enviado_sem_interesse,
                     mensagem_para_pagamento, chave_pix, pix_destinatario_esperado,
@@ -129,7 +138,7 @@ def novo_produto():
                     mensagem_comprovante_invalido, url_arquivo_surpresa,
                     caption_arquivo_surpresa, nome_arquivo_surpresa, ativo
                 ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                 )
             """, (
@@ -142,6 +151,7 @@ def novo_produto():
                 request.form.get('url_audio_explicativo'),
                 request.form.get('url_audio_pedido_entregue'),
                 request.form.get('url_imagem_complementar'),
+                _nome_arquivo_imagem(request.form.get('imagem_checkout')),
                 request.form.get('url_arquivo_produto'),
                 request.form.get('caption_arquivo_produto'),
                 request.form.get('nome_arquivo_produto'),
@@ -198,6 +208,7 @@ def editar_produto(produto_id):
                     url_audio_explicativo               = %s,
                     url_audio_pedido_entregue           = %s,
                     url_imagem_complementar             = %s,
+                    imagem_checkout                     = %s,
                     url_arquivo_produto                 = %s,
                     caption_arquivo_produto             = %s,
                     nome_arquivo_produto                = %s,
@@ -228,6 +239,7 @@ def editar_produto(produto_id):
                 request.form.get('url_audio_explicativo'),
                 request.form.get('url_audio_pedido_entregue'),
                 request.form.get('url_imagem_complementar'),
+                _nome_arquivo_imagem(request.form.get('imagem_checkout')),
                 request.form.get('url_arquivo_produto'),
                 request.form.get('caption_arquivo_produto'),
                 request.form.get('nome_arquivo_produto'),
@@ -1640,6 +1652,7 @@ def adicionar_bump_produto_view(produto_id):
             preco_promocional=float(request.form['preco_promocional']),
             descricao=request.form.get('descricao'),
             ordem=int(request.form.get('ordem') or 1),
+            imagem_checkout=_nome_arquivo_imagem(request.form.get('imagem_checkout')),
         )
         flash('Order bump adicionado com sucesso!', 'success')
         logger.info(f"[ADMIN] ✅ Order bump adicionado ao produto #{produto_id} por {current_user.email}")
@@ -1674,6 +1687,7 @@ def editar_bump_produto(produto_id, bump_id):
                 preco_promocional=float(request.form['preco_promocional']),
                 descricao=request.form.get('descricao'),
                 ordem=int(request.form.get('ordem') or 1),
+                imagem_checkout=_nome_arquivo_imagem(request.form.get('imagem_checkout')),
             )
             flash('Order bump atualizado com sucesso!', 'success')
             logger.info(f"[ADMIN] ✅ Order bump #{bump_id} atualizado por {current_user.email}")

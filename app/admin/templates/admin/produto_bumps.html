@@ -21,6 +21,7 @@
             <thead>
                 <tr>
                     <th>Ordem</th>
+                    <th>Imagem</th>
                     <th>Nome</th>
                     <th>Arquivo</th>
                     <th>Nome do arquivo (download)</th>
@@ -34,6 +35,15 @@
                 <tr>
                     <td style="color: var(--muted); font-family: var(--mono); font-size: 13px; width: 60px;">
                         {{ b.ordem }}
+                    </td>
+                    <td>
+                        {% if b.imagem_checkout %}
+                        <img src="{{ url_for('static', filename='images/' + b.imagem_checkout) }}"
+                             alt="{{ b.nome }}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px;"
+                             onerror="this.style.display='none'">
+                        {% else %}
+                        <span style="color: var(--muted);">—</span>
+                        {% endif %}
                     </td>
                     <td style="font-size: 14px;">{{ b.nome }}</td>
                     <td style="font-family: var(--mono); font-size: 13px; color: var(--muted);">{{ b.path_arquivo }}</td>
@@ -109,6 +119,13 @@
                 <input type="text" id="descricao" name="descricao"
                        placeholder="linha curta exibida no checkout"
                        maxlength="500" autocomplete="off">
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label for="imagem_checkout">Imagem do checkout (nome do arquivo em static/images, opcional)</label>
+                <input type="text" id="imagem_checkout" name="imagem_checkout"
+                       placeholder="ex: fatia-01.webp"
+                       maxlength="255" autocomplete="off">
+                <small class="form-text text-muted">Suba o arquivo em /admin/arquivos e cole aqui só o nome.</small>
             </div>
             <div class="form-actions" style="grid-column: 1 / -1;">
                 <button type="submit" class="btn btn-primary">+ Adicionar</button>

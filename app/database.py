@@ -1433,28 +1433,28 @@ def get_bump_produto(bump_id, produto_id):
 
 
 def adicionar_bump_produto(produto_id, nome, path_arquivo, nome_arquivo, preco_original,
-                            preco_promocional, descricao=None, ordem=1):
+                            preco_promocional, descricao=None, ordem=1, imagem_checkout=None):
     """Adiciona um order bump a um produto. Retorna o ID criado."""
     return db.execute_query(
         """INSERT INTO produto_bump
                (produto_id, nome, path_arquivo, nome_arquivo, descricao,
-                preco_original, preco_promocional, ordem)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                preco_original, preco_promocional, ordem, imagem_checkout)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
         (produto_id, nome, path_arquivo, nome_arquivo, descricao or None,
-         preco_original, preco_promocional, ordem)
+         preco_original, preco_promocional, ordem, imagem_checkout or None)
     )
 
 
 def atualizar_bump_produto(bump_id, produto_id, nome, path_arquivo, nome_arquivo, preco_original,
-                            preco_promocional, descricao=None, ordem=1):
+                            preco_promocional, descricao=None, ordem=1, imagem_checkout=None):
     """Atualiza um order bump existente pelo ID, restrito ao produto informado."""
     db.execute_query(
         """UPDATE produto_bump SET
                nome=%s, path_arquivo=%s, nome_arquivo=%s, descricao=%s,
-               preco_original=%s, preco_promocional=%s, ordem=%s
+               preco_original=%s, preco_promocional=%s, ordem=%s, imagem_checkout=%s
            WHERE id=%s AND produto_id=%s""",
         (nome, path_arquivo, nome_arquivo, descricao or None,
-         preco_original, preco_promocional, ordem, bump_id, produto_id)
+         preco_original, preco_promocional, ordem, imagem_checkout or None, bump_id, produto_id)
     )
 
 
