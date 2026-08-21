@@ -1902,38 +1902,56 @@ def desativar_chave_pix_produto(chave_id: int):
 
 def busca_financeiro_pix(produto_id, data_ini, data_fim) -> dict:
     """
-    Retorna resumo e lista de transações PIX do produto no período.
+    Retorna resumo e lista de transações (PIX + vendas web confirmadas) do
+    produto no período, com origem ('whatsapp' ou 'web') por transação.
+
+    Pagamentos PIX já vinculados a um pedido web confirmado (mesmo e2e_id)
+    são excluídos do lado PIX para não contar a mesma venda duas vezes —
+    aparecem só como linha 'web'.
 
     Returns:
         dict com keys 'resumo' (total_valor, qtd_transacoes, ticket_medio)
-                   e 'transacoes' (lista de pagamento_pix)
+                   e 'transacoes' (lista unificada, ordenada por horario DESC)
     """
-    resumo = db.execute_query(
-        """SELECT
-               COALESCE(SUM(valor), 0)   AS total_valor,
-               COUNT(*)                  AS qtd_transacoes
-           FROM pagamento_pix
-           WHERE produto_id = %s AND horario BETWEEN %s AND %s""",
-        (produto_id, data_ini, data_fim),
-        fetch_one=True,
-    ) or {'total_valor': 0, 'qtd_transacoes': 0}
-
     transacoes = db.execute_query(
         """SELECT pp.horario, pp.valor, pp.chave_pix, pp.cpf_cnpj, pp.nome_pagador,
                   pp.txid, pp.e2e_id,
                   pp.nfe_emitida_id,
-                  ne.c_stat      AS nfe_c_stat,
-                  ne.chave_acesso AS nfe_chave_acesso
+                  ne.c_stat       AS nfe_c_stat,
+                  ne.chave_acesso AS nfe_chave_acesso,
+                  'whatsapp'      AS origem
            FROM pagamento_pix pp
            LEFT JOIN nfe_emitidas ne ON ne.id = pp.nfe_emitida_id
            WHERE pp.produto_id = %s AND pp.horario BETWEEN %s AND %s
-           ORDER BY pp.horario DESC""",
-        (produto_id, data_ini, data_fim),
+             AND NOT EXISTS (
+                 SELECT 1 FROM pedidos ped
+                 WHERE ped.estado_id = 1000
+                   AND ped.e2e_id = pp.e2e_id
+                   AND ped.e2e_id != ''
+             )
+
+           UNION ALL
+
+           SELECT ped.data_pagamento AS horario, ped.valor_pago AS valor,
+                  NULL AS chave_pix,
+                  REPLACE(REPLACE(REPLACE(ped.cpf_cnpj_pagador, '.', ''), '-', ''), '/', '') AS cpf_cnpj,
+                  ped.nome_pagador,
+                  NULL AS txid, ped.e2e_id,
+                  NULL AS nfe_emitida_id,
+                  NULL AS nfe_c_stat,
+                  NULL AS nfe_chave_acesso,
+                  'web' AS origem
+           FROM pedidos ped
+           WHERE ped.produto_id = %s AND ped.estado_id = 1000
+             AND ped.data_pagamento BETWEEN %s AND %s
+
+           ORDER BY horario DESC""",
+        (produto_id, data_ini, data_fim, produto_id, data_ini, data_fim),
         fetch_all=True,
     ) or []
 
-    total = float(resumo['total_valor'] or 0)
-    qtd   = int(resumo['qtd_transacoes'] or 0)
+    total = float(sum(t['valor'] for t in transacoes))
+    qtd   = len(transacoes)
     return {
         'resumo': {
             'total_valor':     total,

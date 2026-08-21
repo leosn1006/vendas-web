@@ -3150,7 +3150,7 @@ def remover_planilha_google(produto_id, planilha_id):
     return redirect(url_for('admin.planilhas_google_produto', produto_id=produto_id))
 
 
-# ── Financeiro PIX ────────────────────────────────────────────────────────────
+# ── Financeiro (PIX + Web) ────────────────────────────────────────────────────
 
 @admin_bp.route('/produto/<int:produto_id>/financeiro')
 @requer_acesso_produto
@@ -3175,7 +3175,7 @@ def financeiro_produto(produto_id):
     try:
         financeiro = busca_financeiro_pix(produto_id, data_ini, data_fim)
     except Exception as e:
-        logger.error(f"[ADMIN] ❌ Erro no financeiro PIX produto #{produto_id}: {e}")
+        logger.error(f"[ADMIN] ❌ Erro no financeiro produto #{produto_id}: {e}")
         flash('Erro ao carregar dados financeiros.', 'danger')
         financeiro = {'resumo': {'total_valor': 0, 'qtd_transacoes': 0, 'ticket_medio': 0}, 'transacoes': []}
 
