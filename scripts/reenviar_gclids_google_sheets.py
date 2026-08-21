@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
-Reenvia (backfill) para o Google Sheets TODOS os pedidos pagos de um produto/DNS,
-ignorando o filtro de "pendente" (data_envio_google_ads IS NULL) usado no fluxo
-diário normal. Útil para repopular uma planilha que foi limpa manualmente.
+Reenvia (backfill) para o Google Sheets os pedidos de um produto/DNS que JÁ
+tinham sido enviados anteriormente (data_envio_google_ads IS NOT NULL).
+Útil para repopular uma planilha que foi limpa manualmente.
 
 Reproduz as mesmas regras de negócio de exportar_para_google_sheets()
 (app/fluxos/fluxo_upload_google_ads.py): cabeçalho, formato de conversion_time,
 conversion_value fixo (10.00, ou 20.00 para o produto 12) e colunas wbraid/gbraid.
 
-Não limpa a planilha (isso é manual) e marca cada pedido enviado como
-"data_envio_google_ads" no banco, para o fluxo diário não reenviar depois.
+Não limpa a planilha (isso é manual) e NÃO atualiza data_envio_google_ads
+(preserva a data original de envio; pedidos ainda não enviados continuam
+sendo tratados normalmente pelo fluxo diário, sem interferência deste script).
 
 Uso:
     python scripts/reenviar_gclids_google_sheets.py --dry-run
@@ -35,7 +36,7 @@ if os.getenv('DB_HOST') == 'db':
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'app'))
 
-from database import db, marcar_venda_como_enviada_ao_google_ads
+from database import db
 
 HEADER = ["Google Click ID", "Conversion Name", "Conversion Time", "Conversion Value", "Currency Code", "wbraid", "gbraid"]
 
@@ -54,13 +55,14 @@ def buscar_config_planilha(produto_id, dns):
     return config
 
 
-def buscar_pedidos_pagos(produto_id, dns):
+def buscar_pedidos_ja_enviados(produto_id, dns):
     query = """
         SELECT id, gclid, wbraid, gbraid, data_pagamento
         FROM pedidos
         WHERE produto_id = %s
           AND dns_origem = %s
           AND estado_id IN (0, 1000)
+          AND data_envio_google_ads IS NOT NULL
           AND ((gclid IS NOT NULL AND gclid != '')
             OR (wbraid IS NOT NULL AND wbraid != '')
             OR (gbraid IS NOT NULL AND gbraid != ''))
@@ -121,16 +123,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--produto-id', type=int, default=10)
     parser.add_argument('--dns', default='lsnlivros.com.br')
-    parser.add_argument('--dry-run', action='store_true', help="Só mostra a contagem, não escreve no Sheets nem marca no banco.")
+    parser.add_argument('--dry-run', action='store_true', help="Só mostra a contagem, não escreve no Sheets.")
     args = parser.parse_args()
 
     config = buscar_config_planilha(args.produto_id, args.dns)
-    pedidos = buscar_pedidos_pagos(args.produto_id, args.dns)
+    pedidos = buscar_pedidos_ja_enviados(args.produto_id, args.dns)
 
     print(f"Produto {args.produto_id} / dns {args.dns}")
     print(f"Planilha: {config['google_sheets_spreadsheet_id']} / aba '{config['google_sheets_sheet_name']}'")
     print(f"Conversion name: {config['google_ads_conversion_name']} / SA env var: {config['google_sa_env_var']}")
-    print(f"Pedidos pagos encontrados: {len(pedidos)}")
+    print(f"Pedidos já enviados anteriormente (data_envio_google_ads IS NOT NULL): {len(pedidos)}")
 
     if not pedidos:
         return
@@ -140,7 +142,7 @@ def main():
         print("\nAmostra (id / data_pagamento):")
         for p in amostra:
             print(f"  {p['id']} / {p['data_pagamento']}")
-        print("\n(dry-run: nada foi escrito na planilha nem marcado no banco)")
+        print("\n(dry-run: nada foi escrito na planilha)")
         return
 
     sp_tz = pytz.timezone("America/Sao_Paulo")
@@ -155,10 +157,7 @@ def main():
         rows,
     )
 
-    for p in pedidos:
-        marcar_venda_como_enviada_ao_google_ads(p['id'])
-
-    print(f"\n✅ {len(rows)} linhas exportadas e pedidos marcados como enviados.")
+    print(f"\n✅ {len(rows)} linhas exportadas (data_envio_google_ads não foi alterada).")
 
 
 if __name__ == '__main__':
