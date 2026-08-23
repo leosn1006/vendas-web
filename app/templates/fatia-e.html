@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fatia de Bolo — 30 Receitas Irresistíveis + 2 Bônus | Ju Negreiros</title>
+    <meta name="description" content="30 receitas de fatias de bolo para vender ou impressionar em casa, com guia completo de vendas e receitas de bolos caseiros. Acesso imediato por R$10,00.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="preload" as="image" href="/static/images/fatia-mulher-comendo.webp" fetchpriority="high" type="image/webp">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --preto:        #0c0a09;
+            --preto-cl:     #1c1917;
+            --cinza-borda:  #292524;
+            --verde:        #b45309;   /* canela — cor primária (CTA, badges) */
+            --verde-esc:    #92400e;   /* canela escura */
+            --ambar:        #f59e0b;   /* caramelo — accent quente */
+            --rosa:         #ec4899;   /* rosa morango — accent do glow */
+            --branco:       #f5f5f4;
+            --cinza-texto:  #a8a29e;
+            --sombra:       0 4px 24px rgba(0,0,0,0.5);
+            --btn-verde:    #16a34a;   /* teste: botões de CTA em verde */
+            --btn-verde-esc: #15803d;
+        }
+
+        /* Fonte base maior — público 35+ pediu letras mais legíveis em todo o site */
+        html { scroll-behavior: smooth; font-size: 115%; }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--preto);
+            color: var(--branco);
+            padding-bottom: 80px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Degradê ambiente nas laterais, fixo na tela, estilo Google One */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 2;
+            /* só aparece na margem que sobra além da área útil (1080px) — some sozinho em telas estreitas */
+            background:
+                linear-gradient(to right, rgba(180,83,9,0.32), transparent calc((100vw - 1080px) / 2)),
+                linear-gradient(to left, rgba(236,73,153,0.28), transparent calc((100vw - 1080px) / 2));
+            mix-blend-mode: screen;
+        }
+
+        /* ── GLOW (halo multicolor borrado, estilo Google One) ── */
+        .glow-card { position: relative; }
+        .glow-card::before {
+            content: '';
+            position: absolute;
+            inset: -16%;
+            background:
+                radial-gradient(circle at 20% 20%, var(--ambar) 0%, transparent 45%),
+                radial-gradient(circle at 80% 30%, var(--rosa) 0%, transparent 45%),
+                radial-gradient(circle at 50% 90%, var(--verde) 0%, transparent 50%);
+            filter: blur(60px);
+            opacity: 0.35;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* ── GLOW BADGE (pílula com brilho animado, estilo hero do Google One) ──
+           Estrutura de 2 camadas: o halo borrado fica por trás (pintado primeiro,
+           na ordem do DOM) e a pílula sólida por cima cobre o miolo do halo,
+           deixando visível só o anel borrado que vaza pela borda. ── */
+        .glow-badge-holder { display: flex; justify-content: center; padding: 10px 6px 6px; }
+        .glow-badge-stack { position: relative; display: inline-block; max-width: 100%; }
+        .glow-badge-halo {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg,
+                var(--verde), var(--ambar), var(--rosa), var(--verde));
+            background-size: 300% 100%;
+            filter: blur(22px);
+            opacity: 0.85;
+            border-radius: 999px;
+            animation: glowShift 7s linear infinite;
+            pointer-events: none;
+        }
+        .glow-badge {
+            position: relative;
+            display: block;
+            background: var(--preto-cl);
+            border: 1px solid var(--cinza-borda);
+            border-radius: 999px;
+            padding: 24px 22px;
+            max-width: 420px;
+        }
+        .glow-badge p { margin: 0; }
+        .glow-badge h2 {
+            margin: 0;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            color: var(--branco);
+            text-align: center;
+            line-height: 1.3;
+        }
+        @keyframes glowShift {
+            0%   { background-position: 0% 50%; }
+            100% { background-position: 300% 50%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .glow-badge-halo { animation: none; }
+        }
+
+        /* ── URGENCY BAR ── */
+        .urgency-bar {
+            background: var(--preto-cl);
+            color: var(--ambar);
+            text-align: center;
+            padding: 10px 16px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            line-height: 1.5;
+            border-bottom: 1px solid var(--cinza-borda);
+        }
+        .urgency-bar strong { color: #fff; }
+
+        /* ── HERO ── */
+        .hero-sec { background: var(--preto); }
+        .hero-grid { display: block; }
+        .hero-content { display: block; }
+        .btn-hero-wrap { padding: 14px 22px 0; }
+        .hero-media {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            height: 100svh;
+            background: var(--preto);
+        }
+        .hero-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top;
+            display: block;
+        }
+        .hero-cta-btn {
+            position: absolute;
+            bottom: 170px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: block;
+            background: linear-gradient(135deg, var(--btn-verde) 0%, var(--btn-verde-esc) 100%);
+            color: #fff;
+            text-align: center;
+            padding: 17px 30px 15px;
+            border-radius: 50px;
+            font-size: 1.05rem;
+            font-weight: 900;
+            text-decoration: none;
+            white-space: nowrap;
+            box-shadow: 0 6px 24px rgba(22,163,74,0.5);
+            letter-spacing: 0.3px;
+            animation: pulseCanela 2.2s infinite;
+        }
+        @keyframes pulseCanela {
+            0%,100% { transform: translateX(-50%) scale(1); box-shadow: 0 6px 24px rgba(22,163,74,0.5); }
+            50%      { transform: translateX(-50%) scale(1.015); box-shadow: 0 8px 36px rgba(22,163,74,0.75); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .hero-cta-btn { animation: none; transform: translateX(-50%); }
+        }
+
+        /* ── TÍTULO ── */
+        .titulo {
+            text-align: center;
+            padding: 30px 22px 6px;
+            background: var(--preto);
+        }
+        .hero-tag {
+            display: inline-block;
+            background: var(--ambar);
+            color: var(--preto);
+            font-size: 0.7rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            padding: 5px 14px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+        }
+        .titulo h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            color: var(--branco);
+            line-height: 1.22;
+            margin-bottom: 10px;
+        }
+        .titulo h1 em {
+            color: var(--ambar);
+            font-style: normal;
+        }
+        .titulo-sub {
+            color: var(--cinza-texto);
+            font-size: 0.93rem;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        .titulo .confianca {
+            font-size: 0.78rem;
+            color: var(--ambar);
+            font-weight: 700;
+        }
+        .btn-hero {
+            display: block;
+            background: linear-gradient(135deg, var(--btn-verde) 0%, var(--btn-verde-esc) 100%);
+            color: #fff;
+            text-align: center;
+            padding: 17px 20px 15px;
+            border-radius: 50px;
+            font-size: 1.05rem;
+            font-weight: 900;
+            text-decoration: none;
+            box-shadow: 0 6px 24px rgba(22,163,74,0.5);
+            letter-spacing: 0.3px;
+        }
+        .btn-hero small {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 400;
+            margin-top: 3px;
+            opacity: 0.9;
+        }
+
+        /* ── AUDIO CARD (nota de voz estilo WhatsApp) ── */
+        .audio-sec { padding: 20px 22px 6px; background: var(--preto); }
+        .audio-card {
+            background: var(--preto-cl);
+            border: 1px solid var(--cinza-borda);
+            border-radius: 22px;
+            padding: 16px;
+            box-shadow: var(--sombra);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .audio-avatar {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--verde), var(--verde-esc));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+        .audio-body { flex: 1; min-width: 0; }
+        .audio-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--branco);
+            margin-bottom: 8px;
+        }
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .audio-play {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: var(--verde);
+            border: none;
+            color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-size: 0;
+        }
+        .audio-play svg { width: 16px; height: 16px; fill: #fff; }
+        .audio-track { flex: 1; min-width: 0; }
+        .audio-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--cinza-borda);
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+        }
+        .audio-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--verde), var(--ambar));
+            border-radius: 6px;
+        }
+        .audio-time {
+            font-size: 0.68rem;
+            color: var(--cinza-texto);
+            margin-top: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* ── PROOF BAR ── */
+        .proof-bar {
+            display: flex;
+            background: var(--preto-cl);
+            border-bottom: 3px solid var(--verde);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            margin-top: 18px;
+        }
+        .proof-bar::-webkit-scrollbar { display: none; }
+        .proof-item {
+            flex: 0 0 auto;
+            text-align: center;
+            padding: 14px 18px;
+            border-right: 1px solid var(--cinza-borda);
+        }
+        .proof-item:last-child { border-right: none; }
+        .proof-num {
+            display: block;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            font-weight: 900;
+            color: var(--ambar);
+        }
+        .proof-label {
+            font-size: 0.66rem;
+            color: var(--cinza-texto);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            white-space: nowrap;
+        }
+
+        /* ── SECTION TITLES ── */
+        .sec-title { text-align: center; padding: 0 22px; }
+        .sec-title h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            color: var(--branco);
+            line-height: 1.3;
+            margin-bottom: 8px;
+        }
+        .sec-title p {
+            font-size: 0.88rem;
+            color: var(--cinza-texto);
+            line-height: 1.65;
+        }
+        .divider {
+            width: 44px;
+            height: 3px;
+            background: var(--verde);
+            margin: 10px auto 14px;
+            border-radius: 2px;
+        }
+
+        /* ── PAIN SECTION ── */
+        .pain-sec { background: var(--preto-cl); padding: 36px 22px; }
+        .pain-list { list-style: none; margin-top: 22px; }
+        .pain-list li {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            padding: 13px 0;
+            border-bottom: 1px solid var(--cinza-borda);
+            color: rgba(245,245,244,0.88);
+            font-size: 0.9rem;
+            line-height: 1.55;
+        }
+        .pain-list li .ico {
+            flex-shrink: 0;
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            background: var(--verde);
+            color: #fff;
+            font-weight: 900;
+            font-size: 0.78rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 2px;
+        }
+
+        /* ── GALLERY / CARROSSEL ORBITAL ── */
+        .gallery-sec { background: var(--preto); padding: 36px 22px 28px; }
+        .gallery-sec .sec-title { margin-bottom: 4px; }
+
+        .orbit-wrap {
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 32px;
+        }
+        .orbit-showcase {
+            position: relative;
+            width: 100%;
+            max-width: 320px;
+            border-radius: 20px;
+            overflow: hidden;
+            background: var(--preto-cl);
+            border: 1px solid var(--cinza-borda);
+            box-shadow: var(--sombra);
+        }
+        .orbit-showcase img {
+            width: 100%;
+            height: 240px;
+            object-fit: cover;
+            display: block;
+            transition: opacity 0.2s ease;
+        }
+        .orbit-showcase-caption {
+            position: absolute;
+            left: 0; right: 0; bottom: 0;
+            padding: 30px 16px 12px;
+            background: linear-gradient(transparent, rgba(12,10,9,0.92));
+            color: var(--branco);
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        .orbit-circle {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin-top: 34px; /* dá espaço pro ícone do topo do arco não ser cortado */
+            flex-shrink: 0;
+        }
+        /* meia-lua aberta pra baixo: o wrapper mostra só a metade de cima do anel */
+        .orbit-ring-clip {
+            position: absolute;
+            left: 0; top: 0;
+            width: 100%;
+            height: 50%;
+            overflow: hidden;
+            border-radius: 999px 999px 0 0;
+        }
+        .orbit-ring {
+            position: absolute;
+            left: 0; top: 0;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, var(--verde), var(--ambar), var(--rosa), var(--verde));
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+                    mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+            opacity: 0.85;
+            animation: hueSpin 8s linear infinite;
+        }
+        @keyframes hueSpin {
+            from { filter: hue-rotate(0deg); }
+            to   { filter: hue-rotate(360deg); }
+        }
+        .orbit-center-img {
+            position: absolute;
+            inset: 14px;
+            width: calc(100% - 28px);
+            height: calc(100% - 28px);
+            border-radius: 50%;
+            object-fit: cover;
+            object-position: center center;
+            border: 3px solid var(--preto-cl);
+            box-shadow: var(--sombra);
+        }
+        .orbit-icon {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 52px; height: 52px;
+            margin: -26px 0 0 -26px;
+            border-radius: 50%;
+            background: var(--preto-cl);
+            border: 2px solid var(--cinza-borda);
+            padding: 0;
+            overflow: hidden;
+            cursor: pointer;
+            transform: rotate(var(--angle)) translate(147px) rotate(calc(-1 * var(--angle)));
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        .orbit-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .orbit-icon:hover { border-color: var(--ambar); }
+        .orbit-icon.active { border-color: var(--ambar); box-shadow: 0 0 0 3px rgba(245,158,11,0.25); }
+        @media (prefers-reduced-motion: reduce) {
+            .orbit-ring { animation: none; }
+        }
+
+        /* ── WHAT'S INSIDE ── */
+        .inside-sec { padding: 36px 22px; background: var(--preto-cl); }
+        .books-img {
+            display: block;
+            width: 100%;
+            max-width: 340px;
+            margin: 24px auto;
+            border-radius: 16px;
+            box-shadow: var(--sombra);
+        }
+        .includes-list { list-style: none; margin-top: 20px; }
+        .includes-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 13px 0;
+            border-bottom: 1px solid var(--cinza-borda);
+            font-size: 0.88rem;
+            color: var(--branco);
+            line-height: 1.5;
+        }
+        .chk {
+            width: 22px; height: 22px;
+            background: var(--verde);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 0.75rem;
+            flex-shrink: 0; margin-top: 1px;
+        }
+
+        /* ── COMO FUNCIONA (steps) ── */
+        .steps-sec { padding: 36px 22px; background: var(--preto); }
+        .steps-list { margin-top: 26px; max-width: 460px; margin-left: auto; margin-right: auto; }
+        .step-item { position: relative; padding: 0 0 30px 40px; }
+        .step-item:last-child { padding-bottom: 0; }
+        .step-item::before {
+            content: '';
+            position: absolute;
+            left: 13px; top: 30px; bottom: -2px;
+            width: 2px;
+            background: var(--cinza-borda);
+        }
+        .step-item:last-child::before { display: none; }
+        .step-num {
+            position: absolute; left: 0; top: 0;
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: var(--verde);
+            color: #fff;
+            font-weight: 900;
+            font-size: 0.85rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .step-title { font-weight: 700; color: var(--branco); font-size: 0.95rem; margin-bottom: 4px; }
+        .step-desc { font-size: 0.85rem; color: var(--cinza-texto); line-height: 1.55; }
+
+        /* ── PERSONA ── */
+        .persona-sec { padding: 36px 22px; background: var(--preto-cl); }
+        .persona-card {
+            margin-top: 22px;
+            background: var(--preto);
+            border: 1px solid var(--cinza-borda);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: var(--sombra);
+        }
+        .persona-img { width: 100%; height: 320px; object-fit: cover; object-position: center 15%; display: block; }
+        .persona-body { padding: 22px 20px 26px; }
+        .persona-badge {
+            display: inline-block;
+            background: rgba(180,83,9,0.18);
+            color: var(--ambar);
+            border: 1px solid var(--verde);
+            font-size: 0.68rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            padding: 5px 14px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+        }
+        .persona-body h3 { font-family: 'Playfair Display', serif; color: var(--branco); font-size: 1.25rem; margin-bottom: 10px; }
+        .persona-body p { font-size: 0.88rem; color: var(--cinza-texto); line-height: 1.7; }
+
+        /* ── CATEGORIES ACCORDION ── */
+        .cat-sec { padding: 36px 22px; background: var(--preto); }
+        .cat-list { margin-top: 22px; display: flex; flex-direction: column; gap: 14px; }
+        .cat-item {
+            border: 1px solid var(--cinza-borda);
+            border-radius: 18px;
+            overflow: hidden;
+            background: var(--preto-cl);
+            transition: border-color 0.25s;
+        }
+        .cat-item.open { border-color: var(--verde); }
+        .cat-img { position: relative; height: 150px; overflow: hidden; }
+        .cat-img img { width: 100%; height: 100%; object-fit: cover; }
+        .cat-img::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(transparent 40%, rgba(12,10,9,0.9));
+        }
+        .cat-badge {
+            position: absolute; top: 10px; left: 10px; z-index: 2;
+            background: var(--verde);
+            color: #fff;
+            font-size: 0.62rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+        .cat-name {
+            position: absolute; bottom: 10px; left: 14px; right: 14px; z-index: 2;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.05rem;
+            color: #fff;
+        }
+        .cat-toggle {
+            width: 100%;
+            background: none;
+            border: none;
+            color: var(--ambar);
+            text-align: left;
+            padding: 14px 16px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .cat-toggle::after {
+            content: '+';
+            font-size: 1.3rem;
+            transition: transform 0.28s;
+            flex-shrink: 0;
+        }
+        .cat-item.open .cat-toggle::after { transform: rotate(45deg); }
+        .cat-items {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease;
+        }
+        .cat-item.open .cat-items { max-height: 220px; }
+        .cat-items ul { list-style: none; padding: 0 16px 16px; }
+        .cat-items li {
+            font-size: 0.82rem;
+            color: var(--cinza-texto);
+            padding: 6px 0;
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+        }
+        .cat-items li::before { content: '✓'; color: var(--verde); font-weight: 900; flex-shrink: 0; }
+
+        /* ── BONUS ── */
+        .bonus-sec { padding: 36px 22px; background: var(--preto-cl); }
+        .bonus-grid { display: flex; flex-direction: column; gap: 16px; margin-top: 22px; }
+        .bonus-tagline {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: var(--ambar);
+            font-weight: 700;
+        }
+        .bonus-box {
+            border: 2px solid var(--ambar);
+            border-radius: 20px;
+            padding: 24px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            background: var(--preto);
+        }
+        .bonus-ribbon {
+            position: absolute;
+            top: 14px; right: -26px;
+            background: var(--ambar);
+            color: var(--preto);
+            font-size: 0.62rem;
+            font-weight: 900;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            padding: 5px 34px;
+            transform: rotate(30deg);
+        }
+        .bonus-ico { font-size: 2.6rem; display: block; margin-bottom: 10px; }
+        .bonus-box h3 {
+            font-family: 'Playfair Display', serif;
+            color: var(--ambar);
+            font-size: 1.15rem;
+            margin-bottom: 8px;
+        }
+        .bonus-box p { font-size: 0.85rem; color: var(--cinza-texto); line-height: 1.6; margin-bottom: 6px; }
+        .bonus-free {
+            display: inline-block;
+            margin-top: 10px;
+            background: rgba(180,83,9,0.15);
+            color: var(--ambar);
+            font-weight: 900;
+            font-size: 0.78rem;
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--verde);
+        }
+
+        /* ── INCOME CALCULATOR ── */
+        .calc-sec { padding: 36px 22px; background: var(--preto); }
+        .calc-box {
+            background: var(--preto-cl);
+            border: 1px solid var(--cinza-borda);
+            border-radius: 20px;
+            padding: 22px 18px;
+            margin-top: 22px;
+        }
+        .calc-hint {
+            text-align: center;
+            font-size: 0.78rem;
+            color: var(--ambar);
+            font-weight: 700;
+            margin-top: -6px;
+            margin-bottom: 18px;
+        }
+        .calc-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--branco);
+        }
+        .calc-value {
+            background: var(--verde);
+            color: #fff;
+            font-weight: 900;
+            font-size: 0.9rem;
+            padding: 4px 12px;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 8px;
+            background: var(--cinza-borda);
+            outline: none;
+            accent-color: var(--verde);
+            cursor: pointer;
+        }
+        .calc-range-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.66rem;
+            color: var(--cinza-texto);
+            margin-top: 6px;
+        }
+        .calc-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 18px;
+        }
+        .calc-metric {
+            background: var(--preto);
+            border: 1px solid var(--cinza-borda);
+            border-radius: 14px;
+            padding: 12px;
+            text-align: center;
+        }
+        .calc-metric.full { grid-column: 1 / -1; border-color: var(--verde); background: rgba(180,83,9,0.08); }
+        .calc-metric span { display: block; }
+        .calc-metric .lbl { font-size: 0.62rem; color: var(--cinza-texto); text-transform: uppercase; margin-bottom: 4px; }
+        .calc-metric .val { font-size: 1rem; font-weight: 900; color: var(--branco); }
+        .calc-metric.full .val { font-size: 1.5rem; color: var(--ambar); }
+        .calc-disclaimer {
+            margin-top: 16px;
+            font-size: 0.68rem;
+            color: var(--cinza-texto);
+            line-height: 1.6;
+            padding: 12px;
+            background: var(--preto);
+            border-radius: 12px;
+            border: 1px solid var(--cinza-borda);
+        }
+
+        /* ── OFFER ── */
+        .offer-sec { padding: 36px 22px; background: var(--preto); text-align: center; }
+        .price-box {
+            background: var(--preto-cl);
+            border: 2px solid var(--verde);
+            border-radius: 20px;
+            padding: 28px 22px 24px;
+            box-shadow: var(--sombra);
+            margin: 24px 0 20px;
+            position: relative;
+        }
+        .p-now {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.2rem;
+            font-weight: 900;
+            color: var(--ambar);
+            line-height: 1;
+            margin: 6px 0 4px;
+        }
+        .p-now sup { font-size: 1.3rem; vertical-align: super; }
+        .p-desc { font-size: 0.78rem; color: var(--cinza-texto); margin-bottom: 18px; }
+        .v-stack { list-style: none; text-align: left; }
+        .v-stack li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 0;
+            border-bottom: 1px dashed var(--cinza-borda);
+            font-size: 0.83rem;
+            color: var(--branco);
+        }
+        .v-stack li:last-child { border-bottom: none; }
+        .v-stack .free { color: var(--ambar); font-weight: 900; font-size: 0.78rem; }
+
+        .btn-cta {
+            display: block;
+            background: linear-gradient(135deg, var(--btn-verde), var(--btn-verde-esc));
+            color: #fff;
+            text-align: center;
+            padding: 18px 20px 16px;
+            border-radius: 50px;
+            font-size: 1.05rem;
+            font-weight: 900;
+            text-decoration: none;
+            box-shadow: 0 8px 28px rgba(22,163,74,0.45);
+            animation: pulseCanela2 2.2s infinite;
+            letter-spacing: 0.3px;
+        }
+        .btn-cta small { display: block; font-size: 0.72rem; font-weight: 400; margin-top: 4px; opacity: 0.9; }
+        @keyframes pulseCanela2 {
+            0%,100% { box-shadow: 0 8px 28px rgba(22,163,74,0.45); }
+            50%      { box-shadow: 0 10px 38px rgba(22,163,74,0.7); }
+        }
+        .pay-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+        .pay-badge {
+            background: var(--preto-cl);
+            border: 1px solid var(--cinza-borda);
+            border-radius: 6px;
+            padding: 5px 11px;
+            font-size: 0.7rem;
+            color: var(--cinza-texto);
+            font-weight: 700;
+        }
+
+        /* ── GUARANTEE ── */
+        .guar-sec { background: var(--preto-cl); padding: 28px 22px; }
+        .guar-box { border: 2px dashed var(--verde); border-radius: 18px; padding: 26px 22px; text-align: center; }
+        .guar-ico { font-size: 3.2rem; display: block; margin-bottom: 12px; }
+        .guar-box h3 { font-family: 'Playfair Display', serif; color: var(--branco); font-size: 1.2rem; margin-bottom: 10px; }
+        .guar-box p { font-size: 0.85rem; color: var(--cinza-texto); line-height: 1.65; }
+
+        /* ── FAQ ── */
+        .faq-sec { padding: 36px 22px; background: var(--preto); }
+        .faq-item { border-bottom: 1px solid var(--cinza-borda); }
+        .faq-q {
+            width: 100%;
+            background: none; border: none;
+            text-align: left;
+            padding: 17px 0;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--branco);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+        }
+        .faq-q::after {
+            content: '+';
+            font-size: 1.5rem;
+            color: var(--ambar);
+            flex-shrink: 0;
+            transition: transform 0.28s;
+            line-height: 1;
+        }
+        .faq-item.open .faq-q::after { transform: rotate(45deg); }
+        .faq-a {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease;
+            font-size: 0.87rem;
+            color: var(--cinza-texto);
+            line-height: 1.68;
+        }
+        .faq-item.open .faq-a { max-height: 320px; padding-bottom: 18px; }
+
+        /* ── FINAL CTA ── */
+        .final-sec { background: var(--preto-cl); padding: 36px 22px; text-align: center; }
+        .final-sec h2 { font-family: 'Playfair Display', serif; color: var(--branco); font-size: 1.4rem; margin-bottom: 10px; }
+        .final-sec p { color: var(--cinza-texto); font-size: 0.9rem; line-height: 1.6; margin-bottom: 22px; }
+
+        /* ── STICKY CTA ── */
+        .sticky-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: var(--preto-cl);
+            padding: 10px 16px 12px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+            border-top: 1px solid var(--cinza-borda);
+            z-index: 200;
+        }
+        .sticky-bar > a, .sticky-bar > small { max-width: 480px; margin-left: auto; margin-right: auto; }
+        .sticky-bar > small { text-align: center; }
+        .sticky-bar a {
+            display: block;
+            background: linear-gradient(135deg, var(--btn-verde), var(--btn-verde-esc));
+            color: #fff;
+            text-align: center;
+            padding: 14px 20px;
+            border-radius: 50px;
+            font-size: 0.92rem;
+            font-weight: 900;
+            text-decoration: none;
+        }
+        .sticky-bar small { display: block; text-align: center; font-size: 0.66rem; color: var(--cinza-texto); margin-top: 5px; }
+
+        /* ── FOOTER ── */
+        .footer {
+            background: var(--preto);
+            color: rgba(245,245,244,0.4);
+            text-align: center;
+            padding: 24px 22px;
+            font-size: 0.73rem;
+            line-height: 1.9;
+            border-top: 1px solid var(--cinza-borda);
+        }
+        .footer a { color: var(--ambar); text-decoration: none; }
+        .footer p { max-width: 700px; margin-left: auto; margin-right: auto; }
+
+        /* ══════════════════════════════════════════════════════
+           RESPONSIVO — tablet (≥640px) e desktop (≥1024px)
+           Mobile-first: tudo acima é o layout base (celular).
+           ══════════════════════════════════════════════════════ */
+
+        @media (min-width: 640px) {
+            .sec-title, .pain-list, .cat-list, .price-box, .bonus-grid,
+            .calc-box, .faq-list, .inside-grid, .persona-card, .steps-list {
+                max-width: 620px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .titulo h1 { font-size: 2.2rem; }
+            .titulo-sub { font-size: 1rem; }
+        }
+
+        @media (min-width: 1024px) {
+            body { padding-bottom: 0; }
+
+            /* Hero em 2 colunas: imagem à esquerda, oferta + áudio à direita */
+            .hero-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 56px;
+                align-items: center;
+                max-width: 1160px;
+                margin: 0 auto;
+                padding: 64px 40px;
+            }
+            .hero-media {
+                position: relative;
+                height: auto;
+                aspect-ratio: 4 / 5;
+                border-radius: 28px;
+                overflow: hidden;
+                box-shadow: var(--sombra);
+            }
+            .hero-cta-btn { display: none; }
+            .hero-content .titulo { text-align: left; padding: 0 0 6px; }
+            .hero-content .titulo h1 { font-size: 2.7rem; }
+            .hero-content .titulo-sub { font-size: 1.1rem; }
+            .hero-content .btn-hero-wrap { padding: 14px 0 0; max-width: 420px; }
+            .hero-content .audio-sec { padding: 20px 0 0; }
+
+            /* Barra de prova centralizada, sem scroll */
+            .proof-bar { justify-content: center; flex-wrap: wrap; overflow: visible; }
+
+            /* Conteúdo das seções ganha mais espaço e reflow em colunas */
+            .sec-title, .price-box, .calc-box, .faq-list,
+            .btn-cta, .pay-row, .guar-box {
+                max-width: 720px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .final-sec .btn-hero {
+                max-width: 480px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .pain-list {
+                max-width: 1080px;
+                margin-left: auto;
+                margin-right: auto;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                column-gap: 40px;
+            }
+            .orbit-wrap {
+                flex-direction: row;
+                justify-content: center;
+                max-width: 1080px;
+                margin-left: auto;
+                margin-right: auto;
+                gap: 64px;
+            }
+            .orbit-showcase { max-width: 380px; }
+            .orbit-showcase img { height: 300px; }
+            .orbit-circle { width: 360px; height: 360px; }
+            .orbit-ring { width: 360px; height: 360px; }
+            .orbit-icon { transform: rotate(var(--angle)) translate(178px) rotate(calc(-1 * var(--angle))); }
+
+            .inside-grid {
+                max-width: 1080px;
+                margin-left: auto;
+                margin-right: auto;
+                display: grid;
+                grid-template-columns: 380px 1fr;
+                gap: 44px;
+                align-items: center;
+                text-align: left;
+            }
+            .books-img { margin: 0; max-width: none; width: 100%; }
+
+            .persona-card {
+                max-width: 1080px;
+                display: grid;
+                grid-template-columns: 340px 1fr;
+            }
+            .persona-img { height: 100%; }
+            .persona-body { display: flex; flex-direction: column; justify-content: center; text-align: left; padding: 32px 36px; }
+
+            .cat-list {
+                max-width: 1080px;
+                margin-left: auto;
+                margin-right: auto;
+                flex-direction: row;
+                align-items: flex-start;
+            }
+            .cat-item { flex: 1; }
+
+            .bonus-grid {
+                max-width: 1080px;
+                margin-left: auto;
+                margin-right: auto;
+                flex-direction: row;
+                align-items: stretch;
+            }
+            .bonus-box { flex: 1; }
+
+            /* Barra fixa de mobile não faz sentido em telas largas */
+            .sticky-bar { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- URGENCY BAR -->
+    <div class="urgency-bar">
+        🎂 <strong>OFERTA:</strong> 30 Receitas de Fatias de Bolo + 2 Bônus por apenas <strong>R$10,00</strong>
+    </div>
+
+    <!-- HERO -->
+    <section class="hero-sec">
+        <div class="hero-grid">
+            <div class="hero-media">
+                <img class="hero-img" src="/static/images/fatia-mulher-comendo.webp" alt="Mulher saboreando uma fatia de bolo de morango" fetchpriority="high">
+                <a href="#oferta" class="hero-cta-btn" id="btnHero">QUERO MINHAS RECEITAS →</a>
+            </div>
+            <div class="hero-content">
+                <div class="titulo">
+                    <span class="hero-tag">✨ E-book Digital</span>
+                    <h1>30 Receitas de Fatias de Bolo Irresistíveis para Vender ou <em>Impressionar</em> a Família!</h1>
+                    <p class="titulo-sub">Massa fofinha, recheio cremoso e calda na medida certa — receitas testadas, passo a passo completo de montagem e um guia prático para transformar suas fatias em renda extra.</p>
+                    <p class="confianca">🔒 Pagamento seguro via PIX · Acesso liberado na hora</p>
+                </div>
+
+                <div class="btn-hero-wrap">
+                    <a href="#oferta" class="btn-hero" id="btnTitulo">
+                        QUERO AS RECEITAS AGORA
+                        <small>Acesso imediato · Apenas R$10,00</small>
+                    </a>
+                </div>
+
+                <!-- AUDIO CARD -->
+                <div class="audio-sec">
+                    <div class="audio-card">
+                        <div class="audio-avatar">🍰</div>
+                        <div class="audio-body">
+                            <div class="audio-title">Ouça um recado da Ju antes de decidir</div>
+                            <div class="audio-controls">
+                                <button class="audio-play" id="audioPlay" type="button" aria-label="Tocar áudio">
+                                    <svg id="iconPlay" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                    <svg id="iconPause" viewBox="0 0 24 24" style="display:none"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+                                </button>
+                                <div class="audio-track">
+                                    <div class="audio-bar" id="audioBar">
+                                        <div class="audio-fill" id="audioFill"></div>
+                                    </div>
+                                    <div class="audio-time">
+                                        <span id="audioCur">0:00</span>
+                                        <span id="audioDur">--:--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <audio id="audioEl" preload="none">
+                        <source src="/static/audios/fatia-introducao-02.ogg" type="audio/ogg; codecs=opus">
+                    </audio>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SOCIAL PROOF BAR -->
+    <div class="proof-bar">
+        <div class="proof-item"><span class="proof-num">30</span><span class="proof-label">Receitas</span></div>
+        <div class="proof-item"><span class="proof-num">3</span><span class="proof-label">E-books</span></div>
+        <div class="proof-item"><span class="proof-num">100%</span><span class="proof-label">Caseiro</span></div>
+        <div class="proof-item"><span class="proof-num">7 dias</span><span class="proof-label">Garantia</span></div>
+    </div>
+
+    <!-- PAIN SECTION -->
+    <section class="pain-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>Você se identifica?</h2></div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <p>Se você já passou por uma dessas situações, esse e-book foi feito para você.</p>
+        </div>
+        <ul class="pain-list">
+            <li><span class="ico">1</span><span>Quer aprender receitas de fatias de bolo, mas não sabe por onde começar?</span></li>
+            <li><span class="ico">2</span><span>Já pensou em vender doces, mas acha que precisa de um curso caro pra isso?</span></li>
+            <li><span class="ico">3</span><span>Tem medo de a massa não crescer direito ou o recheio ficar mole?</span></li>
+            <li><span class="ico">4</span><span>Não sabe como precificar ou onde vender suas fatias?</span></li>
+            <li><span class="ico">5</span><span>Cansada de golpes e sites suspeitos na hora de comprar algo pela internet?</span></li>
+        </ul>
+    </section>
+
+    <!-- GALLERY -->
+    <section class="gallery-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>Conheça algumas das fatias</h2></div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <p>Toque em um ícone para ver a receita</p>
+        </div>
+
+        <div class="orbit-wrap">
+            <div class="orbit-showcase">
+                <img id="orbitPhoto" src="/static/images/fatia-abacaxi-com-musse-chocolate--chocolate-com-morango.webp" alt="Abacaxi e Chocolate com Morango">
+                <div class="orbit-showcase-caption" id="orbitCaption">Abacaxi e Chocolate com Morango</div>
+            </div>
+            <div class="orbit-circle">
+                <div class="orbit-ring-clip"><div class="orbit-ring"></div></div>
+                <img class="orbit-center-img" src="/static/images/fatia-bolo-vermelho.webp" alt="Fatia de bolo red velvet embalada para vender">
+                <button class="orbit-icon active" type="button" style="--angle:200deg" data-img="/static/images/fatia-abacaxi-com-musse-chocolate--chocolate-com-morango.webp" data-name="Abacaxi e Chocolate com Morango" aria-label="Abacaxi e Chocolate com Morango">
+                    <img src="/static/images/fatia-abacaxi-com-musse-chocolate--chocolate-com-morango.webp" alt="" loading="lazy">
+                </button>
+                <button class="orbit-icon" type="button" style="--angle:270deg" data-img="/static/images/fatia-chocolate.webp" data-name="Fatia de Chocolate" aria-label="Fatia de Chocolate">
+                    <img src="/static/images/fatia-chocolate.webp" alt="" loading="lazy">
+                </button>
+                <button class="orbit-icon" type="button" style="--angle:340deg" data-img="/static/images/fatia-ninho-com-geleia-cereja.webp" data-name="Ninho com Geleia de Cereja" aria-label="Ninho com Geleia de Cereja">
+                    <img src="/static/images/fatia-ninho-com-geleia-cereja.webp" alt="" loading="lazy">
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- WHAT'S INSIDE -->
+    <section class="inside-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>O que você recebe<br>na compra?</h2></div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <p>3 e-books completos — tudo em PDF, liberado na hora</p>
+        </div>
+
+        <div class="inside-grid">
+            <img class="books-img" src="/static/images/fatia-mulher-leite-condensado.webp" alt="Confeiteira finalizando uma fatia de bolo com leite condensado" loading="lazy">
+
+            <ul class="includes-list">
+                <li><span class="chk">✓</span><span><strong>30 Receitas de Fatias de Bolo</strong> — massa fofinha, recheio cremoso, calda de molhar e o passo a passo completo de montagem, rendimento e validade de cada receita</span></li>
+                <li><span class="chk">✓</span><span><strong>Receitas Caseiras de Bolos</strong> — bônus com bolos inteiros para fazer em casa, além das fatias</span></li>
+                <li><span class="chk">✓</span><span><strong>Guia de Vendas na Feira</strong> — como precificar, embalar e conquistar seus primeiros clientes</span></li>
+                <li><span class="chk">✓</span><span><strong>Pronto para impressão</strong> — arquivo formatado em folha A4, fácil de imprimir e encadernar</span></li>
+                <li><span class="chk">✓</span><span><strong>Acesso imediato e vitalício</strong> — depois de comprado, o material é seu para sempre</span></li>
+                <li><span class="chk">✓</span><span><strong>Você também recebe tudo por e-mail</strong> — além do download na hora, uma cópia de cada item chega na sua caixa de entrada</span></li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- COMO FUNCIONA -->
+    <section class="steps-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>Como funciona</h2></div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <p>Simples, rápido e seguro — do pagamento até a primeira receita na mão</p>
+        </div>
+        <div class="steps-list">
+            <div class="step-item">
+                <span class="step-num">1</span>
+                <div class="step-title">Finalize sua compra pelo Pix</div>
+                <div class="step-desc">Preencha nome e e-mail, copie o código Pix ou escaneie o QR code direto pelo app do seu banco.</div>
+            </div>
+            <div class="step-item">
+                <span class="step-num">2</span>
+                <div class="step-title">Pagamento confirmado, acesso liberado na hora</div>
+                <div class="step-desc">Assim que o Pix cai, o link de download aparece na mesma tela — sem espera.</div>
+            </div>
+            <div class="step-item">
+                <span class="step-num">3</span>
+                <div class="step-title">Baixe, imprima se quiser, e comece</div>
+                <div class="step-desc">Você também recebe uma cópia por e-mail, pra acessar quando e onde quiser.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PERSONA -->
+    <section class="persona-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>Quem é a Ju Negreiros</h2></div>
+                </div>
+            </div>
+        </div>
+        <div class="persona-card">
+            <img class="persona-img" src="/static/images/fatia-capa.jpg" alt="Ju Negreiros preparando uma receita na cozinha">
+            <div class="persona-body">
+                <span class="persona-badge">👩‍🍳 Autora do e-book</span>
+                <h3>Uma receita de família, com carinho</h3>
+                <p>Oi, eu sou a Ju! As receitas desse e-book nasceram na cozinha da minha avó, que me ensinou tudinho sobre fazer fatias de bolo quando eu era pequena. Depois que ela se foi, decidi reunir essas receitas — e outras que fui aperfeiçoando ao longo dos anos — nesse material, em homenagem a ela. Hoje ele ajuda outras mulheres a fazerem (e venderem) fatias de bolo em casa, com o mesmo carinho que aprendi na infância.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CATEGORIES ACCORDION -->
+    <section class="cat-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>O que você vai aprender</h2></div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <p>Um panorama do que está dentro do kit completo</p>
+        </div>
+        <div class="cat-list" id="catList">
+            <div class="cat-item open">
+                <div class="cat-img">
+                    <img src="/static/images/fatia-bolo-tradicional.webp" alt="Sabores Clássicos">
+                    <span class="cat-badge">Mais Pedido</span>
+                    <span class="cat-name">Sabores Clássicos</span>
+                </div>
+                <button class="cat-toggle" type="button">Ver o que vem nesta categoria</button>
+                <div class="cat-items">
+                    <ul>
+                        <li>Receitas de chocolate, coco, morango e doce de leite</li>
+                        <li>Massas fofinhas testadas e aprovadas</li>
+                        <li>Recheios cremosos passo a passo</li>
+                        <li>Dicas de calda para molhar o bolo</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="cat-item">
+                <div class="cat-img">
+                    <img src="/static/images/fatia-bolo-premium.webp" alt="Sabores Premium">
+                    <span class="cat-badge">Alto Valor</span>
+                    <span class="cat-name">Sabores Premium</span>
+                </div>
+                <button class="cat-toggle" type="button">Ver o que vem nesta categoria</button>
+                <div class="cat-items">
+                    <ul>
+                        <li>Combinações com frutas frescas</li>
+                        <li>Cremes especiais e coberturas decoradas</li>
+                        <li>Receitas para ocasiões especiais</li>
+                        <li>Apresentação para vitrine e feira</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="cat-item">
+                <div class="cat-img">
+                    <img src="/static/images/fatia-mulheres-trabalhando.webp" alt="Guia de Vendas">
+                    <span class="cat-badge">Bônus</span>
+                    <span class="cat-name">Guia de Vendas</span>
+                </div>
+                <button class="cat-toggle" type="button">Ver o que vem nesta categoria</button>
+                <div class="cat-items">
+                    <ul>
+                        <li>Como precificar sua fatia</li>
+                        <li>Como embalar para vender</li>
+                        <li>Dicas para vender na feira ou por encomenda</li>
+                        <li>Ideias simples de divulgação</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- BONUS -->
+    <section class="bonus-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>2 Bônus Grátis Inclusos</h2></div>
+                </div>
+            </div>
+        </div>
+        <div class="bonus-grid">
+            <div class="bonus-box">
+                <div class="bonus-ribbon">Bônus 1</div>
+                <span class="bonus-ico">🎂</span>
+                <h3>Receitas Caseiras de Bolos</h3>
+                <p>Bolos inteiros para fazer em casa, além das fatias — perfeito pra quem também quer vender bolo completo.</p>
+                <span class="bonus-free">PDF · GRÁTIS</span>
+            </div>
+            <div class="bonus-box">
+                <div class="bonus-ribbon">Bônus 2</div>
+                <span class="bonus-ico">💰</span>
+                <h3>Guia de Vendas na Feira</h3>
+                <p>Dicas práticas de precificação, embalagem e como conquistar seus primeiros clientes.</p>
+                <span class="bonus-free">PDF · GRÁTIS</span>
+            </div>
+        </div>
+        <p class="bonus-tagline">✅ Combo digital completo em PDF — para celular, tablet ou computador.</p>
+    </section>
+
+    <!-- INCOME CALCULATOR -->
+    <section class="calc-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>Simule sua renda extra</h2></div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <p>Veja o potencial ilustrativo de vender as fatias que você vai aprender a fazer</p>
+        </div>
+        <div class="calc-box">
+            <div class="calc-label">
+                <span>Fatias por semana</span>
+                <span class="calc-value" id="calcPotes">30 fatias</span>
+            </div>
+            <input type="range" id="calcRange" min="10" max="150" step="10" value="30">
+            <div class="calc-range-labels">
+                <span>10 (iniciante)</span>
+                <span>150 (regular)</span>
+            </div>
+            <div class="calc-metrics">
+                <div class="calc-metric">
+                    <span class="lbl">Custo por fatia</span>
+                    <span class="val">R$ 10,00</span>
+                </div>
+                <div class="calc-metric">
+                    <span class="lbl">Venda média</span>
+                    <span class="val">R$ 20,00</span>
+                </div>
+                <div class="calc-metric full">
+                    <span class="lbl">Estimativa de margem bruta / mês</span>
+                    <span class="val" id="calcLucro">R$ 1.200,00</span>
+                </div>
+            </div>
+            <p class="calc-hint" style="margin-top:14px;">💡 Com só 1 fatia vendida, você já recupera o valor investido no e-book</p>
+            <div class="calc-disclaimer">
+                <strong style="color:var(--branco)">Aviso:</strong> os valores acima são simulados e ilustrativos, baseados em estimativas médias de custo e preço de mercado. Não garantimos ganhos fixos — o resultado real depende da sua dedicação, região e demanda de clientes. O e-book é um material educacional de culinária e organização.
+            </div>
+        </div>
+    </section>
+
+    <!-- OFFER -->
+    <section class="offer-sec" id="oferta">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>Adquira o Guia Completo "Fatia de Bolo"<br>+ 2 Bônus</h2></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="price-box glow-card">
+            <p class="p-now"><sup>R$</sup>10<sup>,00</sup></p>
+            <p class="p-desc">Pagamento único &middot; Acesso imediato &middot; Para sempre</p>
+            <ul class="v-stack">
+                <li><span>30 Receitas de Fatias de Bolo (PDF)</span><span>PRINCIPAL</span></li>
+                <li><span>🎁 Bônus 1: Receitas Caseiras de Bolos</span><span class="free">GRÁTIS</span></li>
+                <li><span>🎁 Bônus 2: Guia de Vendas na Feira</span><span class="free">GRÁTIS</span></li>
+            </ul>
+        </div>
+
+        <a href="#" class="btn-cta" id="btnOferta">
+            ✅ QUERO MINHAS RECEITAS AGORA
+            <small>🔒 Compra segura &middot; Acesso imediato após o PIX</small>
+        </a>
+
+        <div class="pay-row">
+            <span class="pay-badge">📱 PIX</span>
+            <span class="pay-badge">🛡️ Arquivo Seguro</span>
+            <span class="pay-badge">♾️ Acesso Vitalício</span>
+            <span class="pay-badge">🖨️ Pronto p/ Imprimir</span>
+        </div>
+    </section>
+
+    <!-- GUARANTEE -->
+    <section class="guar-sec">
+        <div class="guar-box">
+            <span class="guar-ico">🛡️</span>
+            <h3>Garantia Incondicional de 7 Dias</h3>
+            <p>Baixe o material, teste as receitas e, se achar que não são fáceis ou gostosas, devolvemos seu dinheiro na hora. Risco zero para você.</p>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>Dúvidas frequentes</h2></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-list">
+            <div class="faq-item">
+                <button class="faq-q">Como recebo as receitas depois de comprar?</button>
+                <div class="faq-a">Assim que o pagamento via PIX for confirmado, o link de download é liberado na hora, nesta mesma tela. Você também recebe uma cópia por e-mail.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">O arquivo é seguro? Não tem vírus?</button>
+                <div class="faq-a">Sim. É um arquivo PDF comum, sem nenhum tipo de risco, compatível com qualquer celular ou computador.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">Por quanto tempo posso acessar o material?</button>
+                <div class="faq-a">O acesso é vitalício — depois de baixado, o material é seu para sempre, sem prazo de expiração.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">Dá para imprimir e encadernar?</button>
+                <div class="faq-a">Sim! Os e-books são formatados em tamanho padrão A4, perfeitos para imprimir e até encadernar, se preferir.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">As receitas ensinam a massa e o recheio, ou só um dos dois?</button>
+                <div class="faq-a">As duas coisas! Cada receita traz a massa fofinha, o recheio cremoso, a calda para molhar e o passo a passo completo de montagem, rendimento e validade.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">Os 2 bônus vêm junto automaticamente?</button>
+                <div class="faq-a">Sim, os 2 bônus (Receitas Caseiras de Bolos e Guia de Vendas na Feira) são liberados junto com o e-book principal, sem custo adicional.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">Não sei mexer muito bem no computador, é difícil pagar?</button>
+                <div class="faq-a">Não! Basta abrir o app do seu banco, escolher a opção Pix e escanear o QR code ou colar o código que aparece na tela. Leva menos de um minuto.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">Como funciona a garantia de 7 dias?</button>
+                <div class="faq-a">Se você não ficar satisfeita por qualquer motivo, basta enviar um e-mail dentro de 7 dias após a compra e devolvemos 100% do valor. Sem perguntas.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section class="final-sec">
+        <div class="glow-badge-holder">
+            <div class="glow-badge-stack">
+                <div class="glow-badge-halo"></div>
+                <div class="glow-badge"><h2>Não perca mais tempo!</h2></div>
+            </div>
+        </div>
+        <p>Comece hoje a fazer suas próprias fatias de bolo — e quem sabe transformar isso numa renda extra.</p>
+        <a href="#oferta" class="btn-hero" style="text-decoration:none;" id="btnFinal">
+            QUERO MINHAS RECEITAS — R$10,00
+            <small>Acesso imediato após a compra</small>
+        </a>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>© 2026 Fatia de Bolo — Ju Negreiros. Todos os direitos reservados.</p>
+        <p><a href="/politica-privacidade">Política de Privacidade</a> &middot; <a href="/termos-de-uso">Termos de Uso</a> &middot; <a href="/contato">Contato</a></p>
+        <p style="margin-top:10px;">Este produto é um e-book digital. O acesso é liberado imediatamente após a confirmação do pagamento.</p>
+        <p style="margin-top:10px;font-size:10px;color:rgba(245,245,244,0.3);line-height:1.6;text-align:left">
+            <strong style="display:block;margin-bottom:4px;color:rgba(245,245,244,0.5)">Aviso Legal</strong>
+            Os resultados referentes à comercialização das fatias de bolo descritas neste e-book podem variar de pessoa para pessoa. O sucesso financeiro depende exclusivamente da dedicação, esforço individual, aplicação das técnicas ensinadas e das condições de mercado de cada região. Não garantimos ganhos fixos ou resultados específicos. Este site não faz parte do Google Inc. ou do Facebook Inc. e não é endossado por eles de qualquer maneira.
+        </p>
+    </footer>
+
+    <!-- STICKY CTA -->
+    <div class="sticky-bar" id="stickyBar">
+        <a href="#oferta" id="btnSticky">✅ COMPRAR AGORA — R$10,00</a>
+        <small>🔒 Pagamento seguro &middot; Acesso imediato</small>
+    </div>
+
+    <script>
+    // ── FAQ ───────────────────────────────────────────────
+    document.querySelectorAll('.faq-q').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.parentElement;
+            const open = item.classList.contains('open');
+            document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+            if (!open) item.classList.add('open');
+        });
+    });
+
+    // ── CATEGORIES ACCORDION ──────────────────────────────
+    document.querySelectorAll('.cat-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.closest('.cat-item');
+            const open = item.classList.contains('open');
+            document.querySelectorAll('.cat-item').forEach(i => i.classList.remove('open'));
+            if (!open) item.classList.add('open');
+        });
+    });
+
+    // ── CARROSSEL ORBITAL (clique no ícone troca a foto em destaque) ──
+    (function () {
+        const icons = document.querySelectorAll('.orbit-icon');
+        const photo = document.getElementById('orbitPhoto');
+        const caption = document.getElementById('orbitCaption');
+        if (!icons.length || !photo) return;
+
+        icons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                icons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                photo.style.opacity = '0';
+                setTimeout(() => {
+                    photo.src = btn.dataset.img;
+                    photo.alt = btn.dataset.name;
+                    caption.textContent = btn.dataset.name;
+                    photo.style.opacity = '1';
+                }, 180);
+            });
+        });
+    })();
+
+    // ── AUDIO PLAYER (real, com progresso e seek) ─────────
+    (function () {
+        const audio = document.getElementById('audioEl');
+        const playBtn = document.getElementById('audioPlay');
+        const iconPlay = document.getElementById('iconPlay');
+        const iconPause = document.getElementById('iconPause');
+        const bar = document.getElementById('audioBar');
+        const fill = document.getElementById('audioFill');
+        const curEl = document.getElementById('audioCur');
+        const durEl = document.getElementById('audioDur');
+
+        function fmt(s) {
+            if (!isFinite(s) || isNaN(s)) return '--:--';
+            const m = Math.floor(s / 60);
+            const sec = Math.floor(s % 60).toString().padStart(2, '0');
+            return `${m}:${sec}`;
+        }
+
+        playBtn.addEventListener('click', () => {
+            if (audio.paused) {
+                audio.play();
+            } else {
+                audio.pause();
+            }
+        });
+
+        audio.addEventListener('play', () => {
+            iconPlay.style.display = 'none';
+            iconPause.style.display = 'block';
+        });
+        audio.addEventListener('pause', () => {
+            iconPlay.style.display = 'block';
+            iconPause.style.display = 'none';
+        });
+        audio.addEventListener('ended', () => {
+            iconPlay.style.display = 'block';
+            iconPause.style.display = 'none';
+            fill.style.width = '0%';
+            curEl.textContent = '0:00';
+        });
+        audio.addEventListener('loadedmetadata', () => {
+            durEl.textContent = fmt(audio.duration);
+        });
+        audio.addEventListener('timeupdate', () => {
+            if (audio.duration) {
+                fill.style.width = (audio.currentTime / audio.duration * 100) + '%';
+            }
+            curEl.textContent = fmt(audio.currentTime);
+        });
+
+        bar.addEventListener('click', (e) => {
+            if (!audio.duration) return;
+            const rect = bar.getBoundingClientRect();
+            const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+            audio.currentTime = ratio * audio.duration;
+        });
+    })();
+
+    // ── INCOME CALCULATOR ─────────────────────────────────
+    (function () {
+        const range = document.getElementById('calcRange');
+        const potesEl = document.getElementById('calcPotes');
+        const lucroEl = document.getElementById('calcLucro');
+        const CUSTO = 10.00;
+        const VENDA = 20.00;
+
+        function update() {
+            const fatiasSemana = Number(range.value);
+            const fatiasMes = fatiasSemana * 4;
+            const lucroMes = fatiasMes * (VENDA - CUSTO);
+            potesEl.textContent = fatiasSemana + ' fatias';
+            lucroEl.textContent = 'R$ ' + lucroMes.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        range.addEventListener('input', update);
+        update();
+    })();
+
+    // ── STICKY BAR oculta quando oferta está visível (só em telas < 1024px) ──
+    const stickyBar = document.getElementById('stickyBar');
+    const ofertaSection = document.getElementById('oferta');
+    const isDesktopViewport = () => window.matchMedia('(min-width: 1024px)').matches;
+
+    const io = new IntersectionObserver(entries => {
+        if (isDesktopViewport()) {
+            stickyBar.style.display = 'none';
+            return;
+        }
+        stickyBar.style.display = entries[0].isIntersecting ? 'none' : 'block';
+    }, { threshold: 0.15 });
+
+    io.observe(ofertaSection);
+
+    // ── CTAs: redireciona para o checkout do produto (repassa querystring) ──
+    ['btnHero', 'btnTitulo', 'btnOferta', 'btnFinal', 'btnSticky'].forEach(id => {
+        document.getElementById(id)?.addEventListener('click', () => {
+            window.location.href = '/pay/12' + window.location.search;
+        });
+    });
+    </script>
+
+</body>
+</html>
