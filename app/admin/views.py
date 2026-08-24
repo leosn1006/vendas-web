@@ -126,51 +126,17 @@ def _nome_arquivo_imagem(valor):
 def novo_produto():
     if request.method == 'POST':
         try:
-            db.execute_query("""
-                INSERT INTO produtos (
-                    nome, preco, descricao, prompt_vendas,
-                    url_faq_produto, url_audio_introducao, url_audio_explicativo,
-                    url_audio_pedido_entregue, url_imagem_complementar, imagem_checkout,
-                    url_arquivo_produto, caption_arquivo_produto, nome_arquivo_produto,
-                    mensagem_introducao, mensagem_pedido_enviado_sem_interesse,
-                    mensagem_para_pagamento, chave_pix, pix_destinatario_esperado,
-                    valor_minimo_pagamento, mensagem_pagamento_confirmado,
-                    mensagem_comprovante_invalido, url_arquivo_surpresa,
-                    caption_arquivo_surpresa, nome_arquivo_surpresa, ativo
-                ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-                )
+            novo_id = db.execute_query("""
+                INSERT INTO produtos (nome, preco, descricao, ativo)
+                VALUES (%s, %s, %s, 1)
             """, (
                 request.form.get('nome'),
                 request.form.get('preco'),
                 request.form.get('descricao'),
-                request.form.get('prompt_vendas'),
-                request.form.get('url_faq_produto'),
-                request.form.get('url_audio_introducao'),
-                request.form.get('url_audio_explicativo'),
-                request.form.get('url_audio_pedido_entregue'),
-                request.form.get('url_imagem_complementar'),
-                _nome_arquivo_imagem(request.form.get('imagem_checkout')),
-                request.form.get('url_arquivo_produto'),
-                request.form.get('caption_arquivo_produto'),
-                request.form.get('nome_arquivo_produto'),
-                request.form.get('mensagem_introducao'),
-                request.form.get('mensagem_pedido_enviado_sem_interesse'),
-                request.form.get('mensagem_para_pagamento'),
-                request.form.get('chave_pix'),
-                request.form.get('pix_destinatario_esperado'),
-                request.form.get('valor_minimo_pagamento'),
-                request.form.get('mensagem_pagamento_confirmado'),
-                request.form.get('mensagem_comprovante_invalido'),
-                request.form.get('url_arquivo_surpresa'),
-                request.form.get('caption_arquivo_surpresa'),
-                request.form.get('nome_arquivo_surpresa'),
-                1  # ativo por padrão
             ))
-            flash('Produto criado com sucesso!', 'success')
+            flash('Produto criado com sucesso! Complete os demais dados abaixo.', 'success')
             logger.info(f"[ADMIN] ✅ Produto criado por {current_user.email}")
-            return redirect(url_for('admin.listar_produtos'))
+            return redirect(url_for('admin.dados_basicos_produto', produto_id=novo_id))
 
         except Exception as e:
             logger.error(f"[ADMIN] ❌ Erro ao criar produto: {e}")
@@ -181,95 +147,12 @@ def novo_produto():
 @admin_bp.route('/produtos/<int:produto_id>', methods=['GET', 'POST'])
 @requer_acesso_produto
 def editar_produto(produto_id):
-    produto = db.execute_query(
-        "SELECT * FROM produtos WHERE id = %s",
-        (produto_id,), fetch_one=True
-    )
-
-    if produto is None:
-        flash('Produto não encontrado.', 'danger')
-        return redirect(url_for('admin.listar_produtos'))
-
-    configs_nfe = db.execute_query(
-        "SELECT id, tenant_slug, razao_social FROM nfe_configuracao ORDER BY id",
-        fetch_all=True,
-    ) or []
-
-    if request.method == 'POST':
-        try:
-            db.execute_query("""
-                UPDATE produtos SET
-                    nome                                = %s,
-                    preco                               = %s,
-                    descricao                           = %s,
-                    prompt_vendas                       = %s,
-                    url_faq_produto                     = %s,
-                    url_audio_introducao                = %s,
-                    url_audio_explicativo               = %s,
-                    url_audio_pedido_entregue           = %s,
-                    url_imagem_complementar             = %s,
-                    imagem_checkout                     = %s,
-                    url_arquivo_produto                 = %s,
-                    caption_arquivo_produto             = %s,
-                    nome_arquivo_produto                = %s,
-                    mensagem_introducao                 = %s,
-                    mensagem_pedido_enviado_sem_interesse = %s,
-                    mensagem_para_pagamento             = %s,
-                    chave_pix                           = %s,
-                    pix_destinatario_esperado           = %s,
-                    valor_minimo_pagamento              = %s,
-                    mensagem_pagamento_confirmado       = %s,
-                    mensagem_comprovante_invalido       = %s,
-                    url_arquivo_surpresa                = %s,
-                    caption_arquivo_surpresa            = %s,
-                    nome_arquivo_surpresa               = %s,
-                    ativo                               = %s,
-                    numero_convenio_bb                  = %s,
-                    disponivel_web                      = %s,
-                    url_pagina_vendas                   = %s,
-                    nfe_config_id                       = %s
-                WHERE id = %s
-            """, (
-                request.form.get('nome'),
-                request.form.get('preco'),
-                request.form.get('descricao'),
-                request.form.get('prompt_vendas'),
-                request.form.get('url_faq_produto'),
-                request.form.get('url_audio_introducao'),
-                request.form.get('url_audio_explicativo'),
-                request.form.get('url_audio_pedido_entregue'),
-                request.form.get('url_imagem_complementar'),
-                _nome_arquivo_imagem(request.form.get('imagem_checkout')),
-                request.form.get('url_arquivo_produto'),
-                request.form.get('caption_arquivo_produto'),
-                request.form.get('nome_arquivo_produto'),
-                request.form.get('mensagem_introducao'),
-                request.form.get('mensagem_pedido_enviado_sem_interesse'),
-                request.form.get('mensagem_para_pagamento'),
-                request.form.get('chave_pix'),
-                request.form.get('pix_destinatario_esperado'),
-                request.form.get('valor_minimo_pagamento'),
-                request.form.get('mensagem_pagamento_confirmado'),
-                request.form.get('mensagem_comprovante_invalido'),
-                request.form.get('url_arquivo_surpresa'),
-                request.form.get('caption_arquivo_surpresa'),
-                request.form.get('nome_arquivo_surpresa'),
-                1 if request.form.get('ativo') else 0,
-                request.form.get('numero_convenio_bb') or None,
-                1 if request.form.get('disponivel_web') else 0,
-                request.form.get('url_pagina_vendas') or None,
-                request.form.get('nfe_config_id') or None,
-                produto_id
-            ))
-            flash('Produto atualizado com sucesso!', 'success')
-            logger.info(f"[ADMIN] ✅ Produto #{produto_id} atualizado por {current_user.email}")
-            return redirect(url_for('admin.listar_produtos'))
-
-        except Exception as e:
-            logger.error(f"[ADMIN] ❌ Erro ao atualizar produto: {e}")
-            flash(f'Erro ao atualizar produto: {e}', 'danger')
-
-    return render_template('admin/produto_form.html', produto=produto, acao='editar', configs_nfe=configs_nfe)
+    # Rota antiga ("Editar Produto", sem abas) — a edição foi unificada em
+    # dados_basicos_produto pra acabar com o UPDATE duplicado/desalinhado entre
+    # as duas telas (inclusive um bug real: essa rota zerava url_pagina_vendas,
+    # porque o campo existia no UPDATE mas não no template). Mantida como
+    # redirect só pra não quebrar links/favoritos antigos.
+    return redirect(url_for('admin.dados_basicos_produto', produto_id=produto_id))
 
 @admin_bp.route('/produtos/<int:produto_id>/agente-vendas', methods=['GET', 'POST'])
 @requer_acesso_produto
@@ -309,48 +192,52 @@ def dados_basicos_produto(produto_id):
 
     if request.method == 'POST':
         try:
+            # ativo e nfe_config_id só aparecem no formulário pra admin (produto_dados_basicos.html)
+            # — sem essa checagem no servidor, um usuário com acesso ao produto mas sem ser admin
+            # poderia mudar os dois só forjando o POST, já que @requer_acesso_produto não exige admin.
+            if current_user.is_admin():
+                ativo_novo = int(request.form.get('ativo', 1))
+                nfe_config_id_novo = request.form.get('nfe_config_id') or None
+            else:
+                ativo_novo = produto['ativo']
+                nfe_config_id_novo = produto['nfe_config_id']
+
             db.execute_query("""
                 UPDATE produtos SET
-                    nome                          = %s,
-                    descricao                     = %s,
-                    preco                         = %s,
-                    valor_minimo_pagamento        = %s,
-                    chave_pix                     = %s,
-                    pix_destinatario_esperado     = %s,
-                    numero_convenio_bb            = %s,
-                    disponivel_web                = %s,
-                    url_pagina_vendas             = %s,
-                    email_remetente               = %s,
-                    email_nome_remetente          = %s,
-                    email_cor_primaria            = %s,
-                    email_cor_secundaria          = %s,
-                    url_pdf                       = %s,
-                    url_pdf_bonus                 = %s,
-                    google_sheets_spreadsheet_id  = %s,
-                    google_sheets_sheet_name      = %s,
-                    google_ads_conversion_name    = %s,
-                    ativo                         = %s
+                    nome                  = %s,
+                    descricao             = %s,
+                    preco                 = %s,
+                    ativo                 = %s,
+                    nfe_config_id         = %s,
+                    disponivel_web        = %s,
+                    url_pagina_vendas     = %s,
+                    numero_convenio_bb    = %s,
+                    imagem_checkout       = %s,
+                    url_pdf               = %s,
+                    url_imagem_complementar = %s,
+                    email_remetente       = %s,
+                    email_nome_remetente  = %s,
+                    email_cor_primaria    = %s,
+                    email_cor_secundaria  = %s,
+                    prompt_vendas_email   = %s
                 WHERE id = %s
             """, (
                 request.form.get('nome'),
                 request.form.get('descricao'),
                 request.form.get('preco'),
-                request.form.get('valor_minimo_pagamento'),
-                request.form.get('chave_pix') or None,
-                request.form.get('pix_destinatario_esperado') or None,
-                request.form.get('numero_convenio_bb') or None,
+                ativo_novo,
+                nfe_config_id_novo,
                 1 if request.form.get('disponivel_web') else 0,
                 request.form.get('url_pagina_vendas') or None,
+                request.form.get('numero_convenio_bb') or None,
+                _nome_arquivo_imagem(request.form.get('imagem_checkout')),
+                request.form.get('url_pdf') or None,
+                request.form.get('url_imagem_complementar') or None,
                 request.form.get('email_remetente') or None,
                 request.form.get('email_nome_remetente') or None,
                 request.form.get('email_cor_primaria') or None,
                 request.form.get('email_cor_secundaria') or None,
-                request.form.get('url_pdf') or None,
-                request.form.get('url_pdf_bonus') or None,
-                request.form.get('google_sheets_spreadsheet_id') or None,
-                request.form.get('google_sheets_sheet_name') or 'Página1',
-                request.form.get('google_ads_conversion_name') or None,
-                int(request.form.get('ativo', 1)),
+                request.form.get('prompt_vendas_email') or None,
                 produto_id
             ))
             flash('Dados básicos atualizados com sucesso!', 'success')
@@ -360,7 +247,11 @@ def dados_basicos_produto(produto_id):
             flash(f'Erro ao atualizar: {e}', 'danger')
         return redirect(url_for('admin.dados_basicos_produto', produto_id=produto_id))
 
-    return render_template('admin/produto_dados_basicos.html', produto=produto)
+    configs_nfe = db.execute_query(
+        "SELECT id, tenant_slug, razao_social FROM nfe_configuracao ORDER BY id",
+        fetch_all=True,
+    ) or []
+    return render_template('admin/produto_dados_basicos.html', produto=produto, configs_nfe=configs_nfe)
 
 @admin_bp.route('/produtos/<int:produto_id>/desativar', methods=['POST'])
 @requer_admin

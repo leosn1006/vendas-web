@@ -42,7 +42,7 @@
                         {{ p.created_at.strftime('%d/%m/%Y') if p.created_at else '—' }}
                     </td>
                     <td style="text-align: right;">
-                        <a href="{{ url_for('admin.editar_produto', produto_id=p.id) }}"
+                        <a href="{{ url_for('admin.dados_basicos_produto', produto_id=p.id) }}"
                         class="btn btn-ghost btn-sm">
                         {% if current_user.is_admin() %}Editar{% else %}Ver{% endif %}
                         </a>

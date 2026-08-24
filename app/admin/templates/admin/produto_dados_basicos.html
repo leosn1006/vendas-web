@@ -50,9 +50,7 @@
     }
 
     #tab1:checked ~ .tabs-content #panel1,
-    #tab2:checked ~ .tabs-content #panel2,
-    #tab3:checked ~ .tabs-content #panel3,
-    #tab4:checked ~ .tabs-content #panel4 {
+    #tab2:checked ~ .tabs-content #panel2 {
         display: block;
     }
 
@@ -95,21 +93,17 @@
             <!-- Radio inputs (escondidos) -->
             <input type="radio" name="tab" id="tab1" class="tabs-radio">
             <input type="radio" name="tab" id="tab2" class="tabs-radio">
-            <input type="radio" name="tab" id="tab3" class="tabs-radio">
-            <input type="radio" name="tab" id="tab4" class="tabs-radio">
 
             <!-- Navegação das abas -->
             <nav class="tabs-nav">
-                <label for="tab1" class="tab-label">📋 Informações Básicas</label>
-                <label for="tab2" class="tab-label">💳 Pagamento</label>
-                <label for="tab3" class="tab-label">📧 Entrega Digital</label>
-                <label for="tab4" class="tab-label">📊 Integrações</label>
+                <label for="tab1" class="tab-label">📋 Dados Básicos</label>
+                <label for="tab2" class="tab-label">🌐 Venda Web</label>
             </nav>
 
             <!-- Conteúdo das abas -->
             <div class="tabs-content">
 
-                <!-- Aba 1: Informações Básicas -->
+                <!-- Aba 1: Dados Básicos -->
                 <div id="panel1" class="tab-panel">
                     <div class="form-grid tab-grid">
                         <div class="form-group span-2">
@@ -129,15 +123,8 @@
                                    value="{{ produto.preco or '' }}" required>
                         </div>
 
-                        <div class="form-group">
-                            <label for="valor_minimo_pagamento">Valor mínimo de pagamento (R$)</label>
-                            <input type="number" id="valor_minimo_pagamento" name="valor_minimo_pagamento"
-                                   step="0.01" min="0" value="{{ produto.valor_minimo_pagamento or '' }}">
-                            <p class="field-hint">Valor mínimo aceito para confirmar o pagamento</p>
-                        </div>
-
                         {% if current_user.is_admin() %}
-                        <div class="form-group span-2">
+                        <div class="form-group">
                             <label for="ativo">Status do produto</label>
                             <select id="ativo" name="ativo">
                                 <option value="1" {% if produto.ativo %}selected{% endif %}>✅ Ativo</option>
@@ -146,36 +133,28 @@
                             <p class="field-hint">Apenas produtos ativos aparecem no sistema de vendas</p>
                         </div>
                         {% endif %}
+
+                        {% if current_user.is_admin() %}
+                        <div class="form-group span-2">
+                            <label for="nfe_config_id">Empresa emissora de NF-e</label>
+                            <select id="nfe_config_id" name="nfe_config_id">
+                                <option value="">— Nenhuma (não emite NF-e) —</option>
+                                {% for c in configs_nfe %}
+                                <option value="{{ c.id }}"
+                                    {% if produto.nfe_config_id == c.id %}selected{% endif %}>
+                                    {{ c.razao_social }} ({{ c.tenant_slug }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <p class="field-hint">Configuração fiscal (CNPJ, certificado) fica na tela "Fiscal / NF-e" — aqui só escolhe qual delas emite pra este produto</p>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
 
-                <!-- Aba 2: Pagamento -->
+                <!-- Aba 2: Venda Web -->
                 <div id="panel2" class="tab-panel">
                     <div class="form-grid tab-grid">
-                        <div class="form-group span-2">
-                            <label for="chave_pix">Chave PIX</label>
-                            <input type="text" id="chave_pix" name="chave_pix"
-                                   value="{{ produto.chave_pix or '' }}"
-                                   placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória">
-                            <p class="field-hint">Chave PIX que será enviada ao cliente para pagamento</p>
-                        </div>
-
-                        <div class="form-group span-2">
-                            <label for="pix_destinatario_esperado">PIX destinatário esperado (validação)</label>
-                            <input type="text" id="pix_destinatario_esperado" name="pix_destinatario_esperado"
-                                   value="{{ produto.pix_destinatario_esperado or '' }}"
-                                   placeholder="Nome completo que deve aparecer no comprovante">
-                            <p class="field-hint">Nome do destinatário usado para validar comprovantes automaticamente</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="numero_convenio_bb">Número do Convênio BB Pay</label>
-                            <input type="number" id="numero_convenio_bb" name="numero_convenio_bb"
-                                   value="{{ produto.numero_convenio_bb or '' }}"
-                                   placeholder="Ex: 275513">
-                            <p class="field-hint">Necessário apenas para checkout web com BB Pay</p>
-                        </div>
-
                         <div class="form-group">
                             <label>
                                 <input type="checkbox" id="disponivel_web" name="disponivel_web" value="1"
@@ -186,18 +165,44 @@
                         </div>
 
                         <div class="form-group">
+                            <label for="numero_convenio_bb">Número do Convênio BB Pay</label>
+                            <input type="number" id="numero_convenio_bb" name="numero_convenio_bb"
+                                   value="{{ produto.numero_convenio_bb or '' }}"
+                                   placeholder="Ex: 275513">
+                            <p class="field-hint">Necessário apenas para checkout web com BB Pay</p>
+                        </div>
+
+                        <div class="form-group span-2">
                             <label for="url_pagina_vendas">URL da página de vendas</label>
                             <input type="text" id="url_pagina_vendas" name="url_pagina_vendas"
                                    value="{{ produto.url_pagina_vendas or '' }}"
                                    placeholder="Ex: /pudim">
                             <p class="field-hint">Caminho da landing page deste produto (ex: /pudim). Quando preenchida e "Disponível para venda no site" ativo, o produto aparece no portfólio.</p>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Aba 3: Entrega Digital -->
-                <div id="panel3" class="tab-panel">
-                    <div class="form-grid tab-grid">
+                        <div class="form-group">
+                            <label for="imagem_checkout">Imagem do checkout (nome do arquivo em static/images)</label>
+                            <input type="text" id="imagem_checkout" name="imagem_checkout" maxlength="255"
+                                   value="{{ produto.imagem_checkout or '' }}"
+                                   placeholder="Ex: tempero-capa.webp">
+                            <p class="field-hint">Suba o arquivo em /admin/arquivos e cole aqui só o nome</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="url_imagem_complementar">Imagem complementar (portfólio)</label>
+                            <input type="text" id="url_imagem_complementar" name="url_imagem_complementar"
+                                   value="{{ produto.url_imagem_complementar or '' }}"
+                                   placeholder="URL da imagem exibida no card do portfólio">
+                        </div>
+
+                        <div class="form-group span-2">
+                            <label for="url_pdf">Arquivo PDF principal entregue no checkout web (nome do arquivo)</label>
+                            <input type="text" id="url_pdf" name="url_pdf"
+                                   value="{{ produto.url_pdf or '' }}"
+                                   placeholder="Ex: guia-paes-saudaveis.pdf">
+                            <p class="field-hint">Nome do arquivo PDF em /static/arquivos/ que é gravado no pedido no momento da compra web — é este arquivo que o cliente recebe por e-mail. Confira sempre depois de clonar um produto.</p>
+                        </div>
+
                         <div class="form-group span-2">
                             <label for="email_remetente">E-mail remetente (De:)</label>
                             <input type="email" id="email_remetente" name="email_remetente"
@@ -235,58 +240,9 @@
                         </div>
 
                         <div class="form-group span-2">
-                            <label for="url_pdf">Arquivo PDF principal (nome do arquivo)</label>
-                            <input type="text" id="url_pdf" name="url_pdf"
-                                   value="{{ produto.url_pdf or '' }}"
-                                   placeholder="Ex: guia-paes-saudaveis.pdf">
-                            <p class="field-hint">Nome do arquivo PDF em /static/arquivos/ que será enviado ao cliente</p>
-                        </div>
-
-                        <div class="form-group span-2">
-                            <label for="url_pdf_bonus">Arquivo PDF bônus (nome do arquivo)</label>
-                            <input type="text" id="url_pdf_bonus" name="url_pdf_bonus"
-                                   value="{{ produto.url_pdf_bonus or '' }}"
-                                   placeholder="Ex: bolos-fofinhos.pdf (opcional)">
-                            <p class="field-hint">Arquivo extra enviado como bônus após o pagamento (opcional)</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Aba 4: Integrações -->
-                <div id="panel4" class="tab-panel">
-                    <div class="form-grid tab-grid">
-                        <div class="form-group span-2">
-                            <label for="google_sheets_spreadsheet_id">Google Sheets — ID da planilha</label>
-                            <input type="text" id="google_sheets_spreadsheet_id" name="google_sheets_spreadsheet_id"
-                                   value="{{ produto.google_sheets_spreadsheet_id or '' }}"
-                                   placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
-                            <p class="field-hint">
-                                ID extraído da URL da planilha no Google Drive.
-                                Configure a credencial (Service Account) no .env: GOOGLE_SA_JSON_P{{ produto.id }}
-                            </p>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="google_sheets_sheet_name">Google Sheets — Nome da aba</label>
-                            <input type="text" id="google_sheets_sheet_name" name="google_sheets_sheet_name"
-                                   value="{{ produto.google_sheets_sheet_name or 'Página1' }}"
-                                   placeholder="Página1">
-                            <p class="field-hint">Nome da aba onde os dados serão salvos</p>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="google_ads_conversion_name">Google Ads — Nome da conversão</label>
-                            <input type="text" id="google_ads_conversion_name" name="google_ads_conversion_name"
-                                   value="{{ produto.google_ads_conversion_name or '' }}"
-                                   placeholder="Ex: Venda WhatsApp">
-                            <p class="field-hint">Nome da ação de conversão configurada no Google Ads</p>
-                        </div>
-
-                        <div class="form-group span-2" style="background: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 3px solid var(--accent);">
-                            <p style="margin: 0; font-size: 13px; color: #555; line-height: 1.6;">
-                                <strong>💡 Dica:</strong> Para enviar conversões ao Google Ads, configure as credenciais no arquivo .env:
-                                <code style="background: white; padding: 2px 6px; border-radius: 4px; font-size: 12px;">GOOGLE_SA_JSON_P{{ produto.id }}</code>
-                            </p>
+                            <label for="prompt_vendas_email">Prompt do agente de e-mail (opcional)</label>
+                            <textarea id="prompt_vendas_email" name="prompt_vendas_email" rows="4">{{ produto.prompt_vendas_email or '' }}</textarea>
+                            <p class="field-hint">Se vazio, o agente que responde e-mails de clientes usa o mesmo prompt de vendas do WhatsApp (aba "Agente de Vendas IA")</p>
                         </div>
                     </div>
                 </div>
@@ -303,20 +259,16 @@
 
 {% block extra_js %}
 <script>
-// Deep linking: ativa aba baseada no hash da URL (#basico, #pagamento, #entrega, #integracoes)
+// Deep linking: ativa aba baseada no hash da URL (#basico, #web)
 (function() {
     const hashToTab = {
         '#basico': 'tab1',
-        '#pagamento': 'tab2',
-        '#entrega': 'tab3',
-        '#integracoes': 'tab4'
+        '#web': 'tab2'
     };
 
     const tabToHash = {
         'tab1': '#basico',
-        'tab2': '#pagamento',
-        'tab3': '#entrega',
-        'tab4': '#integracoes'
+        'tab2': '#web'
     };
 
     // Ativa aba baseada no hash ao carregar a página
