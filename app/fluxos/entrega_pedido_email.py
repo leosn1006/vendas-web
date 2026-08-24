@@ -128,10 +128,37 @@ def _corpo_html(nome: str, nome_produto: str,
         {rotulo}
       </a>'''
 
-    principais = [i for i in itens if i['tipo'] == 'principal']
-    extras     = [i for i in itens if i['tipo'] != 'principal']
+    def _juntar_nomes(nomes: list) -> str:
+        if len(nomes) <= 1:
+            return nomes[0] if nomes else ''
+        return ', '.join(nomes[:-1]) + ' e ' + nomes[-1]
+
+    principais  = [i for i in itens if i['tipo'] == 'principal']
+    bonus_itens = [i for i in itens if i['tipo'] == 'bonus']
+    bump_itens  = [i for i in itens if i['tipo'] == 'bump']
+    extras      = bonus_itens + bump_itens
 
     btn_principal = _botao(principais[0], principal=True) if principais else ''
+
+    # Resumo em texto do que foi comprado x ganho de bônus x order bump — sem isso a cliente
+    # pode achar que o bump (pago) veio de graça junto com o bônus, já que os dois aparecem
+    # juntos na seção de botões abaixo.
+    resumo_partes = []
+    if principais:
+        resumo_partes.append(f"você comprou <strong>{principais[0]['nome']}</strong>")
+    if bonus_itens:
+        nomes_bonus = _juntar_nomes([i['nome'] for i in bonus_itens])
+        resumo_partes.append(f"ganhou de bônus <strong>{nomes_bonus}</strong>")
+    if bump_itens:
+        nomes_bump = _juntar_nomes([i['nome'] for i in bump_itens])
+        resumo_partes.append(f"e também garantiu <strong>{nomes_bump}</strong>")
+
+    resumo_compra = ''
+    if resumo_partes:
+        resumo_compra = f'''
+            <p style="font-size:15px; color:#333; margin:0 0 20px;">
+              Resumindo: {', '.join(resumo_partes)}.
+            </p>'''
 
     secao_bonus = ''
     if extras:
@@ -147,7 +174,7 @@ def _corpo_html(nome: str, nome_produto: str,
             <p style="font-size:16px; color:#333; margin:0 0 16px;">
               Aqui é a <strong>{nome_remetente}</strong>. Seu pagamento foi confirmado — parabéns pela decisão! 🎉
             </p>
-
+            {resumo_compra}
             <!-- Botões de download -->
             <table width="100%" style="background:#fff8e1; border-radius:12px;
                                         margin:0 0 28px; text-align:center;">
