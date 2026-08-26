@@ -2607,7 +2607,7 @@ _SQL_ROI = """
     LEFT JOIN (
         SELECT campaignid, SUM(valor_pago) AS total_vendido
         FROM pedidos
-        WHERE produto_id = %s AND estado_id = 0 AND data_pagamento BETWEEN %s AND %s
+        WHERE produto_id = %s AND estado_id IN (0, 1000) AND data_pagamento BETWEEN %s AND %s
         GROUP BY campaignid
     ) ped ON ped.campaignid = base.campaignid
     LEFT JOIN (
