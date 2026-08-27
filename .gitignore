@@ -105,3 +105,6 @@ testes-nfe/
 infra/empresa/cert/
 *.pfx
 danfe_*.pdf
+
+# Arquivo grande demais para o limite do GitHub (100MB) - deploy manual no servidor
+static/arquivos/tudo-na-airfryer.pdf
