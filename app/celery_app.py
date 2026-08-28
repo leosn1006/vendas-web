@@ -58,6 +58,19 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute=5, hour=0),  # 00h05 — captura PIX de 23:15–23:59 do dia anterior
         'options': {'queue': 'baixa'},
     },
+    # PIX — LBE LIVROS LTDA (conta BB nova, chaves migrando gradualmente da lsn-livros)
+    'processar-pagamentos-pix-lbe': {
+        'task': 'tasks.processar_pagamentos_pix',
+        'schedule': crontab(minute=20, hour='5-23,0'),  # mesmo ritmo horário, deslocado +5min
+        'kwargs': {'tenant_slug': 'lbe-livros'},
+        'options': {'queue': 'baixa'},
+    },
+    'processar-pagamentos-pix-fechamento-lbe': {
+        'task': 'tasks.processar_pagamentos_pix_fechamento',
+        'schedule': crontab(minute=7, hour=0),  # 00h07 — captura PIX de 23:15–23:59 (LBE) do dia anterior
+        'kwargs': {'tenant_slug': 'lbe-livros'},
+        'options': {'queue': 'baixa'},
+    },
     # NF-e — LBE LIVROS LTDA (config_id=2)
     # Habilitar quando conta corrente LBE estiver configurada e PIX fluindo pela LBE
     # 'reprocessar-nfe-pendentes-lbe': {

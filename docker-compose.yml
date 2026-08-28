@@ -131,6 +131,10 @@ services:
       - BB_PIX_OAUTH_URL=${BB_PIX_OAUTH_URL:-https://oauth.bb.com.br/oauth/token}
       - BB_PIX_CERT_PEM=${BB_PIX_CERT_PEM:-/app/certs/lsnlivros_chain.pem}
       - BB_PIX_CERT_KEY=${BB_PIX_CERT_KEY:-/app/certs/lsnlivros.key}
+      - BB_PIX_APP_KEY_LBE=${BB_PIX_APP_KEY_LBE:-}
+      - BB_PIX_CLIENT_BASIC_LBE=${BB_PIX_CLIENT_BASIC_LBE:-}
+      - BB_PIX_CERT_PEM_LBE=${BB_PIX_CERT_PEM_LBE:-/app/certs/lbe-livros_chain.pem}
+      - BB_PIX_CERT_KEY_LBE=${BB_PIX_CERT_KEY_LBE:-/app/certs/lbe-livros.key}
 
     volumes:
       - ./storage:/app/storage
@@ -224,6 +228,10 @@ services:
       - BB_PIX_OAUTH_URL=${BB_PIX_OAUTH_URL:-https://oauth.bb.com.br/oauth/token}
       - BB_PIX_CERT_PEM=${BB_PIX_CERT_PEM:-/app/certs/lsnlivros_chain.pem}
       - BB_PIX_CERT_KEY=${BB_PIX_CERT_KEY:-/app/certs/lsnlivros.key}
+      - BB_PIX_APP_KEY_LBE=${BB_PIX_APP_KEY_LBE:-}
+      - BB_PIX_CLIENT_BASIC_LBE=${BB_PIX_CLIENT_BASIC_LBE:-}
+      - BB_PIX_CERT_PEM_LBE=${BB_PIX_CERT_PEM_LBE:-/app/certs/lbe-livros_chain.pem}
+      - BB_PIX_CERT_KEY_LBE=${BB_PIX_CERT_KEY_LBE:-/app/certs/lbe-livros.key}
     volumes:
       - ./storage:/app/storage
       - ./infra/nginx/certs:/app/certs:ro
@@ -309,6 +317,10 @@ services:
       - BB_PIX_OAUTH_URL=${BB_PIX_OAUTH_URL:-https://oauth.bb.com.br/oauth/token}
       - BB_PIX_CERT_PEM=${BB_PIX_CERT_PEM:-/app/certs/lsnlivros_chain.pem}
       - BB_PIX_CERT_KEY=${BB_PIX_CERT_KEY:-/app/certs/lsnlivros.key}
+      - BB_PIX_APP_KEY_LBE=${BB_PIX_APP_KEY_LBE:-}
+      - BB_PIX_CLIENT_BASIC_LBE=${BB_PIX_CLIENT_BASIC_LBE:-}
+      - BB_PIX_CERT_PEM_LBE=${BB_PIX_CERT_PEM_LBE:-/app/certs/lbe-livros_chain.pem}
+      - BB_PIX_CERT_KEY_LBE=${BB_PIX_CERT_KEY_LBE:-/app/certs/lbe-livros.key}
       - NF_CERT_SENHA=${NF_CERT_SENHA:-}
       - NF_CERT_SENHA_LBE=${NF_CERT_SENHA_LBE:-}
     volumes:
@@ -398,6 +410,10 @@ services:
       - BB_PIX_OAUTH_URL=${BB_PIX_OAUTH_URL:-https://oauth.bb.com.br/oauth/token}
       - BB_PIX_CERT_PEM=${BB_PIX_CERT_PEM:-/app/certs/lsnlivros_chain.pem}
       - BB_PIX_CERT_KEY=${BB_PIX_CERT_KEY:-/app/certs/lsnlivros.key}
+      - BB_PIX_APP_KEY_LBE=${BB_PIX_APP_KEY_LBE:-}
+      - BB_PIX_CLIENT_BASIC_LBE=${BB_PIX_CLIENT_BASIC_LBE:-}
+      - BB_PIX_CERT_PEM_LBE=${BB_PIX_CERT_PEM_LBE:-/app/certs/lbe-livros_chain.pem}
+      - BB_PIX_CERT_KEY_LBE=${BB_PIX_CERT_KEY_LBE:-/app/certs/lbe-livros.key}
       - NF_CERT_SENHA=${NF_CERT_SENHA:-}
       - NF_CERT_SENHA_LBE=${NF_CERT_SENHA_LBE:-}
     volumes:
@@ -447,6 +463,10 @@ services:
       - BB_PIX_OAUTH_URL=${BB_PIX_OAUTH_URL:-https://oauth.bb.com.br/oauth/token}
       - BB_PIX_CERT_PEM=${BB_PIX_CERT_PEM:-/app/certs/lsnlivros_chain.pem}
       - BB_PIX_CERT_KEY=${BB_PIX_CERT_KEY:-/app/certs/lsnlivros.key}
+      - BB_PIX_APP_KEY_LBE=${BB_PIX_APP_KEY_LBE:-}
+      - BB_PIX_CLIENT_BASIC_LBE=${BB_PIX_CLIENT_BASIC_LBE:-}
+      - BB_PIX_CERT_PEM_LBE=${BB_PIX_CERT_PEM_LBE:-/app/certs/lbe-livros_chain.pem}
+      - BB_PIX_CERT_KEY_LBE=${BB_PIX_CERT_KEY_LBE:-/app/certs/lbe-livros.key}
     depends_on:
       redis:
         condition: service_healthy

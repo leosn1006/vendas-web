@@ -569,31 +569,31 @@ def processar_evento_conta_whatsapp(self, body):
 
 
 @shared_task(bind=True, max_retries=0)
-def processar_pagamentos_pix(self):
+def processar_pagamentos_pix(self, tenant_slug: str = 'lsn-livros'):
     try:
-        logger.info('[TASK-PIX-BB] Iniciando coleta de PIX recebidos')
+        logger.info(f'[TASK-PIX-BB][{tenant_slug}] Iniciando coleta de PIX recebidos')
         from fluxos.fluxo_pix_bb import executar
-        executar()
-        logger.info('[TASK-PIX-BB] ✅ Concluído')
+        executar(tenant_slug=tenant_slug)
+        logger.info(f'[TASK-PIX-BB][{tenant_slug}] ✅ Concluído')
     except Exception as exc:
-        logger.error(f'[TASK-PIX-BB] ❌ Erro: {exc}')
+        logger.error(f'[TASK-PIX-BB][{tenant_slug}] ❌ Erro: {exc}')
         import traceback
         traceback.print_exc()
 
 
 @shared_task(bind=True, max_retries=0)
-def processar_pagamentos_pix_fechamento(self):
+def processar_pagamentos_pix_fechamento(self, tenant_slug: str = 'lsn-livros'):
     """Busca PIX de ontem para cobrir o gap 23:15–23:59 não capturado na última execução do dia."""
     try:
         from datetime import datetime, timezone, timedelta
         from fluxos.fluxo_pix_bb import executar
         _SP_TZ = timezone(timedelta(hours=-3))
         ontem = (datetime.now(_SP_TZ) - timedelta(days=1)).strftime('%d/%m/%Y')
-        logger.info(f'[TASK-PIX-BB-FECHAMENTO] Buscando PIX de ontem ({ontem})')
-        executar(ontem)
-        logger.info('[TASK-PIX-BB-FECHAMENTO] ✅ Concluído')
+        logger.info(f'[TASK-PIX-BB-FECHAMENTO][{tenant_slug}] Buscando PIX de ontem ({ontem})')
+        executar(ontem, tenant_slug=tenant_slug)
+        logger.info(f'[TASK-PIX-BB-FECHAMENTO][{tenant_slug}] ✅ Concluído')
     except Exception as exc:
-        logger.error(f'[TASK-PIX-BB-FECHAMENTO] ❌ Erro: {exc}')
+        logger.error(f'[TASK-PIX-BB-FECHAMENTO][{tenant_slug}] ❌ Erro: {exc}')
         import traceback
         traceback.print_exc()
 

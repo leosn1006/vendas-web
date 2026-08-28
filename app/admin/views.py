@@ -27,7 +27,7 @@ from database import (db,
     numero_empresa_operacional, buscar_status_numero_empresa,
     buscar_pedido_por_nome, acertar_valor_pedido,
     listar_chaves_pix_produto, adicionar_chave_pix_produto, desativar_chave_pix_produto,
-    busca_financeiro_pix,
+    busca_financeiro_pix, buscar_tenant_slug_produto,
     listar_planilhas_dns_produto, adicionar_planilha_dns, atualizar_planilha_dns, remover_planilha_dns,
     listar_notificacoes_em_analise, marcar_notificacao_respondida, bloquear_pedido,
     buscar_notificacao_em_analise_pedido, bloquear_followup_pedido,
@@ -3368,7 +3368,8 @@ def fiscal_danfe(nfe_id):
 def financeiro_atualizar_pix(produto_id):
     try:
         from celery_app import celery_app
-        celery_app.send_task('tasks.processar_pagamentos_pix')
+        tenant_slug = buscar_tenant_slug_produto(produto_id)
+        celery_app.send_task('tasks.processar_pagamentos_pix', kwargs={'tenant_slug': tenant_slug})
         return jsonify({'ok': True, 'msg': 'Busca de PIX iniciada. Aguarde alguns segundos e atualize a página.'})
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro ao disparar task PIX: {e}")

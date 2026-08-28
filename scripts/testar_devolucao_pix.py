@@ -40,9 +40,11 @@ except ImportError:
 TZ_BR = timezone(timedelta(hours=-3))
 
 
-def consultar_com_filtro(inicio: datetime, fim: datetime, devolucao_presente: bool) -> list:
+def consultar_com_filtro(inicio: datetime, fim: datetime, devolucao_presente: bool,
+                          tenant_slug: str = 'lsn-livros') -> list:
     """Mesma paginacao de bb_pix.consultar_todos_pix, com o filtro devolucaoPresente."""
-    token = bb_pix._get_token()
+    conta = bb_pix._conta(tenant_slug)
+    token = bb_pix._get_token(tenant_slug)
     todos = []
     pagina = 0
 
@@ -53,12 +55,12 @@ def consultar_com_filtro(inicio: datetime, fim: datetime, devolucao_presente: bo
                 'inicio': inicio.isoformat(),
                 'fim': fim.isoformat(),
                 'devolucaoPresente': str(devolucao_presente).lower(),
-                'gw-dev-app-key': bb_pix._APP_KEY,
+                'gw-dev-app-key': conta['app_key'],
                 'paginacao.paginaAtual': pagina,
                 'paginacao.itensPorPagina': 100,
             },
             headers={'Authorization': f'Bearer {token}'},
-            cert=(bb_pix._CERT_PEM, bb_pix._CERT_KEY),
+            cert=(conta['cert_pem'], conta['cert_key']),
             timeout=15,
         )
         if resp.status_code == 404:
@@ -82,6 +84,8 @@ def main():
     parser.add_argument('--valor', default='341.88', help='Valor do Pix a localizar (padrao: 341.88).')
     parser.add_argument('--dias', type=int, default=0,
                          help='Quantos dias voltar a partir de --data/hoje (janela retroativa). Padrao: 0 (so o dia).')
+    parser.add_argument('--tenant', default='lsn-livros',
+                         help="Conta BB Pix: 'lsn-livros' (padrao) ou 'lbe-livros'.")
     args = parser.parse_args()
 
     if args.data:
@@ -96,7 +100,7 @@ def main():
 
     # 1) Consulta normal (sem filtro) — igual ao fluxo ja usado em producao
     print('=== 1) GET /pix (sem filtro) ===')
-    todos = bb_pix.consultar_todos_pix(inicio, fim)
+    todos = bb_pix.consultar_todos_pix(inicio, fim, tenant_slug=args.tenant)
     print(f'Total de Pix recebidos no periodo: {len(todos)}\n')
 
     encontrado = None
@@ -123,7 +127,7 @@ def main():
     #    permite localizar direto os Pix do periodo que tem devolucao associada.
     print('\n=== 2) GET /pix?devolucaoPresente=true ===')
     try:
-        com_devolucao = consultar_com_filtro(inicio, fim, devolucao_presente=True)
+        com_devolucao = consultar_com_filtro(inicio, fim, devolucao_presente=True, tenant_slug=args.tenant)
         print(f'Total de Pix com devolucao associada no periodo: {len(com_devolucao)}')
         for p in com_devolucao:
             print(json.dumps(p, indent=2, ensure_ascii=False))

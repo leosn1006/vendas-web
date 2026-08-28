@@ -1974,9 +1974,9 @@ def busca_chaves_pix_produtos() -> dict:
     return {row['chave_pix']: row['produto_id'] for row in (rows or [])}
 
 
-def salvar_pagamento_pix(pix: dict, produto_id) -> bool:
+def salvar_pagamento_pix(pix: dict, produto_id, tenant_slug: str = 'lsn-livros') -> bool:
     """
-    Persiste uma transação PIX recebida.
+    Persiste uma transação PIX recebida, marcando de qual conta BB (tenant) veio.
     Usa INSERT IGNORE para evitar duplicatas (unicidade garantida por e2e_id).
 
     Retorna True se inseriu (novo), False se já existia.
@@ -1997,12 +1997,13 @@ def salvar_pagamento_pix(pix: dict, produto_id) -> bool:
     with db.get_cursor() as cursor:
         cursor.execute(
             """INSERT IGNORE INTO pagamento_pix
-               (e2e_id, produto_id, chave_pix, valor, horario, cpf_cnpj, nome_pagador, txid)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+               (e2e_id, produto_id, chave_pix, tenant_slug, valor, horario, cpf_cnpj, nome_pagador, txid)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (
                 pix.get('endToEndId'),
                 produto_id,
                 pix.get('chave', ''),
+                tenant_slug,
                 float(pix.get('valor', 0)),
                 horario,
                 cpf_cnpj,
@@ -2317,6 +2318,22 @@ def buscar_nfe_configuracao_por_slug(slug: str) -> dict | None:
         (slug,),
         fetch_one=True,
     )
+
+
+def buscar_tenant_slug_produto(produto_id: int) -> str:
+    """
+    Retorna o tenant_slug (conta BB Pix) associado ao produto, via
+    produtos.nfe_config_id -> nfe_configuracao.tenant_slug.
+    Produtos sem nfe_config_id (NULL) usam a conta default 'lsn-livros'.
+    """
+    row = db.execute_query(
+        """SELECT nc.tenant_slug
+           FROM produtos p
+           LEFT JOIN nfe_configuracao nc ON nc.id = p.nfe_config_id
+           WHERE p.id = %s""",
+        (produto_id,), fetch_one=True,
+    )
+    return (row or {}).get('tenant_slug') or 'lsn-livros'
 
 
 def buscar_pagamento_pix_por_id(pagamento_pix_id: int) -> dict | None:
