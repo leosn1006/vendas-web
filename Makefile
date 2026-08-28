@@ -6,8 +6,9 @@ help:
 	@echo "  make upload-google-sheets-now          # Dispara agora a exportação de GCLIDs para Google Sheets"
 	@echo "  make orcamento-sheets-now              # Processa orçamento de ontem via Google Sheets"
 	@echo "  make orcamento-sheets-now data=2026-06-01  # Reprocessa uma data específica (yyyy-mm-dd)"
-	@echo "  make buscar-pix                        # Busca PIX de hoje e persiste no banco"
+	@echo "  make buscar-pix                        # Busca PIX de hoje (conta lsn-livros) e persiste no banco"
 	@echo "  make buscar-pix data=31/03/2026   # Busca PIX de uma data específica (dd/mm/yyyy)"
+	@echo "  make buscar-pix data=31/03/2026 tenant=lbe-livros  # Idem, para a conta lbe-livros"
 	@echo "  make exportar-mensagens produto=9 dias=30  # Exporta mensagens do produto (default: últimos 15 dias)"
 	@echo "  make exportar-telefones-google-ads valor=10  # Exporta telefones de pedidos pagos para Google Sheets (default: valor > 10)"
 	@echo "  make logs-worker                  # Acompanha logs do worker-urgente"
@@ -35,10 +36,10 @@ from fluxos.fluxo_orcamento_sheets import processar_orcamento_sheets; \
 processar_orcamento_sheets($(if $(data),'$(data)',None))"
 
 buscar-pix:
-	@echo "Buscando PIX de $(if $(data),$(data),hoje)..."
+	@echo "Buscando PIX de $(if $(data),$(data),hoje) (conta $(if $(tenant),$(tenant),lsn-livros))..."
 	@docker compose exec worker-baixa python -c "\
 from fluxos.fluxo_pix_bb import executar; \
-executar($(if $(data),'$(data)',None))"
+executar($(if $(data),'$(data)',None), tenant_slug='$(if $(tenant),$(tenant),lsn-livros)')"
 
 exportar-mensagens:
 	@echo "Exportando mensagens do produto $(produto) (últimos $(if $(dias),$(dias),15) dias)..."
