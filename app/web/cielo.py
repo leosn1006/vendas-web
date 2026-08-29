@@ -27,14 +27,27 @@ def _headers() -> dict:
 
 
 def _log_erro_resposta(resp: requests.Response) -> None:
-    """Loga só o essencial do erro — nunca resp.text cru (pode ecoar payload)."""
+    """Loga só o essencial do erro — nunca resp.text cru (pode ecoar payload).
+    A Cielo usa dois formatos de corpo de erro: {"Payment": {...}} pra negação de negócio
+    (cartão recusado etc.) e uma lista [{"Code":.., "Message":..}] pra erro de gateway/
+    validação (credencial, campo inválido, feature não habilitada) — sem isso, erros desse
+    segundo tipo logavam ReturnCode/ReturnMessage sempre None, escondendo a causa real."""
     try:
         corpo = resp.json()
-        payment = corpo.get('Payment', {}) if isinstance(corpo, dict) else {}
-        logger.error(
-            f'[CIELO] Erro HTTP {resp.status_code} — '
-            f'ReturnCode={payment.get("ReturnCode")} ReturnMessage={payment.get("ReturnMessage")!r}'
-        )
+        if isinstance(corpo, dict):
+            payment = corpo.get('Payment', {})
+            logger.error(
+                f'[CIELO] Erro HTTP {resp.status_code} — '
+                f'ReturnCode={payment.get("ReturnCode")} ReturnMessage={payment.get("ReturnMessage")!r}'
+            )
+        elif isinstance(corpo, list):
+            mensagens = '; '.join(
+                f'{item.get("Code")}: {item.get("Message")}'
+                for item in corpo if isinstance(item, dict)
+            )
+            logger.error(f'[CIELO] Erro HTTP {resp.status_code} — {mensagens}')
+        else:
+            logger.error(f'[CIELO] Erro HTTP {resp.status_code} — corpo inesperado: {corpo!r}')
     except ValueError:
         logger.error(f'[CIELO] Erro HTTP {resp.status_code} (corpo não é JSON)')
 
