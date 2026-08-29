@@ -48,6 +48,11 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute='*/10'),  # a cada 10 minutos
         'options': {'queue': 'baixa'},
     },
+    'verificar-pagamentos-cartao-cielo': {
+        'task': 'tasks.verificar_cartao_pendente',
+        'schedule': crontab(minute='*/15'),  # a cada 15 minutos
+        'options': {'queue': 'baixa'},
+    },
     'processar-pagamentos-pix': {
         'task': 'tasks.processar_pagamentos_pix',
         'schedule': crontab(minute=15, hour='5-23,0'),  # de hora em hora às :15 (5h15 a 00h15)
@@ -145,6 +150,7 @@ celery_app.conf.update(
         "tasks.processar_pagamentos_pix":                {"queue": "baixa"},
         "tasks.processar_pagamentos_pix_fechamento":     {"queue": "baixa"},
         "tasks.verificar_pagamentos_pendentes":          {"queue": "baixa"},
+        "tasks.verificar_cartao_pendente":               {"queue": "baixa"},
         "tasks.processar_orcamento_sheets":              {"queue": "baixa"},
         "tasks.verificar_qualidade_whatsapp":            {"queue": "baixa"},
         "tasks.verificar_qualidade_whatsapp_produto":     {"queue": "normal"},

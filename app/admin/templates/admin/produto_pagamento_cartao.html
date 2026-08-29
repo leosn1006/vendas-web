@@ -1,0 +1,57 @@
+{% extends "admin/base.html" %}
+{% block title %}Cartão de Crédito (Cielo) — {{ produto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Cartão de Crédito (Cielo)</h1>
+        <p class="page-subtitle">{{ produto.nome }}</p>
+    </div>
+</div>
+
+<div class="card">
+    <form method="POST" action="{{ url_for('admin.pagamento_cartao_produto', produto_id=produto.id) }}">
+        <div class="form-grid tab-grid">
+            <div class="form-group span-2">
+                <label>
+                    <input type="checkbox" id="ativo" name="ativo"
+                           {% if config_cartao and config_cartao.ativo %}checked{% endif %}>
+                    Aceitar cartão de crédito neste produto
+                </label>
+                <p class="field-hint">Com isso desativado, a aba "Cartão de crédito" não aparece no checkout — mesmo com os campos abaixo preenchidos.</p>
+            </div>
+
+            <div class="form-group">
+                <label for="max_parcelas">Máximo de parcelas</label>
+                <input type="number" id="max_parcelas" name="max_parcelas" min="1" max="12" step="1"
+                       value="{{ config_cartao.max_parcelas if config_cartao else 1 }}" required>
+                <p class="field-hint">Teto de custo de MDR — sobe com o nº de parcelas. O nº realmente oferecido ao cliente também respeita o mínimo de R$ 5,00/parcela exigido pela Cielo.</p>
+            </div>
+
+            <div class="form-group">
+                <label for="parcelas_sem_juros">Parcelas sem juros</label>
+                <input type="number" id="parcelas_sem_juros" name="parcelas_sem_juros" min="1" max="12" step="1"
+                       value="{{ config_cartao.parcelas_sem_juros if config_cartao else 1 }}" required>
+                <p class="field-hint">Até quantas parcelas o cliente paga sem juros (deve ser ≤ máx. de parcelas).</p>
+            </div>
+
+            <div class="form-group">
+                <label for="taxa_juros_mensal">Taxa de juros mensal (%)</label>
+                <input type="number" id="taxa_juros_mensal" name="taxa_juros_mensal" min="0" step="0.01"
+                       value="{{ config_cartao.taxa_juros_mensal if config_cartao else '0.00' }}" required>
+                <p class="field-hint">Aplicada (Tabela Price) a partir da parcela seguinte às "parcelas sem juros". Cobrada pelo lojista — a Cielo não adiciona juros por conta própria (Interest=ByMerchant).</p>
+            </div>
+
+            <div class="form-group span-2">
+                <label for="soft_descriptor">Nome na fatura do cliente (soft descriptor)</label>
+                <input type="text" id="soft_descriptor" name="soft_descriptor" maxlength="13"
+                       value="{{ config_cartao.soft_descriptor if config_cartao else '' }}"
+                       placeholder="Ex: LBELivros" required>
+                <p class="field-hint">Até 13 caracteres — é o que aparece na fatura do cartão do cliente.</p>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 12px;">Salvar</button>
+    </form>
+</div>
+{% endblock %}

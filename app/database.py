@@ -1742,6 +1742,17 @@ def get_pedido_nao_finalizado(pedido_id: int, produto_id: int):
     )
 
 
+def get_pedido_cartao_para_retry(pedido_id: int, produto_id: int):
+    """Igual a get_pedido_nao_finalizado, mas também aceita 1006 (cartão negado numa tentativa
+    anterior) — permite ao cliente tentar outro cartão reaproveitando o mesmo pedido, em vez de
+    criar um pedido novo a cada tentativa negada (o que deixaria 'lixo' de pedidos 1005/1006
+    órfãos). Usado só pelo fluxo de cartão; get_pedido_nao_finalizado continua igual pro Pix."""
+    return db.execute_query(
+        "SELECT * FROM pedidos WHERE id = %s AND produto_id = %s AND estado_id IN (1004, 1003, 1006)",
+        (pedido_id, produto_id), fetch_one=True
+    )
+
+
 def avancar_pedido_web(pedido_id: int, estado_id: int) -> None:
     """Avança um pedido ainda não finalizado (1004→1003) sem recriar a linha."""
     db.execute_query(
@@ -1871,6 +1882,125 @@ def marcar_ebook_enviado(pedido_id: int) -> None:
            WHERE id = %s""",
         (pedido_id,)
     )
+
+
+# ── pagamento com cartão de crédito (Cielo) ────────────────────────────────────
+
+def get_config_cartao_produto(produto_id: int):
+    """Config de cartão do produto (max_parcelas, parcelas_sem_juros, taxa_juros_mensal,
+    soft_descriptor), só se ativa. None se o produto não aceita cartão."""
+    return db.execute_query(
+        "SELECT * FROM config_cartao_produto WHERE produto_id = %s AND ativo = 1",
+        (produto_id,), fetch_one=True
+    )
+
+
+def get_config_cartao_produto_admin(produto_id: int):
+    """Igual a get_config_cartao_produto, mas sem filtrar por `ativo` — usado na tela de
+    admin pra mostrar/editar a config mesmo quando desativada."""
+    return db.execute_query(
+        "SELECT * FROM config_cartao_produto WHERE produto_id = %s",
+        (produto_id,), fetch_one=True
+    )
+
+
+def salvar_config_cartao_produto(produto_id: int, ativo: bool, max_parcelas: int,
+                                 parcelas_sem_juros: int, taxa_juros_mensal: float,
+                                 soft_descriptor: str) -> None:
+    """Cria ou atualiza a config de cartão do produto (1 linha por produto)."""
+    db.execute_query(
+        """INSERT INTO config_cartao_produto
+               (produto_id, ativo, max_parcelas, parcelas_sem_juros, taxa_juros_mensal, soft_descriptor)
+           VALUES (%s, %s, %s, %s, %s, %s)
+           ON DUPLICATE KEY UPDATE
+               ativo = VALUES(ativo), max_parcelas = VALUES(max_parcelas),
+               parcelas_sem_juros = VALUES(parcelas_sem_juros),
+               taxa_juros_mensal = VALUES(taxa_juros_mensal),
+               soft_descriptor = VALUES(soft_descriptor)""",
+        (produto_id, int(ativo), max_parcelas, parcelas_sem_juros, taxa_juros_mensal, soft_descriptor)
+    )
+
+
+def avancar_pedido_cartao_aguardando(pedido_id: int) -> None:
+    """Marca o pedido como 'prestes a chamar a Cielo' (estado 1005) e método='cartao'.
+    Chamado ANTES da chamada HTTP — é o estado intermediário que permite ao sweep de
+    reconciliação achar pedidos presos mesmo se a chamada travar antes de qualquer resposta."""
+    db.execute_query(
+        """UPDATE pedidos
+           SET estado_id = 1005, metodo_pagamento = 'cartao',
+               data_ultima_atualizacao = CURRENT_TIMESTAMP
+           WHERE id = %s""",
+        (pedido_id,)
+    )
+
+
+def marcar_pedido_cartao_negado(pedido_id: int) -> bool:
+    """CAS: só avança 1005→1006 (evita sobrescrever um pedido que outra chamada concorrente
+    já confirmou como pago). Retorna True se atualizou."""
+    linhas = db.execute_query(
+        """UPDATE pedidos SET estado_id = 1006, data_ultima_atualizacao = CURRENT_TIMESTAMP
+           WHERE id = %s AND estado_id = 1005""",
+        (pedido_id,), return_rowcount=True
+    )
+    return bool(linhas)
+
+
+def criar_tentativa_pagamento_cartao(pedido_id: int, merchant_order_id: str,
+                                     valor_original: float, valor: float, parcelas: int,
+                                     bandeira: str, cartao_mascarado: str, nome_titular: str,
+                                     request_json: dict) -> int:
+    """Grava a tentativa ANTES de chamar a Cielo (payment_id ainda NULL) — garante rastro de
+    auditoria mesmo se a chamada HTTP nunca responder. `request_json` já deve vir SEM
+    CardNumber/SecurityCode. Retorna o id da linha."""
+    import json as _json
+    return db.execute_query(
+        """INSERT INTO pagamento_cartao
+               (pedido_id, merchant_order_id, valor_original, valor, parcelas,
+                bandeira, cartao_mascarado, nome_titular, request_json)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+        (pedido_id, merchant_order_id, valor_original, valor, parcelas,
+         bandeira, cartao_mascarado, nome_titular,
+         _json.dumps(request_json, ensure_ascii=False))
+    )
+
+
+def atualizar_tentativa_pagamento_cartao(tentativa_id: int, payment_id: str = None,
+                                         tid: str = None, authorization_code: str = None,
+                                         status_cielo: int = None, return_code: str = None,
+                                         return_message: str = None, categoria_erro: str = None,
+                                         response_json: dict = None) -> None:
+    """Completa a linha de auditoria com o resultado da chamada à Cielo (aprovado ou negado).
+    `return_code`/`return_message` são o dado técnico — nunca exibidos ao cliente, só usados
+    aqui e no log."""
+    import json as _json
+    db.execute_query(
+        """UPDATE pagamento_cartao
+           SET payment_id = %s, tid = %s, authorization_code = %s, status_cielo = %s,
+               return_code = %s, return_message = %s, categoria_erro = %s, response_json = %s
+           WHERE id = %s""",
+        (payment_id, tid, authorization_code, status_cielo, return_code, return_message,
+         categoria_erro,
+         _json.dumps(response_json, ensure_ascii=False) if response_json is not None else None,
+         tentativa_id)
+    )
+
+
+def get_ultima_tentativa_pagamento_cartao(pedido_id: int):
+    """Tentativa de pagamento com cartão mais recente do pedido (para reconciliação)."""
+    return db.execute_query(
+        "SELECT * FROM pagamento_cartao WHERE pedido_id = %s ORDER BY id DESC LIMIT 1",
+        (pedido_id,), fetch_one=True
+    )
+
+
+def buscar_pedidos_aguardando_cartao_cielo() -> list:
+    """Pedidos em 1005 (aguardando autorização Cielo) há mais de 5 minutos — candidatos ao
+    sweep de reconciliação do Celery Beat. Análogo a buscar_pedidos_aguardando_bb_pay."""
+    return db.execute_query(
+        """SELECT id FROM pedidos
+           WHERE estado_id = 1005 AND data_ultima_atualizacao < NOW() - INTERVAL 5 MINUTE""",
+        fetch_all=True
+    ) or []
 
 
 # ── pagamento_pix ─────────────────────────────────────────────────────────────
@@ -2288,13 +2418,13 @@ def buscar_anexo_email_por_id(anexo_id: int):
 
 
 def buscar_pedido_web_por_email(termo: str, produto_id: int):
-    """Pedido web (estado_id 1000-1004) mais recente cujo e-mail bate com o termo — equivalente
+    """Pedido web (estado_id 1000-1006) mais recente cujo e-mail bate com o termo — equivalente
     web de get_ultimo_pedido_by_phone (WhatsApp), usado na busca da tela "Conversas Web"."""
     if not termo:
         return None
     return db.execute_query(
         """SELECT * FROM pedidos
-           WHERE produto_id = %s AND estado_id IN (1000, 1001, 1002, 1003, 1004)
+           WHERE produto_id = %s AND estado_id IN (1000, 1001, 1002, 1003, 1004, 1005, 1006)
              AND email LIKE %s
            ORDER BY data_pedido DESC LIMIT 1""",
         (produto_id, f'%{termo}%'), fetch_one=True,

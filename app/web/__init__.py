@@ -10,12 +10,15 @@ def guia_paes():
 
 @web_bp.get('/pay/<int:produto_id>')
 def checkout(produto_id):
-    from database import get_produto_disponivel_web, listar_bonus_produto, listar_bump_produto
+    from database import (get_produto_disponivel_web, listar_bonus_produto, listar_bump_produto,
+                          get_config_cartao_produto)
     from web.checkout import (rastrear_visita_funil, get_pedido_finalizado_via_cookie,
                                COOKIE_MAX_AGE_FUNIL)
     produto = get_produto_disponivel_web(produto_id)
     if not produto:
         return 'Produto não encontrado', 404
+
+    config_cartao = get_config_cartao_produto(produto_id)  # None = aba Cartão não aparece
 
     # Retorno do BB Pay / link salvo (?pedido=) é um caso à parte, já tratado no JS da própria
     # página (resume o pedido existente) — não faz sentido criar/reaproveitar um pedido 1003
@@ -39,6 +42,7 @@ def checkout(produto_id):
         bonus=listar_bonus_produto(produto_id),
         bumps=listar_bump_produto(produto_id),
         pedido_id_inicial=pedido_id_inicial,
+        config_cartao=config_cartao,
     ))
     if pedido_id_inicial is not None:
         resp.set_cookie(f'pedido_web_{produto_id}', str(pedido_id_inicial), max_age=COOKIE_MAX_AGE_FUNIL)
@@ -55,6 +59,32 @@ def pix_gerar():
         url_base=url_base,
         dns_origem=dns_origem,
     ))
+
+
+@web_bp.post('/api/v1/cartao/gerar')
+def cartao_gerar():
+    from web.checkout import gerar_cartao
+    url_base = request.url_root.rstrip('/')
+    dns_origem = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return jsonify(gerar_cartao(
+        request.get_json(force=True, silent=True) or {},
+        url_base=url_base,
+        dns_origem=dns_origem,
+    ))
+
+
+@web_bp.get('/api/v1/cartao/parcelas/<int:produto_id>')
+def cartao_parcelas(produto_id):
+    from database import get_config_cartao_produto
+    from web.parcelamento_cartao import gerar_opcoes_parcelamento
+    config_cartao = get_config_cartao_produto(produto_id)
+    if not config_cartao:
+        return jsonify({'opcoes': []}), 404
+    try:
+        valor = float(request.args.get('valor', 0))
+    except ValueError:
+        valor = 0.0
+    return jsonify({'opcoes': gerar_opcoes_parcelamento(valor, config_cartao)})
 
 
 @web_bp.get('/api/v1/pix/pedido/<int:pedido_id>')

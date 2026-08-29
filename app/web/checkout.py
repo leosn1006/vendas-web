@@ -63,7 +63,8 @@ def rastrear_visita_funil(request_obj, produto_id: int, estado_novo: int) -> int
 def get_pedido_finalizado_via_cookie(request_obj, produto_id: int):
     """
     Verifica se o cookie pedido_web_<produto_id> aponta pra um pedido que já saiu da
-    pré-identificação (1000 pago, 1001 identidade preenchida, 1002 aguardando pix).
+    pré-identificação (1000 pago, 1001 identidade preenchida, 1002 aguardando pix,
+    1005 aguardando autorização de cartão, 1006 cartão negado nesta tentativa).
     Usado por /pay/<produto_id> pra decidir se redireciona pro fluxo de retomada
     (?pedido=<id>, já tratado pelo JS de checkout.html) em vez de criar um pedido
     1003 novo via rastrear_visita_funil.
@@ -79,7 +80,7 @@ def get_pedido_finalizado_via_cookie(request_obj, produto_id: int):
         return None
 
     pedido = get_pedido(int(pedido_id_cookie))
-    if pedido and pedido['produto_id'] == produto_id and pedido['estado_id'] in (1000, 1001, 1002):
+    if pedido and pedido['produto_id'] == produto_id and pedido['estado_id'] in (1000, 1001, 1002, 1005, 1006):
         return pedido['id']
     return None
 
@@ -266,6 +267,231 @@ def verificar_pagamento(txid: str) -> dict:
     except Exception as e:
         logger.error(f'[WEB-CHECKOUT] Erro ao verificar pagamento {txid}: {e}')
         return {'pago': False, 'erro': True}
+
+
+def categorizar_erro_cielo(status, return_code, return_message) -> tuple:
+    """
+    Mapeia o resultado técnico da Cielo pra uma categoria + mensagem amena. Nunca expor
+    ReturnCode/ReturnMessage crus ao cliente — prática de mercado pra recusa de cartão é uma
+    explicação objetiva + sempre uma alternativa, sem código técnico.
+
+    Códigos vistos nos cartões de teste do sandbox (scripts/testar_cielo_sandbox.py):
+    05=negada, 57=expirado, 78=bloqueado, 77=cancelado, 70=problema, 99=timeout.
+    """
+    if status is None:
+        return 'instabilidade', 'Tivemos uma instabilidade ao confirmar seu pagamento. Tente novamente ou pague com Pix.'
+    if str(return_code) == '99':
+        return 'instabilidade', 'Tivemos uma instabilidade ao confirmar seu pagamento. Tente novamente ou pague com Pix.'
+    if str(return_code) in ('57', '78', '77', '70'):
+        return 'cartao_problema', 'Não conseguimos processar esse cartão. Confira os dados e a validade, ou tente outro.'
+    return 'recusa_generica', 'Seu banco não autorizou a compra agora. Tente outro cartão ou pague com Pix.'
+
+
+def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
+    """
+    Cria/reaproveita um pedido (estado 1001, mesmas funções do Pix), avança pra 1005
+    (aguardando autorização Cielo) ANTES de chamar a Cielo, autoriza com Capture=True e
+    Interest=ByMerchant, e confirma o pagamento reaproveitando confirmar_pagamento_web — mesmo
+    caminho do Pix, já método-agnóstico.
+
+    Retorna dict pronto para jsonify:
+      aprovado=True: {aprovado, pedido_id, itens}
+      aprovado=False: {aprovado, pedido_id, mensagem (amena), permite_retry}
+    """
+    from web import cielo
+    from web.parcelamento_cartao import calcular_total, parcelas_maximas_efetivas
+    from database import (get_produto_disponivel_web, get_config_cartao_produto,
+                          criar_pedido_web_unificado, get_pedido_cartao_para_retry, finalizar_pedido_web,
+                          criar_itens_pedido_web, listar_bumps_validos, listar_itens_pedido,
+                          avancar_pedido_cartao_aguardando, criar_tentativa_pagamento_cartao,
+                          atualizar_tentativa_pagamento_cartao, confirmar_pagamento_web,
+                          marcar_pedido_cartao_negado)
+
+    produto_id = int(body.get('produto_id', 1))
+    produto = get_produto_disponivel_web(produto_id)
+    config_cartao = get_config_cartao_produto(produto_id)
+    if not produto or not config_cartao:
+        # Defesa: o front não deveria nem mostrar a aba Cartão nesse caso.
+        return {'aprovado': False, 'mensagem': 'Cartão de crédito não disponível para este produto no momento.'}
+
+    _teste_produto = os.getenv(f'CHECKOUT_VALOR_TESTE_PRODUTO_{produto_id}')
+    valor_principal = float(_teste_produto or (produto.get('preco', 19.90) if produto else 19.90))
+
+    bump_rows = listar_bumps_validos(produto_id, body.get('bump_ids'))
+    valor_original = valor_principal + sum(float(b['preco_promocional']) for b in bump_rows)
+
+    max_efetivo = parcelas_maximas_efetivas(valor_original, config_cartao['max_parcelas'])
+    parcelas = max(1, min(int(body.get('parcelas', 1) or 1), max_efetivo))  # nunca confiar no client
+    valor_total = calcular_total(valor_original, parcelas, config_cartao['parcelas_sem_juros'],
+                                 float(config_cartao['taxa_juros_mensal']))
+    valor_centavos = round(valor_total * 100)
+
+    # Cria/reaproveita pedido — mesma ideia do Pix, mas também aceita 1006 (negado numa
+    # tentativa anterior), pra tentar outro cartão não criar um pedido novo a cada vez.
+    pedido_id_body = body.get('pedido_id')
+    pedido_existente = get_pedido_cartao_para_retry(int(pedido_id_body), produto_id) if pedido_id_body else None
+    eh_retry_de_negado = bool(pedido_existente and pedido_existente['estado_id'] == 1006)
+    if pedido_existente:
+        pedido_id = pedido_existente['id']
+        # No-op se o pedido já passou de 1003/1004 (ex: retry vindo de 1006) — identidade já
+        # foi capturada na tentativa anterior, WHERE da própria função protege contra regressão.
+        finalizar_pedido_web(pedido_id, phone_number_id='', contact_phone='',
+                             contact_name=body.get('nome', ''), email=body.get('email', ''))
+    else:
+        pedido_id = criar_pedido_web_unificado(
+            produto_id=produto_id, phone_number_id='', contact_phone='',
+            contact_name=body.get('nome', ''), dns_origem=dns_origem, email=body.get('email', ''),
+            gclid=body.get('gclid', ''), campaignid=body.get('campaignid', ''),
+            adgroupid=body.get('adgroupid', ''), creative=body.get('creative', ''),
+            matchtype=body.get('matchtype', ''), device=body.get('device', ''),
+            placement=body.get('placement', ''), video_id=body.get('video_id', ''),
+        )
+
+    # Só grava o snapshot de itens na primeira finalização — num retry após negação (1006), os
+    # itens já foram gravados na tentativa anterior; gravar de novo duplicaria as linhas em
+    # pedido_itens (afeta downloads e qualquer soma de receita sobre essa tabela).
+    if not eh_retry_de_negado:
+        try:
+            criar_itens_pedido_web(pedido_id, produto, valor_principal, bump_rows)
+        except Exception as e:
+            logger.error(f'[WEB-CHECKOUT] Erro ao gravar itens do pedido cartão #{pedido_id}: {e}')
+
+    numero_cartao = re.sub(r'\D', '', body.get('numero_cartao', ''))
+    cpf = re.sub(r'\D', '', body.get('cpf', ''))
+    mes = re.sub(r'\D', '', str(body.get('mes', '')))
+    ano = re.sub(r'\D', '', str(body.get('ano', '')))
+    validade = f'{mes.zfill(2)}/{ano}' if mes and ano else ''
+    cvv = re.sub(r'\D', '', body.get('cvv', ''))
+    titular = body.get('titular') or body.get('nome', '')
+    bandeira = body.get('bandeira', '')
+    merchant_order_id = str(pedido_id)
+    cartao_mascarado = f'{numero_cartao[:6]}{"*" * 6}{numero_cartao[-4:]}' if len(numero_cartao) >= 10 else ''
+
+    avancar_pedido_cartao_aguardando(pedido_id)
+
+    # Auditoria: NUNCA gravar CardNumber/SecurityCode crus.
+    request_para_auditoria = {
+        'MerchantOrderId': merchant_order_id, 'Amount': valor_centavos, 'Installments': parcelas,
+        'CreditCard': {'CardNumber': cartao_mascarado, 'Holder': titular, 'ExpirationDate': validade, 'Brand': bandeira},
+    }
+    tentativa_id = criar_tentativa_pagamento_cartao(
+        pedido_id=pedido_id, merchant_order_id=merchant_order_id,
+        valor_original=valor_original, valor=valor_total, parcelas=parcelas,
+        bandeira=bandeira, cartao_mascarado=cartao_mascarado, nome_titular=titular,
+        request_json=request_para_auditoria,
+    )
+
+    try:
+        resposta = cielo.criar_transacao(
+            merchant_order_id=merchant_order_id, valor_centavos=valor_centavos, parcelas=parcelas,
+            soft_descriptor=config_cartao['soft_descriptor'], nome=body.get('nome', ''), cpf=cpf,
+            numero_cartao=numero_cartao, titular=titular, validade=validade, cvv=cvv, bandeira=bandeira,
+        )
+    except Exception as e:
+        # Timeout/erro de rede: pedido fica em 1005 (sinal pro sweep de reconciliação),
+        # a tentativa de auditoria fica sem payment_id.
+        logger.error(f'[WEB-CHECKOUT] Erro de rede/timeout na autorização Cielo — pedido #{pedido_id}: {e}')
+        return {
+            'aprovado': False, 'pedido_id': pedido_id, 'permite_retry': True,
+            'mensagem': 'Tivemos uma instabilidade ao confirmar seu pagamento. Tente novamente ou pague com Pix.',
+        }
+
+    payment = resposta.get('Payment', {})
+    status = payment.get('Status')
+
+    if status == 2:
+        atualizar_tentativa_pagamento_cartao(
+            tentativa_id, payment_id=payment.get('PaymentId'), tid=payment.get('Tid'),
+            authorization_code=payment.get('AuthorizationCode'), status_cielo=status,
+            return_code=payment.get('ReturnCode'), return_message=payment.get('ReturnMessage'),
+            response_json=resposta,
+        )
+        confirmou_agora = confirmar_pagamento_web(
+            pedido_id=pedido_id, valor=valor_total, nome_pagador=body.get('nome', ''),
+            cpf_cnpj_pagador=_formatar_documento(cpf, 1),
+        )
+        if confirmou_agora:
+            import tasks
+            tasks.enviar_email_entrega.delay(pedido_id)
+        itens = [
+            {'id': item['id'], 'tipo': item['tipo'], 'nome': item['nome'], 'valor': float(item['valor'])}
+            for item in listar_itens_pedido(pedido_id)
+        ]
+        return {'aprovado': True, 'pedido_id': pedido_id, 'itens': itens}
+
+    # Negado — resposta HTTP ok (201), mas Status diferente de aprovado.
+    categoria, mensagem = categorizar_erro_cielo(status, payment.get('ReturnCode'), payment.get('ReturnMessage'))
+    atualizar_tentativa_pagamento_cartao(
+        tentativa_id, payment_id=payment.get('PaymentId'), tid=payment.get('Tid'),
+        authorization_code=payment.get('AuthorizationCode'), status_cielo=status,
+        return_code=payment.get('ReturnCode'), return_message=payment.get('ReturnMessage'),
+        categoria_erro=categoria, response_json=resposta,
+    )
+    marcar_pedido_cartao_negado(pedido_id)
+    return {'aprovado': False, 'pedido_id': pedido_id, 'mensagem': mensagem, 'permite_retry': True}
+
+
+def reconciliar_cartao(pedido_id: int) -> dict:
+    """
+    Rechecagem de um pedido preso em 1005 (chamado pelo sweep do Celery Beat a cada 15 min,
+    só para pedidos há mais de 5 min nesse estado). Busca a tentativa mais recente: se já tem
+    payment_id, consulta direto por ele; senão (timeout puro, a chamada original nunca
+    respondeu), consulta por MerchantOrderId (=pedido_id em texto, reaproveitado em cada
+    retry de propósito) — que devolve só uma lista de PaymentIds, então cada um precisa ser
+    consultado individualmente para saber o Status. Aprovado → confirmar_pagamento_web (mesmo
+    caminho do Pix). Nenhuma resposta conclusiva → não mexe, próxima rodada tenta de novo.
+    """
+    from web import cielo
+    from database import (get_ultima_tentativa_pagamento_cartao, confirmar_pagamento_web,
+                          marcar_pedido_cartao_negado, atualizar_tentativa_pagamento_cartao)
+
+    tentativa = get_ultima_tentativa_pagamento_cartao(pedido_id)
+    if not tentativa:
+        return {'pago': False}
+
+    if tentativa.get('payment_id'):
+        payment_ids = [tentativa['payment_id']]
+    else:
+        try:
+            resultado = cielo.consultar_por_merchant_order_id(str(pedido_id))
+        except Exception as e:
+            logger.error(f'[WEB-CHECKOUT] Erro ao consultar MerchantOrderId #{pedido_id} na Cielo: {e}')
+            return {'pago': False}
+        payment_ids = [p['PaymentId'] for p in resultado.get('Payments', []) if p.get('PaymentId')]
+        if not payment_ids:
+            # Cielo nunca recebeu a chamada original — segue em 1005, próxima rodada tenta de novo.
+            return {'pago': False}
+
+    aprovado = None
+    teve_resposta = False
+    for payment_id in payment_ids:
+        try:
+            resposta = cielo.consultar_por_payment_id(payment_id)
+        except Exception as e:
+            logger.error(f'[WEB-CHECKOUT] Erro ao consultar PaymentId {payment_id}: {e}')
+            continue
+        payment = resposta.get('Payment', {})
+        teve_resposta = True
+        if payment.get('Status') == 2:
+            aprovado = payment
+            break
+
+    if aprovado:
+        atualizar_tentativa_pagamento_cartao(
+            tentativa['id'], payment_id=aprovado.get('PaymentId'), tid=aprovado.get('Tid'),
+            authorization_code=aprovado.get('AuthorizationCode'), status_cielo=2,
+            return_code=aprovado.get('ReturnCode'), return_message=aprovado.get('ReturnMessage'),
+        )
+        confirmou_agora = confirmar_pagamento_web(pedido_id=pedido_id, valor=float(tentativa['valor']))
+        if confirmou_agora:
+            import tasks
+            tasks.enviar_email_entrega.delay(pedido_id)
+        return {'pago': True, 'pedido_id': pedido_id}
+
+    if teve_resposta:
+        # Teve resposta conclusiva da Cielo (Status != 2) e não é aprovado — negado.
+        marcar_pedido_cartao_negado(pedido_id)
+    return {'pago': False}
 
 
 def baixar_item_pedido(pedido_id: int, item_id: int):

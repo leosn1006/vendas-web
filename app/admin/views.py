@@ -27,6 +27,7 @@ from database import (db,
     numero_empresa_operacional, buscar_status_numero_empresa,
     buscar_pedido_por_nome, acertar_valor_pedido,
     listar_chaves_pix_produto, adicionar_chave_pix_produto, desativar_chave_pix_produto,
+    get_config_cartao_produto_admin, salvar_config_cartao_produto,
     busca_financeiro_pix, buscar_tenant_slug_produto,
     listar_planilhas_dns_produto, adicionar_planilha_dns, atualizar_planilha_dns, remover_planilha_dns,
     listar_notificacoes_em_analise, marcar_notificacao_respondida, bloquear_pedido,
@@ -1903,9 +1904,9 @@ _SQL_CAMPANHAS = """
 
 _SQL_FUNIL_WEB = """
     SELECT
-        COUNT(CASE WHEN estado_id IN (1004,1003,1001,1002,1000) THEN 1 END) AS chegou_landing,
-        COUNT(CASE WHEN estado_id IN (1003,1001,1002,1000) THEN 1 END)      AS chegou_checkout,
-        COUNT(CASE WHEN estado_id IN (1000,1001,1002) THEN 1 END)          AS total_pedidos,
+        COUNT(CASE WHEN estado_id IN (1004,1003,1001,1002,1005,1006,1000) THEN 1 END) AS chegou_landing,
+        COUNT(CASE WHEN estado_id IN (1003,1001,1002,1005,1006,1000) THEN 1 END)      AS chegou_checkout,
+        COUNT(CASE WHEN estado_id IN (1000,1001,1002,1005,1006) THEN 1 END)          AS total_pedidos,
         COUNT(CASE WHEN estado_id = 1000 THEN 1 END)                        AS pagos
     FROM pedidos
     WHERE produto_id = %s
@@ -2970,6 +2971,44 @@ def desativar_chave_pix(produto_id, chave_id):
         logger.error(f"[ADMIN] ❌ Erro ao desativar chave PIX: {e}")
         flash(f'Erro ao desativar chave PIX: {e}', 'danger')
     return redirect(url_for('admin.chaves_pix_produto', produto_id=produto_id))
+
+
+# ── Pagamento com Cartão de Crédito (Cielo) ──────────────────────────────────
+
+@admin_bp.route('/produto/<int:produto_id>/pagamento-cartao', methods=['GET', 'POST'])
+@requer_admin
+def pagamento_cartao_produto(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    if request.method == 'POST':
+        try:
+            ativo = request.form.get('ativo') == 'on'
+            max_parcelas = int(request.form.get('max_parcelas', 1))
+            parcelas_sem_juros = int(request.form.get('parcelas_sem_juros', 1))
+            taxa_juros_mensal = float(request.form.get('taxa_juros_mensal', 0) or 0)
+            soft_descriptor = request.form.get('soft_descriptor', '').strip()[:13]
+
+            if not soft_descriptor:
+                flash('Informe o nome que vai aparecer na fatura do cliente (soft descriptor).', 'warning')
+            elif not (1 <= parcelas_sem_juros <= max_parcelas <= 12):
+                flash('Parcelas sem juros deve ser ≥ 1 e ≤ máx. de parcelas, e máx. de parcelas não pode passar de 12.', 'warning')
+            elif taxa_juros_mensal < 0:
+                flash('Taxa de juros não pode ser negativa.', 'warning')
+            else:
+                salvar_config_cartao_produto(produto_id, ativo, max_parcelas, parcelas_sem_juros,
+                                             taxa_juros_mensal, soft_descriptor)
+                flash('Configuração de cartão de crédito salva com sucesso!', 'success')
+                logger.info(f"[ADMIN] ✅ Config de cartão do produto #{produto_id} salva por {current_user.email}")
+        except (ValueError, TypeError) as e:
+            logger.error(f"[ADMIN] ❌ Erro ao salvar config de cartão: {e}")
+            flash('Valores inválidos — confira os campos numéricos.', 'danger')
+        return redirect(url_for('admin.pagamento_cartao_produto', produto_id=produto_id))
+
+    config_cartao = get_config_cartao_produto_admin(produto_id)
+    return render_template('admin/produto_pagamento_cartao.html', produto=produto, config_cartao=config_cartao)
 
 
 # ── Planilhas Google Ads por DNS ─────────────────────────────────────────────

@@ -116,6 +116,10 @@ services:
       - BB_PAY_APP_KEY=${BB_PAY_APP_KEY:-}
       - BB_PAY_API_URL=${BB_PAY_API_URL:-https://checkout.mtls.api.bb.com.br/v2/}
       - BB_PAY_OUATH_URL=${BB_PAY_OUATH_URL:-https://oauth.bb.com.br/oauth/token}
+      - CIELO_MERCHANT_ID=${CIELO_MERCHANT_ID:-}
+      - CIELO_MERCHANT_KEY=${CIELO_MERCHANT_KEY:-}
+      - CIELO_API_URL=${CIELO_API_URL:-https://apisandbox.cieloecommerce.cielo.com.br/1/}
+      - CIELO_API_QUERY_URL=${CIELO_API_QUERY_URL:-https://apiquerysandbox.cieloecommerce.cielo.com.br/1/}
       - CHECKOUT_VALOR_TESTE_PRODUTO_7=${CHECKOUT_VALOR_TESTE_PRODUTO_7:-}
       - CHECKOUT_VALOR_TESTE_PRODUTO_11=${CHECKOUT_VALOR_TESTE_PRODUTO_11:-}
       - CHECKOUT_VALOR_TESTE_PRODUTO_12=${CHECKOUT_VALOR_TESTE_PRODUTO_12:-}
@@ -397,6 +401,10 @@ services:
       - BB_PAY_APP_KEY=${BB_PAY_APP_KEY:-}
       - BB_PAY_API_URL=${BB_PAY_API_URL:-https://checkout.mtls.api.bb.com.br/v2/}
       - BB_PAY_OUATH_URL=${BB_PAY_OUATH_URL:-https://oauth.bb.com.br/oauth/token}
+      - CIELO_MERCHANT_ID=${CIELO_MERCHANT_ID:-}
+      - CIELO_MERCHANT_KEY=${CIELO_MERCHANT_KEY:-}
+      - CIELO_API_URL=${CIELO_API_URL:-https://apisandbox.cieloecommerce.cielo.com.br/1/}
+      - CIELO_API_QUERY_URL=${CIELO_API_QUERY_URL:-https://apiquerysandbox.cieloecommerce.cielo.com.br/1/}
       - GOOGLE_SA_JSON_P1=${GOOGLE_SA_JSON_P1:-}
       - GOOGLE_SA_JSON_P6=${GOOGLE_SA_JSON_P6:-}
       - GOOGLE_SA_JSON_P7=${GOOGLE_SA_JSON_P7:-}

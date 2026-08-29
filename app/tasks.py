@@ -611,6 +611,19 @@ def verificar_pagamentos_pendentes(self):
         traceback.print_exc()
 
 
+@shared_task(bind=True, max_retries=0)
+def verificar_cartao_pendente(self):
+    try:
+        logger.info('[TASK-RESILIENCIA-CARTAO] Iniciando sweep de cartão Cielo pendente')
+        from fluxos.fluxo_verificar_cartao_pendente import executar
+        executar()
+        logger.info('[TASK-RESILIENCIA-CARTAO] ✅ Sweep concluído')
+    except Exception as exc:
+        logger.error(f'[TASK-RESILIENCIA-CARTAO] ❌ Erro: {exc}')
+        import traceback
+        traceback.print_exc()
+
+
 @shared_task(bind=True, max_retries=1)
 def enviar_email_entrega(self, pedido_id: int):
     logger.info("=" * 120)
