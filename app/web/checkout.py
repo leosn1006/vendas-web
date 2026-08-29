@@ -363,7 +363,10 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     validade = f'{mes.zfill(2)}/{ano}' if mes and ano else ''
     cvv = re.sub(r'\D', '', body.get('cvv', ''))
     titular = body.get('titular') or body.get('nome', '')
-    bandeira = body.get('bandeira', '')
+    # Resolve a bandeira real (cache/Consulta BIN Cielo) antes de montar o payload — só cai
+    # pro palpite do cliente (ou vazio) se a resolução falhar; nunca bloqueia a autorização.
+    from web.bandeira_bin import resolver_bandeira
+    bandeira = resolver_bandeira(numero_cartao) or body.get('bandeira', '')
     merchant_order_id = str(pedido_id)
     cartao_mascarado = f'{numero_cartao[:6]}{"*" * 6}{numero_cartao[-4:]}' if len(numero_cartao) >= 10 else ''
 
@@ -398,13 +401,23 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
 
     payment = resposta.get('Payment', {})
     status = payment.get('Status')
+    # Payment.CreditCard.Brand da resposta: no sandbox, confirmamos que é só eco do que foi
+    # enviado (Brand="Undefined" quando omitido, ou o valor errado que mandamos de propósito
+    # num teste) — não é uma validação independente contra o PAN real, pelo menos aqui. Não
+    # temos como confirmar se produção se comporta diferente (validação real contra a rede do
+    # cartão), então mantemos essa sobrescrita como uma aposta de custo zero: se em produção
+    # for mesmo autoritativa, corrige de graça; se for só eco como no sandbox, é um no-op
+    # inofensivo (COALESCE mantém o valor resolvido antes do envio quando não vier nada aqui).
+    bandeira_confirmada = (payment.get('CreditCard', {}).get('Brand') or '').lower() or None
+    if bandeira_confirmada == 'undefined':
+        bandeira_confirmada = None
 
     if status == 2:
         atualizar_tentativa_pagamento_cartao(
             tentativa_id, payment_id=payment.get('PaymentId'), tid=payment.get('Tid'),
             authorization_code=payment.get('AuthorizationCode'), status_cielo=status,
             return_code=payment.get('ReturnCode'), return_message=payment.get('ReturnMessage'),
-            response_json=resposta,
+            response_json=resposta, bandeira=bandeira_confirmada,
         )
         confirmou_agora = confirmar_pagamento_web(
             pedido_id=pedido_id, valor=valor_total, nome_pagador=body.get('nome', ''),
@@ -425,7 +438,7 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
         tentativa_id, payment_id=payment.get('PaymentId'), tid=payment.get('Tid'),
         authorization_code=payment.get('AuthorizationCode'), status_cielo=status,
         return_code=payment.get('ReturnCode'), return_message=payment.get('ReturnMessage'),
-        categoria_erro=categoria, response_json=resposta,
+        categoria_erro=categoria, response_json=resposta, bandeira=bandeira_confirmada,
     )
     marcar_pedido_cartao_negado(pedido_id)
     return {'aprovado': False, 'pedido_id': pedido_id, 'mensagem': mensagem, 'permite_retry': True}

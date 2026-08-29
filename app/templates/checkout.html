@@ -219,7 +219,6 @@
             font-size: 15px; font-family: inherit; outline: none;
         }
         .cartao-bandeira-icon { width: 38px; height: 24px; object-fit: contain; flex-shrink: 0; }
-        .aviso-bandeira { color: var(--sub); font-size: 12px; margin-top: 4px; }
 
         /* ── Order bumps ── */
         .bump-card {
@@ -548,7 +547,6 @@
                         <img id="bandeiraIcon" class="cartao-bandeira-icon"
                              src="{{ url_for('static', filename='images/bandeiras/generico.webp') }}" alt="">
                     </div>
-                    <span class="aviso-bandeira oculto" id="avisoBandeira" style="visibility:hidden;">Bandeira não reconhecida — confira o número</span>
                 </div>
                 <div class="campo-linha">
                     <div class="campo">
@@ -804,25 +802,25 @@
         } catch (e) { /* mantém as opções anteriores em caso de falha momentânea */ }
     }
 
-    // ── Detecção de bandeira do cartão ──
-    const BANDEIRAS_REGEX = [
-        { nome: 'visa',       re: /^4/ },
-        { nome: 'mastercard', re: /^(5[1-5]|2(2[2-9]|[3-6]\d|7[01]|720))/ },
-        { nome: 'amex',       re: /^3[47]/ },
-        { nome: 'elo',        re: /^(4011(78|79)|506699|509\d{3}|627780|636368)/ },
-        { nome: 'hipercard',  re: /^(606282|3841)/ },
-    ];
-
-    function detectarBandeira(numeroLimpo) {
-        for (const b of BANDEIRAS_REGEX) { if (b.re.test(numeroLimpo)) return b.nome; }
-        return null;
-    }
-
+    // ── Detecção de bandeira do cartão — consulta o backend (Consulta BIN Cielo, com cache)
+    // no blur do campo, nunca em tempo real: mostrar a bandeira ERRADA passa mais desconfiança
+    // pro cliente do que não mostrar nenhuma, então só troca o ícone quando temos uma resposta
+    // confirmada. Enquanto digita (ou se a consulta falhar) fica no ícone genérico — nunca
+    // bloqueia a compra por isso (ver validarCartao()). ──
     (function () {
         const inp = document.getElementById('inputNumeroCartao');
         if (!inp) return; // produto sem cartão habilitado
         const icone = document.getElementById('bandeiraIcon');
-        const aviso = document.getElementById('avisoBandeira');
+        // Guarda de sequência: se o número mudar (ou outro blur disparar) antes de uma
+        // consulta em andamento responder, essa resposta chegando depois não pode mais
+        // sobrescrever o ícone — evita mostrar a bandeira de um número antigo.
+        let consultaSeq = 0;
+
+        function resetarParaGenerico() {
+            consultaSeq++;
+            bandeiraAtual = null;
+            icone.src = '/static/images/bandeiras/generico.webp';
+        }
 
         inp.addEventListener('input', function () {
             const cursor = this.selectionStart;
@@ -832,10 +830,31 @@
             this.value = agrupado;
             this.setSelectionRange(cursor + (agrupado.length - antesLen), cursor + (agrupado.length - antesLen));
 
-            bandeiraAtual = detectarBandeira(limpo);
-            icone.src = `/static/images/bandeiras/${bandeiraAtual || 'generico'}.webp`;
-            const semMatch = limpo.length >= 13 && !bandeiraAtual;
-            aviso.style.visibility = semMatch ? 'visible' : 'hidden';
+            // Invalida o ícone resolvido num blur anterior — o número mudou, o ícone antigo
+            // pode não valer mais pra esse número novo (só o próximo blur resolve de novo).
+            resetarParaGenerico();
+        });
+
+        inp.addEventListener('blur', async function () {
+            const bin = this.value.replace(/\D/g, '').slice(0, 6);
+            if (bin.length < 6) { resetarParaGenerico(); return; }
+            const minhaSeq = ++consultaSeq;
+            try {
+                const resp = await fetch(`/api/v1/cartao/bandeira?bin=${bin}`);
+                const data = await resp.json();
+                if (minhaSeq !== consultaSeq) return; // número mudou enquanto a consulta estava em voo — descarta
+                if (data.bandeira) {
+                    bandeiraAtual = data.bandeira;
+                    icone.src = `/static/images/bandeiras/${data.bandeira}.webp`;
+                } else {
+                    bandeiraAtual = null;
+                    icone.src = '/static/images/bandeiras/generico.webp';
+                }
+            } catch (e) {
+                if (minhaSeq !== consultaSeq) return;
+                bandeiraAtual = null;
+                icone.src = '/static/images/bandeiras/generico.webp'; // falha na consulta — não bloqueia a compra
+            }
         });
     })();
 
@@ -1013,10 +1032,11 @@
 
         if (cpf.length !== 11) erros.push('CPF válido');
         if (numero.length < 13 || numero.length > 19) erros.push('Número do cartão');
-        else if (!bandeiraAtual) erros.push('Bandeira do cartão não reconhecida');
         if (!mes || !ano) erros.push('Validade do cartão');
         if (cvv.length < 3) erros.push('Código de segurança (CVV)');
         if (!titular) erros.push('Nome impresso no cartão');
+        // Bandeira NÃO entra na validação: não identificar a bandeira não pode impedir a
+        // venda (o servidor resolve por conta própria na autorização, com a mesma consulta).
 
         const divErro = document.getElementById('msgErroCartao');
         if (erros.length > 0) {

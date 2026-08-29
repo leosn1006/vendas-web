@@ -1968,19 +1968,23 @@ def atualizar_tentativa_pagamento_cartao(tentativa_id: int, payment_id: str = No
                                          tid: str = None, authorization_code: str = None,
                                          status_cielo: int = None, return_code: str = None,
                                          return_message: str = None, categoria_erro: str = None,
-                                         response_json: dict = None) -> None:
+                                         response_json: dict = None, bandeira: str = None) -> None:
     """Completa a linha de auditoria com o resultado da chamada à Cielo (aprovado ou negado).
     `return_code`/`return_message` são o dado técnico — nunca exibidos ao cliente, só usados
-    aqui e no log."""
+    aqui e no log. `bandeira` é opcional (Payment.CreditCard.Brand da própria resposta da
+    Cielo, já em lowercase) — sobrescreve o palpite pré-envio com a fonte definitiva;
+    `COALESCE` mantém o valor já gravado quando não vier nada aqui (nunca reseta pra NULL)."""
     import json as _json
     db.execute_query(
         """UPDATE pagamento_cartao
            SET payment_id = %s, tid = %s, authorization_code = %s, status_cielo = %s,
-               return_code = %s, return_message = %s, categoria_erro = %s, response_json = %s
+               return_code = %s, return_message = %s, categoria_erro = %s, response_json = %s,
+               bandeira = COALESCE(%s, bandeira)
            WHERE id = %s""",
         (payment_id, tid, authorization_code, status_cielo, return_code, return_message,
          categoria_erro,
          _json.dumps(response_json, ensure_ascii=False) if response_json is not None else None,
+         bandeira,
          tentativa_id)
     )
 
@@ -1990,6 +1994,29 @@ def get_ultima_tentativa_pagamento_cartao(pedido_id: int):
     return db.execute_query(
         "SELECT * FROM pagamento_cartao WHERE pedido_id = %s ORDER BY id DESC LIMIT 1",
         (pedido_id,), fetch_one=True
+    )
+
+
+def get_bandeira_bin_cache(bin_numero: str):
+    """Linha de cache pra esse BIN, ou None se ainda não foi consultado (cache miss —
+    diferente de bandeira=NULL, que é um cache hit onde a bandeira não tem ícone)."""
+    return db.execute_query(
+        "SELECT bandeira FROM bandeira_bin WHERE bin = %s",
+        (bin_numero,), fetch_one=True
+    )
+
+
+def salvar_bandeira_bin_cache(bin_numero: str, bandeira: str = None, card_type: str = None,
+                              issuer: str = None, foreign_card: bool = None,
+                              corporate_card: bool = None, prepaid: bool = None) -> None:
+    """Grava o resultado da Consulta BIN da Cielo (mesmo quando bandeira é NULL — é um
+    resultado de cache válido). INSERT IGNORE: BIN é chave primária, não sobrescreve se já
+    existir (evita corrida entre chamadas concorrentes pro mesmo BIN)."""
+    db.execute_query(
+        """INSERT IGNORE INTO bandeira_bin
+               (bin, bandeira, card_type, issuer, foreign_card, corporate_card, prepaid)
+           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+        (bin_numero, bandeira, card_type, issuer, foreign_card, corporate_card, prepaid)
     )
 
 

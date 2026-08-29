@@ -87,6 +87,13 @@ def cartao_parcelas(produto_id):
     return jsonify({'opcoes': gerar_opcoes_parcelamento(valor, config_cartao)})
 
 
+@web_bp.get('/api/v1/cartao/bandeira')
+def cartao_bandeira():
+    from web.bandeira_bin import resolver_bandeira
+    bin_numero = request.args.get('bin', '')
+    return jsonify({'bandeira': resolver_bandeira(bin_numero)})
+
+
 @web_bp.get('/api/v1/pix/pedido/<int:pedido_id>')
 def pix_pedido(pedido_id):
     from database import get_pedido, listar_itens_pedido

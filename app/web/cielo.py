@@ -54,6 +54,19 @@ def criar_transacao(merchant_order_id: str, valor_centavos: int, parcelas: int,
     tratar timeout/erro de rede vs. negação de negócio — negação de negócio
     NÃO é erro HTTP, vem como 201 com Payment.Status != 2).
     """
+    credit_card = {
+        'CardNumber': numero_cartao,
+        'Holder': titular,
+        'ExpirationDate': validade,
+        'SecurityCode': cvv,
+    }
+    if bandeira:
+        # Brand é um enum forte na API da Cielo — mandar string vazia quebra com 400
+        # ("Error converting value '' to type BrandEnum"), confirmado no sandbox. Omitir a
+        # chave inteira (em vez de mandar vazio) funciona normalmente (Brand volta "Undefined"
+        # na resposta, mas a autorização segue).
+        credit_card['Brand'] = bandeira
+
     payload = {
         'MerchantOrderId': merchant_order_id,
         'Customer': {
@@ -68,13 +81,7 @@ def criar_transacao(merchant_order_id: str, valor_centavos: int, parcelas: int,
             'SoftDescriptor': soft_descriptor,
             'Capture': True,
             'Interest': 'ByMerchant',
-            'CreditCard': {
-                'CardNumber': numero_cartao,
-                'Holder': titular,
-                'ExpirationDate': validade,
-                'SecurityCode': cvv,
-                'Brand': bandeira,
-            },
+            'CreditCard': credit_card,
         },
     }
 
@@ -92,6 +99,20 @@ def criar_transacao(merchant_order_id: str, valor_centavos: int, parcelas: int,
     logger.info(f'[CIELO] Resposta — Status={payment.get("Status")} '
                 f'ReturnCode={payment.get("ReturnCode")} PaymentId={payment.get("PaymentId")}')
     return corpo
+
+
+def consultar_bin(bin_numero: str) -> dict:
+    """GET {CIELO_API_QUERY_URL}cardBin/{bin} — 6 a 8 primeiros dígitos do cartão.
+    Requer habilitação prévia da Consulta BIN pelo suporte Cielo (erro 323 se não habilitado).
+    Timeout curto (4s) de propósito: essa chamada também acontece no caminho crítico da
+    autorização (gerar_cartao) quando o BIN ainda não está em cache — como uma falha nunca é
+    cacheada (pode ser transitória) e é tentada de novo a cada request, um timeout longo aqui
+    vira lentidão real no checkout toda vez que a Consulta BIN estiver fora do ar."""
+    resp = requests.get(f'{_API_QUERY_URL}/cardBin/{bin_numero}', headers=_headers(), timeout=4)
+    if not resp.ok:
+        _log_erro_resposta(resp)
+    resp.raise_for_status()
+    return resp.json()
 
 
 def consultar_por_merchant_order_id(merchant_order_id: str) -> dict:
