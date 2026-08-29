@@ -94,6 +94,7 @@ def criar_transacao(merchant_order_id: str, valor_centavos: int, parcelas: int,
             'SoftDescriptor': soft_descriptor,
             'Capture': True,
             'Interest': 'ByMerchant',
+            'Provider': 'Cielo',
             'CreditCard': credit_card,
         },
     }
