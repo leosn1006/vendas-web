@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout — {{ produto.descricao }}</title>
+    <title>Checkout — {{ ebook_principal.nome_venda }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -437,23 +437,23 @@
         <!-- Resumo do produto (vira uma listinha de itens quando um bump é marcado) -->
         <div class="card">
             <div class="resumo-hero">
-                {% if produto.imagem_checkout %}
+                {% if ebook_principal.imagem_grande %}
                 <img class="resumo-hero-img"
-                     src="{{ url_for('static', filename='images/' + produto.imagem_checkout) }}"
-                     alt="{{ produto.descricao }}"
+                     src="{{ url_for('static', filename='images/' + ebook_principal.imagem_grande) }}"
+                     alt="{{ ebook_principal.nome_venda }}"
                      onerror="this.style.display='none'">
                 {% endif %}
                 <div class="resumo-hero-texto">
                     <div class="resumo-label">Detalhes da sua compra:</div>
                     <div id="resumoItens" class="resumo-itens">
                         <div class="linha-item linha-item-principal">
-                            <span>{{ produto.descricao }}</span>
-                            <span>R$ {{ "%.2f"|format(produto.preco) }}</span>
+                            <span>{{ ebook_principal.nome_venda }}</span>
+                            <span>R$ {{ "%.2f"|format(ebook_principal.preco_promocional) }}</span>
                         </div>
                     </div>
                     <div class="resumo-total-wrap">
                         <span>Total</span>
-                        <strong id="resumoTotal">R$ {{ "%.2f"|format(produto.preco) }}</strong>
+                        <strong id="resumoTotal">R$ {{ "%.2f"|format(ebook_principal.preco_promocional) }}</strong>
                     </div>
                 </div>
             </div>
@@ -467,7 +467,7 @@
             <div class="bonus-item">
                 <span class="check">✓</span>
                 <span>
-                    <strong>{{ b.nome }}</strong>{% if b.descricao %} — {{ b.descricao }}{% endif %}
+                    <strong>{{ b.nome_venda }}</strong>{% if b.descricao %} — {{ b.descricao }}{% endif %}
                 </span>
             </div>
             {% endfor %}
@@ -584,15 +584,15 @@
             {% for b in bumps %}
             <label class="bump-card" data-bump-wrap>
                 <input type="checkbox" class="bump-checkbox" data-id="{{ b.id }}" data-preco="{{ b.preco_promocional }}">
-                {% if b.imagem_checkout %}
+                {% if b.imagem_pequena %}
                 <img class="bump-thumb"
-                     src="{{ url_for('static', filename='images/' + b.imagem_checkout) }}"
-                     alt="{{ b.nome }}"
+                     src="{{ url_for('static', filename='images/' + b.imagem_pequena) }}"
+                     alt="{{ b.nome_venda }}"
                      onerror="this.style.display='none'">
                 {% endif %}
                 <div>
                     <span class="bump-selo">Oferta exclusiva</span>
-                    <div class="bump-nome">{{ b.nome }}</div>
+                    <div class="bump-nome">{{ b.nome_venda }}</div>
                     {% if b.descricao %}<div class="bump-desc">{{ b.descricao }}</div>{% endif %}
                     <div class="bump-precos">
                         <span class="bump-preco-original">R$ {{ "%.2f"|format(b.preco_original) }}</span>
@@ -612,7 +612,7 @@
 
         <div class="total-linha">
             <span>Total</span>
-            <strong id="totalDisplay">R$ {{ "%.2f"|format(produto.preco) }}</strong>
+            <strong id="totalDisplay">R$ {{ "%.2f"|format(ebook_principal.preco_promocional) }}</strong>
         </div>
 
         <button class="btn-finalizar" id="btnFinalizar">FINALIZAR COMPRA</button>
@@ -693,8 +693,8 @@
 
 <script
     data-produto-id="{{ produto.id }}"
-    data-preco="{{ '%.2f'|format(produto.preco) }}"
-    data-nome="{{ produto.descricao }}"
+    data-preco="{{ '%.2f'|format(ebook_principal.preco_promocional) }}"
+    data-nome="{{ ebook_principal.nome_venda }}"
     data-pedido-id-inicial="{{ pedido_id_inicial or '' }}"
     data-tem-cartao="{{ '1' if config_cartao else '' }}"
     id="checkout-config">

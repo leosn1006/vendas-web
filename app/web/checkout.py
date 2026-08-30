@@ -111,15 +111,20 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
       (ou fallback=True em caso de falha no BB Pay)
     """
     from web.bb_pay import criar_solicitacao
-    from database import (get_produto_disponivel_web,
+    from database import (get_produto_disponivel_web, resolver_valor_principal_produto,
                           criar_pedido_web_unificado, atualizar_pedido_solicitacao_bb,
                           get_phone_number_id_produto, criar_itens_pedido_web,
                           listar_bumps_validos, get_pedido_nao_finalizado, finalizar_pedido_web)
 
     produto_id = int(body.get('produto_id', 1))
     produto = get_produto_disponivel_web(produto_id)
-    _teste_produto = os.getenv(f'CHECKOUT_VALOR_TESTE_PRODUTO_{produto_id}')
-    valor_principal = float(_teste_produto or (produto.get('preco', 19.90) if produto else 19.90))
+    ebook_principal, valor_principal = resolver_valor_principal_produto(produto_id)
+    if not produto or not ebook_principal:
+        # Defesa: a página de checkout já bloqueia produto sem e-book principal vinculado antes
+        # de chegar aqui — isso só acontece numa corrida rara (ex: admin desvincula entre o
+        # carregamento da página e o envio do form).
+        logger.error(f'[WEB-CHECKOUT] Produto #{produto_id} sem e-book principal vinculado ao gerar Pix.')
+        return {'fallback': True}
     numero_convenio = int(produto.get('numero_convenio_bb', 0)) if produto else 0
 
     # Bumps: nunca confiar em preço vindo do cliente — releitura pelos ids escolhidos.
@@ -170,7 +175,7 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
             video_id=body.get('video_id', ''),
         )
     try:
-        criar_itens_pedido_web(pedido_id, produto, valor_principal, bump_rows)
+        criar_itens_pedido_web(pedido_id, produto_id, ebook_principal, valor_principal, bump_rows)
     except Exception as e:
         # Snapshot informativo — uma falha aqui não pode derrubar o checkout em si.
         logger.error(f'[WEB-CHECKOUT] Erro ao gravar itens do pedido #{pedido_id}: {e}')
@@ -301,6 +306,7 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     from web import cielo
     from web.parcelamento_cartao import calcular_total, parcelas_maximas_efetivas
     from database import (get_produto_disponivel_web, get_config_cartao_produto,
+                          resolver_valor_principal_produto,
                           criar_pedido_web_unificado, get_pedido_cartao_para_retry, finalizar_pedido_web,
                           criar_itens_pedido_web, listar_bumps_validos, listar_itens_pedido,
                           avancar_pedido_cartao_aguardando, criar_tentativa_pagamento_cartao,
@@ -314,8 +320,13 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
         # Defesa: o front não deveria nem mostrar a aba Cartão nesse caso.
         return {'aprovado': False, 'mensagem': 'Cartão de crédito não disponível para este produto no momento.'}
 
-    _teste_produto = os.getenv(f'CHECKOUT_VALOR_TESTE_PRODUTO_{produto_id}')
-    valor_principal = float(_teste_produto or (produto.get('preco', 19.90) if produto else 19.90))
+    ebook_principal, valor_principal = resolver_valor_principal_produto(produto_id)
+    if not ebook_principal:
+        # Defesa: a página de checkout já bloqueia produto sem e-book principal vinculado antes
+        # de chegar aqui — isso só acontece numa corrida rara (ex: admin desvincula entre o
+        # carregamento da página e o envio do form).
+        logger.error(f'[WEB-CHECKOUT] Produto #{produto_id} sem e-book principal vinculado ao gerar cartão.')
+        return {'aprovado': False, 'mensagem': 'Produto não disponível no momento.'}
 
     bump_rows = listar_bumps_validos(produto_id, body.get('bump_ids'))
     valor_original = valor_principal + sum(float(b['preco_promocional']) for b in bump_rows)
@@ -352,7 +363,7 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     # pedido_itens (afeta downloads e qualquer soma de receita sobre essa tabela).
     if not eh_retry_de_negado:
         try:
-            criar_itens_pedido_web(pedido_id, produto, valor_principal, bump_rows)
+            criar_itens_pedido_web(pedido_id, produto_id, ebook_principal, valor_principal, bump_rows)
         except Exception as e:
             logger.error(f'[WEB-CHECKOUT] Erro ao gravar itens do pedido cartão #{pedido_id}: {e}')
 

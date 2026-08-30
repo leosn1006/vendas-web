@@ -10,12 +10,17 @@ def guia_paes():
 
 @web_bp.get('/pay/<int:produto_id>')
 def checkout(produto_id):
-    from database import (get_produto_disponivel_web, listar_bonus_produto, listar_bump_produto,
+    from database import (get_produto_disponivel_web, get_ebook_principal_produto,
+                          listar_ebooks_bonus_produto, listar_ebooks_bump_produto,
                           get_config_cartao_produto)
     from web.checkout import (rastrear_visita_funil, get_pedido_finalizado_via_cookie,
                                COOKIE_MAX_AGE_FUNIL)
     produto = get_produto_disponivel_web(produto_id)
     if not produto:
+        return 'Produto não encontrado', 404
+
+    ebook_principal = get_ebook_principal_produto(produto_id)
+    if not ebook_principal:
         return 'Produto não encontrado', 404
 
     config_cartao = get_config_cartao_produto(produto_id)  # None = aba Cartão não aparece
@@ -39,8 +44,9 @@ def checkout(produto_id):
     resp = make_response(render_template(
         'checkout.html',
         produto=produto,
-        bonus=listar_bonus_produto(produto_id),
-        bumps=listar_bump_produto(produto_id),
+        ebook_principal=ebook_principal,
+        bonus=listar_ebooks_bonus_produto(produto_id),
+        bumps=listar_ebooks_bump_produto(produto_id),
         pedido_id_inicial=pedido_id_inicial,
         config_cartao=config_cartao,
     ))

@@ -1467,16 +1467,17 @@ def remover_bump_produto(bump_id, produto_id):
 
 def listar_bumps_validos(produto_id, bump_ids):
     """
-    Retorna as linhas de `produto_bump` cujo `id` esteja em `bump_ids` E que pertençam a
-    `produto_id` — nunca confie em preço/nome vindo do cliente, sempre releia do banco a
-    partir só dos ids escolhidos.
+    Retorna os vínculos 'bump' de `ebooks_produto` (com dados do catálogo via JOIN) cujo `id`
+    esteja em `bump_ids` E que pertençam a `produto_id` — nunca confie em preço/nome vindo do
+    cliente, sempre releia do banco a partir só dos ids escolhidos.
     """
     bump_ids = [int(b) for b in (bump_ids or []) if str(b).isdigit()]
     if not bump_ids:
         return []
     placeholders = ','.join(['%s'] * len(bump_ids))
     return db.execute_query(
-        f"SELECT * FROM produto_bump WHERE produto_id = %s AND id IN ({placeholders})",
+        _SELECT_EBOOKS_PRODUTO +
+        f" WHERE ep.produto_id = %s AND ep.papel = 'bump' AND ep.id IN ({placeholders})",
         (produto_id, *bump_ids), fetch_all=True
     ) or []
 
@@ -1526,18 +1527,23 @@ def remover_ebook(ebook_id):
     return db.execute_query("DELETE FROM ebooks WHERE id = %s", (ebook_id,), return_rowcount=True) > 0
 
 
+# Projeção comum de ebooks_produto+ebooks reaproveitada por toda leitura do catálogo vinculado
+# a um produto (listagem admin, checkout) — mantém as mesmas colunas disponíveis em todo lugar
+# que usa "linhas de vínculo", evitando editar N queries em lockstep a cada campo novo.
+_SELECT_EBOOKS_PRODUTO = """
+    SELECT ep.id, ep.produto_id, ep.ebook_id, ep.papel, ep.ordem,
+           ep.preco_original, ep.preco_promocional,
+           e.nome_venda, e.descricao, e.path_arquivo, e.nome_arquivo,
+           e.imagem_grande, e.imagem_pequena
+    FROM ebooks_produto ep JOIN ebooks e ON e.id = ep.ebook_id
+"""
+
+
 def listar_ebooks_produto(produto_id):
     """Lista os e-books vinculados a um produto (com dados do catálogo via JOIN), ordenados
     por papel e ordem."""
     return db.execute_query(
-        """SELECT ep.id, ep.produto_id, ep.ebook_id, ep.papel, ep.ordem,
-                  ep.preco_original, ep.preco_promocional,
-                  e.nome_venda, e.descricao, e.path_arquivo, e.nome_arquivo,
-                  e.imagem_grande, e.imagem_pequena
-           FROM ebooks_produto ep
-           JOIN ebooks e ON e.id = ep.ebook_id
-           WHERE ep.produto_id = %s
-           ORDER BY ep.papel, ep.ordem, ep.id""",
+        _SELECT_EBOOKS_PRODUTO + " WHERE ep.produto_id = %s ORDER BY ep.papel, ep.ordem, ep.id",
         (produto_id,), fetch_all=True
     ) or []
 
@@ -1593,6 +1599,49 @@ def remover_vinculo_ebook_produto(vinculo_id, produto_id):
     ) > 0
 
 
+def get_ebook_principal_produto(produto_id):
+    """Retorna o vínculo 'principal' (com dados do catálogo via JOIN) de um produto, ou None se
+    o produto ainda não tem e-book principal cadastrado — usado pelo checkout web como sinal de
+    'produto não configurado', pra recusar a venda em vez de usar um preço/arquivo arbitrário."""
+    return db.execute_query(
+        _SELECT_EBOOKS_PRODUTO + " WHERE ep.produto_id = %s AND ep.papel = 'principal'",
+        (produto_id,), fetch_one=True
+    )
+
+
+def listar_ebooks_bonus_produto(produto_id):
+    """Lista os e-books vinculados como 'bonus' a um produto (com dados do catálogo via JOIN),
+    ordenados por ordem. Usado pelo checkout web no lugar de listar_bonus_produto."""
+    return db.execute_query(
+        _SELECT_EBOOKS_PRODUTO + " WHERE ep.produto_id = %s AND ep.papel = 'bonus' ORDER BY ep.ordem, ep.id",
+        (produto_id,), fetch_all=True
+    ) or []
+
+
+def listar_ebooks_bump_produto(produto_id):
+    """Lista os e-books vinculados como 'bump' a um produto (com dados do catálogo via JOIN),
+    ordenados por ordem. Usado pelo checkout web no lugar de listar_bump_produto."""
+    return db.execute_query(
+        _SELECT_EBOOKS_PRODUTO + " WHERE ep.produto_id = %s AND ep.papel = 'bump' ORDER BY ep.ordem, ep.id",
+        (produto_id,), fetch_all=True
+    ) or []
+
+
+def resolver_valor_principal_produto(produto_id):
+    """Resolve o e-book principal de um produto e o valor a cobrar por ele. Retorna
+    (ebook_principal, valor) — (None, None) se o produto não tiver vínculo 'principal', sinal
+    pro chamador tratar como 'produto não disponível' em vez de usar um valor arbitrário (a
+    checagem de existência SEMPRE roda antes do override de teste, pra este último não mascarar
+    um produto mal configurado). `CHECKOUT_VALOR_TESTE_PRODUTO_<id>` do ambiente (mecanismo de
+    teste, mantido) só substitui o valor cobrado, nunca dispensa o vínculo existir."""
+    ebook_principal = get_ebook_principal_produto(produto_id)
+    if not ebook_principal:
+        return None, None
+    _teste = os.getenv(f'CHECKOUT_VALOR_TESTE_PRODUTO_{produto_id}')
+    valor = float(_teste) if _teste else float(ebook_principal['preco_promocional'])
+    return ebook_principal, valor
+
+
 def listar_itens_pedido(pedido_id):
     """Lista os itens gravados em `pedido_itens` para um pedido, em ordem de criação."""
     return db.execute_query(
@@ -1610,58 +1659,63 @@ def get_item_pedido(item_id, pedido_id):
     )
 
 
-def criar_itens_pedido_web(pedido_id, produto, valor_principal, bump_rows=None):
+def criar_itens_pedido_web(pedido_id, produto_id, ebook_principal, valor_principal, bump_rows=None):
     """
     Grava em `pedido_itens` o snapshot do que foi incluído no pedido web no momento da
-    compra: uma linha 'principal' (o produto comprado, pelo valor efetivamente cobrado por
-    ele) + uma linha 'bonus' para cada bônus configurado em `produto_bonus` + uma linha
+    compra: uma linha 'principal' (o e-book vinculado como principal do produto, pelo valor
+    efetivamente cobrado) + uma linha 'bonus' para cada e-book vinculado como bônus + uma linha
     'bump' para cada order bump aceito (já validado pelo chamador via listar_bumps_validos).
+    Cada linha grava `ebook_produto_id` (o vínculo de origem em `ebooks_produto`).
 
-    Recebe `produto` (dict já carregado pelo chamador, ex: get_produto_disponivel_web) e
-    `valor_principal` (o valor do produto principal realmente cobrado, sem os bumps) em vez
-    de reconsultar o banco — evita uma query redundante e garante que o valor gravado bate
-    com o que foi de fato cobrado (que pode divergir do produtos.preco por causa do override
-    CHECKOUT_VALOR_TESTE_PRODUTO_<id>).
+    Recebe `ebook_principal` e `valor_principal` já resolvidos pelo chamador (ver
+    resolver_valor_principal_produto) em vez de rebuscar — evita uma query redundante e garante
+    que o valor gravado bate com o que foi de fato cobrado (que pode divergir do
+    preco_promocional por causa do override CHECKOUT_VALOR_TESTE_PRODUTO_<id>). Se
+    `ebook_principal` vier vazio (produto sem vínculo 'principal'), não grava nada e apenas loga
+    um aviso — o chamador (gerar_pix/gerar_cartao) já deve ter recusado o pedido antes de chegar
+    aqui, isso é só uma rede de segurança.
 
-    Se o produto não tiver `url_pdf` configurado, não grava nada e apenas loga um aviso
-    — evita satisfazer a coluna NOT NULL de `path_arquivo` com uma string vazia.
+    Bônus sempre grava valor 0.00, independente do `preco_promocional` cadastrado no vínculo —
+    bônus nunca entra na soma cobrada do cliente (só principal + bumps, ver gerar_pix/
+    gerar_cartao), então gravar aqui o preco_promocional do vínculo inflaria pedido_itens.valor
+    com um valor que o cliente nunca pagou. Bump usa o preco_promocional normalmente, porque
+    esse sim é somado no total cobrado.
 
     Nota para quem for somar `pedido_itens.valor` em relatórios: esta função grava o item
     assim que o lead é criado (estado 1001), antes da confirmação de pagamento — pedidos
     nunca pagos também geram linhas aqui. Para receita real, sempre faça JOIN com
     `pedidos.estado_id` (só conta pago quando estado_id = 1000).
     """
-    if not produto or not produto.get('url_pdf'):
+    if not ebook_principal:
         logger.warning(
-            f"[PEDIDO-ITENS] ⚠️ Produto sem url_pdf configurado — pedido #{pedido_id} "
-            f"ficará sem registro em pedido_itens."
+            f"[PEDIDO-ITENS] ⚠️ Produto #{produto_id} sem e-book principal vinculado — pedido "
+            f"#{pedido_id} ficará sem registro em pedido_itens."
         )
         return
 
-    url_pdf = produto['url_pdf']
-    nome_arquivo = os.path.basename(url_pdf)
     db.execute_query(
-        """INSERT INTO pedido_itens (pedido_id, tipo, nome, path_arquivo, nome_arquivo, valor)
-           VALUES (%s, 'principal', %s, %s, %s, %s)""",
-        (pedido_id, produto['nome'], url_pdf, nome_arquivo, valor_principal)
+        """INSERT INTO pedido_itens (pedido_id, tipo, ebook_produto_id, nome, path_arquivo, nome_arquivo, valor)
+           VALUES (%s, 'principal', %s, %s, %s, %s, %s)""",
+        (pedido_id, ebook_principal['id'], ebook_principal['nome_venda'],
+         ebook_principal['path_arquivo'], ebook_principal['nome_arquivo'], valor_principal)
     )
 
-    bonus_rows = listar_bonus_produto(produto['id'])
+    bonus_rows = listar_ebooks_bonus_produto(produto_id)
     if bonus_rows:
         db.execute_many(
             """INSERT INTO pedido_itens
-                   (pedido_id, tipo, produto_bonus_id, nome, path_arquivo, nome_arquivo, valor)
+                   (pedido_id, tipo, ebook_produto_id, nome, path_arquivo, nome_arquivo, valor)
                VALUES (%s, 'bonus', %s, %s, %s, %s, 0.00)""",
-            [(pedido_id, bonus['id'], bonus['nome'], bonus['path_arquivo'], bonus['nome_arquivo'])
+            [(pedido_id, bonus['id'], bonus['nome_venda'], bonus['path_arquivo'], bonus['nome_arquivo'])
              for bonus in bonus_rows]
         )
 
     if bump_rows:
         db.execute_many(
             """INSERT INTO pedido_itens
-                   (pedido_id, tipo, produto_bump_id, nome, path_arquivo, nome_arquivo, valor)
+                   (pedido_id, tipo, ebook_produto_id, nome, path_arquivo, nome_arquivo, valor)
                VALUES (%s, 'bump', %s, %s, %s, %s, %s)""",
-            [(pedido_id, bump['id'], bump['nome'], bump['path_arquivo'], bump['nome_arquivo'],
+            [(pedido_id, bump['id'], bump['nome_venda'], bump['path_arquivo'], bump['nome_arquivo'],
               bump['preco_promocional'])
              for bump in bump_rows]
         )
