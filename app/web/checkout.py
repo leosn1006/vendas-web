@@ -518,15 +518,51 @@ def reconciliar_cartao(pedido_id: int) -> dict:
     return {'pago': False}
 
 
+def _resolver_caminho_entregavel(nome_arquivo_fisico: str):
+    """
+    Resolve o caminho físico em `storage/entregaveis/` para um nome de arquivo — pasta própria
+    do checkout web, não exposta publicamente pelo nginx (diferente de `static/arquivos/`, que
+    continua pública de propósito para o fluxo WhatsApp, que entrega antes do pagamento).
+
+    Auto-cura: se ninguém copiou o arquivo pra cá ainda (ex: bônus/bump cadastrado recentemente
+    no admin), busca em static/arquivos/ (onde o admin de fato salva o arquivo) e copia na hora,
+    pra não depender de um passo manual que é fácil esquecer. Nunca deixa um erro de I/O
+    (permissão, disco cheio, corrida entre duas requisições copiando ao mesmo tempo) derrubar a
+    requisição — na pior hipótese, cai no (None, 500) abaixo.
+
+    Retorna (caminho, None) em caso de sucesso, ou (None, 404/500) em caso de falha.
+    """
+    caminho = os.path.join(os.path.dirname(__file__), '..', 'storage', 'entregaveis',
+                            nome_arquivo_fisico)
+
+    if os.path.exists(caminho):
+        return caminho, None
+
+    origem = os.path.join(os.path.dirname(__file__), '..', '..', 'static', 'arquivos',
+                          nome_arquivo_fisico)
+    try:
+        if os.path.exists(origem):
+            os.makedirs(os.path.dirname(caminho), exist_ok=True)
+            tmp = f'{caminho}.tmp-{os.getpid()}'
+            shutil.copyfile(origem, tmp)
+            os.replace(tmp, caminho)  # atômico — evita servir arquivo parcialmente copiado
+            logger.info(f'[WEB-CHECKOUT] Copiado automaticamente para storage/entregaveis: {nome_arquivo_fisico}')
+            return caminho, None
+        else:
+            logger.error(f'[WEB-CHECKOUT] Arquivo não encontrado em static/arquivos/: {nome_arquivo_fisico}')
+            return None, 404
+    except OSError as e:
+        logger.error(f'[WEB-CHECKOUT] Falha ao copiar {nome_arquivo_fisico} para storage/entregaveis: {e}')
+        return None, 500
+
+
 def baixar_item_pedido(pedido_id: int, item_id: int):
     """
     Retorna (caminho, nome_arquivo) de um item de `pedido_itens` (principal, bônus ou bump),
     desde que o pedido esteja confirmado como pago (estado_id = 1000).
 
-    Serve a partir de `storage/entregaveis/` — pasta própria do checkout web, não exposta
-    publicamente pelo nginx (diferente de `static/arquivos/`, que continua pública de propósito
-    para o fluxo WhatsApp, que entrega antes do pagamento). Os arquivos usados pelo checkout web
-    são cópias colocadas lá, não os originais.
+    Os arquivos usados pelo checkout web são cópias colocadas em `storage/entregaveis/`, não os
+    originais (ver `_resolver_caminho_entregavel`).
 
     Retorna (None, 403) se o pedido não existe, não pertence ao item, ou não está pago.
     """
@@ -546,32 +582,98 @@ def baixar_item_pedido(pedido_id: int, item_id: int):
     # funciona tanto pra URL completa quanto pra nome puro (caso do produto principal).
     nome_arquivo_fisico = os.path.basename(item['path_arquivo'])
 
-    caminho = os.path.join(os.path.dirname(__file__), '..', 'storage', 'entregaveis',
-                            nome_arquivo_fisico)
-
-    if not os.path.exists(caminho):
-        # Auto-cura: se ninguém copiou o arquivo pra cá ainda (ex: bônus/bump cadastrado
-        # recentemente no admin), busca em static/arquivos/ (onde o admin de fato salva o
-        # arquivo) e copia na hora, pra não depender de um passo manual que é fácil esquecer.
-        # Nunca deixa um erro de I/O (permissão, disco cheio, corrida entre duas requisições
-        # copiando ao mesmo tempo) derrubar a requisição — na pior hipótese, cai no 404 abaixo.
-        origem = os.path.join(os.path.dirname(__file__), '..', '..', 'static', 'arquivos',
-                              nome_arquivo_fisico)
-        try:
-            if os.path.exists(origem):
-                os.makedirs(os.path.dirname(caminho), exist_ok=True)
-                tmp = f'{caminho}.tmp-{os.getpid()}'
-                shutil.copyfile(origem, tmp)
-                os.replace(tmp, caminho)  # atômico — evita servir arquivo parcialmente copiado
-                logger.info(f'[WEB-CHECKOUT] Copiado automaticamente para storage/entregaveis: {nome_arquivo_fisico}')
-            else:
-                logger.error(f'[WEB-CHECKOUT] Arquivo não encontrado em static/arquivos/: {nome_arquivo_fisico}')
-                return None, 404
-        except OSError as e:
-            logger.error(f'[WEB-CHECKOUT] Falha ao copiar {nome_arquivo_fisico} para storage/entregaveis: {e}')
-            return None, 500
+    caminho, erro = _resolver_caminho_entregavel(nome_arquivo_fisico)
+    if erro:
+        return None, erro
 
     return caminho, item['nome_arquivo']
+
+
+def _pedido_pago(pedido) -> bool:
+    """Pago via web (estado_id == 1000) ou via WhatsApp (estado_id == 0) — mesma convenção
+    usada em outras queries de receita do database.py (estado_id IN (0, 1000))."""
+    return pedido['estado_id'] in (0, 1000)
+
+
+def _produto_ja_entregue_whatsapp(pedido) -> bool:
+    """No WhatsApp, o e-book principal só foi de fato entregue por mensagem quando o fluxo de
+    'pedido' roda e manda o arquivo pro cliente — marcado por `data_envio_pedido` (setado junto
+    com estado_id=3, ver fluxo_pedido_dinamico.py). Antes disso (estado 1='clicou no anúncio',
+    2='intro enviada'), nada foi entregue ainda, mesmo que o pedido já tenha guid/pedido_itens
+    criados desde a hora da criação do lead. Pedido pago (estado_id=0) sempre conta como
+    entregue também, como rede de segurança."""
+    return pedido.get('data_envio_pedido') is not None or _pedido_pago(pedido)
+
+
+def resolver_pedido_por_guid(guid: str, item_id: int = None):
+    """
+    Resolve o guid público (link /pedido/<guid>) num pedido, com a regra de acesso por canal:
+
+      - Pedido web (estado_id >= 1000): tudo (principal/bônus/bump) só fica acessível com
+        estado_id == 1000 (pago) — igual sempre funcionou.
+      - Pedido WhatsApp (estado_id < 1000): o principal só fica acessível depois que o produto
+        foi de fato entregue por mensagem (ver _produto_ja_entregue_whatsapp) — um lead recém-
+        criado (acabou de clicar no anúncio) ainda não recebeu nada, mesmo já tendo guid/
+        pedido_itens. Uma vez entregue, o principal fica acessível; só os itens tipo='bonus'
+        exigem estado_id == 0 (pago) — o bônus aparece na lista mesmo bloqueado, como chamariz
+        pro cliente mandar o comprovante.
+
+    Retorna (pedido, item, erro):
+      - guid inexistente:                                 (None, None, 'nao_encontrado')
+      - pedido web não pago:                               (pedido, None, 'aguardando_pagamento')
+      - pedido whatsapp ainda não entregue:                (pedido, None, 'ainda_nao_entregue')
+      - item_id informado mas não pertence ao pedido:      (pedido, None, 'item_invalido')
+      - item bônus do whatsapp sem pagamento confirmado:   (pedido, item, 'aguardando_pagamento')
+      - tudo ok:                                           (pedido, item_ou_None, None)
+
+    Usa get_item_pedido_ebook (não get_item_pedido) para que o item já venha com
+    nome/imagens/arquivo resolvidos a partir do catálogo de e-books — o item retornado aqui é
+    reaproveitado tanto pela tela do leitor quanto pela rota que serve o PDF.
+    """
+    from database import get_pedido_by_guid, get_item_pedido_ebook
+
+    pedido = get_pedido_by_guid(guid)
+    if not pedido:
+        return None, None, 'nao_encontrado'
+
+    canal_web = pedido['estado_id'] >= 1000
+    pago = _pedido_pago(pedido)
+
+    if canal_web and not pago:
+        return pedido, None, 'aguardando_pagamento'
+
+    if not canal_web and not _produto_ja_entregue_whatsapp(pedido):
+        return pedido, None, 'ainda_nao_entregue'
+
+    if item_id is not None:
+        item = get_item_pedido_ebook(item_id, pedido['id'])
+        if not item:
+            return pedido, None, 'item_invalido'
+        if not canal_web and item['tipo'] == 'bonus' and not pago:
+            return pedido, item, 'aguardando_pagamento'
+        return pedido, item, None
+
+    return pedido, None, None
+
+
+def separar_itens_visiveis(pedido, itens):
+    """Separa hero (principal) e outros (bônus/bump) pra tela /pedido/<guid>, marcando cada
+    item de 'outros' com um campo extra 'bloqueado'. Bônus do WhatsApp aparecem sempre, mesmo
+    bloqueados — funcionam como chamariz pro cliente mandar o comprovante de pagamento e
+    liberar. Só é chamada depois que resolver_pedido_por_guid já confirmou que o pedido está
+    pago (web) ou que o produto já foi entregue (whatsapp) — ver ali as regras de acesso."""
+    hero = next((i for i in itens if i['tipo'] == 'principal'), None)
+    canal_web = pedido['estado_id'] >= 1000
+    pago = _pedido_pago(pedido)
+
+    outros = []
+    for item in itens:
+        if item is hero:
+            continue
+        item = dict(item)
+        item['bloqueado'] = (not canal_web and item['tipo'] == 'bonus' and not pago)
+        outros.append(item)
+    return hero, outros
 
 
 def entregar_pdf(pedido_id: int, bonus: bool = False):

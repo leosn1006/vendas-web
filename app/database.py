@@ -2,6 +2,7 @@
 Módulo de conexão com o banco de dados MySQL.
 """
 import os
+import secrets
 import time
 import mysql.connector
 from mysql.connector import Error, IntegrityError
@@ -252,9 +253,12 @@ def criar_pedido(pedido: Pedido):
     dns_origem = pedido.get('dns_origem')
 
 
+    guid = secrets.token_urlsafe(6)
+
     query = """
         INSERT INTO pedidos (
              produto_id
+           , guid
            , valor_pago
            , estado_id
            , gclid
@@ -295,6 +299,7 @@ def criar_pedido(pedido: Pedido):
            , %s
            , %s
            , %s
+           , %s
            , CURRENT_TIMESTAMP
            , %s
            , %s
@@ -326,6 +331,7 @@ def criar_pedido(pedido: Pedido):
     """
     pedido_id = db.execute_query(query, (
              produto_id
+           , guid
            , valor_pago
            , estado_id
            , gclid
@@ -357,6 +363,21 @@ def criar_pedido(pedido: Pedido):
            , data_agendamento_pagamento
            , dns_origem
         ))
+
+    # Cria já na origem o registro de itens do pedido (principal + bônus do produto, sem
+    # bump — bump é conceito só do checkout web), pra habilitar a tela /pedido/<guid> assim que
+    # o produto for de fato entregue por mensagem (o principal só libera na tela depois disso,
+    # e o bônus só quando o pedido for confirmado como pago — ver resolver_pedido_por_guid /
+    # separar_itens_visiveis em web/checkout.py). Envolto em try/except (igual às chamadas
+    # equivalentes em web/checkout.py gerar_pix/gerar_cartao) porque isso é só um snapshot
+    # informativo — uma falha aqui não pode derrubar a criação do lead, que é um caminho de
+    # muito mais tráfego (todo clique de anúncio) e não deveria ficar acoplado a essa feature.
+    try:
+        ebook_principal = get_ebook_principal_produto(produto_id)
+        criar_itens_pedido_web(pedido_id, produto_id, ebook_principal, valor_pago)
+    except Exception as e:
+        logger.error(f"[CRIAR-PEDIDO] Erro ao gravar itens do pedido #{pedido_id}: {e}")
+
     return pedido_id
 
 
@@ -647,6 +668,18 @@ def atualizar_pedido_com_comprovante(pedido_id, path_comprovante):
     db.execute_query(query, (path_comprovante, pedido_id))
     return pedido_id
 
+def _sincronizar_valor_principal_pedido_itens(pedido_id: int, valor_pago: float) -> None:
+    """Atualiza pedido_itens.valor do item 'principal' pro valor efetivamente pago, quando um
+    pedido do WhatsApp é confirmado como pago. Sem isso, o valor ficaria congelado no 0.00
+    gravado em criar_pedido() (na criação do lead, antes de qualquer pagamento) pra sempre —
+    subestimando qualquer relatório futuro que somar pedido_itens.valor. Não-op se o pedido não
+    tiver item 'principal' (produto ainda não migrado pro catálogo de e-books)."""
+    db.execute_query(
+        "UPDATE pedido_itens SET valor = %s WHERE pedido_id = %s AND tipo = 'principal'",
+        (valor_pago, pedido_id)
+    )
+
+
 # atualizar pedido com o valor pago e estado de pago
 def atualizar_pedido_com_pagamento(pedido_id, valor_pago, nome_banco, nome_pagador, data_pagamento):
     """
@@ -664,6 +697,7 @@ def atualizar_pedido_com_pagamento(pedido_id, valor_pago, nome_banco, nome_pagad
     """
     query = "UPDATE pedidos SET valor_pago = %s, nome_banco = %s, nome_pagador = %s, data_pagamento = %s, estado_id = 0 WHERE id = %s"
     db.execute_query(query, (valor_pago, nome_banco, nome_pagador, data_pagamento, pedido_id))
+    _sincronizar_valor_principal_pedido_itens(pedido_id, valor_pago)
     return pedido_id
 
 def atualizar_pedido_com_interesse_produto(pedido_id, interesse_produto):
@@ -1659,6 +1693,53 @@ def get_item_pedido(item_id, pedido_id):
     )
 
 
+def get_pedido_by_guid(guid: str):
+    """Retorna o pedido pelo guid público (link /pedido/<guid>), ou None se não existir. Não
+    filtra por estado_id aqui — quem chama decide o que mostrar (pago vs aguardando)."""
+    return db.execute_query(
+        "SELECT * FROM pedidos WHERE guid = %s", (guid,), fetch_one=True
+    )
+
+
+# Nome/imagens/descrição/arquivo de cada item vêm do catálogo (ebooks/ebooks_produto), não do
+# snapshot congelado em pedido_itens no momento da compra — assim a página /pedido/<guid>
+# sempre mostra a versão atual cadastrada no catálogo (ex: se o admin corrigir um PDF ou
+# renomear um e-book depois da venda). COALESCE cai pro snapshot só para itens antigos
+# (anteriores à migration 061) que têm ebook_produto_id NULL.
+_SELECT_ITEM_PEDIDO_EBOOK = """
+    SELECT pi.id, pi.pedido_id, pi.tipo,
+           COALESCE(e.nome_venda, pi.nome) AS nome,
+           COALESCE(e.path_arquivo, pi.path_arquivo) AS path_arquivo,
+           COALESCE(e.nome_arquivo, pi.nome_arquivo) AS nome_arquivo,
+           e.descricao, e.imagem_grande, e.imagem_pequena
+    FROM pedido_itens pi
+    LEFT JOIN ebooks_produto ep ON ep.id = pi.ebook_produto_id
+    LEFT JOIN ebooks e ON e.id = ep.ebook_id
+"""
+
+
+def listar_itens_pedido_ebook(pedido_id: int):
+    """Lista os itens do pedido para a página /pedido/<guid>, com nome/imagens/descrição/
+    arquivo vindos do catálogo de e-books (ver nota de _SELECT_ITEM_PEDIDO_EBOOK). Item
+    'principal' vem primeiro (hero da página)."""
+    return db.execute_query(
+        _SELECT_ITEM_PEDIDO_EBOOK +
+        " WHERE pi.pedido_id = %s ORDER BY FIELD(pi.tipo, 'principal', 'bonus', 'bump'), pi.id",
+        (pedido_id,), fetch_all=True
+    ) or []
+
+
+def get_item_pedido_ebook(item_id: int, pedido_id: int):
+    """Como get_item_pedido, mas com nome/imagens/descrição/arquivo vindos do catálogo de
+    e-books (ver nota de _SELECT_ITEM_PEDIDO_EBOOK). Usada tanto para checar se o item
+    pertence ao pedido quanto para servir o arquivo (o path_arquivo já vem resolvido do
+    catálogo)."""
+    return db.execute_query(
+        _SELECT_ITEM_PEDIDO_EBOOK + " WHERE pi.id = %s AND pi.pedido_id = %s",
+        (item_id, pedido_id), fetch_one=True
+    )
+
+
 def criar_itens_pedido_web(pedido_id, produto_id, ebook_principal, valor_principal, bump_rows=None):
     """
     Grava em `pedido_itens` o snapshot do que foi incluído no pedido web no momento da
@@ -1756,6 +1837,7 @@ def acertar_valor_pedido(pedido_id: int, valor_pago: float):
         "UPDATE pedidos SET valor_pago = %s, estado_id = 0, data_pagamento = NOW() WHERE id = %s",
         (valor_pago, pedido_id)
     )
+    _sincronizar_valor_principal_pedido_itens(pedido_id, valor_pago)
 
 
 # ============================================================
@@ -1883,15 +1965,16 @@ def criar_pedido_web_inicial(produto_id: int, estado_id: int, dns_origem: str = 
     (fluxo WhatsApp, que cria o pedido no clique do botão, antes de qualquer conversa).
     Retorna o id.
     """
+    guid = secrets.token_urlsafe(6)
     return db.execute_query(
         """INSERT INTO pedidos
-             (produto_id, valor_pago, estado_id, gclid,
+             (produto_id, guid, valor_pago, estado_id, gclid,
               data_ultima_atualizacao, data_contato_site,
               dns_origem, campaignid, adgroupid, creative, matchtype, device, placement, video_id)
-           VALUES (%s, 0.0, %s, %s,
+           VALUES (%s, %s, 0.0, %s, %s,
                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
                    %s, %s, %s, %s, %s, %s, %s, %s)""",
-        (produto_id, estado_id, gclid or '',
+        (produto_id, guid, estado_id, gclid or '',
          dns_origem or '', campaignid or '', adgroupid or '', creative or '',
          matchtype or '', device or '', placement or '', video_id or '')
     )
@@ -1962,19 +2045,20 @@ def criar_pedido_web_unificado(produto_id: int, phone_number_id: str,
                                video_id: str = '') -> int:
     """Cria pedido em `pedidos` com estado 1001 (Pedido web criado). Retorna o id."""
     _contact_phone = contact_phone or ''
+    guid = secrets.token_urlsafe(6)
     return db.execute_query(
         """INSERT INTO pedidos
-             (produto_id, valor_pago, estado_id, gclid,
+             (produto_id, guid, valor_pago, estado_id, gclid,
               data_ultima_atualizacao, data_contato_site, data_pedido,
               phone_number_id, contact_phone, contact_name, contact_to, email,
                 dns_origem,
               campaignid, adgroupid, creative, matchtype, device, placement, video_id)
-           VALUES (%s, 0.0, 1001, %s,
+           VALUES (%s, %s, 0.0, 1001, %s,
                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
                    %s, %s, %s, %s, %s,
                     %s,
                    %s, %s, %s, %s, %s, %s, %s)""",
-        (produto_id, gclid or '',
+        (produto_id, guid, gclid or '',
          phone_number_id or '', _contact_phone, contact_name or '', _contact_phone or None, email or '',
             dns_origem or '',
          campaignid or '', adgroupid or '', creative or '',

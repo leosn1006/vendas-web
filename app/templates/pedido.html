@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meus livros</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --verde: #4a7c59;
+            --cinza-bg: #f5f5f5;
+            --borda: #ddd;
+            --texto: #222;
+            --sub: #666;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--cinza-bg);
+            color: var(--texto);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 24px 16px 48px;
+        }
+
+        header.topo { margin-bottom: 24px; }
+        .topo .marca { font-size: 14px; font-weight: 900; color: var(--verde); margin-bottom: 12px; }
+        .topo h1 { font-size: 22px; margin-bottom: 4px; }
+        .topo p { font-size: 15px; color: var(--sub); }
+
+        .card-hero {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--borda);
+            margin-bottom: 28px;
+        }
+
+        .capa-hero {
+            width: 100%;
+            aspect-ratio: 3 / 4;
+            border-radius: 10px;
+            object-fit: cover;
+            background: var(--cinza-bg);
+            margin-bottom: 16px;
+            display: block;
+        }
+        .capa-hero.placeholder {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 48px;
+        }
+
+        .titulo-hero { font-size: 19px; font-weight: 700; margin-bottom: 6px; }
+        .tag-seu-livro { font-size: 13px; color: var(--sub); margin-bottom: 18px; }
+
+        .btn-ler {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background: var(--verde);
+            color: #fff;
+            font-weight: 700;
+            font-size: 16px;
+            padding: 14px;
+            border-radius: 10px;
+            text-decoration: none;
+        }
+
+        .secao-outros { margin-top: 8px; }
+        .secao-outros h2 {
+            font-size: 15px;
+            color: var(--sub);
+            margin-bottom: 14px;
+            font-weight: 700;
+        }
+
+        .lista-outros {
+            display: flex;
+            gap: 14px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .item-outro {
+            flex: 0 0 auto;
+            width: 110px;
+            text-decoration: none;
+            color: var(--texto);
+        }
+        .capa-outro {
+            width: 110px;
+            aspect-ratio: 3 / 4;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #fff;
+            border: 1px solid var(--borda);
+            margin-bottom: 8px;
+            display: block;
+        }
+        .capa-outro.placeholder {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px;
+        }
+        .titulo-outro { font-size: 13px; line-height: 1.3; }
+
+        .capa-outro-wrap { position: relative; }
+        .item-outro.bloqueado .capa-outro {
+            filter: grayscale(1);
+            opacity: .55;
+        }
+        .badge-cadeado {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(0,0,0,.6);
+            color: #fff;
+            font-size: 13px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .legenda-bloqueado {
+            font-size: 11px;
+            color: var(--sub);
+            margin-top: 4px;
+            line-height: 1.3;
+        }
+
+        .vazio { text-align: center; color: var(--sub); padding: 32px 0; }
+
+        /* ── RESPONSIVO — desktop (≥1024px). Mobile-first: tudo acima é o layout base
+           (celular). Mesma convenção usada em checkout.html. ── */
+        @media (min-width: 1024px) {
+            .container { max-width: 960px; padding: 40px 24px 64px; }
+
+            .topo h1 { font-size: 28px; }
+            .topo p { font-size: 16px; }
+
+            .card-hero {
+                display: flex;
+                gap: 32px;
+                padding: 28px;
+            }
+            .capa-hero {
+                width: 260px;
+                flex-shrink: 0;
+                margin-bottom: 0;
+            }
+            .hero-conteudo {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+            .titulo-hero { font-size: 26px; }
+            .tag-seu-livro { font-size: 14px; }
+            .btn-ler { max-width: 280px; }
+
+            .lista-outros {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                overflow-x: visible;
+            }
+            .item-outro { width: auto; }
+            .capa-outro { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="topo">
+            <div class="marca">📚 MEUS LIVROS</div>
+            <h1>Olá, {{ primeiro_nome }}!</h1>
+            <p>Seus livros estão aqui.</p>
+        </header>
+
+        {% if hero %}
+        <div class="card-hero">
+            {% if hero.imagem_grande %}
+            <img class="capa-hero" src="{{ url_for('static', filename='images/' + hero.imagem_grande) }}" alt="{{ hero.nome }}">
+            {% else %}
+            <div class="capa-hero placeholder">📖</div>
+            {% endif %}
+            <div class="hero-conteudo">
+                <div class="titulo-hero">{{ hero.nome }}</div>
+                <div class="tag-seu-livro">📖 Seu livro</div>
+                <a class="btn-ler" href="/pedido/{{ guid }}/ler/{{ hero.id }}">📖 LER O LIVRO</a>
+            </div>
+        </div>
+        {% else %}
+        <div class="vazio">Nenhum item encontrado neste pedido.</div>
+        {% endif %}
+
+        {% if outros %}
+        <div class="secao-outros">
+            <h2>Seus outros produtos adquiridos</h2>
+            <div class="lista-outros">
+                {% for item in outros %}
+                <a class="item-outro{% if item.bloqueado %} bloqueado{% endif %}" href="/pedido/{{ guid }}/ler/{{ item.id }}">
+                    <div class="capa-outro-wrap">
+                        {% if item.imagem_pequena %}
+                        <img class="capa-outro" src="{{ url_for('static', filename='images/' + item.imagem_pequena) }}" alt="{{ item.nome }}">
+                        {% else %}
+                        <div class="capa-outro placeholder">📖</div>
+                        {% endif %}
+                        {% if item.bloqueado %}<span class="badge-cadeado">🔒</span>{% endif %}
+                    </div>
+                    <div class="titulo-outro">{{ item.nome }}</div>
+                    {% if item.bloqueado %}<div class="legenda-bloqueado">Libera após confirmar o pagamento</div>{% endif %}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

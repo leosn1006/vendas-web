@@ -143,6 +143,62 @@ def baixar_item(pedido_id, item_id):
     return send_file(caminho, as_attachment=True, download_name=arquivo)
 
 
+@web_bp.get('/pedido/<guid>')
+def pedido_publico(guid):
+    from web.checkout import resolver_pedido_por_guid, separar_itens_visiveis
+    from database import listar_itens_pedido_ebook
+
+    pedido, _, erro = resolver_pedido_por_guid(guid)
+    if erro == 'nao_encontrado':
+        return render_template('pedido_indisponivel.html', motivo='nao_encontrado'), 404
+    if erro == 'aguardando_pagamento':
+        return render_template('pedido_indisponivel.html', motivo='aguardando_pagamento', canal='web', pedido=pedido)
+    if erro == 'ainda_nao_entregue':
+        return render_template('pedido_indisponivel.html', motivo='ainda_nao_entregue', pedido=pedido)
+
+    itens = listar_itens_pedido_ebook(pedido['id'])
+    hero, outros = separar_itens_visiveis(pedido, itens)
+    primeiro_nome = (pedido.get('contact_name') or '').strip().split(' ')[0] or 'cliente'
+
+    return render_template('pedido.html', guid=guid, pedido=pedido,
+                           primeiro_nome=primeiro_nome, hero=hero, outros=outros)
+
+
+@web_bp.get('/pedido/<guid>/ler/<int:item_id>')
+def pedido_leitor(guid, item_id):
+    from web.checkout import resolver_pedido_por_guid
+
+    pedido, item, erro = resolver_pedido_por_guid(guid, item_id=item_id)
+    if erro in ('nao_encontrado', 'item_invalido'):
+        return render_template('pedido_indisponivel.html', motivo='nao_encontrado'), 404
+    if erro == 'aguardando_pagamento':
+        canal = 'web' if pedido['estado_id'] >= 1000 else 'whatsapp'
+        return render_template('pedido_indisponivel.html', motivo='aguardando_pagamento', canal=canal, pedido=pedido)
+    if erro == 'ainda_nao_entregue':
+        return render_template('pedido_indisponivel.html', motivo='ainda_nao_entregue', pedido=pedido)
+
+    return render_template('pedido_leitor.html', guid=guid, item=item)
+
+
+@web_bp.get('/pedido/<guid>/arquivo/<int:item_id>')
+def pedido_arquivo(guid, item_id):
+    import os
+    from web.checkout import resolver_pedido_por_guid, _resolver_caminho_entregavel
+
+    pedido, item, erro = resolver_pedido_por_guid(guid, item_id=item_id)
+    if erro:
+        return jsonify({'error': 'Pedido ou item indisponível'}), 404
+
+    nome_arquivo_fisico = os.path.basename(item['path_arquivo'])
+    caminho, erro_arquivo = _resolver_caminho_entregavel(nome_arquivo_fisico)
+    if erro_arquivo:
+        return jsonify({'error': 'Arquivo indisponível'}), erro_arquivo
+
+    inline = request.args.get('download') != '1'
+    return send_file(caminho, mimetype='application/pdf',
+                     as_attachment=not inline, download_name=item['nome_arquivo'])
+
+
 @web_bp.get('/api/v1/produto/pdf/<int:pedido_id>')
 def servir_pdf(pedido_id):
     from web.checkout import entregar_pdf
