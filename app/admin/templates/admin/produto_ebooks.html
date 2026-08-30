@@ -1,0 +1,122 @@
+{% extends "admin/base.html" %}
+{% block title %}E-books — {{ produto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">E-books do produto</h1>
+        <p class="page-subtitle">{{ produto.nome }} — vincule e-books já cadastrados no <a href="{{ url_for('admin.listar_ebooks_view') }}">catálogo</a> como principal, bônus ou order bump</p>
+    </div>
+</div>
+
+<div class="alert alert-warning" style="margin-bottom: 20px;">
+    ⚠️ Cadastro apenas — o WhatsApp e o checkout ainda entregam pelos campos antigos do produto.
+    Vínculos feitos aqui ainda não mudam o que é enviado ao cliente.
+</div>
+
+<div class="card">
+    {% if vinculos %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Papel</th>
+                    <th>Ordem</th>
+                    <th>Nome de venda</th>
+                    <th>Arquivo</th>
+                    <th>Preço original</th>
+                    <th>Preço promocional</th>
+                    {% if current_user.is_admin() %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vinculos %}
+                <tr>
+                    <td style="font-size: 13px;">
+                        {% if v.papel == 'principal' %}🏆 Principal
+                        {% elif v.papel == 'bonus' %}🎁 Bônus
+                        {% else %}🛒 Order bump{% endif %}
+                    </td>
+                    <td style="color: var(--muted); font-family: var(--mono); font-size: 13px; width: 60px;">
+                        {{ v.ordem }}
+                    </td>
+                    <td style="font-size: 14px;">{{ v.nome_venda }}</td>
+                    <td style="font-family: var(--mono); font-size: 13px; color: var(--muted);">{{ v.path_arquivo }}</td>
+                    <td style="font-size: 13px;">R$ {{ '%.2f'|format(v.preco_original) }}</td>
+                    <td style="font-size: 13px;">R$ {{ '%.2f'|format(v.preco_promocional) }}</td>
+                    {% if current_user.is_admin() %}
+                    <td style="text-align: right; white-space: nowrap;">
+                        <a href="{{ url_for('admin.editar_vinculo_ebook_produto', produto_id=produto.id, vinculo_id=v.id) }}"
+                           class="btn btn-ghost btn-sm">Editar</a>
+                        <form method="POST" style="display: inline;"
+                              action="{{ url_for('admin.remover_vinculo_ebook_produto_view', produto_id=produto.id, vinculo_id=v.id) }}"
+                              onsubmit="return confirm('Remover este vínculo?')">
+                            <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--muted); font-size: 14px; padding: 8px 0 20px;">
+        Nenhum e-book vinculado a este produto ainda.
+    </p>
+    {% endif %}
+
+    {% if current_user.is_admin() %}
+    <div style="margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border);">
+        <p style="font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+                  color: var(--muted); font-family: var(--mono); margin-bottom: 12px;">
+            Vincular e-book do catálogo
+        </p>
+        {% if catalogo %}
+        <form method="POST"
+              action="{{ url_for('admin.vincular_ebook_produto_view', produto_id=produto.id) }}"
+              class="form-grid">
+            <div class="form-group">
+                <label for="ebook_id">E-book</label>
+                <select id="ebook_id" name="ebook_id" required>
+                    <option value="">— selecione —</option>
+                    {% for e in catalogo %}
+                    <option value="{{ e.id }}">{{ e.nome_venda }} ({{ e.path_arquivo }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="papel">Papel</label>
+                <select id="papel" name="papel" required>
+                    <option value="principal">Principal</option>
+                    <option value="bonus">Bônus</option>
+                    <option value="bump">Order bump</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="preco_original">Preço original (R$)</label>
+                <input type="number" id="preco_original" name="preco_original" min="0" step="0.01" value="0.00" required>
+            </div>
+            <div class="form-group">
+                <label for="preco_promocional">Preço promocional (R$)</label>
+                <input type="number" id="preco_promocional" name="preco_promocional" min="0" step="0.01" value="0.00" required>
+                <small class="form-text text-muted">Igual ao original se não houver promoção. Use 0,00 pra bônus.</small>
+            </div>
+            <div class="form-group">
+                <label for="ordem">Ordem</label>
+                <input type="number" id="ordem" name="ordem" min="1" max="99" value="1">
+                <small class="form-text text-muted">Usado só pra bônus/order bump.</small>
+            </div>
+            <div class="form-actions" style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-primary">+ Vincular</button>
+            </div>
+        </form>
+        {% else %}
+        <p style="color: var(--muted); font-size: 14px;">
+            Nenhum e-book no catálogo ainda. <a href="{{ url_for('admin.listar_ebooks_view') }}">Cadastre um primeiro</a>.
+        </p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -21,6 +21,9 @@ from database import (db,
     listar_bonus_produto, adicionar_bonus_produto, remover_bonus_produto,
     listar_bump_produto, get_bump_produto,
     adicionar_bump_produto, atualizar_bump_produto, remover_bump_produto,
+    listar_ebooks, get_ebook, criar_ebook, atualizar_ebook, remover_ebook,
+    listar_ebooks_produto, vincular_ebook_produto, atualizar_vinculo_ebook_produto,
+    get_vinculo_ebook_produto, remover_vinculo_ebook_produto,
     get_pedido, get_ultimo_pedido_by_phone, salvar_mensagem_pedido, listar_itens_pedido,
     buscar_todas_mensagens_pedido,
     pedido_dentro_da_janela_24h, buscar_data_ultima_mensagem_recebida_pedido,
@@ -1602,6 +1605,178 @@ def remover_bump_produto_view(produto_id, bump_id):
         logger.error(f"[ADMIN] ❌ Erro ao remover order bump: {e}")
         flash(f'Erro ao remover order bump: {e}', 'danger')
     return redirect(url_for('admin.produto_bumps', produto_id=produto_id))
+
+
+# ============================================================
+# Catálogo de e-books (base única) — gestão global
+# ============================================================
+
+@admin_bp.route('/ebooks')
+@requer_login
+def listar_ebooks_view():
+    return render_template(
+        'admin/ebooks.html', ebooks=listar_ebooks(),
+        pdfs=_listar_arquivos('arquivos'), imagens=_listar_arquivos('images'),
+    )
+
+
+@admin_bp.route('/ebooks/adicionar', methods=['POST'])
+@requer_admin
+def adicionar_ebook_view():
+    nome_venda = request.form.get('nome_venda', '').strip()
+    path_arquivo = request.form.get('path_arquivo', '').strip()
+    if not nome_venda or not path_arquivo:
+        flash('Informe nome de venda e arquivo do e-book.', 'warning')
+        return redirect(url_for('admin.listar_ebooks_view'))
+    try:
+        criar_ebook(
+            nome_venda, request.form.get('descricao'),
+            path_arquivo, request.form.get('nome_arquivo', '').strip() or path_arquivo,
+            imagem_grande=_nome_arquivo_imagem(request.form.get('imagem_grande')),
+            imagem_pequena=_nome_arquivo_imagem(request.form.get('imagem_pequena')),
+        )
+        flash('E-book adicionado ao catálogo!', 'success')
+        logger.info(f"[ADMIN] ✅ E-book '{nome_venda}' adicionado ao catálogo por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao adicionar e-book: {e}")
+        flash(f'Erro ao adicionar e-book: {e}', 'danger')
+    return redirect(url_for('admin.listar_ebooks_view'))
+
+
+@admin_bp.route('/ebooks/<int:ebook_id>/editar', methods=['GET', 'POST'])
+@requer_admin
+def editar_ebook(ebook_id):
+    ebook = get_ebook(ebook_id)
+    if not ebook:
+        flash('E-book não encontrado.', 'danger')
+        return redirect(url_for('admin.listar_ebooks_view'))
+
+    if request.method == 'POST':
+        try:
+            path_arquivo = request.form['path_arquivo'].strip()
+            atualizar_ebook(
+                ebook_id,
+                nome_venda=request.form['nome_venda'].strip(),
+                descricao=request.form.get('descricao'),
+                path_arquivo=path_arquivo,
+                nome_arquivo=request.form.get('nome_arquivo', '').strip() or path_arquivo,
+                imagem_grande=_nome_arquivo_imagem(request.form.get('imagem_grande')),
+                imagem_pequena=_nome_arquivo_imagem(request.form.get('imagem_pequena')),
+            )
+            flash('E-book atualizado com sucesso!', 'success')
+            logger.info(f"[ADMIN] ✅ E-book #{ebook_id} atualizado por {current_user.email}")
+            return redirect(url_for('admin.listar_ebooks_view'))
+        except Exception as e:
+            logger.error(f"[ADMIN] ❌ Erro ao atualizar e-book: {e}")
+            flash(f'Erro ao salvar: {e}', 'danger')
+
+    return render_template(
+        'admin/ebook_editar.html', ebook=ebook,
+        pdfs=_listar_arquivos('arquivos'), imagens=_listar_arquivos('images'),
+    )
+
+
+@admin_bp.route('/ebooks/<int:ebook_id>/remover', methods=['POST'])
+@requer_admin
+def remover_ebook_view(ebook_id):
+    try:
+        if remover_ebook(ebook_id):
+            flash('E-book removido do catálogo.', 'success')
+            logger.info(f"[ADMIN] ✅ E-book #{ebook_id} removido do catálogo por {current_user.email}")
+        else:
+            flash('Este e-book já não existia mais no catálogo.', 'warning')
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao remover e-book: {e}")
+        flash('Erro ao remover e-book: verifique se ele ainda está vinculado a algum produto.', 'danger')
+    return redirect(url_for('admin.listar_ebooks_view'))
+
+
+# ============================================================
+# E-books por produto (vínculo com o catálogo)
+# ============================================================
+
+@admin_bp.route('/produto/<int:produto_id>/ebooks')
+@requer_login
+def produto_ebooks(produto_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+    return render_template(
+        'admin/produto_ebooks.html', produto=produto,
+        vinculos=listar_ebooks_produto(produto_id), catalogo=listar_ebooks(),
+    )
+
+
+@admin_bp.route('/produto/<int:produto_id>/ebooks/vincular', methods=['POST'])
+@requer_admin
+def vincular_ebook_produto_view(produto_id):
+    ebook_id = request.form.get('ebook_id', type=int)
+    papel = request.form.get('papel')
+    if not ebook_id or papel not in ('principal', 'bonus', 'bump'):
+        flash('Escolha um e-book do catálogo e um papel válido.', 'warning')
+        return redirect(url_for('admin.produto_ebooks', produto_id=produto_id))
+    try:
+        vincular_ebook_produto(
+            produto_id, ebook_id, papel,
+            preco_original=float(request.form['preco_original']),
+            preco_promocional=float(request.form['preco_promocional']),
+            ordem=int(request.form.get('ordem') or 1),
+        )
+        flash('E-book vinculado ao produto!', 'success')
+        logger.info(f"[ADMIN] ✅ E-book #{ebook_id} vinculado ({papel}) ao produto #{produto_id} por {current_user.email}")
+    except ValueError as e:
+        flash(str(e), 'warning')
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao vincular e-book: {e}")
+        flash(f'Erro ao vincular e-book: {e}', 'danger')
+    return redirect(url_for('admin.produto_ebooks', produto_id=produto_id))
+
+
+@admin_bp.route('/produto/<int:produto_id>/ebooks/<int:vinculo_id>/editar', methods=['GET', 'POST'])
+@requer_admin
+def editar_vinculo_ebook_produto(produto_id, vinculo_id):
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    vinculo = get_vinculo_ebook_produto(vinculo_id, produto_id)
+    if not vinculo:
+        flash('Vínculo não encontrado.', 'danger')
+        return redirect(url_for('admin.produto_ebooks', produto_id=produto_id))
+
+    if request.method == 'POST':
+        try:
+            atualizar_vinculo_ebook_produto(
+                vinculo_id, produto_id,
+                preco_original=float(request.form['preco_original']),
+                preco_promocional=float(request.form['preco_promocional']),
+                ordem=int(request.form.get('ordem') or 1),
+            )
+            flash('Vínculo atualizado com sucesso!', 'success')
+            logger.info(f"[ADMIN] ✅ Vínculo de e-book #{vinculo_id} atualizado por {current_user.email}")
+            return redirect(url_for('admin.produto_ebooks', produto_id=produto_id))
+        except Exception as e:
+            logger.error(f"[ADMIN] ❌ Erro ao atualizar vínculo de e-book: {e}")
+            flash(f'Erro ao salvar: {e}', 'danger')
+
+    return render_template('admin/produto_ebook_editar.html', produto=produto, vinculo=vinculo)
+
+
+@admin_bp.route('/produto/<int:produto_id>/ebooks/<int:vinculo_id>/remover', methods=['POST'])
+@requer_admin
+def remover_vinculo_ebook_produto_view(produto_id, vinculo_id):
+    try:
+        if remover_vinculo_ebook_produto(vinculo_id, produto_id):
+            flash('Vínculo removido.', 'success')
+            logger.info(f"[ADMIN] ✅ Vínculo de e-book #{vinculo_id} removido do produto #{produto_id} por {current_user.email}")
+        else:
+            flash('Este vínculo já não existia mais.', 'warning')
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao remover vínculo de e-book: {e}")
+        flash(f'Erro ao remover vínculo: {e}', 'danger')
+    return redirect(url_for('admin.produto_ebooks', produto_id=produto_id))
 
 
 # ============================================================

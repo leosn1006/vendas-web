@@ -1481,6 +1481,118 @@ def listar_bumps_validos(produto_id, bump_ids):
     ) or []
 
 
+# ============================================================
+# Catálogo de e-books (base única) e vínculo com produto
+# ============================================================
+
+def listar_ebooks():
+    """Lista todos os e-books do catálogo, ordenados por nome de venda."""
+    return db.execute_query(
+        "SELECT * FROM ebooks ORDER BY nome_venda", fetch_all=True
+    ) or []
+
+
+def get_ebook(ebook_id):
+    """Retorna um e-book do catálogo pelo ID."""
+    return db.execute_query(
+        "SELECT * FROM ebooks WHERE id = %s", (ebook_id,), fetch_one=True
+    )
+
+
+def criar_ebook(nome_venda, descricao, path_arquivo, nome_arquivo, imagem_grande=None, imagem_pequena=None):
+    """Cria um e-book no catálogo. Retorna o ID criado."""
+    return db.execute_query(
+        """INSERT INTO ebooks (nome_venda, descricao, path_arquivo, nome_arquivo, imagem_grande, imagem_pequena)
+           VALUES (%s, %s, %s, %s, %s, %s)""",
+        (nome_venda, descricao or None, path_arquivo, nome_arquivo, imagem_grande or None, imagem_pequena or None)
+    )
+
+
+def atualizar_ebook(ebook_id, nome_venda, descricao, path_arquivo, nome_arquivo, imagem_grande=None, imagem_pequena=None):
+    """Atualiza um e-book existente do catálogo pelo ID."""
+    db.execute_query(
+        """UPDATE ebooks SET nome_venda=%s, descricao=%s, path_arquivo=%s, nome_arquivo=%s,
+               imagem_grande=%s, imagem_pequena=%s
+           WHERE id=%s""",
+        (nome_venda, descricao or None, path_arquivo, nome_arquivo, imagem_grande or None, imagem_pequena or None, ebook_id)
+    )
+
+
+def remover_ebook(ebook_id):
+    """Remove um e-book do catálogo. Retorna True se algo foi removido (False se o id já não
+    existia mais — evita reportar sucesso num clique duplicado ou link obsoleto). Falha (FK) se
+    ainda houver vínculo em ebooks_produto — o chamador deve tratar a exceção e orientar a
+    remover os vínculos primeiro."""
+    return db.execute_query("DELETE FROM ebooks WHERE id = %s", (ebook_id,), return_rowcount=True) > 0
+
+
+def listar_ebooks_produto(produto_id):
+    """Lista os e-books vinculados a um produto (com dados do catálogo via JOIN), ordenados
+    por papel e ordem."""
+    return db.execute_query(
+        """SELECT ep.id, ep.produto_id, ep.ebook_id, ep.papel, ep.ordem,
+                  ep.preco_original, ep.preco_promocional,
+                  e.nome_venda, e.descricao, e.path_arquivo, e.nome_arquivo,
+                  e.imagem_grande, e.imagem_pequena
+           FROM ebooks_produto ep
+           JOIN ebooks e ON e.id = ep.ebook_id
+           WHERE ep.produto_id = %s
+           ORDER BY ep.papel, ep.ordem, ep.id""",
+        (produto_id,), fetch_all=True
+    ) or []
+
+
+def vincular_ebook_produto(produto_id, ebook_id, papel, preco_original, preco_promocional, ordem=1):
+    """Vincula um e-book do catálogo a um produto com um papel (principal/bonus/bump) e o preço
+    que esse vínculo tem (o mesmo e-book pode valer preços diferentes em produtos diferentes).
+    Só permite um 'principal' por produto — a unique key uk_ebooks_produto_principal garante isso
+    no banco (sem essa garantia, dois cliques quase simultâneos poderiam passar por um SELECT de
+    checagem antes de qualquer INSERT confirmar); levanta ValueError com mensagem amigável se
+    já existir um principal pro produto."""
+    try:
+        return db.execute_query(
+            """INSERT INTO ebooks_produto (produto_id, ebook_id, papel, preco_original, preco_promocional, ordem)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (produto_id, ebook_id, papel, preco_original, preco_promocional, ordem)
+        )
+    except IntegrityError as e:
+        if e.errno == 1062 and 'uk_ebooks_produto_principal' in str(e):
+            raise ValueError('Este produto já tem um e-book principal vinculado.')
+        raise
+
+
+def atualizar_vinculo_ebook_produto(vinculo_id, produto_id, preco_original, preco_promocional, ordem=1):
+    """Atualiza preço/ordem de um vínculo e-book/produto existente, restrito ao produto informado
+    (evita editar vínculo de outro produto). Não permite trocar o papel nem o e-book vinculado —
+    pra isso, remove e cria de novo."""
+    db.execute_query(
+        """UPDATE ebooks_produto SET preco_original=%s, preco_promocional=%s, ordem=%s
+           WHERE id=%s AND produto_id=%s""",
+        (preco_original, preco_promocional, ordem, vinculo_id, produto_id)
+    )
+
+
+def get_vinculo_ebook_produto(vinculo_id, produto_id):
+    """Retorna um vínculo e-book/produto pelo ID, restrito ao produto informado."""
+    return db.execute_query(
+        """SELECT ep.*, e.nome_venda, e.path_arquivo
+           FROM ebooks_produto ep JOIN ebooks e ON e.id = ep.ebook_id
+           WHERE ep.id = %s AND ep.produto_id = %s""",
+        (vinculo_id, produto_id), fetch_one=True
+    )
+
+
+def remover_vinculo_ebook_produto(vinculo_id, produto_id):
+    """Remove um vínculo e-book/produto pelo ID, restrito ao produto informado (evita apagar
+    vínculo de outro produto). Retorna True se algo foi removido (False se o vínculo já não
+    existia mais ou pertencia a outro produto — evita reportar sucesso num clique duplicado ou
+    link obsoleto)."""
+    return db.execute_query(
+        "DELETE FROM ebooks_produto WHERE id = %s AND produto_id = %s", (vinculo_id, produto_id),
+        return_rowcount=True
+    ) > 0
+
+
 def listar_itens_pedido(pedido_id):
     """Lista os itens gravados em `pedido_itens` para um pedido, em ordem de criação."""
     return db.execute_query(

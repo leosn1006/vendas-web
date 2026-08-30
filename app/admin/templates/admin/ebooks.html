@@ -1,0 +1,117 @@
+{% extends "admin/base.html" %}
+{% block title %}Catálogo de E-books{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Catálogo de E-books</h1>
+        <p class="page-subtitle">Cadastre cada e-book uma única vez aqui e vincule ao produto (principal, bônus ou order bump)</p>
+    </div>
+</div>
+
+<div class="card">
+    {% if ebooks %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome de venda</th>
+                    <th>Arquivo</th>
+                    <th>Imagens</th>
+                    <th>Descrição</th>
+                    {% if current_user.is_admin() %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in ebooks %}
+                <tr>
+                    <td style="font-size: 14px;">{{ e.nome_venda }}</td>
+                    <td style="font-family: var(--mono); font-size: 13px; color: var(--muted);">{{ e.path_arquivo }}</td>
+                    <td style="font-family: var(--mono); font-size: 12px; color: var(--muted);">
+                        {{ e.imagem_grande or '—' }} / {{ e.imagem_pequena or '—' }}
+                    </td>
+                    <td style="font-size: 13px; color: var(--muted);">{{ e.descricao or '' }}</td>
+                    {% if current_user.is_admin() %}
+                    <td style="text-align: right; white-space: nowrap;">
+                        <a href="{{ url_for('admin.editar_ebook', ebook_id=e.id) }}"
+                           class="btn btn-ghost btn-sm">Editar</a>
+                        <form method="POST" style="display: inline;"
+                              action="{{ url_for('admin.remover_ebook_view', ebook_id=e.id) }}"
+                              onsubmit="return confirm('Remover este e-book do catálogo? Só funciona se ele não estiver vinculado a nenhum produto.')">
+                            <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--muted); font-size: 14px; padding: 8px 0 20px;">
+        Nenhum e-book cadastrado ainda.
+    </p>
+    {% endif %}
+
+    {% if current_user.is_admin() %}
+    <div style="margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border);">
+        <p style="font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+                  color: var(--muted); font-family: var(--mono); margin-bottom: 12px;">
+            Adicionar e-book
+        </p>
+        <form method="POST" action="{{ url_for('admin.adicionar_ebook_view') }}" class="form-grid">
+            <div class="form-group">
+                <label for="nome_venda">Nome de venda</label>
+                <input type="text" id="nome_venda" name="nome_venda"
+                       placeholder="ex: Guia Completo das Orquídeas"
+                       maxlength="255" required autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="path_arquivo">Arquivo (já enviado em /admin/arquivos)</label>
+                <select id="path_arquivo" name="path_arquivo" required>
+                    <option value="">— selecione —</option>
+                    {% for pdf in pdfs %}
+                    <option value="{{ pdf.nome }}">{{ pdf.nome }} ({{ pdf.tamanho_fmt }})</option>
+                    {% endfor %}
+                </select>
+                <small class="form-text text-muted">Não achou o arquivo? Suba primeiro em <a href="{{ url_for('admin.listar_arquivos') }}">Arquivos</a>.</small>
+            </div>
+            <div class="form-group">
+                <label for="nome_arquivo">Nome do arquivo no download (opcional)</label>
+                <input type="text" id="nome_arquivo" name="nome_arquivo"
+                       placeholder="se vazio, usa o mesmo nome do arquivo selecionado"
+                       maxlength="255" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="imagem_grande">Imagem grande (usada quando é o principal)</label>
+                <select id="imagem_grande" name="imagem_grande">
+                    <option value="">— nenhuma —</option>
+                    {% for img in imagens %}
+                    <option value="{{ img.nome }}">{{ img.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="imagem_pequena">Imagem pequena (usada quando é bônus/order bump)</label>
+                <select id="imagem_pequena" name="imagem_pequena">
+                    <option value="">— nenhuma —</option>
+                    {% for img in imagens %}
+                    <option value="{{ img.nome }}">{{ img.nome }}</option>
+                    {% endfor %}
+                </select>
+                <small class="form-text text-muted">Não achou a imagem? Suba primeiro em <a href="{{ url_for('admin.listar_arquivos') }}?aba=imagem">Arquivos</a>.</small>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label for="descricao">Descrição (opcional)</label>
+                <input type="text" id="descricao" name="descricao"
+                       placeholder="linha curta exibida no checkout/e-mail"
+                       maxlength="500" autocomplete="off">
+            </div>
+            <div class="form-actions" style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-primary">+ Adicionar ao catálogo</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

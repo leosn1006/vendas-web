@@ -1,0 +1,46 @@
+{% extends "admin/base.html" %}
+{% block title %}Editar vínculo — {{ produto.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Editar vínculo de e-book</div>
+        <div class="page-subtitle">{{ produto.nome }} — {{ vinculo.nome_venda }} ({{ vinculo.papel }})</div>
+    </div>
+    <a href="{{ url_for('admin.produto_ebooks', produto_id=produto.id) }}"
+       class="btn btn-ghost btn-sm">← Voltar</a>
+</div>
+
+<div class="card" style="max-width: 760px;">
+    <form method="POST">
+        <div class="form-grid">
+
+            <div class="form-group">
+                <label>Preço original (R$)</label>
+                <input type="number" name="preco_original" min="0" step="0.01"
+                       value="{{ vinculo.preco_original }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Preço promocional (R$)</label>
+                <input type="number" name="preco_promocional" min="0" step="0.01"
+                       value="{{ vinculo.preco_promocional }}" required>
+                <small class="form-text text-muted">Igual ao original se não houver promoção.</small>
+            </div>
+
+            <div class="form-group">
+                <label>Ordem</label>
+                <input type="number" name="ordem" min="1" max="99"
+                       value="{{ vinculo.ordem }}" required>
+            </div>
+
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('admin.produto_ebooks', produto_id=produto.id) }}"
+               class="btn btn-ghost">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Salvar alterações</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

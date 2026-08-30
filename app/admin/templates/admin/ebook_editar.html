@@ -1,0 +1,84 @@
+{% extends "admin/base.html" %}
+{% block title %}Editar E-book{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Editar E-book</div>
+        <div class="page-subtitle">{{ ebook.nome_venda }}</div>
+    </div>
+    <a href="{{ url_for('admin.listar_ebooks_view') }}" class="btn btn-ghost btn-sm">← Voltar</a>
+</div>
+
+<div class="card" style="max-width: 760px;">
+    <form method="POST">
+        <div class="form-grid">
+
+            <div class="form-group span-2">
+                <label>Nome de venda</label>
+                <input type="text" name="nome_venda" maxlength="255"
+                       value="{{ ebook.nome_venda }}" required>
+            </div>
+
+            <div class="form-group span-2">
+                <label>Arquivo (já enviado em /admin/arquivos)</label>
+                <select name="path_arquivo" required>
+                    {% if ebook.path_arquivo not in pdfs|map(attribute='nome')|list %}
+                    <option value="{{ ebook.path_arquivo }}" selected>{{ ebook.path_arquivo }} (não encontrado em /admin/arquivos)</option>
+                    {% endif %}
+                    {% for pdf in pdfs %}
+                    <option value="{{ pdf.nome }}" {% if pdf.nome == ebook.path_arquivo %}selected{% endif %}>
+                        {{ pdf.nome }} ({{ pdf.tamanho_fmt }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group span-2">
+                <label>Nome do arquivo no download</label>
+                <input type="text" name="nome_arquivo" maxlength="255"
+                       value="{{ ebook.nome_arquivo }}">
+                <small class="form-text text-muted">Se vazio, usa o mesmo nome do arquivo selecionado.</small>
+            </div>
+
+            <div class="form-group">
+                <label>Imagem grande (usada quando é o principal)</label>
+                <select name="imagem_grande">
+                    <option value="">— nenhuma —</option>
+                    {% if ebook.imagem_grande and ebook.imagem_grande not in imagens|map(attribute='nome')|list %}
+                    <option value="{{ ebook.imagem_grande }}" selected>{{ ebook.imagem_grande }} (não encontrada em /admin/arquivos)</option>
+                    {% endif %}
+                    {% for img in imagens %}
+                    <option value="{{ img.nome }}" {% if img.nome == ebook.imagem_grande %}selected{% endif %}>{{ img.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Imagem pequena (usada quando é bônus/order bump)</label>
+                <select name="imagem_pequena">
+                    <option value="">— nenhuma —</option>
+                    {% if ebook.imagem_pequena and ebook.imagem_pequena not in imagens|map(attribute='nome')|list %}
+                    <option value="{{ ebook.imagem_pequena }}" selected>{{ ebook.imagem_pequena }} (não encontrada em /admin/arquivos)</option>
+                    {% endif %}
+                    {% for img in imagens %}
+                    <option value="{{ img.nome }}" {% if img.nome == ebook.imagem_pequena %}selected{% endif %}>{{ img.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group span-2">
+                <label>Descrição (opcional)</label>
+                <input type="text" name="descricao" maxlength="500"
+                       value="{{ ebook.descricao or '' }}">
+            </div>
+
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('admin.listar_ebooks_view') }}" class="btn btn-ghost">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Salvar alterações</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

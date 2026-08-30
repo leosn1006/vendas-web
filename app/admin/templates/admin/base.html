@@ -525,6 +525,12 @@
            class="nav-link {% if request.endpoint in ['admin.listar_pedidos_telefone', 'admin.selecionar_usuario_pedidos_telefone'] %}active{% endif %}">
             <span class="icon">🗑️</span> Limpar Pedidos
         </a>
+        {% if current_user.is_admin() %}
+        <a href="{{ url_for('admin.listar_ebooks_view') }}"
+           class="nav-link {% if request.endpoint in ['admin.listar_ebooks_view','admin.editar_ebook'] %}active{% endif %}">
+            <span class="icon">📚</span> Catálogo de E-books
+        </a>
+        {% endif %}
 
         <!-- Sub-menu do produto ativo -->
         {% if produto_ativo %}
@@ -641,6 +647,10 @@
         <a href="{{ url_for('admin.produto_bumps', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint in ['admin.produto_bumps','admin.editar_bump_produto'] %}active{% endif %}">
             <span class="icon">🛒</span> Order Bumps
+        </a>
+        <a href="{{ url_for('admin.produto_ebooks', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.produto_ebooks' %}active{% endif %}">
+            <span class="icon">📚</span> E-books
         </a>
         {% endif %}
 
