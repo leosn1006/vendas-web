@@ -142,6 +142,67 @@
             main.leitor-main { padding: 32px; }
             .titulo-livro { font-size: 19px; }
         }
+
+        /* ── Overlay de progresso do download ── */
+        .download-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+        }
+        /* [hidden] e .download-overlay têm a mesma especificidade — sem essa regra, o
+           display:flex acima vence e o overlay fica visível (bloqueando clique) mesmo com o
+           atributo hidden presente no HTML. */
+        .download-overlay[hidden] {
+            display: none;
+        }
+        .download-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px 22px;
+            max-width: 300px;
+            width: 100%;
+            text-align: center;
+        }
+        .download-titulo {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .download-arquivo {
+            font-size: 12px;
+            color: var(--sub);
+            margin-bottom: 14px;
+            word-break: break-word;
+        }
+        .download-barra {
+            height: 8px;
+            border-radius: 4px;
+            background: var(--cinza-bg);
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .download-barra-preenchida {
+            height: 100%;
+            width: 0%;
+            background: var(--verde);
+            border-radius: 4px;
+            transition: width .15s ease-out;
+        }
+        .download-percentual {
+            font-size: 13px;
+            color: var(--sub);
+            margin-bottom: 6px;
+        }
+        .download-destino {
+            font-size: 11px;
+            color: var(--sub);
+            opacity: .8;
+        }
     </style>
 </head>
 <body>
@@ -163,6 +224,18 @@
             😕 Não foi possível carregar esse material agora. Tente recarregar a página em instantes.
         </div>
     </main>
+
+    <div id="download-overlay" class="download-overlay" hidden>
+        <div class="download-card">
+            <div class="download-titulo">Baixando seu e-book…</div>
+            <div id="download-arquivo" class="download-arquivo"></div>
+            <div class="download-barra">
+                <div id="download-barra-preenchida" class="download-barra-preenchida"></div>
+            </div>
+            <div id="download-percentual" class="download-percentual">0%</div>
+            <div class="download-destino">Vai para a pasta de downloads do seu aparelho</div>
+        </div>
+    </div>
 
     <footer class="leitor-footer">
         <div class="zoom-bar">
@@ -263,16 +336,62 @@
             renderPage(pageNum);
         });
 
-        // Baixa o PDF via fetch + blob e dispara o save do navegador sem navegar pra outra
-        // tela/aba — a tela do leitor é a única superfície de visualização/salvamento, pra
-        // qualquer item (principal, bônus ou bump), em vez de um link de download separado.
+        // Baixa o PDF via fetch (lendo em streaming pra mostrar progresso) e dispara o save do
+        // navegador sem navegar pra outra tela/aba — a tela do leitor é a única superfície de
+        // visualização/salvamento, pra qualquer item (principal, bônus ou bump), em vez de um
+        // link de download separado.
+        //
+        // O blob é criado com type 'application/octet-stream', não 'application/pdf': no
+        // Safari (iOS/macOS), um <a download> apontando pra um blob de PDF é frequentemente
+        // ignorado — o navegador abre o PDF no visualizador inline em vez de baixar, porque o
+        // Safari trata blobs de PDF como "conteúdo pra exibir", não "arquivo pra salvar". Como
+        // 'application/octet-stream' não tem visualizador associado, o Safari cai no
+        // comportamento padrão de download, igual aos outros navegadores.
+        const overlay = document.getElementById('download-overlay');
+        const overlayArquivo = document.getElementById('download-arquivo');
+        const overlayBarra = document.getElementById('download-barra-preenchida');
+        const overlayPercentual = document.getElementById('download-percentual');
+
         btnSalvar.addEventListener('click', async () => {
-            const textoOriginal = btnSalvar.textContent;
             btnSalvar.disabled = true;
-            btnSalvar.textContent = 'Salvando…';
+            overlayArquivo.textContent = nomeArquivo;
+            overlayBarra.style.width = '0%';
+            overlayPercentual.textContent = '0%';
+            overlay.hidden = false;
             try {
                 const resp = await fetch(url);
-                const blob = await resp.blob();
+                if (!resp.ok) throw new Error('resposta não OK');
+
+                const totalBytes = parseInt(resp.headers.get('Content-Length') || '0', 10);
+
+                let blob;
+                if (resp.body && totalBytes > 0) {
+                    // getReader() trava o stream de resp assim que é chamado (independente de
+                    // .read() rodar) — só chamar aqui dentro, depois de decidir que vamos
+                    // streamar; se ficasse antes do if, o branch else (resp.blob()) quebraria
+                    // tentando ler um stream já travado sempre que Content-Length faltasse.
+                    const reader = resp.body.getReader();
+                    const partes = [];
+                    let recebidos = 0;
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        partes.push(value);
+                        recebidos += value.length;
+                        const pct = Math.min(100, Math.round((recebidos / totalBytes) * 100));
+                        overlayBarra.style.width = pct + '%';
+                        overlayPercentual.textContent = pct + '%';
+                    }
+                    blob = new Blob(partes, { type: 'application/octet-stream' });
+                } else {
+                    // Sem Content-Length ou sem suporte a streaming: sem progresso granular,
+                    // mas o download em si continua funcionando.
+                    const blobOriginal = await resp.blob();
+                    blob = new Blob([blobOriginal], { type: 'application/octet-stream' });
+                    overlayBarra.style.width = '100%';
+                    overlayPercentual.textContent = '100%';
+                }
+
                 const blobUrl = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = blobUrl;
@@ -282,11 +401,12 @@
                 document.body.removeChild(a);
                 setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
             } catch (e) {
-                // Fallback: se fetch/blob falhar por algum motivo, cai no download tradicional.
+                // Fallback: se fetch/blob falhar por algum motivo, cai no download tradicional
+                // (navega a própria aba pra uma resposta com Content-Disposition: attachment).
                 window.location.href = url + '?download=1';
             } finally {
+                overlay.hidden = true;
                 btnSalvar.disabled = false;
-                btnSalvar.textContent = textoOriginal;
             }
         });
     </script>
