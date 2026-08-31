@@ -657,24 +657,79 @@ def resolver_pedido_por_guid(guid: str, item_id: int = None):
     return pedido, None, None
 
 
-def separar_itens_visiveis(pedido, itens):
-    """Separa hero (principal) e outros (bônus/bump) pra tela /pedido/<guid>, marcando cada
-    item de 'outros' com um campo extra 'bloqueado'. Bônus do WhatsApp aparecem sempre, mesmo
-    bloqueados — funcionam como chamariz pro cliente mandar o comprovante de pagamento e
-    liberar. Só é chamada depois que resolver_pedido_por_guid já confirmou que o pedido está
-    pago (web) ou que o produto já foi entregue (whatsapp) — ver ali as regras de acesso."""
-    hero = next((i for i in itens if i['tipo'] == 'principal'), None)
+def listar_itens_ebook_do_cliente(pedido):
+    """Junta todos os e-books pagos do cliente pra tela /pedido/<guid> — não só os do pedido que
+    gerou o guid da URL, mas também os de outros pedidos pagos achados pelo mesmo email e/ou
+    contact_phone (ver listar_pedidos_pagos_relacionados). Deduplica por e-book (não por linha
+    de pedido_itens): o mesmo e-book pode ter sido vendido como principal num produto e como
+    bônus/bump em outro, e o cliente pode ter comprado os dois.
+
+    Regra de 'liberado prevalece': se o mesmo e-book aparecer bloqueado num pedido (bônus do
+    WhatsApp ainda não pago) e liberado em outro pedido pago do cliente, mostra liberado — o
+    cliente já tem acesso a esse e-book por outra via, não faz sentido escondê-lo.
+
+    Só é chamada depois que resolver_pedido_por_guid já confirmou que o pedido do guid da URL
+    está pago (web) ou que o produto já foi entregue (whatsapp) — ver ali as regras de acesso.
+    """
+    from database import (listar_itens_pedido_ebook, listar_pedidos_pagos_relacionados,
+                          listar_itens_pedido_ebook_multiplos, garantir_guid_pedido)
+
     canal_web = pedido['estado_id'] >= 1000
     pago = _pedido_pago(pedido)
 
-    outros = []
-    for item in itens:
-        if item is hero:
-            continue
+    linhas = []
+    for item in listar_itens_pedido_ebook(pedido['id']):
         item = dict(item)
+        item['guid_pedido'] = pedido['guid']
         item['bloqueado'] = (not canal_web and item['tipo'] == 'bonus' and not pago)
-        outros.append(item)
-    return hero, outros
+        linhas.append(item)
+
+    relacionados = listar_pedidos_pagos_relacionados(
+        pedido['id'], pedido.get('email'), pedido.get('contact_phone')
+    )
+    outros_ids = [r['id'] for r in relacionados]
+    if outros_ids:
+        # Só chama garantir_guid_pedido pra quem realmente não tem guid ainda (a maioria já
+        # tem, gerado na criação — ver criar_pedido_web_unificado) — evita um SELECT+UPDATE
+        # redundante por pedido relacionado em toda visita à página. Envolto em try/except
+        # porque um erro aqui é sobre um pedido OUTRO que não o da URL — não pode derrubar a
+        # página inteira por causa de um pedido relacionado que nem é o que o cliente abriu
+        # (mesmo espírito do try/except em criar_pedido/gerar_pix pra criar_itens_pedido_web:
+        # é um extra que enriquece a página, não algo que pode quebrá-la).
+        for relacionado in relacionados:
+            if not relacionado.get('guid'):
+                try:
+                    garantir_guid_pedido(relacionado['id'])
+                except Exception as e:
+                    logger.error(f"[ESTANTE] Erro ao gerar guid pro pedido relacionado #{relacionado['id']}: {e}")
+        # Sempre busca por todos os outros_ids (não só os que já tinham guid) — quem passou
+        # pelo garantir_guid_pedido acima com sucesso já está com guid gravado no banco a
+        # tempo desta query; se algum tiver falhado (raro, já logado acima), o item aparece
+        # com guid_pedido nulo — link de leitura quebrado só pra aquele item, não a página.
+        for item in listar_itens_pedido_ebook_multiplos(outros_ids):
+            item = dict(item)
+            item['bloqueado'] = False  # já filtrado por estado_id IN (0,1000) na query
+            linhas.append(item)
+
+    return _consolidar_itens_ebook(linhas)
+
+
+def _consolidar_itens_ebook(linhas):
+    """Deduplica itens pelo e-book real (ebook_id; cai pra path_arquivo nos itens antigos sem
+    ebook_produto_id, de antes da migration 061), preservando a ordem de primeira aparição
+    (já vem ordenada por data de pagamento mais recente primeiro). Quando a mesma chave aparece
+    mais de uma vez, prevalece a versão não-bloqueada — ver regra em listar_itens_ebook_do_cliente."""
+    escolhidos = {}
+    ordem = []
+    for item in linhas:
+        chave = item['ebook_id'] if item.get('ebook_id') else f"legacy:{item['path_arquivo']}"
+        atual = escolhidos.get(chave)
+        if atual is None:
+            escolhidos[chave] = item
+            ordem.append(chave)
+        elif atual['bloqueado'] and not item['bloqueado']:
+            escolhidos[chave] = item
+    return [escolhidos[chave] for chave in ordem]
 
 
 def entregar_pdf(pedido_id: int, bonus: bool = False):

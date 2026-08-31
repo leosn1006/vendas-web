@@ -368,7 +368,7 @@ def criar_pedido(pedido: Pedido):
     # bump — bump é conceito só do checkout web), pra habilitar a tela /pedido/<guid> assim que
     # o produto for de fato entregue por mensagem (o principal só libera na tela depois disso,
     # e o bônus só quando o pedido for confirmado como pago — ver resolver_pedido_por_guid /
-    # separar_itens_visiveis em web/checkout.py). Envolto em try/except (igual às chamadas
+    # listar_itens_ebook_do_cliente em web/checkout.py). Envolto em try/except (igual às chamadas
     # equivalentes em web/checkout.py gerar_pix/gerar_cartao) porque isso é só um snapshot
     # informativo — uma falha aqui não pode derrubar a criação do lead, que é um caminho de
     # muito mais tráfego (todo clique de anúncio) e não deveria ficar acoplado a essa feature.
@@ -1723,27 +1723,88 @@ def garantir_guid_pedido(pedido_id: int) -> str:
     raise RuntimeError(f"Não foi possível gerar um guid único pro pedido {pedido_id}")
 
 
+def listar_pedidos_pagos_relacionados(pedido_id: int, email: str, contact_phone: str):
+    """Retorna outros pedidos pagos (id + guid — 'paga' aqui é a mesma definição de
+    _pedido_pago em web/checkout.py: estado_id IN (0,1000), 0 = pago via WhatsApp, 1000 = pago
+    via web) do mesmo cliente, achados por email OU contact_phone, excluindo o próprio
+    pedido_id. Usa UNION de duas SELECTs independentes (uma por coluna) em vez de OR entre
+    colunas — aproveita idx_pedidos_email_estado e idx_pedidos_phone separadamente, o que o
+    MySQL não faz bem com OR entre índices de colunas diferentes.
+
+    Traz o guid junto (não só o id) pra quem chamar poder pular garantir_guid_pedido nos
+    pedidos que já têm um — a maioria, já que criar_pedido_web_unificado sempre gera um guid na
+    criação; só pedidos antigos (pré-062) ficam sem.
+
+    email/contact_phone vazios ('' ou None) viram None antes do parâmetro — `coluna = NULL`
+    nunca bate em SQL, então isso já implementa 'só busca se tiver preenchido' sem precisar
+    montar SQL condicional, e evita juntar dois clientes diferentes que só têm o campo vazio em
+    comum."""
+    email = email or None
+    contact_phone = contact_phone or None
+    return db.execute_query(
+        """SELECT id, guid FROM pedidos WHERE estado_id IN (0, 1000) AND id != %s AND email = %s
+           UNION
+           SELECT id, guid FROM pedidos WHERE estado_id IN (0, 1000) AND id != %s AND contact_phone = %s""",
+        (pedido_id, email, pedido_id, contact_phone), fetch_all=True
+    ) or []
+
+
+def listar_itens_pedido_ebook_multiplos(pedido_ids: list):
+    """Como listar_itens_pedido_ebook, mas para vários pedidos de uma vez (usada pra juntar
+    e-books de outros pedidos pagos do mesmo cliente). Traz também `guid_pedido` — o link de
+    leitura de cada item aponta pro guid do pedido DONO daquele item (não pro guid da página
+    atual), pra reaproveitar a regra de acesso de resolver_pedido_por_guid sem precisar mudá-la:
+    cada pedido continua sendo o único 'dono' de autorização dos seus próprios itens.
+
+    Reaproveita _SELECT_ITEM_PEDIDO_EBOOK como subquery (em vez de duplicar as colunas/JOINs à
+    mão) — uma coluna nova ou correção de JOIN na constante compartilhada se propaga aqui sem
+    precisar lembrar de replicar."""
+    if not pedido_ids:
+        return []
+    placeholders = ','.join(['%s'] * len(pedido_ids))
+    return db.execute_query(
+        f"""SELECT sub.*, p.guid AS guid_pedido
+            FROM ({_SELECT_ITEM_PEDIDO_EBOOK} WHERE pi.pedido_id IN ({placeholders})) AS sub
+            JOIN pedidos p ON p.id = sub.pedido_id
+            ORDER BY p.data_pagamento DESC, sub.id""",
+        pedido_ids, fetch_all=True
+    ) or []
+
+
 # Nome/imagens/descrição/arquivo de cada item vêm do catálogo (ebooks/ebooks_produto), não do
 # snapshot congelado em pedido_itens no momento da compra — assim a página /pedido/<guid>
 # sempre mostra a versão atual cadastrada no catálogo (ex: se o admin corrigir um PDF ou
-# renomear um e-book depois da venda). COALESCE cai pro snapshot só para itens antigos
-# (anteriores à migration 061) que têm ebook_produto_id NULL.
+# renomear um e-book depois da venda).
+#
+# Itens antigos (anteriores à migration 061, com ebook_produto_id NULL) tentam resolver o
+# mesmo jeito por um segundo caminho: e_legacy casa por path_arquivo direto contra o catálogo.
+# Sem isso, (a) esses itens nunca teriam ebook_id preenchido, então nunca bateriam a mesma
+# chave de deduplicação de um item novo do mesmo e-book em _consolidar_itens_ebook
+# (web/checkout.py) — mostrando o mesmo e-book duas vezes (uma bloqueada, uma liberada) na
+# "Minha Estante" em vez de aplicar a regra 'liberado prevalece'; e (b) continuariam mostrando
+# nome/imagem do snapshot congelado em vez da versão atual do catálogo, só por não terem um
+# ebook_produto_id salvo. Só cai pro snapshot puro (pi.nome etc) quando nem o vínculo nem o
+# path_arquivo batem com nada no catálogo (arquivo renomeado/removido do catálogo depois).
 _SELECT_ITEM_PEDIDO_EBOOK = """
     SELECT pi.id, pi.pedido_id, pi.tipo,
-           COALESCE(e.nome_venda, pi.nome) AS nome,
-           COALESCE(e.path_arquivo, pi.path_arquivo) AS path_arquivo,
-           COALESCE(e.nome_arquivo, pi.nome_arquivo) AS nome_arquivo,
-           e.descricao, e.imagem_grande, e.imagem_pequena
+           COALESCE(ep.ebook_id, e_legacy.id) AS ebook_id,
+           COALESCE(e.nome_venda, e_legacy.nome_venda, pi.nome) AS nome,
+           COALESCE(e.path_arquivo, e_legacy.path_arquivo, pi.path_arquivo) AS path_arquivo,
+           COALESCE(e.nome_arquivo, e_legacy.nome_arquivo, pi.nome_arquivo) AS nome_arquivo,
+           COALESCE(e.descricao, e_legacy.descricao) AS descricao,
+           COALESCE(e.imagem_grande, e_legacy.imagem_grande) AS imagem_grande,
+           COALESCE(e.imagem_pequena, e_legacy.imagem_pequena) AS imagem_pequena
     FROM pedido_itens pi
     LEFT JOIN ebooks_produto ep ON ep.id = pi.ebook_produto_id
     LEFT JOIN ebooks e ON e.id = ep.ebook_id
+    LEFT JOIN ebooks e_legacy ON e_legacy.path_arquivo = pi.path_arquivo AND ep.id IS NULL
 """
 
 
 def listar_itens_pedido_ebook(pedido_id: int):
     """Lista os itens do pedido para a página /pedido/<guid>, com nome/imagens/descrição/
     arquivo vindos do catálogo de e-books (ver nota de _SELECT_ITEM_PEDIDO_EBOOK). Item
-    'principal' vem primeiro (hero da página)."""
+    'principal' vem primeiro."""
     return db.execute_query(
         _SELECT_ITEM_PEDIDO_EBOOK +
         " WHERE pi.pedido_id = %s ORDER BY FIELD(pi.tipo, 'principal', 'bonus', 'bump'), pi.id",

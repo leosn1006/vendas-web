@@ -149,8 +149,7 @@ def baixar_item(pedido_id, item_id):
 
 @web_bp.get('/pedido/<guid>')
 def pedido_publico(guid):
-    from web.checkout import resolver_pedido_por_guid, separar_itens_visiveis
-    from database import listar_itens_pedido_ebook
+    from web.checkout import resolver_pedido_por_guid, listar_itens_ebook_do_cliente
 
     pedido, _, erro = resolver_pedido_por_guid(guid)
     if erro == 'nao_encontrado':
@@ -160,12 +159,10 @@ def pedido_publico(guid):
     if erro == 'ainda_nao_entregue':
         return render_template('pedido_indisponivel.html', motivo='ainda_nao_entregue', pedido=pedido)
 
-    itens = listar_itens_pedido_ebook(pedido['id'])
-    hero, outros = separar_itens_visiveis(pedido, itens)
+    itens = listar_itens_ebook_do_cliente(pedido)
     primeiro_nome = (pedido.get('contact_name') or '').strip().split(' ')[0] or 'cliente'
 
-    return render_template('pedido.html', guid=guid, pedido=pedido,
-                           primeiro_nome=primeiro_nome, hero=hero, outros=outros)
+    return render_template('pedido.html', primeiro_nome=primeiro_nome, itens=itens)
 
 
 @web_bp.get('/pedido/<guid>/ler/<int:item_id>')

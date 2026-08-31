@@ -3,127 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meus livros</title>
+    <title>Sua Estante</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-            --verde: #4a7c59;
-            --cinza-bg: #f5f5f5;
-            --borda: #ddd;
-            --texto: #222;
-            --sub: #666;
+            --azul-esc:   #1967D2;
+            --azul:       #4285F4;
+            --glow-1:     #346BF1;
+            --glow-2:     #4FA0FF;
+            --fundo:      #0b1120;
+            --cinza-bg:   #131c30;
+            --borda:      #24304a;
+            --texto:      #eef2fb;
+            --sub:        #9aa7c2;
+            /* Os cards de e-book continuam brancos (flutuando sobre o fundo escuro) — por
+               isso precisam da própria dupla texto/sub escura, independente dos tokens acima
+               (que são pro texto direto no fundo escuro da página: saudação, rodapé, vazio). */
+            --texto-card: #1a1a2e;
+            --sub-card:   #5f6b7a;
         }
 
         body {
             font-family: 'Lato', sans-serif;
-            background: var(--cinza-bg);
+            background: var(--fundo);
             color: var(--texto);
             min-height: 100vh;
+            position: relative;
+        }
+
+        /* ── Glow de fundo da página inteira — mesma técnica dos halos animados, só que
+           fixo no viewport (não rola com a página) e bem mais sutil, pra dar profundidade
+           ao fundo escuro sem competir com os cards claros por cima. ── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: -10%;
+            background:
+                radial-gradient(circle at 15% 20%, var(--glow-1) 0%, transparent 40%),
+                radial-gradient(circle at 85% 15%, var(--glow-2) 0%, transparent 38%),
+                radial-gradient(circle at 50% 90%, var(--azul-esc) 0%, transparent 45%);
+            filter: blur(90px);
+            opacity: 0.28;
+            z-index: 0;
+            pointer-events: none;
+            animation: bgDrift 22s ease-in-out infinite alternate;
+        }
+        @keyframes bgDrift {
+            0%   { transform: translate3d(0, 0, 0) scale(1); }
+            100% { transform: translate3d(-2%, 2%, 0) scale(1.08); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            body::before { animation: none; }
         }
 
         .container {
+            position: relative;
+            z-index: 1;
             max-width: 480px;
             margin: 0 auto;
-            padding: 24px 16px 48px;
+            padding: 20px 16px 48px;
         }
 
-        header.topo { margin-bottom: 24px; }
-        .topo .marca { font-size: 14px; font-weight: 900; color: var(--verde); margin-bottom: 12px; }
-        .topo h1 { font-size: 22px; margin-bottom: 4px; }
-        .topo p { font-size: 15px; color: var(--sub); }
-
-        .card-hero {
-            background: #fff;
-            border-radius: 16px;
-            padding: 20px;
-            border: 1px solid var(--borda);
-            margin-bottom: 28px;
+        /* ── Header com glow azul (mesma técnica de 2 camadas do fatia-e.html: halo
+           borrado animado atrás + card sólido na frente, deixando só o brilho vazar
+           pela borda) ── */
+        .topo-wrap { position: relative; margin-bottom: 28px; }
+        .topo-halo {
+            position: absolute;
+            inset: -6%;
+            background: linear-gradient(120deg, var(--glow-1), var(--glow-2), var(--azul-esc), var(--glow-1));
+            background-size: 300% 300%;
+            filter: blur(28px);
+            opacity: 0.55;
+            border-radius: 24px;
+            animation: glowShift 9s ease infinite;
+            pointer-events: none;
         }
-
-        .capa-hero {
-            width: 100%;
-            aspect-ratio: 3 / 4;
-            border-radius: 10px;
-            object-fit: cover;
-            background: var(--cinza-bg);
-            margin-bottom: 16px;
-            display: block;
+        @keyframes glowShift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
-        .capa-hero.placeholder {
-            display: flex; align-items: center; justify-content: center;
-            font-size: 48px;
+        @media (prefers-reduced-motion: reduce) {
+            .topo-halo { animation: none; }
         }
-
-        .titulo-hero { font-size: 19px; font-weight: 700; margin-bottom: 6px; }
-        .tag-seu-livro { font-size: 13px; color: var(--sub); margin-bottom: 18px; }
-
-        .btn-ler {
-            display: block;
-            width: 100%;
-            text-align: center;
-            background: var(--verde);
+        header.topo {
+            position: relative;
+            background: linear-gradient(135deg, var(--azul-esc) 0%, var(--azul) 100%);
             color: #fff;
-            font-weight: 700;
-            font-size: 16px;
-            padding: 14px;
-            border-radius: 10px;
-            text-decoration: none;
+            border-radius: 20px;
+            padding: 26px 22px;
         }
-
-        .secao-outros { margin-top: 8px; }
-        .secao-outros h2 {
-            font-size: 15px;
-            color: var(--sub);
-            margin-bottom: 14px;
-            font-weight: 700;
+        .topo .marca {
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            opacity: .85;
+            margin-bottom: 10px;
         }
+        .topo h1 { font-size: 23px; font-weight: 900; margin-bottom: 6px; }
+        .topo p { font-size: 14px; opacity: .9; }
 
-        .lista-outros {
-            display: flex;
+        /* ── Grid de e-books — todo item igual, só capa pequena + título ── */
+        .grid-ebooks {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 14px;
-            overflow-x: auto;
-            padding-bottom: 4px;
         }
 
-        .item-outro {
-            flex: 0 0 auto;
-            width: 110px;
-            text-decoration: none;
-            color: var(--texto);
-        }
-        .capa-outro {
-            width: 110px;
-            aspect-ratio: 3 / 4;
-            border-radius: 8px;
-            object-fit: cover;
+        .item-ebook {
+            display: block;
             background: #fff;
+            border-radius: 14px;
             border: 1px solid var(--borda);
-            margin-bottom: 8px;
+            overflow: hidden;
+            text-decoration: none;
+            color: var(--texto-card);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, .35);
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+        .item-ebook:hover, .item-ebook:active {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, .5), 0 0 0 1px var(--glow-2) inset;
+        }
+
+        .capa-wrap { position: relative; }
+        .capa {
+            width: 100%;
+            aspect-ratio: 3 / 4;
+            object-fit: cover;
+            background: #eef1f8;
             display: block;
         }
-        .capa-outro.placeholder {
+        .capa.placeholder {
             display: flex; align-items: center; justify-content: center;
-            font-size: 28px;
+            font-size: 32px;
         }
-        .titulo-outro { font-size: 13px; line-height: 1.3; }
+        .titulo { padding: 10px 12px 12px; font-size: 13px; font-weight: 700; line-height: 1.3; }
 
-        .capa-outro-wrap { position: relative; }
-        .item-outro.bloqueado .capa-outro {
-            filter: grayscale(1);
-            opacity: .55;
-        }
+        .item-ebook.bloqueado .capa { filter: grayscale(1); opacity: .55; }
         .badge-cadeado {
             position: absolute;
-            top: 6px;
-            right: 6px;
-            background: rgba(0,0,0,.6);
+            top: 8px;
+            right: 8px;
+            background: rgba(26,26,46,.65);
             color: #fff;
             font-size: 13px;
-            width: 24px;
-            height: 24px;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -131,12 +161,13 @@
         }
         .legenda-bloqueado {
             font-size: 11px;
-            color: var(--sub);
-            margin-top: 4px;
+            color: var(--sub-card);
+            padding: 0 12px 10px;
             line-height: 1.3;
+            margin-top: -4px;
         }
 
-        .vazio { text-align: center; color: var(--sub); padding: 32px 0; }
+        .vazio { text-align: center; color: var(--sub); padding: 40px 0; }
 
         .rodape-suporte {
             text-align: center;
@@ -144,92 +175,56 @@
             color: var(--sub);
             margin-top: 32px;
         }
-        .rodape-suporte a { color: var(--verde); font-weight: 700; text-decoration: none; }
+        .rodape-suporte a { color: var(--glow-2); font-weight: 700; text-decoration: none; }
         .rodape-suporte a:hover { text-decoration: underline; }
 
         /* ── RESPONSIVO — desktop (≥1024px). Mobile-first: tudo acima é o layout base
-           (celular). Mesma convenção usada em checkout.html. ── */
+           (celular). Mesma convenção usada em checkout.html/pedido_leitor.html. ── */
         @media (min-width: 1024px) {
-            .container { max-width: 960px; padding: 40px 24px 64px; }
+            .container { max-width: 1040px; padding: 40px 24px 64px; }
 
-            .topo h1 { font-size: 28px; }
+            header.topo { padding: 40px 44px; }
+            .topo h1 { font-size: 30px; }
             .topo p { font-size: 16px; }
 
-            .card-hero {
-                display: flex;
-                gap: 32px;
-                padding: 28px;
-            }
-            .capa-hero {
-                width: 260px;
-                flex-shrink: 0;
-                margin-bottom: 0;
-            }
-            .hero-conteudo {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-            }
-            .titulo-hero { font-size: 26px; }
-            .tag-seu-livro { font-size: 14px; }
-            .btn-ler { max-width: 280px; }
-
-            .lista-outros {
-                display: grid;
+            .grid-ebooks {
                 grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-                overflow-x: visible;
+                gap: 20px;
             }
-            .item-outro { width: auto; }
-            .capa-outro { width: 100%; }
+            .titulo { font-size: 14px; padding: 12px 14px 14px; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header class="topo">
-            <div class="marca">📚 MEUS LIVROS</div>
-            <h1>Olá, {{ primeiro_nome }}!</h1>
-            <p>Seus livros estão aqui.</p>
-        </header>
+        <div class="topo-wrap">
+            <div class="topo-halo"></div>
+            <header class="topo">
+                <div class="marca">📚 SUA ESTANTE</div>
+                <h1>Olá, {{ primeiro_nome }}!</h1>
+                <p>Todos os seus e-books estão aqui.</p>
+            </header>
+        </div>
 
-        {% if hero %}
-        <div class="card-hero">
-            {% if hero.imagem_grande %}
-            <img class="capa-hero" src="{{ url_for('static', filename='images/' + hero.imagem_grande) }}" alt="{{ hero.nome }}">
-            {% else %}
-            <div class="capa-hero placeholder">📖</div>
-            {% endif %}
-            <div class="hero-conteudo">
-                <div class="titulo-hero">{{ hero.nome }}</div>
-                <div class="tag-seu-livro">📖 Seu livro</div>
-                <a class="btn-ler" href="/pedido/{{ guid }}/ler/{{ hero.id }}">📖 LER O LIVRO</a>
-            </div>
+        {% if itens %}
+        <div class="grid-ebooks">
+            {% for item in itens %}
+            <a class="item-ebook{% if item.bloqueado %} bloqueado{% endif %}" href="/pedido/{{ item.guid_pedido }}/ler/{{ item.id }}">
+                <div class="capa-wrap">
+                    {% if item.imagem_pequena %}
+                    <img class="capa" src="{{ url_for('static', filename='images/' + item.imagem_pequena) }}" alt="{{ item.nome }}">
+                    {% else %}
+                    <div class="capa placeholder">📖</div>
+                    {% endif %}
+                    {% if item.bloqueado %}<span class="badge-cadeado">🔒</span>{% endif %}
+                </div>
+                <div class="titulo">{{ item.nome }}</div>
+                {% if item.bloqueado %}<div class="legenda-bloqueado">Libera após confirmar o pagamento</div>{% endif %}
+            </a>
+            {% endfor %}
         </div>
         {% else %}
-        <div class="vazio">Nenhum item encontrado neste pedido.</div>
-        {% endif %}
-
-        {% if outros %}
-        <div class="secao-outros">
-            <h2>Seus outros produtos adquiridos</h2>
-            <div class="lista-outros">
-                {% for item in outros %}
-                <a class="item-outro{% if item.bloqueado %} bloqueado{% endif %}" href="/pedido/{{ guid }}/ler/{{ item.id }}">
-                    <div class="capa-outro-wrap">
-                        {% if item.imagem_pequena %}
-                        <img class="capa-outro" src="{{ url_for('static', filename='images/' + item.imagem_pequena) }}" alt="{{ item.nome }}">
-                        {% else %}
-                        <div class="capa-outro placeholder">📖</div>
-                        {% endif %}
-                        {% if item.bloqueado %}<span class="badge-cadeado">🔒</span>{% endif %}
-                    </div>
-                    <div class="titulo-outro">{{ item.nome }}</div>
-                    {% if item.bloqueado %}<div class="legenda-bloqueado">Libera após confirmar o pagamento</div>{% endif %}
-                </a>
-                {% endfor %}
-            </div>
-        </div>
+        <div class="vazio">Nenhum item encontrado.</div>
         {% endif %}
 
         <p class="rodape-suporte">
