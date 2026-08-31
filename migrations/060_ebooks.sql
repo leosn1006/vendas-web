@@ -32,17 +32,24 @@
 -- se repetir à vontade, mas duas linhas 'principal' pro mesmo produto_id colidem
 -- na unique key — sem essa coluna, um SELECT-then-INSERT na aplicação teria uma
 -- corrida (dois cliques quase simultâneos podiam passar os dois pela checagem).
+--
+-- CHARACTER SET/COLLATE explícito nas colunas de texto: já é redundante com o
+-- default do banco (vendasdb é utf8mb4/utf8mb4_unicode_ci desde o 001_script.sql),
+-- mas segue a mesma convenção defensiva usada lá — protege contra o default do
+-- banco mudar no futuro. Não tem relação com o bug de acentuação corrompida que
+-- apareceu ao importar seed via `mysql` sem --default-character-set: aquele era
+-- do charset da CONEXÃO cliente no momento do import, não da coluna.
 
 CREATE TABLE ebooks (
     id             INT AUTO_INCREMENT PRIMARY KEY,
-    nome_venda     VARCHAR(255) NOT NULL,
-    descricao      VARCHAR(500) NULL,
-    path_arquivo   VARCHAR(255) NOT NULL,
-    nome_arquivo   VARCHAR(255) NOT NULL,
-    imagem_grande  VARCHAR(255) NULL,
-    imagem_pequena VARCHAR(255) NULL,
+    nome_venda     VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    descricao      VARCHAR(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
+    path_arquivo   VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    nome_arquivo   VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    imagem_grande  VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
+    imagem_pequena VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
     created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE ebooks_produto (
     id                 INT AUTO_INCREMENT PRIMARY KEY,
@@ -57,7 +64,7 @@ CREATE TABLE ebooks_produto (
     CONSTRAINT fk_ebooks_produto_produto FOREIGN KEY (produto_id) REFERENCES produtos(id),
     CONSTRAINT fk_ebooks_produto_ebook FOREIGN KEY (ebook_id) REFERENCES ebooks(id),
     UNIQUE KEY uk_ebooks_produto_principal (produto_principal)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX idx_ebooks_produto_produto ON ebooks_produto(produto_id);
 CREATE INDEX idx_ebooks_produto_ebook ON ebooks_produto(ebook_id);

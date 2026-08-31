@@ -2,6 +2,14 @@
 -- ambiente de dev (16 e-books, 29 vínculos, produtos 1/6/7/8/9/10/11/12/14).
 -- ebook_id é resolvido por path_arquivo (não por id fixo), então roda igual independente
 -- do estado do AUTO_INCREMENT em produção.
+--
+-- SET NAMES utf8mb4 é obrigatório aqui: o cliente `mysql` assume character_set_client=latin1
+-- por padrão quando nenhuma opção de charset é passada na linha de comando (confirmado —
+-- reproduzimos a corrupção rodando exatamente `mysql -u... "$DB_NAME" < arquivo.sql` sem essa
+-- linha). Sem isso, todo acento em nome_venda/descricao vira lixo de dupla-codificação
+-- (ex: "Orquídeas" -> "OrquÃdeas") — já corrompeu o catálogo local dessa forma antes de
+-- percebermos.
+SET NAMES utf8mb4;
 
 INSERT INTO ebooks (nome_venda, descricao, path_arquivo, nome_arquivo, imagem_grande, imagem_pequena) VALUES
 ('Receitas de Pães Sem Glúten e Sem Lactose','Receitas caseiras de pães sem glúten e sem lactose','paes-sem-gluten.pdf','receitas-paes-sem-gluten.pdf',NULL,'paes-sem-gluten-sem-lactose.webp'),
