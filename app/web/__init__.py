@@ -102,7 +102,7 @@ def cartao_bandeira():
 
 @web_bp.get('/api/v1/pix/pedido/<int:pedido_id>')
 def pix_pedido(pedido_id):
-    from database import get_pedido, listar_itens_pedido
+    from database import get_pedido, listar_itens_pedido, garantir_guid_pedido
     from web.checkout import _gerar_qrcode_base64
     pedido = get_pedido(pedido_id)
     if not pedido:
@@ -113,10 +113,14 @@ def pix_pedido(pedido_id):
     # gerar_pix() — necessário pra tela de retomada (?pedido=<id>) conseguir reexibir o mesmo
     # PIX, e não só o card vazio com "Carregando...".
     qrcode_texto = pedido.get('qr_code_pix') or ''
+    pago = pedido.get('estado_id') == 1000
     resposta = {
         'txid': pedido.get('numero_solicitacao_bb'),
         'estado': pedido.get('estado_id'),
-        'pago': pedido.get('estado_id') == 1000,
+        'pago': pago,
+        # garantir_guid_pedido cobre pedidos web criados antes da migration 062 (guid NULL) —
+        # sem isso, reabrir o link de um pedido antigo já pago mandaria pra "/pedido/null".
+        'guid': garantir_guid_pedido(pedido_id) if pago else pedido.get('guid'),
         'qrcode_texto': qrcode_texto,
         'qrcode_base64': _gerar_qrcode_base64(qrcode_texto) if qrcode_texto else '',
         'url_bbpay': pedido.get('url_bbpay') or '',

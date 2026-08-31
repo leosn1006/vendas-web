@@ -138,6 +138,15 @@
 
         .vazio { text-align: center; color: var(--sub); padding: 32px 0; }
 
+        .rodape-suporte {
+            text-align: center;
+            font-size: 13px;
+            color: var(--sub);
+            margin-top: 32px;
+        }
+        .rodape-suporte a { color: var(--verde); font-weight: 700; text-decoration: none; }
+        .rodape-suporte a:hover { text-decoration: underline; }
+
         /* ── RESPONSIVO — desktop (≥1024px). Mobile-first: tudo acima é o layout base
            (celular). Mesma convenção usada em checkout.html. ── */
         @media (min-width: 1024px) {
@@ -222,6 +231,11 @@
             </div>
         </div>
         {% endif %}
+
+        <p class="rodape-suporte">
+            Precisa de ajuda? Entre em contato:<br>
+            <a href="mailto:admin@lsnlivros.com.br">admin@lsnlivros.com.br</a>
+        </p>
     </div>
 </body>
 </html>

@@ -364,43 +364,8 @@
         .sucesso-icone  { font-size: 48px; display: block; margin-bottom: 8px; }
         .sucesso-titulo { font-size: 20px; font-weight: 900; margin-bottom: 8px; }
         .sucesso-sub    { font-size: 14px; color: var(--sub); margin-bottom: 12px; }
-        .sucesso-pedido {
-            font-size: 13px; color: var(--sub);
-            margin: 10px auto 14px;
-            padding: 6px 16px;
-            background: #f0f0f0;
-            border-radius: 6px;
-            display: inline-block;
-        }
         .link-suporte { color: var(--verde); font-weight: 700; text-decoration: none; }
         .link-suporte:hover { text-decoration: underline; }
-
-        #downloadsWrap { margin: 18px 0 6px; text-align: left; }
-
-        .btn-download {
-            display: block; width: 100%;
-            background: var(--verde); color: #fff; text-decoration: none;
-            border-radius: 50px; padding: 16px; text-align: center;
-            font-size: 15px; font-weight: 700; font-family: 'Lato', sans-serif;
-            margin-bottom: 12px; transition: background .15s;
-        }
-        .btn-download:hover { background: #3a6347; }
-
-        .btn-bonus {
-            display: block; width: 100%;
-            background: #fff8e1; color: #b45309;
-            border: 2px solid #f59e0b; text-decoration: none;
-            border-radius: 50px; padding: 15px; text-align: center;
-            font-size: 15px; font-weight: 700; font-family: 'Lato', sans-serif;
-            margin-bottom: 12px; transition: background .15s;
-        }
-        .btn-bonus:hover { background: #fef3c7; }
-        .badge-bonus {
-            display: inline-block; background: #f59e0b; color: #fff;
-            font-size: 11px; font-weight: 700;
-            padding: 2px 10px; border-radius: 20px;
-            margin-bottom: 8px; letter-spacing: 0.5px;
-        }
 
         /* ── Estado: fallback ── */
         #estado-fallback { display: none; text-align: center; }
@@ -656,20 +621,7 @@
     <div id="estado-sucesso" class="card">
         <span class="sucesso-icone">🎉</span>
         <div class="sucesso-titulo">Pagamento confirmado!</div>
-        <p class="sucesso-sub">
-            Baixe seus arquivos abaixo. Também enviamos tudo para<br>
-            <strong id="sucesso-email"></strong> — confira a caixa de entrada e o <strong>spam</strong>, por garantia.
-        </p>
-
-        <div id="downloadsWrap"></div>
-
-        <p class="sucesso-pedido">
-            Pedido <strong id="sucesso-pedido-id"></strong>
-        </p>
-        <p style="font-size:13px; color:#888; margin-top:4px;">
-            Precisa de ajuda? Entre em contato:<br>
-            <a href="mailto:admin@lsnlivros.com.br" class="link-suporte">admin@lsnlivros.com.br</a>
-        </p>
+        <p class="sucesso-sub">Redirecionando para seus produtos…</p>
     </div>
 
     <!-- Estado: fallback -->
@@ -1102,33 +1054,21 @@
                 const data = await resp.json();
                 if (data.pago) {
                     pararPolling();
-                    pagamentoConfirmado(data.itens || []);
+                    pagamentoConfirmado(data.guid);
                 }
             } catch (e) { /* continua tentando */ }
         }, POLLING_INTERVAL_MS);
     }
 
-    // ── Botões de download por item pago ──
-    function renderizarDownloads(itens) {
-        const wrap = document.getElementById('downloadsWrap');
-        wrap.innerHTML = '';
-        itens.forEach(item => {
-            const a = document.createElement('a');
-            a.href = `/api/v1/pedido/${currentPedidoId}/itens/${item.id}/download`;
-            a.className = (item.tipo === 'principal') ? 'btn-download' : 'btn-bonus';
-            const rotulo = (item.tipo === 'principal') ? '⬇ Baixar' : '🎁 Baixar';
-            a.textContent = `${rotulo} — ${item.nome}`;
-            wrap.appendChild(a);
-        });
-    }
-
-    // ── Pagamento confirmado ──
-    function pagamentoConfirmado(itens) {
-        const email = document.getElementById('inputEmail') ? document.getElementById('inputEmail').value.trim() : '';
-        document.getElementById('sucesso-email').textContent = email || 'seu e-mail';
-        document.getElementById('sucesso-pedido-id').textContent = `#${currentPedidoId}`;
-        renderizarDownloads(itens || []);
+    // ── Pagamento confirmado — mostra a mensagem de sucesso por um instante e redireciona
+    // pra /pedido/<guid>, que já mostra os produtos (capa, leitor, salvar) muito melhor do
+    // que a lista de download que existia aqui antes. location.replace (não .href) pra não
+    // deixar o checkout já finalizado no histórico do navegador.
+    function pagamentoConfirmado(guid) {
         mostrarEstado('sucesso');
+        setTimeout(() => {
+            window.location.replace('/pedido/' + guid);
+        }, 1500);
     }
 
     // Reinicia o polling sem recarregar a página (cliente já pagou mas polling expirou)
@@ -1189,7 +1129,7 @@
             .then(r => r.json())
             .then(data => {
                 if (data.pago) {
-                    pagamentoConfirmado(data.itens || []);
+                    pagamentoConfirmado(data.guid);
                 } else if (data.txid) {
                     const itensServidor = (data.itens || []).map(i => ({ nome: i.nome, preco: i.valor }));
                     exibirPix(data, itensServidor);
@@ -1240,7 +1180,7 @@
 
             if (metodoAtual === 'cartao') {
                 if (data.aprovado) {
-                    pagamentoConfirmado(data.itens || []);
+                    pagamentoConfirmado(data.guid);
                 } else {
                     // Negado ou instabilidade: mensagem amena inline, permite tentar de novo
                     // sem sair do formulário (permite_retry — outro cartão ou trocar pra Pix).

@@ -1701,6 +1701,28 @@ def get_pedido_by_guid(guid: str):
     )
 
 
+def garantir_guid_pedido(pedido_id: int) -> str:
+    """Retorna o guid do pedido, gerando um na hora se ele ainda não tiver. Pedidos web criados
+    antes da migration 062 (ou de qualquer futura lacuna) ficam com guid NULL pra sempre — o
+    backfill em massa (scripts/backfill_pedido_guid_itens.py) só cobre pedidos pagos via
+    WhatsApp, não os web antigos parados em estados intermediários (1001-1006). Chamada nos
+    pontos que respondem 'pago'/'aprovado' pro checkout, pra garantir que o cliente sempre
+    receba um guid válido antes do redirect pra /pedido/<guid> — sem isso, um pedido web antigo
+    confirmado agora mandaria o cliente pra "/pedido/null" logo depois de pagar."""
+    pedido = get_pedido(pedido_id)
+    if pedido.get('guid'):
+        return pedido['guid']
+    for _ in range(5):
+        guid = secrets.token_urlsafe(6)
+        try:
+            db.execute_query("UPDATE pedidos SET guid = %s WHERE id = %s", (guid, pedido_id))
+            return guid
+        except IntegrityError as e:
+            if 'uk_pedidos_guid' not in str(e):
+                raise
+    raise RuntimeError(f"Não foi possível gerar um guid único pro pedido {pedido_id}")
+
+
 # Nome/imagens/descrição/arquivo de cada item vêm do catálogo (ebooks/ebooks_produto), não do
 # snapshot congelado em pedido_itens no momento da compra — assim a página /pedido/<guid>
 # sempre mostra a versão atual cadastrada no catálogo (ex: se o admin corrigir um PDF ou

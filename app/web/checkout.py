@@ -227,7 +227,7 @@ def verificar_pagamento(txid: str) -> dict:
     """
     from web.bb_pay import consultar_pagamentos
     from database import (get_pedido_by_solicitacao_bb, get_produto_disponivel_web,
-                          confirmar_pagamento_web, listar_itens_pedido)
+                          confirmar_pagamento_web, listar_itens_pedido, garantir_guid_pedido)
     try:
         pedido = get_pedido_by_solicitacao_bb(txid)
         if not pedido:
@@ -268,7 +268,7 @@ def verificar_pagamento(txid: str) -> dict:
             {'id': item['id'], 'tipo': item['tipo'], 'nome': item['nome'], 'valor': float(item['valor'])}
             for item in listar_itens_pedido(pedido['id'])
         ]
-        return {'pago': True, 'pedido_id': pedido['id'], 'itens': itens}
+        return {'pago': True, 'pedido_id': pedido['id'], 'guid': garantir_guid_pedido(pedido['id']), 'itens': itens}
     except Exception as e:
         logger.error(f'[WEB-CHECKOUT] Erro ao verificar pagamento {txid}: {e}')
         return {'pago': False, 'erro': True}
@@ -306,7 +306,7 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     from web import cielo
     from web.parcelamento_cartao import calcular_total, parcelas_maximas_efetivas
     from database import (get_produto_disponivel_web, get_config_cartao_produto,
-                          resolver_valor_principal_produto,
+                          resolver_valor_principal_produto, garantir_guid_pedido,
                           criar_pedido_web_unificado, get_pedido_cartao_para_retry, finalizar_pedido_web,
                           criar_itens_pedido_web, listar_bumps_validos, listar_itens_pedido,
                           avancar_pedido_cartao_aguardando, criar_tentativa_pagamento_cartao,
@@ -441,7 +441,8 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
             {'id': item['id'], 'tipo': item['tipo'], 'nome': item['nome'], 'valor': float(item['valor'])}
             for item in listar_itens_pedido(pedido_id)
         ]
-        return {'aprovado': True, 'pedido_id': pedido_id, 'itens': itens}
+        guid = garantir_guid_pedido(pedido_id)
+        return {'aprovado': True, 'pedido_id': pedido_id, 'guid': guid, 'itens': itens}
 
     # Negado — resposta HTTP ok (201), mas Status diferente de aprovado.
     categoria, mensagem = categorizar_erro_cielo(status, payment.get('ReturnCode'), payment.get('ReturnMessage'))
