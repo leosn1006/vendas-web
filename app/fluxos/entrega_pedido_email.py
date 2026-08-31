@@ -4,9 +4,10 @@ Entrega do e-book por e-mail com link de download.
 Fluxo:
   1. Busca pedido (email, contact_name, produto_id)
   2. Busca produto (email_remetente, descricao, cores) — tabela produtos, só para personalização
-  3. Busca os itens realmente comprados em `pedido_itens` (principal + bônus + bumps aceitos)
-  4. Monta e-mail com um botão de download por item, apontando para a rota protegida por
-     pedido_id (em vez de linkar direto pro arquivo estático) — sem anexo
+  3. Busca os itens realmente comprados em `pedido_itens` (principal + bônus + bumps aceitos),
+     só para o resumo em texto do que foi comprado
+  4. Monta e-mail com um único link para a "Sua Estante" (/pedido/<guid>) — a página onde o
+     cliente lê/salva todos os produtos que já comprou, não mais um botão de download por item
   5. Envia via Gmail API (Service Account + Domain-Wide Delegation)
   6. Marca data_envio_ebook no pedido
 """
@@ -51,15 +52,12 @@ def executar(pedido_id: int) -> None:
 
     base_url = os.getenv('APP_BASE_URL', '').rstrip('/')
     itens = [
-        {
-            'nome': item['nome'],
-            'tipo': item['tipo'],
-            'url': f"{base_url}/api/v1/pedido/{pedido_id}/itens/{item['id']}/download",
-        }
+        {'nome': item['nome'], 'tipo': item['tipo']}
         for item in db.listar_itens_pedido(pedido_id)
     ]
+    link_estante = f"{base_url}/pedido/{db.garantir_guid_pedido(pedido_id)}"
 
-    html_entrega = _corpo_html(nome_cliente, nome_produto, itens,
+    html_entrega = _corpo_html(nome_cliente, nome_produto, itens, link_estante,
                                nome_remetente_email, cor_primaria, cor_secundaria)
 
     resultado = _enviar_gmail(
@@ -101,6 +99,7 @@ def executar(pedido_id: int) -> None:
 
 def _corpo_html(nome: str, nome_produto: str,
                 itens: list,
+                link_estante: str,
                 nome_remetente: str,
                 cor_primaria: str,
                 cor_secundaria: str) -> str:
@@ -110,24 +109,14 @@ def _corpo_html(nome: str, nome_produto: str,
     Args:
         nome: Primeiro nome do cliente
         nome_produto: Descrição do produto
-        itens: lista de dicts {nome, tipo, url} — um por item de `pedido_itens`
-               (tipo='principal' vira o botão grande; 'bonus'/'bump' viram botões extras)
+        itens: lista de dicts {nome, tipo} — um por item de `pedido_itens`, usada só para
+               o resumo em texto do que foi comprado (bônus x order bump)
+        link_estante: URL de /pedido/<guid> — página onde o cliente lê/salva tudo que já
+                      comprou. É o único link enviado no e-mail (botão + texto de apoio)
         nome_remetente: Nome usado no corpo e assinatura (ex: 'Luiza', 'Luiza Carolina')
         cor_primaria: Cor do header em hex (ex: '#2d6a1f')
         cor_secundaria: Cor dos botões em hex (ex: '#b45309')
     """
-    def _botao(item: dict, principal: bool = False) -> str:
-        rotulo = f"📥 Baixar meu {nome_produto}" if principal else f"🎁 Baixar {item['nome']}"
-        tamanho = '17px' if principal else '15px'
-        padding = '16px 32px' if principal else '12px 24px'
-        return f'''
-      <a href="{item['url']}"
-         style="display:inline-block; background:{cor_secundaria}; color:#ffffff;
-                font-size:{tamanho}; font-weight:bold; text-decoration:none;
-                padding:{padding}; border-radius:12px; margin:8px 0;">
-        {rotulo}
-      </a>'''
-
     def _juntar_nomes(nomes: list) -> str:
         if len(nomes) <= 1:
             return nomes[0] if nomes else ''
@@ -136,13 +125,10 @@ def _corpo_html(nome: str, nome_produto: str,
     principais  = [i for i in itens if i['tipo'] == 'principal']
     bonus_itens = [i for i in itens if i['tipo'] == 'bonus']
     bump_itens  = [i for i in itens if i['tipo'] == 'bump']
-    extras      = bonus_itens + bump_itens
-
-    btn_principal = _botao(principais[0], principal=True) if principais else ''
 
     # Resumo em texto do que foi comprado x ganho de bônus x order bump — sem isso a cliente
-    # pode achar que o bump (pago) veio de graça junto com o bônus, já que os dois aparecem
-    # juntos na seção de botões abaixo.
+    # pode achar que o bump (pago) veio de graça junto com o bônus, já que os dois viram parte
+    # do mesmo link de acesso (a Estante) e não têm mais um botão próprio que os diferencie.
     resumo_partes = []
     if principais:
         resumo_partes.append(f"você comprou <strong>{principais[0]['nome']}</strong>")
@@ -160,87 +146,60 @@ def _corpo_html(nome: str, nome_produto: str,
               Resumindo: {', '.join(resumo_partes)}.
             </p>'''
 
-    secao_bonus = ''
-    if extras:
-        botoes_extras = ''.join(_botao(i) for i in extras)
-        secao_bonus = f'''
-            <p style="font-size:14px; color:#555; margin:0 0 8px;">
-              Você também ganhou:
-            </p>
-            {botoes_extras}
-    '''
-
     corpo_interno = f"""
             <p style="font-size:16px; color:#333; margin:0 0 16px;">
-              Aqui é a <strong>{nome_remetente}</strong>. Seu pagamento foi confirmado — parabéns pela decisão! 🎉
+              Oi, {nome}! Aqui é a <strong>{nome_remetente}</strong>. Sua compra foi confirmada — parabéns pela decisão! 🎉
             </p>
             {resumo_compra}
-            <!-- Botões de download -->
+            <p style="font-size:15px; color:#333; margin:0 0 20px;">
+              Para acessar, é só clicar no botão abaixo. Você vai entrar direto no nosso site,
+              na sua página pessoal — a <strong>Sua Estante</strong> — onde fica tudo o que você
+              já comprou com a gente. Dá pra ler direto no navegador, sem instalar nada, e
+              também dá pra salvar para ler depois, quando quiser.
+            </p>
+
+            <!-- Botão de acesso -->
             <table width="100%" style="background:#fff8e1; border-radius:12px;
-                                        margin:0 0 28px; text-align:center;">
+                                        margin:0 0 20px; text-align:center;">
               <tr>
                 <td style="padding:24px 20px;">
-                  <p style="font-size:15px; font-weight:bold; color:#1a4012; margin:0 0 16px;">
-                    Toque no botão abaixo para baixar:
-                  </p>
-                  {btn_principal}
-                  {secao_bonus}
+                  <a href="{link_estante}"
+                     style="display:inline-block; background:{cor_secundaria}; color:#ffffff;
+                            font-size:17px; font-weight:bold; text-decoration:none;
+                            padding:16px 32px; border-radius:12px;">
+                    📚 Acessar minha estante
+                  </a>
                 </td>
               </tr>
             </table>
 
-            <!-- iPhone -->
-            <table width="100%" style="background:#f8f8f8; border-left:4px solid #555;
-                                        border-radius:0 12px 12px 0; margin:0 0 16px;">
-              <tr>
-                <td style="padding:16px 20px;">
-                  <p style="font-size:15px; font-weight:bold; color:#333; margin:0 0 10px;">
-                    📱 Usando iPhone?
-                  </p>
-                  <ol style="font-size:14px; color:#444; line-height:1.9; margin:0; padding-left:20px;">
-                    <li>Toque no botão marrom acima.</li>
-                    <li>O arquivo abre — toque nos <strong>3 pontinhos ⋯</strong> no canto superior direito.</li>
-                    <li>Toque em <strong>"Salvar em Arquivos"</strong> → escolha <strong>"No meu iPhone"</strong>.</li>
-                  </ol>
-                  <p style="font-size:13px; color:{cor_primaria}; font-weight:bold; margin:10px 0 0;">
-                    ✅ Pronto! Fica salvo para sempre, mesmo sem internet.
-                  </p>
-                </td>
-              </tr>
-            </table>
-
-            <!-- Android -->
+            <!-- Alternativa: copiar e colar o link -->
             <table width="100%" style="background:#f8f8f8; border-left:4px solid #555;
                                         border-radius:0 12px 12px 0; margin:0 0 24px;">
               <tr>
                 <td style="padding:16px 20px;">
-                  <p style="font-size:15px; font-weight:bold; color:#333; margin:0 0 10px;">
-                    🤖 Usando Android?
+                  <p style="font-size:14px; color:#333; margin:0 0 10px;">
+                    <strong>Não conseguiu clicar no botão?</strong> Sem problema: copie o link
+                    abaixo e cole na barra de endereços do navegador do seu celular ou
+                    computador (o mesmo lugar onde você digitaria "google.com"):
                   </p>
-                  <ol style="font-size:14px; color:#444; line-height:1.9; margin:0; padding-left:20px;">
-                    <li>Toque no botão acima.</li>
-                    <li>O arquivo baixa automaticamente.</li>
-                    <li>Abra o app <strong>"Arquivos"</strong> (ou <strong>"Meus Arquivos"</strong>) → pasta <strong>Downloads</strong>.</li>
-                  </ol>
-                  <p style="font-size:13px; color:{cor_primaria}; font-weight:bold; margin:10px 0 0;">
-                    ✅ Pronto! Ele fica salvo no seu celular.
+                  <p style="font-size:13px; font-family:monospace; color:{cor_primaria};
+                            background:#ffffff; border:1px solid #ddd; border-radius:8px;
+                            padding:10px 12px; margin:0; word-break:break-all;">
+                    {link_estante}
                   </p>
                 </td>
               </tr>
             </table>
 
-            <!-- Dica WhatsApp -->
-            <table width="100%" style="background:#fff8e1; border:1px dashed #f59e0b;
-                                        border-radius:12px; margin:0 0 24px;">
-              <tr>
-                <td style="padding:14px 20px;">
-                  <p style="font-size:14px; color:{cor_secundaria}; margin:0;">
-                    💡 <strong>Dica rápida:</strong> encaminhe este e-mail para você mesma no
-                    <strong>WhatsApp</strong> — assim você nunca perde o link!
-                  </p>
-                </td>
-              </tr>
-            </table>
+            <p style="font-size:14px; color:#555; margin:0 0 8px;">
+              Esse link é pessoal — é ele que abre sua Estante, e você pode acessar de
+              qualquer celular ou computador, quantas vezes quiser.
+            </p>
+            <p style="font-size:14px; color:#555; margin:0 0 24px;">
+              💡 <strong>Dica:</strong> guarde este e-mail. Sempre que quiser reler ou salvar
+              seu material, é só voltar aqui e clicar no link novamente.
+            </p>
 
             <p style="font-size:14px; color:#555; margin:0 0 24px;">
               Qualquer dúvida é só responder este e-mail. Estou aqui para ajudar! 😊
@@ -252,7 +211,7 @@ def _corpo_html(nome: str, nome_produto: str,
             </p>"""
 
     rodape = ('Você recebeu este e-mail porque realizou uma compra em lsnlivros.com.br.<br>'
-               'Guarde este e-mail para ter sempre acesso ao seu link de download.')
+               'Guarde este e-mail para ter sempre acesso aos seus produtos.')
 
     return _wrapper_html(
         titulo_header=f'✅ Seu {nome_produto} chegou, {nome}!',
