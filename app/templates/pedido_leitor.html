@@ -82,15 +82,16 @@
 
         .canvas-wrap {
             display: flex;
-            justify-content: center;
-            max-width: 760px;
-            margin: 0 auto;
+            align-items: flex-start;
+            overflow-x: auto;
         }
         #pdf-canvas {
-            max-width: 100%;
             border: 1px solid var(--borda);
             background: #fff;
             box-shadow: 0 2px 8px rgba(0,0,0,.08);
+            display: block;
+            flex-shrink: 0;
+            min-width: 0;
         }
 
         footer.leitor-footer {
@@ -141,6 +142,22 @@
             header.leitor-header, footer.leitor-footer { padding-left: 32px; padding-right: 32px; }
             main.leitor-main { padding: 32px; }
             .titulo-livro { font-size: 19px; }
+        }
+
+        /* ── Mobile (≤600px): ajustes para paginação compacta ── */
+        @media (max-width: 600px) {
+            .paginacao {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .paginacao button {
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+            #pagina-label {
+                width: 100%;
+                order: 3;
+            }
         }
 
         /* ── Overlay de progresso do download ── */
@@ -294,9 +311,25 @@
                 }
 
                 const viewport = page.getViewport({ scale });
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                page.render({ canvasContext: ctx, viewport });
+
+                // Sem isso, o canvas grava exatamente 1 pixel de imagem por pixel CSS — em
+                // qualquer tela retina/alta densidade (devicePixelRatio > 1, a grande maioria
+                // dos celulares hoje), o navegador precisa esticar essa imagem pra preencher
+                // os pixels físicos reais da tela, borrando o conteúdo (relatado pelo cliente
+                // como "e-book sem foco"). outputScale grava mais pixels reais na mesma área
+                // visual: canvas.width/height ficam com a resolução real (em pixels físicos),
+                // e canvas.style.width/height fixam o tamanho exibido (em pixels CSS, igual
+                // antes) — sem o style, o canvas cresceria fisicamente na tela também, não só
+                // em resolução. `transform` escala o desenho do pdf.js para preencher esse
+                // canvas maior. Padrão documentado do próprio pdf.js para telas de alta DPI.
+                const outputScale = window.devicePixelRatio || 1;
+                canvas.width = Math.floor(viewport.width * outputScale);
+                canvas.height = Math.floor(viewport.height * outputScale);
+                canvas.style.width = Math.floor(viewport.width) + 'px';
+                canvas.style.height = Math.floor(viewport.height) + 'px';
+                const transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined;
+
+                page.render({ canvasContext: ctx, viewport, transform });
 
                 document.getElementById('pagina-label').textContent =
                     `Página ${num} de ${pdfDoc.numPages}`;
