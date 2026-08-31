@@ -17,6 +17,12 @@ _MERCHANT_KEY  = os.getenv('CIELO_MERCHANT_KEY', '')
 _API_URL       = os.getenv('CIELO_API_URL', 'https://apisandbox.cieloecommerce.cielo.com.br/1/').rstrip('/')
 _API_QUERY_URL = os.getenv('CIELO_API_QUERY_URL', 'https://apiquerysandbox.cieloecommerce.cielo.com.br/1/').rstrip('/')
 
+# Nosso nome interno (bandeira_bin.py, ícones em static/images/bandeiras/) -> valor exigido
+# pelo BrandEnum da Cielo, só onde os dois divergem. Confirmado empiricamente no sandbox.
+_BRAND_CIELO = {
+    'mastercard': 'Master',
+}
+
 
 def _headers() -> dict:
     return {
@@ -78,7 +84,13 @@ def criar_transacao(merchant_order_id: str, valor_centavos: int, parcelas: int,
         # ("Error converting value '' to type BrandEnum"), confirmado no sandbox. Omitir a
         # chave inteira (em vez de mandar vazio) funciona normalmente (Brand volta "Undefined"
         # na resposta, mas a autorização segue).
-        credit_card['Brand'] = bandeira
+        #
+        # 'mastercard' (nosso nome interno, usado no ícone/cache/auditoria) NÃO é um valor
+        # válido do BrandEnum — só 'Master' é aceito (confirmado no sandbox: 'Mastercard' e
+        # 'MasterCard' quebram com o mesmo erro 999 "Error converting value..."; causou falha
+        # real em produção pra um cliente com cartão Mastercard). Visa/Elo/Amex/Hipercard já
+        # batem com o enum sem tradução.
+        credit_card['Brand'] = _BRAND_CIELO.get(bandeira, bandeira)
 
     payload = {
         'MerchantOrderId': merchant_order_id,
