@@ -336,21 +336,36 @@
             renderPage(pageNum);
         });
 
-        // Baixa o PDF via fetch (lendo em streaming pra mostrar progresso) e dispara o save do
-        // navegador sem navegar pra outra tela/aba — a tela do leitor é a única superfície de
-        // visualização/salvamento, pra qualquer item (principal, bônus ou bump), em vez de um
-        // link de download separado.
+        // Mostra uma barra de progresso durante o download e depois salva o arquivo — sem
+        // nunca abrir aba nova, em qualquer navegador.
         //
-        // O blob é criado com type 'application/octet-stream', não 'application/pdf': no
-        // Safari (iOS/macOS), um <a download> apontando pra um blob de PDF é frequentemente
-        // ignorado — o navegador abre o PDF no visualizador inline em vez de baixar, porque o
-        // Safari trata blobs de PDF como "conteúdo pra exibir", não "arquivo pra salvar". Como
-        // 'application/octet-stream' não tem visualizador associado, o Safari cai no
-        // comportamento padrão de download, igual aos outros navegadores.
+        // Tentamos antes fazer o fetch()+blob+<a download> salvar o arquivo direto (sem
+        // segunda requisição). Não é confiável entre navegadores: no Safari, um <a download>
+        // apontando pra um blob de PDF costuma ser ignorado (abre no visualizador inline em
+        // vez de baixar) mesmo com o blob tipado como application/octet-stream; no Firefox,
+        // às vezes abre em outra aba. Ambos são comportamentos específicos de cada motor de
+        // navegador pra blob URLs, não algo que dá pra controlar de forma confiável via JS.
+        //
+        // Por isso o fetch() aqui serve só pra ACOMPANHAR o progresso (lendo em streaming,
+        // sem guardar os bytes em memória) — o salvamento de verdade é sempre feito por uma
+        // navegação nativa pra ?download=1, que responde com Content-Disposition: attachment.
+        // Isso é o mecanismo padrão de download do HTTP: o navegador NUNCA troca de página
+        // nem abre aba nova pra uma resposta attachment, em nenhum navegador — só entrega pro
+        // gerenciador de downloads dele. O custo é buscar o arquivo 2x (uma vez só pra medir
+        // progresso, outra vez pra salvar de verdade) — aceitável pro tamanho de um e-book.
         const overlay = document.getElementById('download-overlay');
         const overlayArquivo = document.getElementById('download-arquivo');
         const overlayBarra = document.getElementById('download-barra-preenchida');
         const overlayPercentual = document.getElementById('download-percentual');
+
+        // Duração mínima da barra na tela: em conexão rápida (ou localhost), o download real
+        // termina em bem menos de 1s — sem esse piso, a barra "pisca" e some quase na hora, e
+        // o cliente não tem tempo de perceber que aquilo era progresso (pode até achar que foi
+        // um bug). pctPeloTempo() cresce de forma constante até 100% ao longo de DURACAO_MINIMA_MS;
+        // o que a barra mostra é sempre o MENOR entre o progresso real e esse ritmo mínimo — então
+        // um download mais lento que DURACAO_MINIMA_MS continua mostrando o progresso real (nunca
+        // fica pra trás do que de fato chegou), e só o caso rápido demais é esticado visualmente.
+        const DURACAO_MINIMA_MS = 2000;
 
         btnSalvar.addEventListener('click', async () => {
             btnSalvar.disabled = true;
@@ -358,56 +373,55 @@
             overlayBarra.style.width = '0%';
             overlayPercentual.textContent = '0%';
             overlay.hidden = false;
+
+            const inicio = Date.now();
+            const pctPeloTempo = () => Math.min(100, Math.round(((Date.now() - inicio) / DURACAO_MINIMA_MS) * 100));
+            const atualizarBarra = (pctReal) => {
+                const pct = Math.min(pctReal, pctPeloTempo());
+                overlayBarra.style.width = pct + '%';
+                overlayPercentual.textContent = pct + '%';
+            };
+
             try {
                 const resp = await fetch(url);
-                if (!resp.ok) throw new Error('resposta não OK');
-
                 const totalBytes = parseInt(resp.headers.get('Content-Length') || '0', 10);
-
-                let blob;
-                if (resp.body && totalBytes > 0) {
-                    // getReader() trava o stream de resp assim que é chamado (independente de
-                    // .read() rodar) — só chamar aqui dentro, depois de decidir que vamos
-                    // streamar; se ficasse antes do if, o branch else (resp.blob()) quebraria
-                    // tentando ler um stream já travado sempre que Content-Length faltasse.
+                if (resp.ok && resp.body && totalBytes > 0) {
                     const reader = resp.body.getReader();
-                    const partes = [];
                     let recebidos = 0;
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
-                        partes.push(value);
                         recebidos += value.length;
-                        const pct = Math.min(100, Math.round((recebidos / totalBytes) * 100));
-                        overlayBarra.style.width = pct + '%';
-                        overlayPercentual.textContent = pct + '%';
+                        atualizarBarra(Math.round((recebidos / totalBytes) * 100));
                     }
-                    blob = new Blob(partes, { type: 'application/octet-stream' });
-                } else {
-                    // Sem Content-Length ou sem suporte a streaming: sem progresso granular,
-                    // mas o download em si continua funcionando.
-                    const blobOriginal = await resp.blob();
-                    blob = new Blob([blobOriginal], { type: 'application/octet-stream' });
-                    overlayBarra.style.width = '100%';
-                    overlayPercentual.textContent = '100%';
+                } else if (resp.body) {
+                    // Sem Content-Length (proxy que remove o header, resposta não-2xx) — não dá
+                    // pra mostrar progresso granular, mas precisa drenar/cancelar o corpo antes
+                    // de abrir uma segunda conexão pro mesmo host (?download=1 logo abaixo),
+                    // senão essa primeira requisição fica pendurada disputando uma das conexões
+                    // simultâneas limitadas do navegador com o download de verdade.
+                    await resp.body.cancel();
                 }
-
-                const blobUrl = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = blobUrl;
-                a.download = nomeArquivo;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
             } catch (e) {
-                // Fallback: se fetch/blob falhar por algum motivo, cai no download tradicional
-                // (navega a própria aba pra uma resposta com Content-Disposition: attachment).
+                // Falha ao acompanhar o progresso não impede o download em si — só não mostra
+                // a barra completa. O salvamento de verdade sempre acontece pela navegação
+                // abaixo, fora deste try.
+            }
+
+            // Se o download real já terminou antes do piso de tempo, continua animando a
+            // barra no ritmo mínimo até completar — em vez de pular direto pra 100% e sumir.
+            while (Date.now() - inicio < DURACAO_MINIMA_MS) {
+                atualizarBarra(100);
+                await new Promise(r => setTimeout(r, 50));
+            }
+            overlayBarra.style.width = '100%';
+            overlayPercentual.textContent = '100%';
+
+            setTimeout(() => {
                 window.location.href = url + '?download=1';
-            } finally {
                 overlay.hidden = true;
                 btnSalvar.disabled = false;
-            }
+            }, 150);
         });
     </script>
 </body>
