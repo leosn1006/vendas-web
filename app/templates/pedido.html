@@ -188,44 +188,70 @@
             .topo p { font-size: 16px; }
 
             .grid-ebooks {
-                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                /* auto-fit (não auto-fill): colunas "fantasmas" sem item colapsam e o espaço
+                   delas é redistribuído pros cards que existem de verdade. Teto de 210px (em
+                   vez de 1fr): sem o teto, poucos itens fariam o(s) card(s) esticar pra
+                   preencher a largura toda (com 1 item, quase 900px de largura — desproporcional).
+                   Card em tamanho normal + cabeçalho do mesmo tamanho que a grade (ver
+                   .estante-conteudo.compacta abaixo) resolve os dois problemas de uma vez. */
+                grid-template-columns: repeat(auto-fit, minmax(160px, 210px));
                 gap: 20px;
+            }
+            /* Menos itens do que cabe numa fileira cheia (4, no tamanho de card acima): em vez
+               de deixar o cabeçalho na largura total do container enquanto a grade ocupa só uma
+               fração dela (visualmente desalinhado), encolhe os dois juntos pra largura exata
+               que N cards ocupariam — mesma conta de repeat(auto-fit, minmax(160px,210px)) faria
+               sozinho, só que aplicada também no cabeçalho. --n-itens vem do Jinja (contagem real
+               de itens), então o cálculo bate sempre, sem valor chutado. */
+            .estante-conteudo.compacta {
+                max-width: calc(var(--n-itens) * 210px + (var(--n-itens) - 1) * 20px);
             }
             .titulo { font-size: 14px; padding: 12px 14px 14px; }
         }
     </style>
 </head>
 <body>
+    {# Menos itens do que cabe numa fileira de 4 (o máximo que o container comporta em 210px +
+       20px de gap, ver .grid-ebooks): cabeçalho e grade ficam do mesmo tamanho "encolhido" —
+       calc() usa exatamente a mesma conta de largura que repeat(auto-fit, minmax(160px,210px))
+       produziria pra esses N itens, então os dois batem certinho sem escolher um valor no chute.
+       Com 4+ itens, a fileira já preenche a largura toda dos dois lados igualmente — não precisa
+       encolher nada (ver alternativa mais antiga, que só limitava o tamanho do card e deixava
+       header/grade desalinhados quando sobrava espaço). #}
+    {% set compacta = itens and itens|length < 4 %}
     <div class="container">
-        <div class="topo-wrap">
-            <div class="topo-halo"></div>
-            <header class="topo">
-                <div class="marca">📚 SUA ESTANTE</div>
-                <h1>Olá, {{ primeiro_nome }}!</h1>
-                <p>Todos os seus e-books estão aqui.</p>
-            </header>
-        </div>
+        <div class="estante-conteudo{% if compacta %} compacta{% endif %}"
+             {% if compacta %}style="--n-itens: {{ itens|length }}"{% endif %}>
+            <div class="topo-wrap">
+                <div class="topo-halo"></div>
+                <header class="topo">
+                    <div class="marca">📚 SUA ESTANTE</div>
+                    <h1>Olá, {{ primeiro_nome }}!</h1>
+                    <p>Todos os seus e-books estão aqui.</p>
+                </header>
+            </div>
 
-        {% if itens %}
-        <div class="grid-ebooks">
-            {% for item in itens %}
-            <a class="item-ebook{% if item.bloqueado %} bloqueado{% endif %}" href="/pedido/{{ item.guid_pedido }}/ler/{{ item.id }}">
-                <div class="capa-wrap">
-                    {% if item.imagem_pequena %}
-                    <img class="capa" src="{{ url_for('static', filename='images/' + item.imagem_pequena) }}" alt="{{ item.nome }}">
-                    {% else %}
-                    <div class="capa placeholder">📖</div>
-                    {% endif %}
-                    {% if item.bloqueado %}<span class="badge-cadeado">🔒</span>{% endif %}
-                </div>
-                <div class="titulo">{{ item.nome }}</div>
-                {% if item.bloqueado %}<div class="legenda-bloqueado">Libera após confirmar o pagamento</div>{% endif %}
-            </a>
-            {% endfor %}
+            {% if itens %}
+            <div class="grid-ebooks">
+                {% for item in itens %}
+                <a class="item-ebook{% if item.bloqueado %} bloqueado{% endif %}" href="/pedido/{{ item.guid_pedido }}/ler/{{ item.id }}">
+                    <div class="capa-wrap">
+                        {% if item.imagem_pequena %}
+                        <img class="capa" src="{{ url_for('static', filename='images/' + item.imagem_pequena) }}" alt="{{ item.nome }}">
+                        {% else %}
+                        <div class="capa placeholder">📖</div>
+                        {% endif %}
+                        {% if item.bloqueado %}<span class="badge-cadeado">🔒</span>{% endif %}
+                    </div>
+                    <div class="titulo">{{ item.nome }}</div>
+                    {% if item.bloqueado %}<div class="legenda-bloqueado">Libera após confirmar o pagamento</div>{% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="vazio">Nenhum item encontrado.</div>
+            {% endif %}
         </div>
-        {% else %}
-        <div class="vazio">Nenhum item encontrado.</div>
-        {% endif %}
 
         <p class="rodape-suporte">
             Precisa de ajuda? Entre em contato:<br>
