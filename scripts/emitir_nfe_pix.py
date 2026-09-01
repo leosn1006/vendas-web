@@ -77,7 +77,7 @@ senha = os.environ.get(senha_env, '')
 if not senha:
     print(f'      ERRO: variável de ambiente {senha_env!r} não definida ou vazia.')
     sys.exit(1)
-cert_path_pfx = config.get('certificado_path', '')
+cert_path_pfx = os.environ.get('NF_CERT_PATH') or config.get('certificado_path', '')
 try:
     cert_pem, key_pem, _ = carregar_pfx(cert_path_pfx, senha)
     print('      OK — certificado carregado')
