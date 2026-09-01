@@ -133,7 +133,9 @@ def montar_nfe(
     # XSD aceita série sem zeros à esquerda: padrão '0|[1-9][0-9]{0,2}'
     # Na chave de acesso usa-se zfill(3), mas no elemento XML o valor é numérico
     serie    = str(int(config.get('serie_padrao', '1')))
-    x_prod   = (pagamento.get('x_prod') or config.get('x_prod') or 'Livro Digital').strip()
+    x_prod   = (pagamento.get('nome_nfe') or pagamento.get('x_prod') or config.get('x_prod') or 'Livro Digital').strip()[:120]
+    isbn_raw = pagamento.get('isbn') or ''
+    c_ean    = isbn_raw.replace('-', '') if isbn_raw else 'SEM GTIN'
     ncm      = config.get('ncm') or '49011000'
     cfop     = config.get('cfop') or '5102'
     c_benef  = config.get('c_benef') or None
@@ -202,7 +204,7 @@ def montar_nfe(
         nItem='1',
         prod=Tnfe.InfNfe.Det.Prod(
             cProd='001',
-            cEAN='SEM GTIN',
+            cEAN=c_ean,
             xProd=x_prod,
             NCM=ncm,
             cBenef=c_benef,
@@ -211,7 +213,7 @@ def montar_nfe(
             qCom='1.0000',
             vUnCom=valor,
             vProd=valor,
-            cEANTrib='SEM GTIN',
+            cEANTrib=c_ean,
             uTrib='UN',
             qTrib='1.0000',
             vUnTrib=valor,

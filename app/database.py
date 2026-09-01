@@ -2828,7 +2828,7 @@ def buscar_tenant_slug_produto(produto_id: int) -> str:
 
 def buscar_pagamento_pix_por_id(pagamento_pix_id: int) -> dict | None:
     return db.execute_query(
-        """SELECT pp.*, p.nome AS x_prod
+        """SELECT pp.*, p.nome AS x_prod, p.isbn, p.nome_nfe
            FROM pagamento_pix pp
            LEFT JOIN produtos p ON p.id = pp.produto_id
            WHERE pp.id = %s""",
