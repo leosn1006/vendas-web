@@ -18,6 +18,7 @@ from datetime import datetime
 from lxml import etree
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'app'))
 
 from app.database import buscar_pagamento_pix_por_id, buscar_nfe_configuracao_por_slug, db
 from app.fiscal.certificado import carregar_pfx, certificado_temp
