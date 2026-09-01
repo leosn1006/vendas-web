@@ -31,7 +31,7 @@ google-ads==29.1.0
 
 # NF-e
 nfelib==2.5.2
-brazilfiscalreport==2.7.6
+brazilfiscalreport==1.0.2
 lxml==6.1.1
 signxml==5.0.0  # subclasse _NFeSigner/_NFeVerifier bypassa bloqueio SHA1 (exigido pelo MOC NF-e 4.00)
 
