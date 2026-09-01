@@ -139,10 +139,8 @@ def emitir_nfe(pagamento_pix_id: int, config_id: int | None = None) -> dict:
             ca_bundle_path = config.get('ca_bundle_path') or None
             if ca_bundle_path:
                 ca_bundle = ca_bundle_path        # CA bundle ICP-Brasil explícito
-            elif ambiente == 2:
-                ca_bundle = False                 # homologação: ICP-Brasil não está no bundle padrão
             else:
-                ca_bundle = True                  # produção sem ca_bundle_path: usar bundle do SO
+                ca_bundle = False                 # ICP-Brasil não está no bundle padrão do Python
             result = enviar_autorizacao(
                 xml_nfe_assinado=xml_assinado,
                 cert_path=cert_path,
