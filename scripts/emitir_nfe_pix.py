@@ -17,17 +17,16 @@ from datetime import datetime
 
 from lxml import etree
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'app'))
 
-from app.database import buscar_pagamento_pix_por_id, buscar_nfe_configuracao_por_slug, db
-from app.fiscal.certificado import carregar_pfx, certificado_temp
-from app.fiscal.nfe_chave import gerar_chave
-from app.fiscal.nfe_xml_builder import montar_nfe
-from app.fiscal.nfe_assinador import assinar_nfe, verificar_assinatura
-from app.fiscal.nfe_validador import validar_nfe
-from app.fiscal.nfe_soap import enviar_autorizacao
-from app.fiscal.nfe_service import _montar_nfe_proc
+from database import buscar_pagamento_pix_por_id, buscar_nfe_configuracao_por_slug, db
+from fiscal.certificado import carregar_pfx, certificado_temp
+from fiscal.nfe_chave import gerar_chave
+from fiscal.nfe_xml_builder import montar_nfe
+from fiscal.nfe_assinador import assinar_nfe, verificar_assinatura
+from fiscal.nfe_validador import validar_nfe
+from fiscal.nfe_soap import enviar_autorizacao
+from fiscal.nfe_service import _montar_nfe_proc
 
 # ─── Parâmetros ──────────────────────────────────────────────────────────────
 
