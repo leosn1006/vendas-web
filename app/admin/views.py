@@ -3565,7 +3565,7 @@ def fiscal_danfe(nfe_id):
     try:
         from brazilfiscalreport.danfe import Danfe
         danfe = Danfe(xml=xml.encode('utf-8') if isinstance(xml, str) else xml)
-        pdf_bytes = danfe.output()
+        pdf_bytes = bytes(danfe.output())
     except Exception as e:
         logger.error(f'[ADMIN] Erro ao gerar DANFE nfe_id={nfe_id}: {e}')
         return f'Erro ao gerar DANFE: {e}', 500
