@@ -82,7 +82,7 @@
 </style>
 {% endblock %}
 
-{% macro roi_summary_card(titulo, subtitulo, recebido_label, recebido, investido, taxa, erro=false, extra_label=none, extra_value=none) %}
+{% macro roi_summary_card(titulo, subtitulo, recebido_label, recebido, investido, taxa, erro=false, extra_label=none, extra_value=none, recebido_display=none) %}
 <div class="card roi-summary-card">
     {% if erro %}
         <div class="roi-summary-head">
@@ -93,6 +93,7 @@
     {% else %}
         {% set imposto = recebido * taxa / 100 %}
         {% set resultado = recebido - imposto - investido %}
+        {% set exibido = recebido_display if recebido_display is not none else recebido %}
         <div class="roi-summary-head">
             <div class="roi-summary-title">{{ titulo }}</div>
             <div class="roi-summary-sub">{{ subtitulo }}</div>
@@ -104,7 +105,7 @@
             </div>
             <div class="roi-summary-item">
                 <div class="roi-summary-label">{{ recebido_label }}</div>
-                <div class="roi-summary-value">R$ {{ '%.2f'|format(recebido) }}</div>
+                <div class="roi-summary-value">R$ {{ '%.2f'|format(exibido) }}</div>
             </div>
             {% if extra_label %}
             <div class="roi-summary-item">
@@ -192,12 +193,9 @@
 {{ roi_summary_card('ROI Real (PIX)', 'Todos os pagamentos PIX recebidos no período (investido = campanhas não marcadas como Venda Web)',
     'Recebido via PIX', pix_recebido, pix_investido, taxa_imposto, roi_real_erro) }}
 
-{{ roi_summary_card('ROI Real Web', 'Pedidos com status pago (estado 1000) no período — PIX (BB Pay) + Cartão (Cielo) somados — contra campanhas marcadas como Venda Web',
-    'Recebido via Web', web_total_recebido, web_investido, taxa_imposto, roi_real_web_erro,
-    extra_label='Recebido via Cartão', extra_value=cartao_recebido) }}
-
-{{ roi_summary_card('ROI Real (Cartão)', 'Pedidos pagos via cartão de crédito (Cielo) no período — Investido é o MESMO orçamento do card "ROI Real Web" acima (mesmas campanhas de Venda Web); o recebido por cartão já está somado no ROI Real Web, não some os dois',
-    'Recebido via Cartão', cartao_recebido, web_investido, taxa_imposto, roi_real_web_erro) }}
+{{ roi_summary_card('ROI Real Web', 'Pedidos com status pago (estado 1000) no período — PIX (BB Pay) + Cartão (Cielo) somados — contra campanhas marcadas como Venda Web (Imposto, ROI Real e Resultado Real usam a soma dos dois)',
+    'Recebido via Pix', web_total_recebido, web_investido, taxa_imposto, roi_real_web_erro,
+    extra_label='Recebido via Cartão', extra_value=cartao_recebido, recebido_display=web_recebido) }}
 
 {{ roi_summary_card('ROI Real Total', 'Todas as campanhas do produto, contra PIX + Web recebidos no período (sem contar 2x o mesmo PIX; Web já inclui Cartão)',
     'Recebido (PIX + Web)', pix_recebido_sem_duplicidade + web_total_recebido, pix_investido + web_investido, taxa_imposto, total_erro) }}
