@@ -85,6 +85,13 @@
             align-items: flex-start;
             overflow-x: auto;
         }
+        /* [hidden] e .canvas-wrap têm a mesma especificidade — sem essa regra, o
+           display:flex acima vence e o canvas-wrap fica visível (com o canvas vazio no
+           tamanho padrão do navegador) mesmo com o atributo hidden presente no HTML. Mesmo
+           caso do .download-overlay logo abaixo. */
+        .canvas-wrap[hidden] {
+            display: none;
+        }
         #pdf-canvas {
             border: 1px solid var(--borda);
             background: #fff;
@@ -135,6 +142,25 @@
             color: var(--sub);
             line-height: 1.5;
         }
+
+        .carregando-pdf {
+            max-width: 320px;
+            margin: 60px auto 0;
+            font-size: 14px;
+            color: var(--sub);
+            line-height: 1.5;
+            text-align: center;
+        }
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--borda);
+            border-top-color: var(--verde);
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ── RESPONSIVO — desktop (≥1024px). Mobile-first: tudo acima é o layout base
            (celular). Mesma convenção usada em checkout.html. ── */
@@ -234,7 +260,11 @@
 
     <main class="leitor-main">
         <div class="titulo-livro">{{ item.nome }}</div>
-        <div class="canvas-wrap">
+        <div id="carregando-pdf" class="carregando-pdf">
+            <div class="spinner"></div>
+            <p>Carregando seu e-book…</p>
+        </div>
+        <div class="canvas-wrap" hidden>
             <canvas id="pdf-canvas"></canvas>
         </div>
         <div id="erro-pdf" class="erro-pdf" hidden>
@@ -286,6 +316,7 @@
         const canvas = document.getElementById('pdf-canvas');
         const ctx = canvas.getContext('2d');
         const canvasWrap = document.querySelector('.canvas-wrap');
+        const carregandoPdf = document.getElementById('carregando-pdf');
         const btnZoomIn = document.getElementById('btn-zoom-in');
         const btnZoomOut = document.getElementById('btn-zoom-out');
         const btnAnterior = document.getElementById('btn-pag-anterior');
@@ -293,6 +324,7 @@
         const btnSalvar = document.getElementById('btn-salvar');
 
         function mostrarErroPdf() {
+            carregandoPdf.hidden = true;
             document.getElementById('erro-pdf').hidden = false;
             canvasWrap.style.display = 'none';
             document.querySelector('.leitor-footer').style.display = 'none';
@@ -300,10 +332,35 @@
 
         function renderPage(num) {
             pdfDoc.getPage(num).then(page => {
+                // Revela o canvas-wrap (e esconde o "carregando") antes de medir
+                // canvasWrap.clientWidth logo abaixo — enquanto escondido (display:none), a
+                // largura mediria 0 e quebraria o cálculo de fitScale. Roda em toda
+                // renderização de página; depois da primeira vez ambos já estão no estado
+                // certo, então a chamada é inofensiva.
+                carregandoPdf.hidden = true;
+                canvasWrap.hidden = false;
+
                 if (scale === null) {
                     const naoEscalado = page.getViewport({ scale: 1 });
                     const larguraDisponivel = canvasWrap.clientWidth || naoEscalado.width;
-                    fitScale = larguraDisponivel / naoEscalado.width;
+
+                    // Altura realmente visível pra a página caber inteira na primeira tela: a
+                    // área de leitura (main.leitor-main) menos o próprio padding dela
+                    // (clientHeight já inclui padding) e menos o espaço que o título do livro
+                    // ocupa acima do canvas. Sem isso, numa tela larga (desktop, onde a
+                    // largura disponível é generosa) uma página retrato ficava com zoom
+                    // desproporcional — a largura cabia, mas a altura estourava a tela.
+                    const mainEl = document.querySelector('main.leitor-main');
+                    const mainStyle = getComputedStyle(mainEl);
+                    const paddingVertical = parseFloat(mainStyle.paddingTop) + parseFloat(mainStyle.paddingBottom);
+                    const tituloEl = document.querySelector('.titulo-livro');
+                    const tituloAltura = tituloEl.offsetHeight + parseFloat(getComputedStyle(tituloEl).marginBottom);
+                    const alturaDisponivel = mainEl.clientHeight - paddingVertical - tituloAltura;
+
+                    const scaleByWidth = larguraDisponivel / naoEscalado.width;
+                    const scaleByHeight = alturaDisponivel > 0 ? alturaDisponivel / naoEscalado.height : scaleByWidth;
+                    fitScale = Math.min(scaleByWidth, scaleByHeight);
+
                     scale = fitScale;
                     stepScale = fitScale * 0.15;
                     minScale = fitScale * 0.5;
