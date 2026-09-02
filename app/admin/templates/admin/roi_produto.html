@@ -26,6 +26,9 @@
         grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 12px;
     }
+    .roi-summary-grid-6 {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
     .roi-summary-item {
         border: 1px solid var(--border);
         border-radius: 10px;
@@ -74,12 +77,12 @@
     }
 
     @media (max-width: 900px) {
-        .roi-summary-grid { grid-template-columns: 1fr; }
+        .roi-summary-grid, .roi-summary-grid-6 { grid-template-columns: 1fr; }
     }
 </style>
 {% endblock %}
 
-{% macro roi_summary_card(titulo, subtitulo, recebido_label, recebido, investido, taxa, erro=false) %}
+{% macro roi_summary_card(titulo, subtitulo, recebido_label, recebido, investido, taxa, erro=false, extra_label=none, extra_value=none) %}
 <div class="card roi-summary-card">
     {% if erro %}
         <div class="roi-summary-head">
@@ -94,7 +97,7 @@
             <div class="roi-summary-title">{{ titulo }}</div>
             <div class="roi-summary-sub">{{ subtitulo }}</div>
         </div>
-        <div class="roi-summary-grid">
+        <div class="roi-summary-grid{% if extra_label %} roi-summary-grid-6{% endif %}">
             <div class="roi-summary-item">
                 <div class="roi-summary-label">Investido no período</div>
                 <div class="roi-summary-value">R$ {{ '%.2f'|format(investido) }}</div>
@@ -103,6 +106,12 @@
                 <div class="roi-summary-label">{{ recebido_label }}</div>
                 <div class="roi-summary-value">R$ {{ '%.2f'|format(recebido) }}</div>
             </div>
+            {% if extra_label %}
+            <div class="roi-summary-item">
+                <div class="roi-summary-label">{{ extra_label }}</div>
+                <div class="roi-summary-value">R$ {{ '%.2f'|format(extra_value) }}</div>
+            </div>
+            {% endif %}
             <div class="roi-summary-item">
                 <div class="roi-summary-label">Imposto ({{ '%.1f'|format(taxa) }}%)</div>
                 <div class="roi-summary-value">
@@ -177,19 +186,21 @@
 {% set web_recebido = (roi_real_web.total_web | float) if not roi_real_web_erro else 0 %}
 {% set web_investido = (roi_real_web.total_investido | float) if not roi_real_web_erro else 0 %}
 {% set cartao_recebido = (roi_real_web.total_cartao | float) if not roi_real_web_erro else 0 %}
+{% set web_total_recebido = web_recebido + cartao_recebido %}
 {% set total_erro = roi_real_erro or roi_real_web_erro %}
 
 {{ roi_summary_card('ROI Real (PIX)', 'Todos os pagamentos PIX recebidos no período (investido = campanhas não marcadas como Venda Web)',
     'Recebido via PIX', pix_recebido, pix_investido, taxa_imposto, roi_real_erro) }}
 
-{{ roi_summary_card('ROI Real Web', 'Pedidos pagos via checkout web (BB Pay) no período, contra campanhas marcadas como Venda Web (mesmo orçamento do card Cartão abaixo)',
-    'Recebido via Web', web_recebido, web_investido, taxa_imposto, roi_real_web_erro) }}
+{{ roi_summary_card('ROI Real Web', 'Pedidos com status pago (estado 1000) no período — PIX (BB Pay) + Cartão (Cielo) somados — contra campanhas marcadas como Venda Web',
+    'Recebido via Web', web_total_recebido, web_investido, taxa_imposto, roi_real_web_erro,
+    extra_label='Recebido via Cartão', extra_value=cartao_recebido) }}
 
-{{ roi_summary_card('ROI Real (Cartão)', 'Pedidos pagos via cartão de crédito (Cielo) no período — Investido é o MESMO orçamento do card "ROI Real Web" acima (mesmas campanhas de Venda Web), não some os dois',
+{{ roi_summary_card('ROI Real (Cartão)', 'Pedidos pagos via cartão de crédito (Cielo) no período — Investido é o MESMO orçamento do card "ROI Real Web" acima (mesmas campanhas de Venda Web); o recebido por cartão já está somado no ROI Real Web, não some os dois',
     'Recebido via Cartão', cartao_recebido, web_investido, taxa_imposto, roi_real_web_erro) }}
 
-{{ roi_summary_card('ROI Real Total', 'Todas as campanhas do produto, contra PIX + Web + Cartão recebidos no período (sem contar 2x o mesmo PIX)',
-    'Recebido (PIX + Web + Cartão)', pix_recebido_sem_duplicidade + web_recebido + cartao_recebido, pix_investido + web_investido, taxa_imposto, total_erro) }}
+{{ roi_summary_card('ROI Real Total', 'Todas as campanhas do produto, contra PIX + Web recebidos no período (sem contar 2x o mesmo PIX; Web já inclui Cartão)',
+    'Recebido (PIX + Web)', pix_recebido_sem_duplicidade + web_total_recebido, pix_investido + web_investido, taxa_imposto, total_erro) }}
 
 {% if rows %}
 <div class="card">
