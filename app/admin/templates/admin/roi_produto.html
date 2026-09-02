@@ -176,16 +176,20 @@
 {% set pix_recebido_sem_duplicidade = (roi_real.total_pix_sem_duplicidade_web | float) if not roi_real_erro else 0 %}
 {% set web_recebido = (roi_real_web.total_web | float) if not roi_real_web_erro else 0 %}
 {% set web_investido = (roi_real_web.total_investido | float) if not roi_real_web_erro else 0 %}
+{% set cartao_recebido = (roi_real_web.total_cartao | float) if not roi_real_web_erro else 0 %}
 {% set total_erro = roi_real_erro or roi_real_web_erro %}
 
 {{ roi_summary_card('ROI Real (PIX)', 'Todos os pagamentos PIX recebidos no período (investido = campanhas não marcadas como Venda Web)',
     'Recebido via PIX', pix_recebido, pix_investido, taxa_imposto, roi_real_erro) }}
 
-{{ roi_summary_card('ROI Real Web', 'Pedidos pagos via checkout web (BB Pay) no período, contra campanhas marcadas como Venda Web',
+{{ roi_summary_card('ROI Real Web', 'Pedidos pagos via checkout web (BB Pay) no período, contra campanhas marcadas como Venda Web (mesmo orçamento do card Cartão abaixo)',
     'Recebido via Web', web_recebido, web_investido, taxa_imposto, roi_real_web_erro) }}
 
-{{ roi_summary_card('ROI Real Total', 'Todas as campanhas do produto, contra PIX + Web recebidos no período (sem contar 2x o mesmo PIX)',
-    'Recebido (PIX + Web)', pix_recebido_sem_duplicidade + web_recebido, pix_investido + web_investido, taxa_imposto, total_erro) }}
+{{ roi_summary_card('ROI Real (Cartão)', 'Pedidos pagos via cartão de crédito (Cielo) no período — Investido é o MESMO orçamento do card "ROI Real Web" acima (mesmas campanhas de Venda Web), não some os dois',
+    'Recebido via Cartão', cartao_recebido, web_investido, taxa_imposto, roi_real_web_erro) }}
+
+{{ roi_summary_card('ROI Real Total', 'Todas as campanhas do produto, contra PIX + Web + Cartão recebidos no período (sem contar 2x o mesmo PIX)',
+    'Recebido (PIX + Web + Cartão)', pix_recebido_sem_duplicidade + web_recebido + cartao_recebido, pix_investido + web_investido, taxa_imposto, total_erro) }}
 
 {% if rows %}
 <div class="card">

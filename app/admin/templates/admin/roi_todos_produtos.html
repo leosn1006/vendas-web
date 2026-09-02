@@ -83,7 +83,7 @@
     <button id="btn-calcular-imposto" class="btn btn-sm btn-primary" type="button">Calcular</button>
     {% if taxa_imposto > 0 %}
     <span class="imposto-label" style="margin-left:4px;">
-        aplicando {{ '%.1f'|format(taxa_imposto) }}% sobre PIX + Web recebidos
+        aplicando {{ '%.1f'|format(taxa_imposto) }}% sobre PIX + Web + Cartão recebidos
     </span>
     {% endif %}
 </div>
@@ -98,6 +98,7 @@
                     <th style="text-align:right;">Investido</th>
                     <th style="text-align:right;">Recebido (PIX)</th>
                     <th style="text-align:right;">Recebido (Web)</th>
+                    <th style="text-align:right;">Recebido (Cartão)</th>
                     <th style="text-align:right;">Imposto ({{ '%.1f'|format(taxa_imposto) }}%)</th>
                     <th style="text-align:right;">ROI</th>
                     <th style="text-align:right;">Lucro Líquido</th>
@@ -108,6 +109,7 @@
                 {% set investido  = r.total_investido | float %}
                 {% set pix        = r.total_pix       | float %}
                 {% set web        = r.total_web       | float %}
+                {% set cartao     = r.total_cartao    | float %}
                 {% set imposto    = r.imposto_valor   | float %}
                 {% set lucro      = r.lucro_liquido   | float %}
                 {% set roi_mult   = r.roi_multiplier %}
@@ -140,6 +142,10 @@
 
                     <td style="text-align:right; font-family:var(--mono); font-size:13px;">
                         R$ {{ '%.2f'|format(web) }}
+                    </td>
+
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        R$ {{ '%.2f'|format(cartao) }}
                     </td>
 
                     <td style="text-align:right; font-family:var(--mono); font-size:13px;">
@@ -179,8 +185,9 @@
             {% set tot_investido = rows | sum(attribute='total_investido') | float %}
             {% set tot_pix       = rows | sum(attribute='total_pix')       | float %}
             {% set tot_web       = rows | sum(attribute='total_web')       | float %}
+            {% set tot_cartao    = rows | sum(attribute='total_cartao')    | float %}
             {% set tot_imposto   = rows | sum(attribute='imposto_valor')   | float %}
-            {% set tot_lucro     = tot_pix + tot_web - tot_investido - tot_imposto %}
+            {% set tot_lucro     = tot_pix + tot_web + tot_cartao - tot_investido - tot_imposto %}
             <tfoot>
                 <tr>
                     <td>Total</td>
@@ -194,6 +201,9 @@
                         R$ {{ '%.2f'|format(tot_web) }}
                     </td>
                     <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        R$ {{ '%.2f'|format(tot_cartao) }}
+                    </td>
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
                         {% if tot_imposto > 0.005 %}
                             R$ {{ '%.2f'|format(tot_imposto) }}
                         {% else %}
@@ -202,7 +212,7 @@
                     </td>
                     <td style="text-align:right; font-family:var(--mono); font-size:13px;">
                         {% if tot_investido > 0 %}
-                            {% set roi_tot = (tot_pix + tot_web - tot_imposto) / tot_investido %}
+                            {% set roi_tot = (tot_pix + tot_web + tot_cartao - tot_imposto) / tot_investido %}
                             {% if roi_tot < 1 %}
                                 <span class="roi-red">{{ '%.2f'|format(roi_tot) }}×</span>
                             {% elif roi_tot <= 1.005 %}

@@ -2829,33 +2829,49 @@ _SQL_ROI_REAL = """
 """
 
 _SQL_ROI_REAL_WEB = """
+    -- total_web aqui é só PIX-web (BB Pay) — cartão (Cielo) sai à parte em total_cartao,
+    -- mesmo estado_id=1000 pros dois, diferenciados só por metodo_pagamento. Uma única
+    -- passada por `pedidos` (SUM condicional), não duas subqueries repetidas — a única
+    -- coluna nova no filtro (metodo_pagamento) não está no índice de cobertura
+    -- idx_pedidos_estado_pagamento_produto (migration 038), então cada passada extra custa
+    -- uma checagem de linha não coberta pelo índice.
     SELECT
-        COALESCE((
-            SELECT SUM(p.valor_pago)
-            FROM pedidos p
-            WHERE p.produto_id = %s
-              AND p.estado_id = 1000
-              AND p.data_pagamento BETWEEN %s AND %s
-        ), 0) AS total_web,
-        COALESCE((
-            SELECT SUM(oc.valor_investido)
-            FROM orcamento_campanha oc
-            JOIN campanhas cam
-                ON cam.produto_id = oc.produto_id AND cam.campaignid = oc.campaignid
-            WHERE oc.produto_id = %s
-              AND oc.data BETWEEN %s AND %s
-              AND cam.venda_web = TRUE
-        ), 0) AS total_investido
+        COALESCE(w.total_web,    0) AS total_web,
+        COALESCE(w.total_cartao, 0) AS total_cartao,
+        COALESCE(inv.total_investido, 0) AS total_investido
+    FROM (
+        SELECT
+            SUM(CASE WHEN metodo_pagamento = 'cartao' THEN 0 ELSE valor_pago END) AS total_web,
+            SUM(CASE WHEN metodo_pagamento = 'cartao' THEN valor_pago ELSE 0 END) AS total_cartao
+        FROM pedidos
+        WHERE produto_id = %s
+          AND estado_id = 1000
+          AND data_pagamento BETWEEN %s AND %s
+    ) w
+    JOIN (
+        SELECT SUM(oc.valor_investido) AS total_investido
+        FROM orcamento_campanha oc
+        JOIN campanhas cam
+            ON cam.produto_id = oc.produto_id AND cam.campaignid = oc.campaignid
+        WHERE oc.produto_id = %s
+          AND oc.data BETWEEN %s AND %s
+          AND cam.venda_web = TRUE
+    ) inv ON TRUE
 """
 
 
 _SQL_ROI_TODOS_PRODUTOS = """
+    -- total_web (join pw) é só PIX-web — cartão (Cielo) sai à parte em total_cartao (mesmo
+    -- join pw, coluna separada), mesmo estado_id=1000 pros dois, diferenciados só por
+    -- metodo_pagamento. Uma única passada por `pedidos` (SUM condicional) em vez de dois
+    -- LEFT JOINs quase idênticos.
     SELECT
         p.id,
         p.nome,
         COALESCE(oc.total_investido,  0) AS total_investido,
         COALESCE(pp.total_pix,        0) AS total_pix,
-        COALESCE(pw.total_web,        0) AS total_web
+        COALESCE(pw.total_web,        0) AS total_web,
+        COALESCE(pw.total_cartao,     0) AS total_cartao
     FROM produtos p
     LEFT JOIN (
         SELECT produto_id, SUM(valor_investido) AS total_investido
@@ -2876,7 +2892,9 @@ _SQL_ROI_TODOS_PRODUTOS = """
         GROUP BY produto_id
     ) pp ON pp.produto_id = p.id
     LEFT JOIN (
-        SELECT produto_id, SUM(valor_pago) AS total_web
+        SELECT produto_id,
+            SUM(CASE WHEN metodo_pagamento = 'cartao' THEN 0 ELSE valor_pago END) AS total_web,
+            SUM(CASE WHEN metodo_pagamento = 'cartao' THEN valor_pago ELSE 0 END) AS total_cartao
         FROM pedidos
         WHERE estado_id = 1000
           AND data_pagamento BETWEEN %(ini)s AND %(fim)s
@@ -2931,7 +2949,8 @@ def roi_todos_produtos():
         investido = float(r['total_investido'])
         pix = float(r['total_pix'])
         web = float(r['total_web'])
-        total_recebido = pix + web
+        cartao = float(r['total_cartao'])
+        total_recebido = pix + web + cartao
         imposto_valor = total_recebido * taxa / 100
         r['imposto_valor'] = imposto_valor
         r['roi_multiplier'] = ((total_recebido - imposto_valor) / investido) if investido > 0 else None
@@ -3064,7 +3083,7 @@ def roi_produto(produto_id):
         roi_real = None
         logger.error(f"[ADMIN] ❌ Erro ao calcular ROI real do produto #{produto_id}: {e}")
 
-    roi_real_web = {'total_web': 0, 'total_investido': 0}
+    roi_real_web = {'total_web': 0, 'total_cartao': 0, 'total_investido': 0}
     roi_real_web_erro = False
     try:
         roi_real_web_row = db.execute_query(
