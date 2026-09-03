@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOS Orquídeas — Diagnóstico e Protocolo de Recuperação | Karina Negreiros</title>
+    <title>SOS Orquídeas — Diagnóstico e Protocolo de Recuperação | Karina</title>
     <meta name="description" content="Descubra por que sua orquídea está doente e siga o Protocolo SOS de recuperação passo a passo. Teste dos 5 Sinais, checklist semanal e Semáforo SOS. Acesso imediato por R$10,00.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
-    <link rel="preload" as="image" href="/static/images/orquidea-capa.webp" fetchpriority="high" type="image/webp">
+    <link rel="preload" as="image" href="/static/images/orquidea-hero.webp" fetchpriority="high" type="image/webp">
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -22,8 +22,8 @@
             --branco:       #f5f5f4;
             --cinza-texto:  #c9a8bc;
             --sombra:       0 4px 24px rgba(0,0,0,0.5);
-            --btn-verde:    #c96a35;
-            --btn-verde-esc: #a8542a;
+            --btn-verde:    #16a34a;
+            --btn-verde-esc: #15803d;
         }
 
         /* Fonte base maior — público 35+ pediu letras mais legíveis em todo o site */
@@ -159,13 +159,13 @@
             font-weight: 900;
             text-decoration: none;
             white-space: nowrap;
-            box-shadow: 0 6px 24px rgba(201,106,53,0.5);
+            box-shadow: 0 6px 24px rgba(22,163,74,0.5);
             letter-spacing: 0.3px;
             animation: pulseCTA 2.2s infinite;
         }
         @keyframes pulseCTA {
-            0%,100% { transform: translateX(-50%) scale(1); box-shadow: 0 6px 24px rgba(201,106,53,0.5); }
-            50%      { transform: translateX(-50%) scale(1.015); box-shadow: 0 8px 36px rgba(201,106,53,0.75); }
+            0%,100% { transform: translateX(-50%) scale(1); box-shadow: 0 6px 24px rgba(22,163,74,0.5); }
+            50%      { transform: translateX(-50%) scale(1.015); box-shadow: 0 8px 36px rgba(22,163,74,0.75); }
         }
         @media (prefers-reduced-motion: reduce) {
             .hero-cta-btn { animation: none; transform: translateX(-50%); }
@@ -221,7 +221,7 @@
             font-size: 1.05rem;
             font-weight: 900;
             text-decoration: none;
-            box-shadow: 0 6px 24px rgba(201,106,53,0.5);
+            box-shadow: 0 6px 24px rgba(22,163,74,0.5);
             letter-spacing: 0.3px;
         }
         .btn-hero small {
@@ -392,7 +392,7 @@
             height: calc(100% - 28px);
             border-radius: 50%;
             object-fit: cover;
-            object-position: center top;
+            object-position: center 55%;
             border: 3px solid var(--preto-cl);
             box-shadow: var(--sombra);
         }
@@ -484,20 +484,6 @@
             box-shadow: var(--sombra);
         }
         .persona-img { width: 100%; height: 320px; object-fit: cover; object-position: center 15%; display: block; }
-        .img-placeholder {
-            width: 100%;
-            height: 320px;
-            border: 2px dashed var(--cinza-borda);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            text-align: center;
-            color: var(--cinza-texto);
-            font-size: 0.8rem;
-            line-height: 1.5;
-            background: var(--preto-cl);
-        }
         .persona-body { padding: 22px 20px 26px; }
         .persona-badge {
             display: inline-block;
@@ -526,7 +512,7 @@
             transition: border-color 0.25s;
         }
         .cat-item.open { border-color: var(--verde); }
-        .cat-img { position: relative; height: 150px; overflow: hidden; }
+        .cat-img { position: relative; height: 280px; overflow: hidden; }
         .cat-img img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
         .cat-img::after {
             content: '';
@@ -621,6 +607,7 @@
             transform: rotate(30deg);
         }
         .bonus-ico { font-size: 2.6rem; display: block; margin-bottom: 10px; }
+        .bonus-cover { display: block; width: 150px; margin: 0 auto 14px; border-radius: 10px; box-shadow: var(--sombra); }
         .bonus-box h3 {
             font-family: 'Playfair Display', serif;
             color: var(--ambar);
@@ -685,14 +672,14 @@
             font-size: 1.05rem;
             font-weight: 900;
             text-decoration: none;
-            box-shadow: 0 8px 28px rgba(201,106,53,0.45);
+            box-shadow: 0 8px 28px rgba(22,163,74,0.45);
             animation: pulseCTA2 2.2s infinite;
             letter-spacing: 0.3px;
         }
         .btn-cta small { display: block; font-size: 0.72rem; font-weight: 400; margin-top: 4px; opacity: 0.9; }
         @keyframes pulseCTA2 {
-            0%,100% { box-shadow: 0 8px 28px rgba(201,106,53,0.45); }
-            50%      { box-shadow: 0 10px 38px rgba(201,106,53,0.7); }
+            0%,100% { box-shadow: 0 8px 28px rgba(22,163,74,0.45); }
+            50%      { box-shadow: 0 10px 38px rgba(22,163,74,0.7); }
         }
         .pay-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
         .pay-badge {
@@ -883,14 +870,13 @@
                 text-align: left;
             }
             .books-img { margin: 0; max-width: none; width: 100%; }
-            .inside-grid .img-placeholder { margin: 0; border-radius: 16px; height: 100%; min-height: 280px; }
 
             .persona-card {
                 max-width: 1080px;
                 display: grid;
                 grid-template-columns: 340px 1fr;
             }
-            .persona-img, .persona-card .img-placeholder { height: 100%; }
+            .persona-img { height: 100%; }
             .persona-body { display: flex; flex-direction: column; justify-content: center; text-align: left; padding: 32px 36px; }
 
             .cat-list {
@@ -927,14 +913,14 @@
     <section class="hero-sec">
         <div class="hero-grid">
             <div class="hero-media">
-                <img class="hero-img" src="/static/images/orquidea-capa.webp" alt="Capa do e-book SOS Orquídeas — guia de recuperação de orquídeas doentes" fetchpriority="high">
+                <img class="hero-img" src="/static/images/orquidea-hero.webp" alt="Mulher sorrindo ao cuidar de uma orquídea rosa florida — guia SOS Orquídeas" fetchpriority="high">
                 <a href="#oferta" class="hero-cta-btn" id="btnHero">QUERO SALVAR AGORA →</a>
             </div>
             <div class="hero-content">
                 <div class="titulo">
                     <span class="hero-tag">✨ E-book Digital</span>
                     <h1>Sua Orquídea Está Doente? Descubra o Diagnóstico e o <em>Protocolo de Resgate</em></h1>
-                    <p class="titulo-sub">Antes de jogar fora ou sair comprando adubo, entenda o que está acontecendo. Teste dos 5 Sinais, diagnóstico por sintoma e o Protocolo SOS de recuperação em 6 passos — direto ao ponto, sem enrolação.</p>
+                    <p class="titulo-sub">Na maioria das vezes o problema não é falta de cuidado — é excesso: rega demais, substrato errado ou luz no lugar errado. Antes de jogar fora ou sair comprando adubo, entenda o que está acontecendo. Teste dos 5 Sinais, diagnóstico por sintoma e o Protocolo SOS de recuperação em 6 passos — direto ao ponto, sem enrolação.</p>
                     <p class="confianca">🔒 Pagamento seguro via PIX · Acesso liberado na hora</p>
                 </div>
 
@@ -992,12 +978,12 @@
 
         <div class="orbit-wrap">
             <div class="orbit-showcase">
-                <img id="orbitPhoto" src="/static/images/orquidea-teste-5-sinais.webp" alt="Teste dos 5 Sinais">
+                <img id="orbitPhoto" src="/static/images/orquidea-teste-5-sinais.webp" alt="Teste dos 5 Sinais" loading="lazy">
                 <div class="orbit-showcase-caption" id="orbitCaption">Teste dos 5 Sinais</div>
             </div>
             <div class="orbit-circle">
                 <div class="orbit-ring-clip"><div class="orbit-ring"></div></div>
-                <img class="orbit-center-img" src="/static/images/orquidea-capa.webp" alt="Capa do e-book SOS Orquídeas">
+                <img class="orbit-center-img" src="/static/images/orquidea-capa.webp" alt="Capa do e-book SOS Orquídeas" loading="lazy">
                 <button class="orbit-icon active" type="button" style="--angle:200deg" data-img="/static/images/orquidea-teste-5-sinais.webp" data-name="Teste dos 5 Sinais" aria-label="Teste dos 5 Sinais">
                     <img src="/static/images/orquidea-teste-5-sinais.webp" alt="" loading="lazy">
                 </button>
@@ -1025,7 +1011,7 @@
         </div>
 
         <div class="inside-grid">
-            <div class="img-placeholder" style="border-radius:16px;max-width:340px;margin:24px auto;">[FOTO: mãos replantando uma orquídea, adicionando substrato novo ao vaso]</div>
+            <img class="books-img" src="/static/images/orquidea_replantio.webp" alt="Mãos replantando uma orquídea, adicionando substrato novo ao vaso" loading="lazy">
 
             <ul class="includes-list">
                 <li><span class="chk">✓</span><span><strong>Guia SOS Orquídeas (PDF, 20 páginas)</strong> — diagnóstico por sintoma e Protocolo SOS de recuperação em 6 passos</span></li>
@@ -1033,7 +1019,7 @@
                 <li><span class="chk">✓</span><span><strong>Checklist + Semáforo SOS</strong> — acompanhamento semanal de 5 minutos pra saber se a recuperação está funcionando</span></li>
                 <li><span class="chk">✓</span><span><strong>Pronto para impressão</strong> — arquivo formatado em folha A4, fácil de imprimir e consultar</span></li>
                 <li><span class="chk">✓</span><span><strong>Acesso imediato e vitalício</strong> — depois de comprado, o material é seu para sempre</span></li>
-                <li><span class="chk">✓</span><span><strong>Você também recebe tudo por e-mail</strong> — além do download na hora, uma cópia chega na sua caixa de entrada</span></li>
+                <li><span class="chk">✓</span><span><strong>Sua Estante no site</strong> — depois de comprar, seus materiais ficam guardados numa página organizada só sua, pra abrir ou baixar quando quiser (e você também recebe o mesmo acesso por e-mail)</span></li>
             </ul>
         </div>
     </section>
@@ -1058,8 +1044,8 @@
             </div>
             <div class="step-item">
                 <span class="step-num">2</span>
-                <div class="step-title">Pagamento confirmado, acesso liberado na hora</div>
-                <div class="step-desc">Assim que o Pix cai, o link de download aparece na mesma tela — sem espera.</div>
+                <div class="step-title">Pagamento confirmado, sua Estante abre na hora</div>
+                <div class="step-desc">Assim que o Pix cai, você é levada direto pra uma página com seus materiais organizados — só abrir ou baixar, sem complicação.</div>
             </div>
             <div class="step-item">
                 <span class="step-num">3</span>
@@ -1075,12 +1061,12 @@
             <div class="glow-badge-holder">
                 <div class="glow-badge-stack">
                     <div class="glow-badge-halo"></div>
-                    <div class="glow-badge"><h2>Quem é a Karina Negreiros</h2></div>
+                    <div class="glow-badge"><h2>Quem é a Karina</h2></div>
                 </div>
             </div>
         </div>
         <div class="persona-card">
-            <div class="img-placeholder">[FOTO: Karina segurando uma orquídea rosa recém-florida]</div>
+            <img class="persona-img" src="/static/images/orquidea-karina.webp" alt="Karina, autora do e-book SOS Orquídeas" loading="lazy">
             <div class="persona-body">
                 <span class="persona-badge">🌺 Autora do e-book</span>
                 <h3>Alguém que já passou pelas mesmas dúvidas</h3>
@@ -1104,7 +1090,7 @@
         <div class="cat-list" id="catList">
             <div class="cat-item open">
                 <div class="cat-img">
-                    <img src="/static/images/orquidea-folhas-amarelas.webp" alt="Diagnóstico: identifique o problema">
+                    <img src="/static/images/orquidea_rosa.webp" alt="Diagnóstico: identifique o problema" loading="lazy">
                     <span class="cat-badge">Comece Aqui</span>
                     <span class="cat-name">Diagnóstico: identifique o problema</span>
                 </div>
@@ -1120,7 +1106,7 @@
             </div>
             <div class="cat-item">
                 <div class="cat-img">
-                    <img src="/static/images/orquidea-protocolo-sos.webp" alt="Resgate: o Protocolo SOS">
+                    <img src="/static/images/orquidea_azul_site.webp" alt="Resgate: o Protocolo SOS" loading="lazy">
                     <span class="cat-badge">Passo a Passo</span>
                     <span class="cat-name">Resgate: o Protocolo SOS</span>
                 </div>
@@ -1136,7 +1122,7 @@
             </div>
             <div class="cat-item">
                 <div class="cat-img">
-                    <img src="/static/images/orquidea-7-erros.webp" alt="Nunca mais perca uma orquídea">
+                    <img src="/static/images/orquidea_roxa.webp" alt="Nunca mais perca uma orquídea" loading="lazy">
                     <span class="cat-badge">Prevenção</span>
                     <span class="cat-name">Nunca mais perca uma orquídea</span>
                 </div>
@@ -1153,8 +1139,7 @@
         </div>
     </section>
 
-    <!-- BÔNUS — pendente: PDF do Calendário de Floração ainda não existe; ver plano
-         (docs de decisão na conversa) antes de publicar com tráfego pago. -->
+    <!-- BÔNUS -->
     <section class="bonus-sec">
         <div class="sec-title">
             <div class="glow-badge-holder">
@@ -1167,9 +1152,9 @@
         <div class="bonus-grid">
             <div class="bonus-box">
                 <div class="bonus-ribbon">Bônus</div>
-                <span class="bonus-ico">🌸</span>
+                <img class="bonus-cover" src="/static/images/orquidea_floracao.webp" alt="Capa do e-book Calendário de Floração de Orquídeas" loading="lazy">
                 <h3>Calendário de Floração de Orquídeas</h3>
-                <p>Saiba a época certa do ano pra cada fase — descanso, brotação e floração — e pare de regar ou adubar no momento errado.</p>
+                <p>Entenda os 3 ciclos naturais da orquídea — crescimento, floração e repouso — pra nunca mais confundir dormência com problema, descubra o nutriente certo pra estimular flores maiores e veja a época esperada de floração de mais de 10 espécies.</p>
                 <span class="bonus-free">PDF · GRÁTIS</span>
             </div>
         </div>
@@ -1232,7 +1217,11 @@
         <div class="faq-list">
             <div class="faq-item">
                 <button class="faq-q">Como recebo o guia depois de comprar?</button>
-                <div class="faq-a">Assim que o pagamento via PIX for confirmado, o link de download é liberado na hora, nesta mesma tela. Você também recebe uma cópia por e-mail.</div>
+                <div class="faq-a">Assim que o pagamento via PIX for confirmado, você é levada direto pra sua Estante — uma página no próprio site com seus materiais organizados, prontos pra abrir ou baixar quando quiser. Você também recebe o mesmo acesso por e-mail.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">Não acho isso de graça pesquisando no Google?</button>
+                <div class="faq-a">Você encontra dicas soltas, sim — mas quase sempre genéricas, sem diagnóstico claro pro SEU caso e espalhadas em dezenas de sites diferentes. O SOS Orquídeas organiza tudo num só lugar: teste de sintomas, protocolo passo a passo e checklist de acompanhamento, prontos pra usar hoje, sem precisar garimpar nem filtrar informação.</div>
             </div>
             <div class="faq-item">
                 <button class="faq-q">O arquivo é seguro? Não tem vírus?</button>
@@ -1255,8 +1244,8 @@
                 <div class="faq-a">Sim, o Calendário de Floração de Orquídeas é liberado junto com o guia principal, sem custo adicional.</div>
             </div>
             <div class="faq-item">
-                <button class="faq-q">Não sei mexer muito bem no computador, é difícil pagar?</button>
-                <div class="faq-a">Não! Basta abrir o app do seu banco, escolher a opção Pix e escanear o QR code ou colar o código que aparece na tela. Leva menos de um minuto.</div>
+                <button class="faq-q">Não sei mexer muito bem no computador, é difícil pagar e baixar o material?</button>
+                <div class="faq-a">Não! Pra pagar, basta abrir o app do seu banco, escolher a opção Pix e escanear o QR code ou colar o código que aparece na tela — leva menos de um minuto. E depois de pagar, você não precisa se preocupar em "baixar" nada: seus materiais ficam guardados numa página só sua no site, prontos pra abrir quando quiser.</div>
             </div>
             <div class="faq-item">
                 <button class="faq-q">Como funciona a garantia de 7 dias?</button>
@@ -1282,7 +1271,7 @@
 
     <!-- FOOTER -->
     <footer class="footer">
-        <p>© 2026 SOS Orquídeas — Karina Negreiros. Todos os direitos reservados.</p>
+        <p>© 2026 SOS Orquídeas — Karina. Todos os direitos reservados.</p>
         <p><a href="/politica-privacidade">Política de Privacidade</a> &middot; <a href="/termos-de-uso">Termos de Uso</a> &middot; <a href="/contato">Contato</a></p>
         <p style="margin-top:10px;">Este produto é um e-book digital. O acesso é liberado imediatamente após a confirmação do pagamento.</p>
         <p style="margin-top:10px;font-size:10px;color:rgba(245,245,244,0.3);line-height:1.6;text-align:left">
