@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tudo na Air Fryer — 145+ Receitas Completas | Receitas da Lu</title>
+    <meta name="description" content="Mais de 140 receitas completas para Air Fryer: carnes, legumes, petiscos, massas, sobremesas e receitas especiais, com ficha técnica, dicas do chef e substituições. Acesso imediato por R$10,00.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="preload" as="image" href="/static/images/airfryer-hero.webp" fetchpriority="high" type="image/webp">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --preto:        #0e0c0a;
+            --preto-cl:     #1c1712;
+            --cinza-borda:  #3a2f1f;
+            --verde:        #b8860b;   /* dourado — cor primária (CTA de destaque, badges) */
+            --verde-esc:    #8a6508;   /* dourado escuro */
+            --ambar:        #f0b429;   /* dourado claro — accent quente */
+            --rosa:         #8b2e2e;   /* vinho — accent do glow (mesma dupla preto/dourado/vinho da capa) */
+            --branco:       #f7f3ea;
+            --cinza-texto:  #c4b8a3;
+            --sombra:       0 4px 24px rgba(0,0,0,0.5);
+            --btn-verde:    #16a34a;
+            --btn-verde-esc: #15803d;
+        }
+
+        /* Fonte base maior — público 35+ pediu letras mais legíveis em todo o site */
+        html { scroll-behavior: smooth; font-size: 115%; }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--preto);
+            color: var(--branco);
+            padding-bottom: 80px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Degradê ambiente nas laterais, fixo na tela, estilo Google One */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 2;
+            /* só aparece na margem que sobra além da área útil (1080px) — some sozinho em telas estreitas */
+            background:
+                linear-gradient(to right, rgba(138,101,8,0.32), transparent calc((100vw - 1080px) / 2)),
+                linear-gradient(to left, rgba(139,46,46,0.30), transparent calc((100vw - 1080px) / 2));
+            mix-blend-mode: screen;
+        }
+
+        /* ── GLOW (halo multicolor borrado, estilo Google One) ── */
+        .glow-card { position: relative; }
+        .glow-card::before {
+            content: '';
+            position: absolute;
+            inset: -16%;
+            background:
+                radial-gradient(circle at 20% 20%, var(--ambar) 0%, transparent 45%),
+                radial-gradient(circle at 80% 30%, var(--rosa) 0%, transparent 45%),
+                radial-gradient(circle at 50% 90%, var(--verde) 0%, transparent 50%);
+            filter: blur(60px);
+            opacity: 0.35;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* ── GLOW BADGE (pílula com brilho animado, estilo hero do Google One) ──
+           Estrutura de 2 camadas: o halo borrado fica por trás (pintado primeiro,
+           na ordem do DOM) e a pílula sólida por cima cobre o miolo do halo,
+           deixando visível só o anel borrado que vaza pela borda. ── */
+        .glow-badge-holder { display: flex; justify-content: center; padding: 10px 6px 6px; }
+        .glow-badge-stack { position: relative; display: inline-block; max-width: 100%; }
+        .glow-badge-halo {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg,
+                var(--verde), var(--ambar), var(--rosa), var(--verde));
+            background-size: 300% 100%;
+            filter: blur(22px);
+            opacity: 0.85;
+            border-radius: 999px;
+            animation: glowShift 7s linear infinite;
+            pointer-events: none;
+        }
+        .glow-badge {
+            position: relative;
+            display: block;
+            background: var(--preto-cl);
+            border: 1px solid var(--cinza-borda);
+            border-radius: 999px;
+            padding: 24px 22px;
+            max-width: 420px;
+        }
+        .glow-badge p { margin: 0; }
+        .glow-badge h2 {
+            margin: 0;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            color: var(--branco);
+            text-align: center;
+            line-height: 1.3;
+        }
+        @keyframes glowShift {
+            0%   { background-position: 0% 50%; }
+            100% { background-position: 300% 50%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .glow-badge-halo { animation: none; }
+        }
+
+        /* ── URGENCY BAR ── */
+        .urgency-bar {
+            background: var(--preto-cl);
+            color: var(--ambar);
+            text-align: center;
+            padding: 10px 16px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            line-height: 1.5;
+            border-bottom: 1px solid var(--cinza-borda);
+        }
+        .urgency-bar strong { color: #fff; }
+
+        /* ── HERO ── */
+        .hero-sec { background: var(--preto); }
+        .hero-grid { display: block; }
+        .hero-content { display: block; }
+        .btn-hero-wrap { padding: 14px 22px 0; }
+        .hero-media {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            height: 100svh;
+            background: var(--preto);
+        }
+        .hero-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top;
+            display: block;
+        }
+        .hero-cta-btn {
+            position: absolute;
+            bottom: 170px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: block;
+            background: linear-gradient(135deg, var(--btn-verde) 0%, var(--btn-verde-esc) 100%);
+            color: #fff;
+            text-align: center;
+            padding: 17px 30px 15px;
+            border-radius: 50px;
+            font-size: 1.05rem;
+            font-weight: 900;
+            text-decoration: none;
+            white-space: nowrap;
+            box-shadow: 0 6px 24px rgba(22,163,74,0.5);
+            letter-spacing: 0.3px;
+            animation: pulseCTA 2.2s infinite;
+        }
+        @keyframes pulseCTA {
+            0%,100% { transform: translateX(-50%) scale(1); box-shadow: 0 6px 24px rgba(22,163,74,0.5); }
+            50%      { transform: translateX(-50%) scale(1.015); box-shadow: 0 8px 36px rgba(22,163,74,0.75); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .hero-cta-btn { animation: none; transform: translateX(-50%); }
+        }
+
+        /* ── TÍTULO ── */
+        .titulo {
+            text-align: center;
+            padding: 30px 22px 6px;
+            background: var(--preto);
+        }
+        .hero-tag {
+            display: inline-block;
+            background: var(--ambar);
+            color: var(--preto);
+            font-size: 0.7rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            padding: 5px 14px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+        }
+        .titulo h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            color: var(--branco);
+            line-height: 1.22;
+            margin-bottom: 10px;
+        }
+        .titulo h1 em {
+            color: var(--ambar);
+            font-style: normal;
+        }
+        .titulo-sub {
+            color: var(--cinza-texto);
+            font-size: 0.93rem;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        .titulo .confianca {
+            font-size: 0.78rem;
+            color: var(--ambar);
+            font-weight: 700;
+        }
+        .btn-hero {
+            display: block;
+            background: linear-gradient(135deg, var(--btn-verde) 0%, var(--btn-verde-esc) 100%);
+            color: #fff;
+            text-align: center;
+            padding: 17px 20px 15px;
+            border-radius: 50px;
+            font-size: 1.05rem;
+            font-weight: 900;
+            text-decoration: none;
+            box-shadow: 0 6px 24px rgba(22,163,74,0.5);
+            letter-spacing: 0.3px;
+        }
+        .btn-hero small {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 400;
+            margin-top: 3px;
+            opacity: 0.9;
+        }
+
+        /* ── PROOF BAR ── */
+        .proof-bar {
+            display: flex;
+            background: var(--preto-cl);
+            border-bottom: 3px solid var(--verde);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            margin-top: 18px;
+        }
+        .proof-bar::-webkit-scrollbar { display: none; }
+        .proof-item {
+            flex: 0 0 auto;
+            text-align: center;
+            padding: 14px 18px;
+            border-right: 1px solid var(--cinza-borda);
+        }
+        .proof-item:last-child { border-right: none; }
+        .proof-num {
+            display: block;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            font-weight: 900;
+            color: var(--ambar);
+        }
+        .proof-label {
+            font-size: 0.66rem;
+            color: var(--cinza-texto);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            white-space: nowrap;
+        }
+
+        /* ── SECTION TITLES ── */
+        .sec-title { text-align: center; padding: 0 22px; }
+        .sec-title h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            color: var(--branco);
+            line-height: 1.3;
+            margin-bottom: 8px;
+        }
+        .sec-title p {
+            font-size: 0.88rem;
+            color: var(--cinza-texto);
+            line-height: 1.65;
+        }
+        .divider {
+            width: 44px;
+            height: 3px;
+            background: var(--verde);
+            margin: 10px auto 14px;
+            border-radius: 2px;
+        }
+
+        /* ── PAIN SECTION ── */
+        .pain-sec { background: var(--preto-cl); padding: 36px 22px; }
+        .pain-list { list-style: none; margin-top: 22px; }
+        .pain-list li {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            padding: 13px 0;
+            border-bottom: 1px solid var(--cinza-borda);
+            color: rgba(247,243,234,0.88);
+            font-size: 0.9rem;
+            line-height: 1.55;
+        }
+        .pain-list li .ico {
+            flex-shrink: 0;
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            background: var(--verde);
+            color: #fff;
+            font-weight: 900;
+            font-size: 0.78rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 2px;
+        }
+
+        /* ── GALLERY / CARROSSEL ORBITAL ── */
+        .gallery-sec { background: var(--preto); padding: 36px 22px 28px; }
+        .gallery-sec .sec-title { margin-bottom: 4px; }
+
+        .orbit-wrap {
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 32px;
+        }
+        .orbit-showcase {
+            position: relative;
+            width: 100%;
+            max-width: 320px;
+            border-radius: 20px;
+            overflow: hidden;
+            background: var(--preto-cl);
+            border: 1px solid var(--cinza-borda);
+            box-shadow: var(--sombra);
+        }
+        .orbit-showcase img {
+            width: 100%;
+            height: 240px;
+            object-fit: cover;
+            object-position: top;
+            display: block;
+            transition: opacity 0.2s ease;
+        }
+        .orbit-showcase-caption {
+            position: absolute;
+            left: 0; right: 0; bottom: 0;
+            padding: 30px 16px 12px;
+            background: linear-gradient(transparent, rgba(14,12,10,0.92));
+            color: var(--branco);
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        .orbit-circle {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin-top: 34px; /* dá espaço pro ícone do topo do arco não ser cortado */
+            flex-shrink: 0;
+        }
+        /* meia-lua aberta pra baixo: o wrapper mostra só a metade de cima do anel */
+        .orbit-ring-clip {
+            position: absolute;
+            left: 0; top: 0;
+            width: 100%;
+            height: 50%;
+            overflow: hidden;
+            border-radius: 999px 999px 0 0;
+        }
+        .orbit-ring {
+            position: absolute;
+            left: 0; top: 0;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, var(--verde), var(--ambar), var(--rosa), var(--verde));
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+                    mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+            opacity: 0.85;
+            animation: hueSpin 8s linear infinite;
+        }
+        @keyframes hueSpin {
+            from { filter: hue-rotate(0deg); }
+            to   { filter: hue-rotate(360deg); }
+        }
+        .orbit-center-img {
+            position: absolute;
+            inset: 14px;
+            width: calc(100% - 28px);
+            height: calc(100% - 28px);
+            border-radius: 50%;
+            object-fit: cover;
+            object-position: center 20%;
+            border: 3px solid var(--preto-cl);
+            box-shadow: var(--sombra);
+        }
+        .orbit-icon {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 52px; height: 52px;
+            margin: -26px 0 0 -26px;
+            border-radius: 50%;
+            background: var(--preto-cl);
+            border: 2px solid var(--cinza-borda);
+            padding: 0;
+            overflow: hidden;
+            cursor: pointer;
+            transform: rotate(var(--angle)) translate(147px) rotate(calc(-1 * var(--angle)));
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        .orbit-icon img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+        .orbit-icon:hover { border-color: var(--ambar); }
+        .orbit-icon.active { border-color: var(--ambar); box-shadow: 0 0 0 3px rgba(240,180,41,0.25); }
+        @media (prefers-reduced-motion: reduce) {
+            .orbit-ring { animation: none; }
+        }
+
+        /* ── WHAT'S INSIDE ── */
+        .inside-sec { padding: 36px 22px; background: var(--preto-cl); }
+        .books-img {
+            display: block;
+            width: 100%;
+            max-width: 340px;
+            margin: 24px auto;
+            border-radius: 16px;
+            box-shadow: var(--sombra);
+        }
+        .includes-list { list-style: none; margin-top: 20px; }
+        .includes-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 13px 0;
+            border-bottom: 1px solid var(--cinza-borda);
+            font-size: 0.88rem;
+            color: var(--branco);
+            line-height: 1.5;
+        }
+        .chk {
+            width: 22px; height: 22px;
+            background: var(--verde);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 0.75rem;
+            flex-shrink: 0; margin-top: 1px;
+        }
+
+        /* ── COMO FUNCIONA (steps) ── */
+        .steps-sec { padding: 36px 22px; background: var(--preto); }
+        .steps-list { margin-top: 26px; max-width: 460px; margin-left: auto; margin-right: auto; }
+        .step-item { position: relative; padding: 0 0 30px 40px; }
+        .step-item:last-child { padding-bottom: 0; }
+        .step-item::before {
+            content: '';
+            position: absolute;
+            left: 13px; top: 30px; bottom: -2px;
+            width: 2px;
+            background: var(--cinza-borda);
+        }
+        .step-item:last-child::before { display: none; }
+        .step-num {
+            position: absolute; left: 0; top: 0;
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: var(--verde);
+            color: #fff;
+            font-weight: 900;
+            font-size: 0.85rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .step-title { font-weight: 700; color: var(--branco); font-size: 0.95rem; margin-bottom: 4px; }
+        .step-desc { font-size: 0.85rem; color: var(--cinza-texto); line-height: 1.55; }
+
+        /* ── CATEGORIES ACCORDION ── */
+        .cat-sec { padding: 36px 22px; background: var(--preto-cl); }
+        .cat-list { margin-top: 22px; display: flex; flex-direction: column; gap: 14px; }
+        .cat-item {
+            border: 1px solid var(--cinza-borda);
+            border-radius: 18px;
+            overflow: hidden;
+            background: var(--preto);
+            transition: border-color 0.25s;
+        }
+        .cat-item.open { border-color: var(--verde); }
+        .cat-img { position: relative; height: 280px; overflow: hidden; }
+        .cat-img img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+        .cat-img::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(transparent 40%, rgba(14,12,10,0.92));
+        }
+        .cat-badge {
+            position: absolute; top: 10px; left: 10px; z-index: 2;
+            background: var(--verde);
+            color: #fff;
+            font-size: 0.62rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+        .cat-name {
+            position: absolute; bottom: 10px; left: 14px; right: 14px; z-index: 2;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.05rem;
+            color: #fff;
+        }
+        .cat-toggle {
+            width: 100%;
+            background: none;
+            border: none;
+            color: var(--ambar);
+            text-align: left;
+            padding: 14px 16px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .cat-toggle::after {
+            content: '+';
+            font-size: 1.3rem;
+            transition: transform 0.28s;
+            flex-shrink: 0;
+        }
+        .cat-item.open .cat-toggle::after { transform: rotate(45deg); }
+        .cat-items {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease;
+        }
+        .cat-item.open .cat-items { max-height: 220px; }
+        .cat-items ul { list-style: none; padding: 0 16px 16px; }
+        .cat-items li {
+            font-size: 0.82rem;
+            color: var(--cinza-texto);
+            padding: 6px 0;
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+        }
+        .cat-items li::before { content: '✓'; color: var(--verde); font-weight: 900; flex-shrink: 0; }
+        .cat-desc { font-size: 0.82rem; color: var(--cinza-texto); padding: 0 16px 10px; line-height: 1.5; }
+
+        /* ── BONUS ── */
+        .bonus-sec { padding: 36px 22px; background: var(--preto); }
+        .bonus-grid { display: flex; flex-direction: column; gap: 16px; margin-top: 22px; }
+        .bonus-tagline {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: var(--ambar);
+            font-weight: 700;
+        }
+        .bonus-box {
+            border: 2px solid var(--ambar);
+            border-radius: 20px;
+            padding: 24px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            background: var(--preto-cl);
+        }
+        .bonus-ribbon {
+            position: absolute;
+            top: 14px; right: -26px;
+            background: var(--ambar);
+            color: var(--preto);
+            font-size: 0.62rem;
+            font-weight: 900;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            padding: 5px 34px;
+            transform: rotate(30deg);
+        }
+        .bonus-ico { font-size: 2.6rem; display: block; margin-bottom: 10px; }
+        .bonus-cover { display: block; width: 150px; margin: 0 auto 14px; border-radius: 10px; box-shadow: var(--sombra); }
+        .bonus-box h3 {
+            font-family: 'Playfair Display', serif;
+            color: var(--ambar);
+            font-size: 1.15rem;
+            margin-bottom: 8px;
+        }
+        .bonus-box p { font-size: 0.85rem; color: var(--cinza-texto); line-height: 1.6; margin-bottom: 6px; }
+        .bonus-free {
+            display: inline-block;
+            margin-top: 10px;
+            background: rgba(184,134,11,0.16);
+            color: var(--ambar);
+            font-weight: 900;
+            font-size: 0.78rem;
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--verde);
+        }
+
+        /* ── OFFER ── */
+        .offer-sec { padding: 36px 22px; background: var(--preto-cl); text-align: center; }
+        .price-box {
+            background: var(--preto);
+            border: 2px solid var(--verde);
+            border-radius: 20px;
+            padding: 28px 22px 24px;
+            box-shadow: var(--sombra);
+            margin: 24px 0 20px;
+            position: relative;
+        }
+        .p-now {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.2rem;
+            font-weight: 900;
+            color: var(--ambar);
+            line-height: 1;
+            margin: 6px 0 4px;
+        }
+        .p-now sup { font-size: 1.3rem; vertical-align: super; }
+        .p-desc { font-size: 0.78rem; color: var(--cinza-texto); margin-bottom: 18px; }
+        .v-stack { list-style: none; text-align: left; }
+        .v-stack li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 0;
+            border-bottom: 1px dashed var(--cinza-borda);
+            font-size: 0.83rem;
+            color: var(--branco);
+        }
+        .v-stack li:last-child { border-bottom: none; }
+        .v-stack li > span:first-child { min-width: 0; overflow-wrap: break-word; }
+        .v-stack .free { color: var(--ambar); font-weight: 900; font-size: 0.78rem; flex-shrink: 0; }
+
+        .btn-cta {
+            display: block;
+            background: linear-gradient(135deg, var(--btn-verde), var(--btn-verde-esc));
+            color: #fff;
+            text-align: center;
+            padding: 18px 20px 16px;
+            border-radius: 50px;
+            font-size: 1.05rem;
+            font-weight: 900;
+            text-decoration: none;
+            box-shadow: 0 8px 28px rgba(22,163,74,0.45);
+            animation: pulseCTA2 2.2s infinite;
+            letter-spacing: 0.3px;
+        }
+        .btn-cta small { display: block; font-size: 0.72rem; font-weight: 400; margin-top: 4px; opacity: 0.9; }
+        @keyframes pulseCTA2 {
+            0%,100% { box-shadow: 0 8px 28px rgba(22,163,74,0.45); }
+            50%      { box-shadow: 0 10px 38px rgba(22,163,74,0.7); }
+        }
+        .pay-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+        .pay-badge {
+            background: var(--preto);
+            border: 1px solid var(--cinza-borda);
+            border-radius: 6px;
+            padding: 5px 11px;
+            font-size: 0.7rem;
+            color: var(--cinza-texto);
+            font-weight: 700;
+        }
+
+        /* ── GUARANTEE ── */
+        .guar-sec { background: var(--preto); padding: 28px 22px; }
+        .guar-box { border: 2px dashed var(--verde); border-radius: 18px; padding: 26px 22px; text-align: center; }
+        .guar-ico { font-size: 3.2rem; display: block; margin-bottom: 12px; }
+        .guar-box h3 { font-family: 'Playfair Display', serif; color: var(--branco); font-size: 1.2rem; margin-bottom: 10px; }
+        .guar-box p { font-size: 0.85rem; color: var(--cinza-texto); line-height: 1.65; }
+
+        /* ── FAQ ── */
+        .faq-sec { padding: 36px 22px; background: var(--preto-cl); }
+        .faq-item { border-bottom: 1px solid var(--cinza-borda); }
+        .faq-q {
+            width: 100%;
+            background: none; border: none;
+            text-align: left;
+            padding: 17px 0;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--branco);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+        }
+        .faq-q::after {
+            content: '+';
+            font-size: 1.5rem;
+            color: var(--ambar);
+            flex-shrink: 0;
+            transition: transform 0.28s;
+            line-height: 1;
+        }
+        .faq-item.open .faq-q::after { transform: rotate(45deg); }
+        .faq-a {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease;
+            font-size: 0.87rem;
+            color: var(--cinza-texto);
+            line-height: 1.68;
+        }
+        .faq-item.open .faq-a { max-height: 320px; padding-bottom: 18px; }
+
+        /* ── FINAL CTA ── */
+        .final-sec { background: var(--preto); padding: 36px 22px; text-align: center; }
+        .final-sec h2 { font-family: 'Playfair Display', serif; color: var(--branco); font-size: 1.4rem; margin-bottom: 10px; }
+        .final-sec p { color: var(--cinza-texto); font-size: 0.9rem; line-height: 1.6; margin-bottom: 22px; }
+
+        /* ── STICKY CTA ── */
+        .sticky-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: var(--preto-cl);
+            padding: 10px 16px 12px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+            border-top: 1px solid var(--cinza-borda);
+            z-index: 200;
+        }
+        .sticky-bar > a, .sticky-bar > small { max-width: 480px; margin-left: auto; margin-right: auto; }
+        .sticky-bar > small { text-align: center; }
+        .sticky-bar a {
+            display: block;
+            background: linear-gradient(135deg, var(--btn-verde), var(--btn-verde-esc));
+            color: #fff;
+            text-align: center;
+            padding: 14px 20px;
+            border-radius: 50px;
+            font-size: 0.92rem;
+            font-weight: 900;
+            text-decoration: none;
+        }
+        .sticky-bar small { display: block; text-align: center; font-size: 0.66rem; color: var(--cinza-texto); margin-top: 5px; }
+
+        /* ── FOOTER ── */
+        .footer {
+            background: var(--preto);
+            color: rgba(247,243,234,0.4);
+            text-align: center;
+            padding: 24px 22px;
+            font-size: 0.73rem;
+            line-height: 1.9;
+            border-top: 1px solid var(--cinza-borda);
+        }
+        .footer a { color: var(--ambar); text-decoration: none; }
+        .footer p { max-width: 700px; margin-left: auto; margin-right: auto; }
+
+        /* ══════════════════════════════════════════════════════
+           RESPONSIVO — tablet (≥640px) e desktop (≥1024px)
+           Mobile-first: tudo acima é o layout base (celular).
+           ══════════════════════════════════════════════════════ */
+
+        @media (min-width: 640px) {
+            .sec-title, .pain-list, .cat-list, .price-box, .bonus-grid,
+            .faq-list, .inside-grid, .steps-list {
+                max-width: 620px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .titulo h1 { font-size: 2.2rem; }
+            .titulo-sub { font-size: 1rem; }
+        }
+
+        @media (min-width: 1024px) {
+            body { padding-bottom: 0; }
+
+            /* Hero em 2 colunas: imagem à esquerda, oferta à direita */
+            .hero-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 56px;
+                align-items: center;
+                max-width: 1160px;
+                margin: 0 auto;
+                padding: 64px 40px;
+            }
+            .hero-media {
+                position: relative;
+                height: auto;
+                aspect-ratio: 4 / 5;
+                border-radius: 28px;
+                overflow: hidden;
+                box-shadow: var(--sombra);
+            }
+            .hero-cta-btn { display: none; }
+            .hero-content .titulo { text-align: left; padding: 0 0 6px; }
+            .hero-content .titulo h1 { font-size: 2.7rem; }
+            .hero-content .titulo-sub { font-size: 1.1rem; }
+            .hero-content .btn-hero-wrap { padding: 14px 0 0; max-width: 420px; }
+
+            /* Barra de prova centralizada, sem scroll */
+            .proof-bar { justify-content: center; flex-wrap: wrap; overflow: visible; }
+
+            /* Conteúdo das seções ganha mais espaço e reflow em colunas */
+            .sec-title, .price-box, .faq-list,
+            .btn-cta, .pay-row, .guar-box {
+                max-width: 720px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .final-sec .btn-hero {
+                max-width: 480px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .pain-list {
+                max-width: 1080px;
+                margin-left: auto;
+                margin-right: auto;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                column-gap: 40px;
+            }
+            .orbit-wrap {
+                flex-direction: row;
+                justify-content: center;
+                max-width: 1080px;
+                margin-left: auto;
+                margin-right: auto;
+                gap: 64px;
+            }
+            .orbit-showcase { max-width: 380px; }
+            .orbit-showcase img { height: 300px; }
+            .orbit-circle { width: 360px; height: 360px; }
+            .orbit-ring { width: 360px; height: 360px; }
+            .orbit-icon { transform: rotate(var(--angle)) translate(178px) rotate(calc(-1 * var(--angle))); }
+
+            .inside-grid {
+                max-width: 1080px;
+                margin-left: auto;
+                margin-right: auto;
+                display: grid;
+                grid-template-columns: 380px 1fr;
+                gap: 44px;
+                align-items: center;
+                text-align: left;
+            }
+            .books-img { margin: 0; max-width: none; width: 100%; }
+
+            .cat-list {
+                max-width: 1080px;
+                margin-left: auto;
+                margin-right: auto;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: flex-start;
+            }
+            .cat-item { flex: 1 1 30%; min-width: 300px; }
+
+            .bonus-grid {
+                max-width: 720px;
+                margin-left: auto;
+                margin-right: auto;
+                flex-direction: row;
+                align-items: stretch;
+            }
+            .bonus-box { flex: 1; }
+
+            /* Barra fixa de mobile não faz sentido em telas largas */
+            .sticky-bar { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- URGENCY BAR -->
+    <div class="urgency-bar">
+        🍗 <strong>OFERTA:</strong> Tudo na Air Fryer + Bônus por apenas <strong>R$10,00</strong>
+    </div>
+
+    <!-- HERO -->
+    <section class="hero-sec">
+        <div class="hero-grid">
+            <div class="hero-media">
+                <img class="hero-img" src="/static/images/airfryer-hero.webp" alt="Mulher sorrindo ao retirar churros crocantes da Air Fryer — e-book Tudo na Air Fryer" fetchpriority="high">
+                <a href="#oferta" class="hero-cta-btn" id="btnHero">QUERO AS RECEITAS →</a>
+            </div>
+            <div class="hero-content">
+                <div class="titulo">
+                    <span class="hero-tag">🔥 E-book Digital</span>
+                    <h1>Sua Air Fryer Sabe Fazer Muito Mais do que <em>Batata e Frango</em></h1>
+                    <p class="titulo-sub">Chega de repetir sempre a mesma receita e ouvir reclamação de "de novo isso?". São mais de 145 receitas completas — carnes, aves, legumes, petiscos, massas, sobremesas e pratos especiais — cada uma com tempo, temperatura e passo a passo prontos pra usar hoje.</p>
+                    <p class="confianca">🔒 Pagamento seguro via PIX · Acesso liberado na hora</p>
+                </div>
+
+                <div class="btn-hero-wrap">
+                    <a href="#oferta" class="btn-hero" id="btnTitulo">
+                        QUERO TODAS AS RECEITAS
+                        <small>Acesso imediato · Apenas R$10,00</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SOCIAL PROOF BAR -->
+    <div class="proof-bar">
+        <div class="proof-item"><span class="proof-num">151</span><span class="proof-label">Páginas</span></div>
+        <div class="proof-item"><span class="proof-num">145+</span><span class="proof-label">Receitas Completas</span></div>
+        <div class="proof-item"><span class="proof-num">6</span><span class="proof-label">Categorias</span></div>
+        <div class="proof-item"><span class="proof-num">7 dias</span><span class="proof-label">Garantia</span></div>
+    </div>
+
+    <!-- PAIN SECTION -->
+    <section class="pain-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>Você se identifica?</h2></div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <p>Se você já passou por uma dessas situações, esse e-book foi feito para você.</p>
+        </div>
+        <ul class="pain-list">
+            <li><span class="ico">1</span><span>Sua Air Fryer virou só uma "fritadeira de batata congelada e nuggets" — e no fundo você sabe que ela pode muito mais?</span></li>
+            <li><span class="ico">2</span><span>Cansada de servir sempre a mesma coisa e ouvir "de novo isso?" na hora do jantar?</span></li>
+            <li><span class="ico">3</span><span>Já errou o tempo ou a temperatura e viu a receita queimar ou ressecar?</span></li>
+            <li><span class="ico">4</span><span>Quer comer — e servir pra família — de um jeito mais leve, sem abrir mão do sabor?</span></li>
+            <li><span class="ico">5</span><span>Na hora de receber visita ou preparar algo especial, trava por não ter uma receita "de impressionar" pronta?</span></li>
+        </ul>
+    </section>
+
+    <!-- GALLERY -->
+    <section class="gallery-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>Veja por dentro do e-book</h2></div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <p>Toque em um ícone para ver uma página real do e-book</p>
+        </div>
+
+        <div class="orbit-wrap">
+            <div class="orbit-showcase">
+                <img id="orbitPhoto" src="/static/images/airfryer-pagina-espetinhos.webp" alt="Espetinhos de Carne" loading="lazy">
+                <div class="orbit-showcase-caption" id="orbitCaption">Espetinhos de Carne</div>
+            </div>
+            <div class="orbit-circle">
+                <div class="orbit-ring-clip"><div class="orbit-ring"></div></div>
+                <img class="orbit-center-img" src="/static/images/tudo-na-airfryer.webp" alt="Capa do e-book Tudo na Air Fryer" loading="lazy">
+                <button class="orbit-icon active" type="button" style="--angle:200deg" data-img="/static/images/airfryer-pagina-espetinhos.webp" data-name="Espetinhos de Carne" aria-label="Espetinhos de Carne">
+                    <img src="/static/images/airfryer-cat-carnes.webp" alt="" loading="lazy">
+                </button>
+                <button class="orbit-icon" type="button" style="--angle:270deg" data-img="/static/images/airfryer-pagina-coxinha.webp" data-name="Coxinha na Air Fryer" aria-label="Coxinha na Air Fryer">
+                    <img src="/static/images/airfryer-cat-acompanhamentos.webp" alt="" loading="lazy">
+                </button>
+                <button class="orbit-icon" type="button" style="--angle:340deg" data-img="/static/images/airfryer-pagina-bolo.webp" data-name="Bolo de Chocolate" aria-label="Bolo de Chocolate">
+                    <img src="/static/images/airfryer-cat-sobremesas.webp" alt="" loading="lazy">
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- WHAT'S INSIDE -->
+    <section class="inside-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>O que você recebe<br>na compra?</h2></div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <p>E-book completo em PDF, liberado na hora</p>
+        </div>
+
+        <div class="inside-grid">
+            <img class="books-img" src="/static/images/tudo-na-airfryer.webp" alt="Capa do e-book Tudo na Air Fryer" loading="lazy">
+
+            <ul class="includes-list">
+                <li><span class="chk">✓</span><span><strong>E-book Tudo na Air Fryer (PDF, 151 páginas)</strong> — mais de 145 receitas completas, testadas e prontas pra usar</span></li>
+                <li><span class="chk">✓</span><span><strong>Ficha técnica em cada receita</strong> — tempo de preparo, tempo na Air Fryer, temperatura, rendimento e nível de dificuldade</span></li>
+                <li><span class="chk">✓</span><span><strong>Modo de preparo passo a passo com fotos</strong>, dicas do chef e substituições de ingredientes</span></li>
+                <li><span class="chk">✓</span><span><strong>Informações nutricionais aproximadas</strong> por porção, em todas as receitas</span></li>
+                <li><span class="chk">✓</span><span><strong>Acesso imediato e vitalício</strong> — depois de comprado, o material é seu para sempre</span></li>
+                <li><span class="chk">✓</span><span><strong>Sua Estante no site</strong> — depois de comprar, seus materiais ficam guardados numa página organizada só sua, pra abrir ou baixar quando quiser (e você também recebe o mesmo acesso por e-mail)</span></li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- COMO FUNCIONA -->
+    <section class="steps-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>Como funciona</h2></div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <p>Simples, rápido e seguro — do pagamento até a primeira receita</p>
+        </div>
+        <div class="steps-list">
+            <div class="step-item">
+                <span class="step-num">1</span>
+                <div class="step-title">Finalize sua compra pelo Pix</div>
+                <div class="step-desc">Preencha nome e e-mail, copie o código Pix ou escaneie o QR code direto pelo app do seu banco.</div>
+            </div>
+            <div class="step-item">
+                <span class="step-num">2</span>
+                <div class="step-title">Pagamento confirmado, sua Estante abre na hora</div>
+                <div class="step-desc">Assim que o Pix cai, você é levada direto pra uma página com seus materiais organizados — só abrir ou baixar, sem complicação.</div>
+            </div>
+            <div class="step-item">
+                <span class="step-num">3</span>
+                <div class="step-title">Baixe e comece a cozinhar hoje mesmo</div>
+                <div class="step-desc">Você também recebe uma cópia por e-mail, pra acessar quando e onde quiser.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CATEGORIES ACCORDION -->
+    <section class="cat-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>O que você vai encontrar</h2></div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <p>145+ receitas organizadas em 6 categorias, pra achar rápido o que precisa</p>
+        </div>
+        <div class="cat-list" id="catList">
+            <div class="cat-item open">
+                <div class="cat-img">
+                    <img src="/static/images/airfryer-cat-carnes.webp" alt="Carnes e Aves" loading="lazy">
+                    <span class="cat-badge">Mais Pedida</span>
+                    <span class="cat-name">Carnes e Aves</span>
+                </div>
+                <button class="cat-toggle" type="button">Ver o que vem nesta categoria</button>
+                <div class="cat-items">
+                    <p class="cat-desc">Receitas suculentas de carnes bovinas, suínas, aves e peixes para todas as ocasiões, do dia a dia ao churrasco em casa.</p>
+                    <ul>
+                        <li>Lombo suíno assado</li>
+                        <li>Espetinhos de carne</li>
+                        <li>E dezenas de outras opções de carnes e aves para variar a semana</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="cat-item">
+                <div class="cat-img">
+                    <img src="/static/images/airfryer-cat-legumes.webp" alt="Legumes e Vegetais" loading="lazy">
+                    <span class="cat-badge">Leve e Saudável</span>
+                    <span class="cat-name">Legumes e Vegetais</span>
+                </div>
+                <button class="cat-toggle" type="button">Ver o que vem nesta categoria</button>
+                <div class="cat-items">
+                    <p class="cat-desc">Opções saudáveis, saborosas e criativas para deixar seus pratos mais coloridos e nutritivos.</p>
+                    <ul>
+                        <li>Brócolis crocante</li>
+                        <li>Legumes coloridos e nutritivos pra variar o prato</li>
+                        <li>Mais opções pra comer bem sem abrir mão do sabor</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="cat-item">
+                <div class="cat-img">
+                    <img src="/static/images/airfryer-cat-acompanhamentos.webp" alt="Acompanhamentos e Petiscos" loading="lazy">
+                    <span class="cat-badge">Pro Happy Hour</span>
+                    <span class="cat-name">Acompanhamentos e Petiscos</span>
+                </div>
+                <button class="cat-toggle" type="button">Ver o que vem nesta categoria</button>
+                <div class="cat-items">
+                    <p class="cat-desc">Batatas, mandioca, polentas, queijos, pães e petiscos irresistíveis para acompanhar qualquer refeição ou happy hour.</p>
+                    <ul>
+                        <li>Coxinha na Air Fryer</li>
+                        <li>Croquete de carne</li>
+                        <li>E muitos outros petiscos crocantes por fora e macios por dentro</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="cat-item">
+                <div class="cat-img">
+                    <img src="/static/images/airfryer-cat-massas.webp" alt="Massas e Gratinados" loading="lazy">
+                    <span class="cat-badge">Pro Almoço/Jantar</span>
+                    <span class="cat-name">Massas e Gratinados</span>
+                </div>
+                <button class="cat-toggle" type="button">Ver o que vem nesta categoria</button>
+                <div class="cat-items">
+                    <p class="cat-desc">Pratos práticos, reconfortantes e cheios de sabor para o almoço, jantar ou para surpreender.</p>
+                    <ul>
+                        <li>Canelone de carne</li>
+                        <li>Pratos gratinados prontos em bem menos tempo que no forno tradicional</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="cat-item">
+                <div class="cat-img">
+                    <img src="/static/images/airfryer-cat-sobremesas.webp" alt="Sobremesas" loading="lazy">
+                    <span class="cat-badge">Toque Doce</span>
+                    <span class="cat-name">Sobremesas</span>
+                </div>
+                <button class="cat-toggle" type="button">Ver o que vem nesta categoria</button>
+                <div class="cat-items">
+                    <p class="cat-desc">Doces rápidos, práticos e deliciosos que provam que também dá para fazer sobremesas incríveis na Air Fryer!</p>
+                    <ul>
+                        <li>Bolo de chocolate</li>
+                        <li>Outras sobremesas rápidas pra fechar a refeição com chave de ouro</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="cat-item">
+                <div class="cat-img">
+                    <img src="/static/images/airfryer-cat-especiais.webp" alt="Receitas Especiais" loading="lazy">
+                    <span class="cat-badge">Pra Impressionar</span>
+                    <span class="cat-name">Receitas Especiais</span>
+                </div>
+                <button class="cat-toggle" type="button">Ver o que vem nesta categoria</button>
+                <div class="cat-items">
+                    <p class="cat-desc">Receitas para ocasiões especiais, combinando praticidade e sofisticação para momentos inesquecíveis.</p>
+                    <ul>
+                        <li>Tournedos ao molho madeira</li>
+                        <li>Pratos "de restaurante" pra impressionar visita sem sair de casa</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- BÔNUS -->
+    <section class="bonus-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>Bônus Grátis Incluso</h2></div>
+                </div>
+            </div>
+        </div>
+        <div class="bonus-grid">
+            <div class="bonus-box">
+                <div class="bonus-ribbon">Bônus</div>
+                <img class="bonus-cover" src="/static/images/molho-bonus.webp" alt="Capa do e-book 10 Molhos Saudáveis sem Açúcar" loading="lazy">
+                <h3>Receitas de Molhos sem Açúcar</h3>
+                <p>10 receitas caseiras de molhos, prontas em poucos minutos — pra acompanhar carnes, frango, petiscos e legumes feitos na sua Air Fryer, sem complicação.</p>
+                <span class="bonus-free">PDF · GRÁTIS</span>
+            </div>
+        </div>
+        <p class="bonus-tagline">✅ Incluso em PDF — para celular, tablet ou computador.</p>
+    </section>
+
+    <!-- OFFER -->
+    <section class="offer-sec" id="oferta">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>Adquira o E-book "Tudo na Air Fryer"<br>+ Bônus</h2></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="price-box glow-card">
+            <p class="p-now"><sup>R$</sup>10<sup>,00</sup></p>
+            <p class="p-desc">Pagamento único &middot; Acesso imediato &middot; Para sempre</p>
+            <ul class="v-stack">
+                <li><span>E-book Tudo na Air Fryer (PDF)</span><span>PRINCIPAL</span></li>
+                <li><span>🎁 Bônus: Receitas de Molhos sem Açúcar</span><span class="free">GRÁTIS</span></li>
+            </ul>
+        </div>
+
+        <a href="#" class="btn-cta" id="btnOferta">
+            ✅ QUERO TODAS AS RECEITAS AGORA
+            <small>🔒 Compra segura &middot; Acesso imediato após o PIX</small>
+        </a>
+
+        <div class="pay-row">
+            <span class="pay-badge">📱 PIX</span>
+            <span class="pay-badge">🛡️ Arquivo Seguro</span>
+            <span class="pay-badge">♾️ Acesso Vitalício</span>
+            <span class="pay-badge">🖨️ Pronto p/ Imprimir</span>
+        </div>
+    </section>
+
+    <!-- GUARANTEE -->
+    <section class="guar-sec">
+        <div class="guar-box">
+            <span class="guar-ico">🛡️</span>
+            <h3>Garantia Incondicional de 7 Dias</h3>
+            <p>Baixe o material, teste as receitas e, se sentir que ele não te ajudou a variar o cardápio, devolvemos seu dinheiro na hora. Risco zero para você.</p>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq-sec">
+        <div class="sec-title">
+            <div class="glow-badge-holder">
+                <div class="glow-badge-stack">
+                    <div class="glow-badge-halo"></div>
+                    <div class="glow-badge"><h2>Dúvidas frequentes</h2></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-list">
+            <div class="faq-item">
+                <button class="faq-q">Como recebo o e-book depois de comprar?</button>
+                <div class="faq-a">Assim que o pagamento via PIX for confirmado, você é levada direto pra sua Estante — uma página no próprio site com seus materiais organizados, prontos pra abrir ou baixar quando quiser. Você também recebe o mesmo acesso por e-mail.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">Não acho receita de Air Fryer de graça no Google ou no TikTok?</button>
+                <div class="faq-a">Você encontra receita solta, sim — mas quase sempre sem tempo e temperatura exatos, sem substituição de ingrediente e espalhada em dezenas de vídeos diferentes. O Tudo na Air Fryer organiza mais de 145 receitas num só lugar, cada uma com ficha técnica completa, dicas do chef e informações nutricionais, prontas pra usar hoje, sem precisar garimpar nem testar no olho.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">O arquivo é seguro? Não tem vírus?</button>
+                <div class="faq-a">Sim. É um arquivo PDF comum, sem nenhum tipo de risco, compatível com qualquer celular ou computador.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">Por quanto tempo posso acessar o material?</button>
+                <div class="faq-a">O acesso é vitalício — depois de baixado, o material é seu para sempre, sem prazo de expiração.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">Dá para imprimir?</button>
+                <div class="faq-a">Sim! O e-book é formatado em tamanho padrão A4, perfeito para imprimir e consultar sempre que precisar.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">Serve pra qualquer marca ou modelo de Air Fryer?</button>
+                <div class="faq-a">Sim. As receitas trazem tempo e temperatura de referência, mas cada Air Fryer pode variar um pouco de potência — o próprio e-book orienta a ajustar conforme o manual do seu aparelho, seja de cesto ou de forno.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">O bônus vem junto automaticamente?</button>
+                <div class="faq-a">Sim, as Receitas de Molhos sem Açúcar são liberadas junto com o e-book principal, sem custo adicional.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">Não sei mexer muito bem no computador, é difícil pagar e baixar o material?</button>
+                <div class="faq-a">Não! Pra pagar, basta abrir o app do seu banco, escolher a opção Pix e escanear o QR code ou colar o código que aparece na tela — leva menos de um minuto. E depois de pagar, você não precisa se preocupar em "baixar" nada: seus materiais ficam guardados numa página só sua no site, prontos pra abrir quando quiser.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">Como funciona a garantia de 7 dias?</button>
+                <div class="faq-a">Se você não ficar satisfeita por qualquer motivo, basta enviar um e-mail dentro de 7 dias após a compra e devolvemos 100% do valor. Sem perguntas.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section class="final-sec">
+        <div class="glow-badge-holder">
+            <div class="glow-badge-stack">
+                <div class="glow-badge-halo"></div>
+                <div class="glow-badge"><h2>Não Perca Mais Tempo Repetindo Sempre a Mesma Receita</h2></div>
+            </div>
+        </div>
+        <p>Quanto antes você começar, mais rápido sua Air Fryer vira sua maior aliada na cozinha.</p>
+        <a href="#oferta" class="btn-hero" style="text-decoration:none;" id="btnFinal">
+            QUERO TODAS AS RECEITAS — R$10,00
+            <small>Acesso imediato após a compra</small>
+        </a>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>© 2026 Tudo na Air Fryer — Receitas da Lu. Todos os direitos reservados.</p>
+        <p><a href="/politica-privacidade">Política de Privacidade</a> &middot; <a href="/termos-de-uso">Termos de Uso</a> &middot; <a href="/contato">Contato</a></p>
+        <p style="margin-top:10px;">Este produto é um e-book digital. O acesso é liberado imediatamente após a confirmação do pagamento.</p>
+        <p style="margin-top:10px;font-size:10px;color:rgba(247,243,234,0.3);line-height:1.6;text-align:left">
+            <strong style="display:block;margin-bottom:4px;color:rgba(247,243,234,0.5)">Aviso Legal</strong>
+            Este material tem caráter educacional sobre receitas e técnicas de preparo em Air Fryer, baseado em práticas comuns de cozinha doméstica. Os tempos e temperaturas sugeridos podem variar conforme o modelo e a potência do seu aparelho — sempre consulte o manual do fabricante. Este site não faz parte do Google Inc. ou do Facebook Inc. e não é endossado por eles de qualquer maneira.
+        </p>
+    </footer>
+
+    <!-- STICKY CTA -->
+    <div class="sticky-bar" id="stickyBar">
+        <a href="#oferta" id="btnSticky">✅ COMPRAR AGORA — R$10,00</a>
+        <small>🔒 Pagamento seguro &middot; Acesso imediato</small>
+    </div>
+
+    <script>
+    // ── FAQ ───────────────────────────────────────────────
+    document.querySelectorAll('.faq-q').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.parentElement;
+            const open = item.classList.contains('open');
+            document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+            if (!open) item.classList.add('open');
+        });
+    });
+
+    // ── CATEGORIES ACCORDION ──────────────────────────────
+    document.querySelectorAll('.cat-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.closest('.cat-item');
+            const open = item.classList.contains('open');
+            document.querySelectorAll('.cat-item').forEach(i => i.classList.remove('open'));
+            if (!open) item.classList.add('open');
+        });
+    });
+
+    // ── CARROSSEL ORBITAL (clique no ícone troca a foto em destaque) ──
+    (function () {
+        const icons = document.querySelectorAll('.orbit-icon');
+        const photo = document.getElementById('orbitPhoto');
+        const caption = document.getElementById('orbitCaption');
+        if (!icons.length || !photo) return;
+
+        icons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                icons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                photo.style.opacity = '0';
+                setTimeout(() => {
+                    photo.src = btn.dataset.img;
+                    photo.alt = btn.dataset.name;
+                    caption.textContent = btn.dataset.name;
+                    photo.style.opacity = '1';
+                }, 180);
+            });
+        });
+    })();
+
+    // ── STICKY BAR oculta quando oferta está visível (só em telas < 1024px) ──
+    const stickyBar = document.getElementById('stickyBar');
+    const ofertaSection = document.getElementById('oferta');
+    const isDesktopViewport = () => window.matchMedia('(min-width: 1024px)').matches;
+
+    const io = new IntersectionObserver(entries => {
+        if (isDesktopViewport()) {
+            stickyBar.style.display = 'none';
+            return;
+        }
+        stickyBar.style.display = entries[0].isIntersecting ? 'none' : 'block';
+    }, { threshold: 0.15 });
+
+    io.observe(ofertaSection);
+
+    // ── CTAs: redireciona para o checkout do produto (repassa querystring) ──
+    ['btnHero', 'btnTitulo', 'btnOferta', 'btnFinal', 'btnSticky'].forEach(id => {
+        document.getElementById(id)?.addEventListener('click', () => {
+            window.location.href = '/pay/15' + window.location.search;
+        });
+    });
+    </script>
+
+</body>
+</html>

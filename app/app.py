@@ -452,6 +452,15 @@ def orquidea_e():
     resp.set_cookie(f'pedido_web_{produto_id}', str(pedido_id), max_age=COOKIE_MAX_AGE_FUNIL)
     return resp
 
+@app.get("/airfryer-e")
+def airfryer_e():
+    from web.checkout import rastrear_visita_funil, COOKIE_MAX_AGE_FUNIL
+    produto_id = 15
+    pedido_id = rastrear_visita_funil(request, produto_id, estado_novo=1004)
+    resp = make_response(render_template('airfryer-e.html'))
+    resp.set_cookie(f'pedido_web_{produto_id}', str(pedido_id), max_age=COOKIE_MAX_AGE_FUNIL)
+    return resp
+
 @app.get("/sobremesas")
 def sobremesas():
     return render_template('sobremesa.html')
