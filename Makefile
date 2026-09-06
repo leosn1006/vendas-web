@@ -1,4 +1,4 @@
-.PHONY: help upload-google-ads-now upload-google-sheets-now buscar-pix orcamento-sheets-now exportar-mensagens exportar-telefones-google-ads logs-worker logs-worker-normal logs-worker-baixa logs-files restart-worker restart-nginx reload-nginx atualizar-senha criar-usuario
+.PHONY: help upload-google-ads-now upload-google-sheets-now buscar-pix buscar-pix-periodo orcamento-sheets-now exportar-mensagens exportar-telefones-google-ads logs-worker logs-worker-normal logs-worker-baixa logs-files restart-worker restart-nginx reload-nginx atualizar-senha criar-usuario
 
 help:
 	@echo "Comandos disponíveis:"
@@ -9,6 +9,8 @@ help:
 	@echo "  make buscar-pix                        # Busca PIX de hoje (conta lsn-livros) e persiste no banco"
 	@echo "  make buscar-pix data=31/03/2026   # Busca PIX de uma data específica (dd/mm/yyyy)"
 	@echo "  make buscar-pix data=31/03/2026 tenant=lbe-livros  # Idem, para a conta lbe-livros"
+	@echo "  make buscar-pix-periodo inicio=01/03/2026 fim=31/03/2026  # Busca PIX+devoluções dia a dia num período (backfill)"
+	@echo "  make buscar-pix-periodo inicio=01/03/2026 fim=31/03/2026 tenant=lbe-livros  # Idem, para a conta lbe-livros"
 	@echo "  make exportar-mensagens produto=9 dias=30  # Exporta mensagens do produto (default: últimos 15 dias)"
 	@echo "  make exportar-telefones-google-ads valor=10  # Exporta telefones de pedidos pagos para Google Sheets (default: valor > 10)"
 	@echo "  make logs-worker                  # Acompanha logs do worker-urgente"
@@ -40,6 +42,13 @@ buscar-pix:
 	@docker compose exec worker-baixa python -c "\
 from fluxos.fluxo_pix_bb import executar; \
 executar($(if $(data),'$(data)',None), tenant_slug='$(if $(tenant),$(tenant),lsn-livros)')"
+
+buscar-pix-periodo:
+	@echo "Buscando PIX+devoluções de $(inicio) até $(fim) (conta $(if $(tenant),$(tenant),lsn-livros))..."
+	@docker compose exec worker-baixa python -c "\
+import logging; logging.basicConfig(level=logging.INFO, format='%(message)s'); \
+from fluxos.fluxo_pix_bb import executar_periodo; \
+executar_periodo('$(inicio)', '$(fim)', tenant_slug='$(if $(tenant),$(tenant),lsn-livros)')"
 
 exportar-mensagens:
 	@echo "Exportando mensagens do produto $(produto) (últimos $(if $(dias),$(dias),15) dias)..."

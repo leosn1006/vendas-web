@@ -54,7 +54,7 @@ def _get_token(tenant_slug: str = 'lsn-livros') -> str:
     return resp.json()['access_token']
 
 
-def consultar_todos_pix(inicio: datetime, fim: datetime, tenant_slug: str = 'lsn-livros') -> list:
+def consultar_todos_pix(inicio: datetime, fim: datetime, tenant_slug: str = 'lsn-livros', token: str = None) -> list:
     """
     Consulta todos os PIX recebidos no intervalo [inicio, fim] para a conta
     (tenant_slug) informada.
@@ -63,11 +63,14 @@ def consultar_todos_pix(inicio: datetime, fim: datetime, tenant_slug: str = 'lsn
         inicio: datetime com timezone (ex: 00:00:00-03:00)
         fim:    datetime com timezone (ex: 23:59:59-03:00)
         tenant_slug: 'lsn-livros' (default) ou 'lbe-livros'
+        token: access_token já obtido (opcional) — evita um novo OAuth quando o
+            caller já tem um token válido pra essa conta (ex: fluxo_pix_bb.executar,
+            que busca PIX e devoluções em sequência pro mesmo tenant/janela).
 
     Retorna lista de dicts com os campos do PIX (endToEndId, valor, chave, etc.).
     """
     conta = _conta(tenant_slug)
-    token = _get_token(tenant_slug)
+    token = token or _get_token(tenant_slug)
     todos = []
     pagina = 0
 
@@ -114,3 +117,93 @@ def consultar_todos_pix(inicio: datetime, fim: datetime, tenant_slug: str = 'lsn
 
     logger.info(f'[BB-PIX][{tenant_slug}] ✅ {len(todos)} transação(ões) recebida(s) de {inicio.date()} a {fim.date()}')
     return todos
+
+
+def consultar_devolucoes_pix(inicio: datetime, fim: datetime, tenant_slug: str = 'lsn-livros', token: str = None) -> list:
+    """
+    Consulta devoluções de PIX no intervalo [inicio, fim] para a conta (tenant_slug)
+    informada. O intervalo filtra pela data da DEVOLUÇÃO, não pela data do PIX
+    original recebido (confirmado empiricamente contra a API real do BB).
+
+    Retorna lista PLANA de dicts, um por devolução individual (um PIX pode ter
+    N devoluções — a API devolve cada PIX com um array `devolucoes` aninhado,
+    que é achatado aqui), cada um carregando `endToEndId` e `chave` do PIX
+    original (a `chave` permite resolver produto_id por fallback mesmo quando o
+    PIX original ainda não foi persistido — ver database.salvar_devolucao_pix):
+        {endToEndId, chave, rtrId, valor, natureza, descricao, motivo, status,
+         horario_solicitacao, horario_liquidacao}
+
+    IMPORTANTE: o BB rejeita (400 OperacaoInvalida) intervalos [inicio, fim] de
+    5 dias ou mais — diferente de /pix, que aceita janelas maiores. Confirmado
+    empiricamente contra produção. Por isso todo caller (fluxo_pix_bb.executar/
+    executar_periodo) usa sempre uma janela de 1 dia por vez.
+
+    Args:
+        token: access_token já obtido (opcional) — evita um novo OAuth quando o
+            caller já tem um token válido pra essa conta.
+    """
+    conta = _conta(tenant_slug)
+    token = token or _get_token(tenant_slug)
+    todos = []
+    pagina = 0
+
+    while True:
+        resp = requests.get(
+            f'{_API_URL}/pix-bb/devolucoes',
+            params={
+                'inicio':                   inicio.isoformat(),
+                'fim':                      fim.isoformat(),
+                'gw-dev-app-key':           conta['app_key'],
+                'paginacao.paginaAtual':    pagina,
+                'paginacao.itensPorPagina': 100,
+            },
+            headers={
+                'Authorization': f'Bearer {token}',
+            },
+            cert=(conta['cert_pem'], conta['cert_key']),
+            timeout=15,
+        )
+        if resp.status_code == 404:
+            logger.info(f'[BB-PIX-DEVOL][{tenant_slug}] Nenhuma devolução encontrada de {inicio.date()} a {fim.date()}')
+            break
+        if not resp.ok:
+            logger.error(f'[BB-PIX-DEVOL][{tenant_slug}] Erro ao consultar devoluções {resp.status_code}: {resp.text}')
+            resp.raise_for_status()
+
+        data = resp.json()
+        paginacao = data.get('parametros', {}).get('paginacao', {})
+        total_paginas = paginacao.get('quantidadeDePaginas', 1)
+        total_itens = paginacao.get('quantidadeTotalDeItens', 0)
+        pagina_atual = paginacao.get('paginaAtual', pagina)
+
+        pix_pagina = data.get('pix', [])
+        todos.extend(pix_pagina)
+
+        logger.info(
+            f'[BB-PIX-DEVOL][{tenant_slug}] Página {pagina_atual + 1}/{total_paginas} — '
+            f'{len(pix_pagina)} PIX com devolução (total esperado: {total_itens})'
+        )
+
+        if pagina_atual >= total_paginas - 1:
+            break
+        pagina += 1
+
+    achatado = []
+    for item in todos:
+        for dev in item.get('devolucoes', []):
+            horario = dev.get('horario') or {}
+            achatado.append({
+                'endToEndId':          item.get('endToEndId'),
+                'chave':               item.get('chave'),
+                'rtrId':               dev.get('rtrId'),
+                'valor':               dev.get('valor'),
+                'natureza':            dev.get('natureza'),
+                'descricao':           dev.get('descricao'),
+                'motivo':              dev.get('motivo'),
+                'status':              dev.get('status'),
+                'horario_solicitacao': horario.get('solicitacao'),
+                'horario_liquidacao':  horario.get('liquidacao'),
+            })
+
+    logger.info(f'[BB-PIX-DEVOL][{tenant_slug}] ✅ {len(achatado)} devolução(ões) de {inicio.date()} a {fim.date()}')
+    return achatado

@@ -2,6 +2,9 @@
     {% if origem is defined %}
     <input type="hidden" name="origem" value="{{ origem }}">
     {% endif %}
+    {% if forma is defined %}
+    <input type="hidden" name="forma" value="{{ forma }}">
+    {% endif %}
     <div class="form-group">
         <label>Data inicial</label>
         <input type="date" name="data_ini" value="{{ data_ini }}" class="period-date-input">

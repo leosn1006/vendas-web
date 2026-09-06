@@ -37,6 +37,16 @@ init_login_manager(app)
 # Registra o Blueprint de web checkout
 app.register_blueprint(web_bp)
 
+
+@app.template_filter('brl')
+def formatar_brl(valor):
+    """Formata número no padrão monetário brasileiro: R$ 99.999.999,99."""
+    valor = float(valor or 0)
+    texto = f'{valor:,.2f}'
+    texto = texto.replace(',', 'X').replace('.', ',').replace('X', '.')
+    return f'R$ {texto}'
+
+
 # ============ ROTAS DA APLICAÇÃO ============
 
 # Rota para evitar erro 404 do favicon

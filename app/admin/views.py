@@ -3287,6 +3287,8 @@ def financeiro_produto(produto_id):
     hoje = _hoje_sao_paulo()
     data_ini_str = request.args.get('data_ini', hoje.isoformat())
     data_fim_str = request.args.get('data_fim', hoje.isoformat())
+    origem = request.args.get('origem', 'todos')
+    forma  = request.args.get('forma', 'todos')
 
     try:
         data_ini = datetime.datetime.fromisoformat(data_ini_str)
@@ -3297,17 +3299,26 @@ def financeiro_produto(produto_id):
         data_ini_str = data_fim_str = hoje.isoformat()
 
     try:
-        financeiro = busca_financeiro_pix(produto_id, data_ini, data_fim)
+        financeiro = busca_financeiro_pix(produto_id, data_ini, data_fim, origem=origem, forma=forma)
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro no financeiro produto #{produto_id}: {e}")
         flash('Erro ao carregar dados financeiros.', 'danger')
-        financeiro = {'resumo': {'total_valor': 0, 'qtd_transacoes': 0, 'ticket_medio': 0}, 'transacoes': []}
+        financeiro = {
+            'resumo': {
+                'total_valor': 0, 'qtd_transacoes': 0, 'ticket_medio': 0,
+                'total_cartao': 0, 'total_devolucoes': 0,
+            },
+            'transacoes': [],
+            'transacoes_filtradas': [],
+        }
 
     return render_template('admin/produto_financeiro.html',
         produto     = produto,
         financeiro  = financeiro,
         data_ini    = data_ini_str,
         data_fim    = data_fim_str,
+        origem      = origem,
+        forma       = forma,
     )
 
 

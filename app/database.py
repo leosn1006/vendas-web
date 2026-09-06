@@ -2390,18 +2390,30 @@ def desativar_chave_pix_produto(chave_id: int):
     )
 
 
-def busca_financeiro_pix(produto_id, data_ini, data_fim) -> dict:
+def busca_financeiro_pix(produto_id, data_ini, data_fim, origem: str = 'todos', forma: str = 'todos') -> dict:
     """
-    Retorna resumo e lista de transações (PIX + vendas web confirmadas) do
-    produto no período, com origem ('whatsapp' ou 'web') por transação.
+    Retorna resumo e lista de transações (PIX + vendas web confirmadas + devoluções)
+    do produto no período, com origem ('whatsapp' ou 'web') e forma ('pix', 'cartao'
+    ou 'devolucao') por transação.
 
     Pagamentos PIX já vinculados a um pedido web confirmado (mesmo e2e_id)
     são excluídos do lado PIX para não contar a mesma venda duas vezes —
     aparecem só como linha 'web'.
 
+    Devoluções entram como linhas de valor NEGATIVO, filtradas pela data da
+    própria devolução (horario_liquidacao), não pela data do PIX original.
+
+    `resumo` é sempre calculado sobre o período inteiro (não é afetado pelos
+    filtros `origem`/`forma` — esses só decidem o que aparece em `transacoes_filtradas`,
+    usado pela tabela detalhada).
+
     Returns:
-        dict com keys 'resumo' (total_valor, qtd_transacoes, ticket_medio)
-                   e 'transacoes' (lista unificada, ordenada por horario DESC)
+        dict com keys 'resumo' (total_valor, qtd_transacoes, ticket_medio,
+                   total_cartao, total_devolucoes),
+                   'transacoes' (lista completa do período, ordenada por horario DESC,
+                   cada item já com a chave 'forma' calculada)
+                   e 'transacoes_filtradas' (subconjunto de 'transacoes' respeitando
+                   os filtros origem/forma, pronta pra tabela detalhada)
     """
     transacoes = db.execute_query(
         """SELECT pp.horario, pp.valor, pp.chave_pix, pp.cpf_cnpj, pp.nome_pagador,
@@ -2409,7 +2421,8 @@ def busca_financeiro_pix(produto_id, data_ini, data_fim) -> dict:
                   pp.nfe_emitida_id,
                   ne.c_stat       AS nfe_c_stat,
                   ne.chave_acesso AS nfe_chave_acesso,
-                  'whatsapp'      AS origem
+                  'whatsapp'      AS origem,
+                  'pix'           AS metodo_pagamento
            FROM pagamento_pix pp
            LEFT JOIN nfe_emitidas ne ON ne.id = pp.nfe_emitida_id
            WHERE pp.produto_id = %s AND pp.horario BETWEEN %s AND %s
@@ -2430,25 +2443,66 @@ def busca_financeiro_pix(produto_id, data_ini, data_fim) -> dict:
                   NULL AS nfe_emitida_id,
                   NULL AS nfe_c_stat,
                   NULL AS nfe_chave_acesso,
-                  'web' AS origem
+                  'web' AS origem,
+                  ped.metodo_pagamento
            FROM pedidos ped
            WHERE ped.produto_id = %s AND ped.estado_id = 1000
              AND ped.data_pagamento BETWEEN %s AND %s
 
+           UNION ALL
+
+           SELECT dp.horario_liquidacao AS horario, -dp.valor AS valor,
+                  dp.chave_pix, pp.cpf_cnpj, pp.nome_pagador,
+                  NULL AS txid, dp.e2e_id,
+                  NULL AS nfe_emitida_id,
+                  NULL AS nfe_c_stat,
+                  NULL AS nfe_chave_acesso,
+                  'devolucao' AS origem,
+                  NULL AS metodo_pagamento
+           FROM devolucoes_pix dp
+           LEFT JOIN pagamento_pix pp ON pp.id = dp.pagamento_pix_id
+           WHERE dp.produto_id = %s
+             AND dp.horario_liquidacao BETWEEN %s AND %s
+
            ORDER BY horario DESC""",
-        (produto_id, data_ini, data_fim, produto_id, data_ini, data_fim),
+        (
+            produto_id, data_ini, data_fim,
+            produto_id, data_ini, data_fim,
+            produto_id, data_ini, data_fim,
+        ),
         fetch_all=True,
     ) or []
 
-    total = float(sum(t['valor'] for t in transacoes))
-    qtd   = len(transacoes)
+    for t in transacoes:
+        if t['origem'] == 'devolucao':
+            t['forma'] = 'devolucao'
+        elif t['metodo_pagamento'] == 'cartao':
+            t['forma'] = 'cartao'
+        else:
+            t['forma'] = 'pix'
+
+    recebimentos      = [t for t in transacoes if t['forma'] != 'devolucao']
+    total_pix         = float(sum(t['valor'] for t in recebimentos if t['forma'] == 'pix'))
+    total_cartao      = float(sum(t['valor'] for t in recebimentos if t['forma'] == 'cartao'))
+    qtd_pix           = sum(1 for t in recebimentos if t['forma'] == 'pix')
+    total_devolucoes  = float(-sum(t['valor'] for t in transacoes if t['forma'] == 'devolucao'))
+
+    transacoes_filtradas = [
+        t for t in transacoes
+        if (origem == 'todos' or t['origem'] == origem)
+        and (forma == 'todos' or t['forma'] == forma)
+    ]
+
     return {
         'resumo': {
-            'total_valor':     total,
-            'qtd_transacoes':  qtd,
-            'ticket_medio':    round(total / qtd, 2) if qtd > 0 else 0.0,
+            'total_valor':      total_pix,
+            'qtd_transacoes':   qtd_pix,
+            'ticket_medio':     round(total_pix / qtd_pix, 2) if qtd_pix > 0 else 0.0,
+            'total_cartao':     total_cartao,
+            'total_devolucoes': total_devolucoes,
         },
-        'transacoes': transacoes,
+        'transacoes':           transacoes,
+        'transacoes_filtradas': transacoes_filtradas,
     }
 
 
@@ -2502,6 +2556,92 @@ def salvar_pagamento_pix(pix: dict, produto_id, tenant_slug: str = 'lsn-livros')
             ),
         )
         return cursor.lastrowid if cursor.rowcount > 0 else None
+
+
+def salvar_devolucao_pix(devolucao: dict, tenant_slug: str = 'lsn-livros', chaves: dict = None) -> int:
+    """
+    Persiste uma devolução de PIX. Idempotente por rtr_id (upsert): se a mesma
+    devolução for vista de novo (mesmo dia ou depois), atualiza status/horário
+    em vez de duplicar — devoluções podem mudar de estado entre uma consulta e outra.
+
+    produto_id é resolvido com fallback: primeiro tenta pelo pagamento_pix já
+    persistido (e2e_id); se não achar (ou o pagamento_pix achado ainda não tiver
+    produto_id), cai pra chaves_pix_produto usando a própria chave que vem no
+    payload da devolução (mesma lógica de fluxo_pix_bb.py pro PIX normal). Sem
+    isso, uma devolução cujo PIX original não foi persistido ainda ficava
+    invisível pra sempre em qualquer tela por produto.
+
+    Args:
+        chaves: dict {chave_pix: produto_id} pré-carregado (opcional) — evita
+            uma query em chaves_pix_produto por devolução quando o caller já
+            tem o dict em mãos (ver fluxos.fluxo_pix_bb.buscar_devolucoes).
+
+    Retorna cursor.rowcount (semântica do ON DUPLICATE KEY UPDATE do MySQL):
+    1 = inserida nova, 2 = já existia e algo mudou, 0 = já existia e nada mudou.
+    """
+    from datetime import datetime
+
+    parent = db.execute_query(
+        "SELECT id, produto_id FROM pagamento_pix WHERE e2e_id = %s",
+        (devolucao.get('endToEndId'),),
+        fetch_one=True,
+    )
+    pagamento_pix_id = parent['id'] if parent else None
+    produto_id = parent['produto_id'] if parent else None
+    if produto_id is None:
+        if chaves is None:
+            chaves = busca_chaves_pix_produtos()
+        produto_id = chaves.get(devolucao.get('chave', ''))
+    if not parent:
+        logger.warning(
+            f"[PIX-DEVOL][{tenant_slug}] e2e_id {devolucao.get('endToEndId')} sem "
+            f"pagamento_pix correspondente — gravando com pagamento_pix_id=NULL "
+            f"(produto_id resolvido via chave: {produto_id})"
+        )
+
+    def _parse(dt_str):
+        try:
+            return datetime.fromisoformat(dt_str).replace(tzinfo=None)
+        except (ValueError, TypeError):
+            return None
+
+    with db.get_cursor() as cursor:
+        cursor.execute(
+            """INSERT INTO devolucoes_pix
+               (pagamento_pix_id, produto_id, e2e_id, chave_pix, rtr_id, valor,
+                natureza, descricao, motivo, status, horario_solicitacao,
+                horario_liquidacao, tenant_slug)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+               ON DUPLICATE KEY UPDATE
+                   pagamento_pix_id   = VALUES(pagamento_pix_id),
+                   produto_id         = VALUES(produto_id),
+                   chave_pix          = VALUES(chave_pix),
+                   status             = VALUES(status),
+                   horario_liquidacao = VALUES(horario_liquidacao),
+                   atualizado_em      = IF(
+                       pagamento_pix_id   <=> VALUES(pagamento_pix_id) AND
+                       produto_id         <=> VALUES(produto_id) AND
+                       status             <=> VALUES(status) AND
+                       horario_liquidacao <=> VALUES(horario_liquidacao),
+                       atualizado_em, NOW()
+                   )""",
+            (
+                pagamento_pix_id,
+                produto_id,
+                devolucao.get('endToEndId'),
+                devolucao.get('chave'),
+                devolucao.get('rtrId'),
+                float(devolucao.get('valor', 0)),
+                devolucao.get('natureza'),
+                devolucao.get('descricao'),
+                devolucao.get('motivo'),
+                devolucao.get('status'),
+                _parse(devolucao.get('horario_solicitacao')),
+                _parse(devolucao.get('horario_liquidacao')),
+                tenant_slug,
+            ),
+        )
+        return cursor.rowcount
 
 
 # ============================================================

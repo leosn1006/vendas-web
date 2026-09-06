@@ -58,6 +58,19 @@
         font-size: 14px;
     }
 
+    .resumo-forma td {
+        font-size: 16px;
+        padding-top: 14px;
+        padding-bottom: 14px;
+    }
+    .resumo-forma td:first-child {
+        font-weight: 700;
+    }
+    .resumo-forma td:last-child {
+        font-size: 20px;
+        font-weight: 700;
+    }
+
 </style>
 {% endblock %}
 
@@ -77,27 +90,73 @@
 {% include 'admin/includes/_filtro_periodo.html' %}
 
 {% set resumo = financeiro.resumo %}
-{% set transacoes = financeiro.transacoes %}
+{% set transacoes = financeiro.transacoes_filtradas %}
+
+<!-- Resumo por forma de recebimento -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="table-wrap">
+        <table class="resumo-forma">
+            <thead>
+                <tr>
+                    <th>Forma</th>
+                    <th style="text-align:right;">Valor no período</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Pix</td>
+                    <td style="text-align:right; font-family:var(--mono);">
+                        {{ (resumo.total_valor or 0)|brl }}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Cartão</td>
+                    <td style="text-align:right; font-family:var(--mono);">
+                        {{ (resumo.total_cartao or 0)|brl }}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Devoluções Pix</td>
+                    <td style="text-align:right; font-family:var(--mono); color:var(--danger);">
+                        - {{ (resumo.total_devolucoes or 0)|brl }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
 <!-- Cards de resumo -->
 <div class="metrics-grid">
     <div class="metric-card green">
-        <div class="metric-label">Total Recebido</div>
-        <div class="metric-value" style="font-size:22px;">R$ {{ '%.2f'|format(resumo.total_valor or 0) }}</div>
-        <div class="metric-sub">no período</div>
-    </div>
-    <div class="metric-card green">
         <div class="metric-label">Transações</div>
         <div class="metric-value">{{ resumo.qtd_transacoes or 0 }}</div>
-        <div class="metric-sub">pagamentos recebidos</div>
+        <div class="metric-sub">pagamentos Pix recebidos</div>
     </div>
     {% if resumo.qtd_transacoes %}
     <div class="metric-card accent">
         <div class="metric-label">Ticket Médio</div>
-        <div class="metric-value" style="font-size:22px;">R$ {{ '%.2f'|format((resumo.total_valor or 0) / resumo.qtd_transacoes) }}</div>
-        <div class="metric-sub">por transação</div>
+        <div class="metric-value" style="font-size:22px;">{{ ((resumo.total_valor or 0) / resumo.qtd_transacoes)|brl }}</div>
+        <div class="metric-sub">por transação Pix</div>
     </div>
     {% endif %}
+</div>
+
+<!-- Filtros -->
+{% set todas_transacoes = financeiro.transacoes %}
+<div class="origem-filtro" style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+    {% for val, label in [('todos','Todos'), ('web','🌐 Web'), ('whatsapp','📱 WhatsApp')] %}
+    {% set qtd = todas_transacoes|length if val == 'todos' else todas_transacoes|selectattr('origem', 'equalto', val)|list|length %}
+    <a href="{{ url_for('admin.financeiro_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, origem=val, forma=forma) }}"
+       class="btn btn-sm {{ 'btn-primary' if origem == val else 'btn-outline-secondary' }}">{{ label }} ({{ qtd }})</a>
+    {% endfor %}
+</div>
+<div class="forma-filtro" style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+    {% for val, label in [('todos','Todos'), ('pix','Pix'), ('cartao','Cartão'), ('devolucao','↩ Devolução')] %}
+    {% set qtd = todas_transacoes|length if val == 'todos' else todas_transacoes|selectattr('forma', 'equalto', val)|list|length %}
+    <a href="{{ url_for('admin.financeiro_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, origem=origem, forma=val) }}"
+       class="btn btn-sm {{ 'btn-primary' if forma == val else 'btn-outline-secondary' }}">{{ label }} ({{ qtd }})</a>
+    {% endfor %}
 </div>
 
 <!-- Tabela de transações -->
@@ -109,6 +168,7 @@
                 <tr>
                     <th>Data/Hora</th>
                     <th>Origem</th>
+                    <th>Forma</th>
                     <th style="text-align:right;">Valor</th>
                     <th>Chave PIX</th>
                     <th>Pagador</th>
@@ -129,14 +189,31 @@
                         <span class="badge badge-green">📱 WhatsApp</span>
                         {% endif %}
                     </td>
-                    <td style="text-align:right; font-family:var(--mono); font-weight:600;">
-                        R$ {{ '%.2f'|format(t.valor) }}
+                    <td>
+                        {% if t.forma == 'cartao' %}
+                        <span class="badge badge-blue">Cartão</span>
+                        {% elif t.forma == 'devolucao' %}
+                        <span class="badge badge-red">↩ Devolução</span>
+                        {% else %}
+                        <span class="badge badge-green">Pix</span>
+                        {% endif %}
                     </td>
+                    {% if t.forma == 'devolucao' %}
+                    <td style="text-align:right; font-family:var(--mono); font-weight:600; color:var(--danger);">
+                        - {{ t.valor|abs|brl }}
+                    </td>
+                    {% else %}
+                    <td style="text-align:right; font-family:var(--mono); font-weight:600;">
+                        {{ t.valor|brl }}
+                    </td>
+                    {% endif %}
                     <td style="font-family:var(--mono); font-size:13px;">{{ t.chave_pix or '—' }}</td>
                     <td style="font-size:13px;">{{ t.nome_pagador or '—' }}</td>
                     <td style="font-family:var(--mono); font-size:13px; color:var(--muted);">{{ t.cpf_cnpj or '—' }}</td>
                     <td style="text-align:center;">
-                        {% if t.nfe_emitida_id and t.nfe_c_stat == '100' %}
+                        {% if t.forma == 'devolucao' %}
+                        <span style="color:var(--muted);">—</span>
+                        {% elif t.nfe_emitida_id and t.nfe_c_stat == '100' %}
                         <a href="{{ url_for('admin.fiscal_danfe', nfe_id=t.nfe_emitida_id) }}"
                            target="_blank"
                            style="font-size:12px; font-family:var(--mono); color:var(--accent2); text-decoration:none;"
@@ -157,7 +234,7 @@
 {% else %}
 <div class="card">
     <div class="empty-state">
-        Nenhum pagamento encontrado para o período selecionado.
+        Nenhum pagamento encontrado para o período/filtro selecionado.
     </div>
 </div>
 {% endif %}

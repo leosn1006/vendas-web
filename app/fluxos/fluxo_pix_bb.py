@@ -31,14 +31,23 @@ def executar(data_str: str = None, tenant_slug: str = 'lsn-livros'):
 
     logger.info(f'[FLUXO-PIX-BB][{tenant_slug}] Consultando PIX de {inicio.isoformat()} a {fim.isoformat()}')
 
-    pix_list = bb_pix.consultar_todos_pix(inicio, fim, tenant_slug=tenant_slug)
+    # Um único token pra PIX e devoluções (mesmo tenant/janela) — evita 2 OAuth por rodada.
+    token = bb_pix._get_token(tenant_slug)
+    pix_list = bb_pix.consultar_todos_pix(inicio, fim, tenant_slug=tenant_slug, token=token)
+
+    # Dict {chave_pix: produto_id} — buscado uma vez, reaproveitado pro PIX e pra devolução.
+    chaves = database.busca_chaves_pix_produtos()
+
+    # Roda mesmo se não houver PIX novo hoje — devoluções são filtradas pela própria
+    # data da devolução, que pode não coincidir com o dia de um PIX recebido agora.
+    try:
+        buscar_devolucoes(inicio, fim, tenant_slug=tenant_slug, token=token, chaves=chaves)
+    except Exception as exc:
+        logger.error(f'[FLUXO-PIX-BB][{tenant_slug}] ❌ Erro ao buscar devoluções: {exc}')
 
     if not pix_list:
         logger.info(f'[FLUXO-PIX-BB][{tenant_slug}] Nenhuma transação PIX no período.')
         return
-
-    # Dict {chave_pix: produto_id} para lookup rápido
-    chaves = database.busca_chaves_pix_produtos()
 
     novos = ignorados = 0
     novos_ids: list[int] = []
@@ -74,3 +83,62 @@ def executar(data_str: str = None, tenant_slug: str = 'lsn-livros'):
     #     for pix_id in novos_ids:
     #         current_app.send_task('tasks.emitir_nfe', args=[pix_id], kwargs={'config_id': config_id}, countdown=5)
     #     logger.info(f'[FLUXO-PIX-BB][{tenant_slug}] {len(novos_ids)} task(s) NF-e agendada(s)')
+
+
+def executar_periodo(inicio_str: str, fim_str: str, tenant_slug: str = 'lsn-livros'):
+    """
+    Roda executar() dia a dia, de inicio_str até fim_str (inclusive) — backfill de um
+    período, pra não precisar rodar `make buscar-pix` um dia de cada vez. Cada dia já
+    busca PIX e devoluções (mesma lógica de executar()), e é idempotente.
+
+    Args:
+        inicio_str, fim_str: datas no formato 'dd/mm/yyyy'.
+    """
+    inicio = datetime.strptime(inicio_str, '%d/%m/%Y').replace(tzinfo=_SP_TZ)
+    fim = datetime.strptime(fim_str, '%d/%m/%Y').replace(tzinfo=_SP_TZ)
+    if fim < inicio:
+        raise ValueError(f'fim ({fim_str}) é anterior a inicio ({inicio_str})')
+
+    dia = inicio
+    while dia <= fim:
+        data_str = dia.strftime('%d/%m/%Y')
+        logger.info(f'[FLUXO-PIX-BB][{tenant_slug}] === Backfill: {data_str} ===')
+        executar(data_str, tenant_slug=tenant_slug)
+        dia += timedelta(days=1)
+
+    logger.info(f'[FLUXO-PIX-BB][{tenant_slug}] ✅ Backfill concluído: {inicio_str} a {fim_str}')
+
+
+def buscar_devolucoes(inicio: datetime, fim: datetime, tenant_slug: str = 'lsn-livros',
+                       token: str = None, chaves: dict = None):
+    """
+    Busca devoluções de PIX no período (filtradas pela data da própria devolução)
+    e persiste no banco. Idempotente por rtr_id — pode ser chamado várias vezes
+    no mesmo dia sem duplicar (ver database.salvar_devolucao_pix).
+
+    Args:
+        token: access_token já obtido (opcional) — evita novo OAuth quando o
+            caller (executar()) já tem um token válido pra esse tenant.
+        chaves: dict {chave_pix: produto_id} pré-carregado (opcional) — evita
+            reconsultar chaves_pix_produto por devolução; ver salvar_devolucao_pix.
+    """
+    import bb_pix
+    import database
+
+    devolucoes = bb_pix.consultar_devolucoes_pix(inicio, fim, tenant_slug=tenant_slug, token=token)
+    if not devolucoes:
+        logger.info(f'[FLUXO-PIX-BB][{tenant_slug}] Nenhuma devolução no período.')
+        return
+
+    if chaves is None:
+        chaves = database.busca_chaves_pix_produtos()
+
+    novas = atualizadas = 0
+    for dev in devolucoes:
+        rc = database.salvar_devolucao_pix(dev, tenant_slug=tenant_slug, chaves=chaves)
+        if rc == 1:
+            novas += 1
+        elif rc == 2:
+            atualizadas += 1
+
+    logger.info(f'[FLUXO-PIX-BB][{tenant_slug}] ✅ devoluções: {novas} nova(s), {atualizadas} atualizada(s)')
