@@ -150,13 +150,28 @@
         .prefixo-ddi .bandeira { font-size: 18px; line-height: 1; }
         .erro-campo {
             color: var(--erro);
-            font-size: 12px;
+            font-size: 14px;
+            font-weight: 700;
             margin-top: 4px;
             min-height: 18px;
             visibility: visible;
         }
         .erro-campo.oculto {
             visibility: hidden;
+        }
+        .dica-campo {
+            color: var(--laranja);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .dica-campo a { color: var(--laranja); font-weight: 700; }
+        .dica-campo.oculto { display: none; }
+        .dica-inbox {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--laranja);
+            margin: -8px 0 14px;
+            line-height: 1.4;
         }
 
         /* ── Pagamento (só PIX por enquanto) ── */
@@ -268,7 +283,7 @@
         .msg-erro {
             background: #fff5f5; border: 1px solid #f5c6cb;
             border-radius: 8px; padding: 12px 14px;
-            color: var(--erro); font-size: 13px; margin-bottom: 14px;
+            color: var(--erro); font-size: 14px; margin-bottom: 14px;
             display: none;
         }
         .msg-erro ul { padding-left: 18px; margin-top: 4px; }
@@ -456,12 +471,14 @@
             <div class="campo">
                 <label for="inputEmail">E-mail</label>
                 <input type="email" id="inputEmail" placeholder="seu@email.com" autocomplete="email">
+                <span class="dica-campo oculto" id="sugestaoEmail"></span>
             </div>
             <div class="campo">
                 <label for="inputEmailConfirma">Confirme seu e-mail</label>
                 <input type="email" id="inputEmailConfirma" placeholder="digite o e-mail novamente" autocomplete="off">
                 <span class="erro-campo oculto" id="erroEmailConfirma">Os e-mails não são iguais</span>
             </div>
+            <p class="dica-inbox">📩 Dica: se a caixa de entrada desse e-mail estiver cheia, o e-book pode não chegar — vale conferir antes de finalizar.</p>
             <div class="campo">
                 <label for="inputWhatsapp">WhatsApp com DDD <span style="font-weight:400;color:#888;">(opcional)</span></label>
                 <div class="input-com-prefixo" id="wrapperWhatsapp">
@@ -571,7 +588,7 @@
 
         <!-- Erros de validação -->
         <div class="msg-erro" id="msgErro">
-            <strong>Preencha os campos obrigatórios:</strong>
+            <strong>Antes de continuar, confira:</strong>
             <ul id="listaErros"></ul>
         </div>
 
@@ -909,6 +926,65 @@
         });
     })();
 
+    // ── Validação forte de e-mail — MANTER SINCRONIZADO com app/web/email_validacao.py ──
+    // (JS e Python não compartilham código; a lista de domínios e a regra de "sobra depois
+    // do domínio" precisam ser replicadas manualmente nos dois lados se um dia mudar.)
+    const DOMINIOS_COMUNS = [
+        'gmail.com', 'hotmail.com', 'outlook.com', 'hotmail.com.br', 'outlook.com.br',
+        'yahoo.com.br', 'yahoo.com', 'icloud.com', 'bol.com.br', 'uol.com.br',
+        'terra.com.br', 'ig.com.br', 'live.com', 'msn.com', 'oi.com.br',
+        'globo.com', 'globo.com.br',
+    ];
+    const REGEX_EMAIL_ESTRUTURAL =
+        /^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9_](?:[a-zA-Z0-9_-]{0,61}[a-zA-Z0-9_])?\.)+[a-zA-Z]{2,24}$/;
+
+    function distanciaLevenshtein(a, b) {
+        if (a === b) return 0;
+        if (!a) return b.length;
+        if (!b) return a.length;
+        let anterior = Array.from({ length: b.length + 1 }, (_, j) => j);
+        for (let i = 1; i <= a.length; i++) {
+            const atual = [i];
+            for (let j = 1; j <= b.length; j++) {
+                const custo = a[i - 1] === b[j - 1] ? 0 : 1;
+                atual[j] = Math.min(anterior[j] + 1, atual[j - 1] + 1, anterior[j - 1] + custo);
+            }
+            anterior = atual;
+        }
+        return anterior[b.length];
+    }
+
+    // Retorna { ok: bool, motivo?: 'formato'|'sobra_apos_dominio', sugestao?: string }.
+    // motivo só vem preenchido quando ok=false (bloqueio real). `sugestao` sozinha (com ok=true)
+    // é só uma dica não bloqueante (ex: possível "gmial.com" → "gmail.com").
+    function validarEmailForte(emailBruto) {
+        const email = (emailBruto || '').trim().toLowerCase();
+        if (!REGEX_EMAIL_ESTRUTURAL.test(email)) {
+            return { ok: false, motivo: 'formato' };
+        }
+        const dominio = email.split('@')[1];
+
+        // Primeiro passa por TODOS os domínios procurando igualdade exata — só depois de
+        // descartar essa hipótese é que testa "começa com" (ex: sem isso, "hotmail.com.br"
+        // seria injustamente bloqueado por "começar com" a entrada "hotmail.com" da lista).
+        if (DOMINIOS_COMUNS.includes(dominio)) return { ok: true };
+        for (const d of DOMINIOS_COMUNS) {
+            if (dominio.startsWith(d)) {
+                return { ok: false, motivo: 'sobra_apos_dominio', sugestao: d };
+            }
+        }
+        let melhor = null;
+        for (const d of DOMINIOS_COMUNS) {
+            // Limiar fixo em 2: é só sugestão (não bloqueia), então o custo de um falso positivo
+            // é baixo — e 2 é o necessário pra pegar typos comuns por transposição de letra
+            // adjacente (ex: "gmial.com"), que em Levenshtein "puro" custam 2 edições, não 1.
+            const limiar = 2;
+            const dist = distanciaLevenshtein(dominio, d);
+            if (dist > 0 && dist <= limiar && (!melhor || dist < melhor.dist)) melhor = { dominio: d, dist };
+        }
+        return melhor ? { ok: true, sugestao: melhor.dominio } : { ok: true };
+    }
+
     // ── Confirmação de e-mail ──
     (function () {
         const email    = document.getElementById('inputEmail');
@@ -923,6 +999,35 @@
         confirma.addEventListener('input', validar);
         confirma.addEventListener('blur', validar);
         email.addEventListener('blur', validar);
+    })();
+
+    // ── Sugestão de domínio (dica não bloqueante, ex: "gmial.com" → "quis dizer gmail.com?") ──
+    (function () {
+        const email    = document.getElementById('inputEmail');
+        const confirma = document.getElementById('inputEmailConfirma');
+        const sugestao = document.getElementById('sugestaoEmail');
+
+        function validar() {
+            if (!email.value.trim()) { sugestao.classList.add('oculto'); return; }
+            const r = validarEmailForte(email.value);
+            if (r.ok && r.sugestao) {
+                sugestao.innerHTML = `Você quis dizer <a href="#" id="linkSugestaoEmail">${r.sugestao}</a>?`;
+                sugestao.classList.remove('oculto');
+                document.getElementById('linkSugestaoEmail').addEventListener('click', function (ev) {
+                    ev.preventDefault();
+                    const usuario = email.value.trim().split('@')[0];
+                    const corrigido = `${usuario}@${r.sugestao}`;
+                    email.value = corrigido;
+                    confirma.value = corrigido;
+                    sugestao.classList.add('oculto');
+                    confirma.dispatchEvent(new Event('blur'));
+                });
+            } else {
+                sugestao.classList.add('oculto');
+            }
+        }
+        email.addEventListener('blur', validar);
+        email.addEventListener('input', () => sugestao.classList.add('oculto'));
     })();
 
     // ── Mostrar/esconder estados ──
@@ -947,7 +1052,7 @@
         const wa       = document.getElementById('inputWhatsapp').value.replace(/\D/g, '');
 
         if (!nome)              erros.push('Nome completo');
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) erros.push('E-mail válido');
+        if (!email || !validarEmailForte(email).ok) erros.push('E-mail válido — confira se não ficou nada digitado a mais sem querer');
         else if (email.toLowerCase() !== emailConf.toLowerCase()) erros.push('Confirmação de e-mail (os dois campos precisam ser iguais)');
 
         if (wa.length > 0 && wa.length < 10) {
@@ -1177,6 +1282,28 @@
             });
             const data = await resp.json();
             currentPedidoId = data.pedido_id;
+
+            if (data.erro_validacao) {
+                // Pro motivo 'dominio_inexistente' isso É o primeiro aviso que o cliente vê —
+                // o navegador não tem como consultar DNS, então essa checagem só roda aqui no
+                // servidor, na hora de finalizar. Os outros motivos já foram barrados antes
+                // pelo validarEmailForte() no client; chegar aqui com eles é só defesa contra
+                // bypass (script direto na API, sem passar pelo form).
+                const msg = (data.motivo === 'dominio_inexistente')
+                    ? 'Não conseguimos confirmar esse e-mail — confira se não ficou faltando ou sobrando alguma letra e tente de novo.'
+                    : 'Esse e-mail parece ter algo digitado a mais sem querer — confira antes de continuar.';
+                if (metodoAtual === 'cartao') {
+                    const divErro = document.getElementById('msgErroCartao');
+                    divErro.innerHTML = `<strong>${msg}</strong>`;
+                    divErro.style.display = 'block';
+                } else {
+                    document.getElementById('listaErros').innerHTML = `<li>${msg}</li>`;
+                    document.getElementById('msgErro').style.display = 'block';
+                }
+                this.disabled = false;
+                this.textContent = 'FINALIZAR COMPRA';
+                return;
+            }
 
             if (metodoAtual === 'cartao') {
                 if (data.aprovado) {

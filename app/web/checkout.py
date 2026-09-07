@@ -102,6 +102,20 @@ def _gerar_qrcode_base64(texto: str) -> str:
     return base64.b64encode(buf.getvalue()).decode()
 
 
+def _erro_validacao_email(body: dict):
+    """
+    Checagem de e-mail compartilhada por gerar_pix e gerar_cartao — defesa contra bypass
+    do client (o form já bloqueia isso antes de chamar a API). Retorna o dict de erro pronto
+    pra jsonify, ou None se o e-mail passou.
+    """
+    from web.email_validacao import validar_email
+
+    checagem = validar_email(body.get('email', ''))
+    if not checagem['valido']:
+        return {'erro_validacao': True, 'campo': 'email', 'motivo': checagem['motivo']}
+    return None
+
+
 def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     """
     Cria um pedido em `pedidos` (estado 1001) e gera uma solicitação PIX no BB Pay.
@@ -115,6 +129,10 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
                           criar_pedido_web_unificado, atualizar_pedido_solicitacao_bb,
                           get_phone_number_id_produto, criar_itens_pedido_web,
                           listar_bumps_validos, get_pedido_nao_finalizado, finalizar_pedido_web)
+
+    erro = _erro_validacao_email(body)
+    if erro:
+        return erro
 
     produto_id = int(body.get('produto_id', 1))
     produto = get_produto_disponivel_web(produto_id)
@@ -312,6 +330,10 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
                           avancar_pedido_cartao_aguardando, criar_tentativa_pagamento_cartao,
                           atualizar_tentativa_pagamento_cartao, confirmar_pagamento_web,
                           marcar_pedido_cartao_negado)
+
+    erro = _erro_validacao_email(body)
+    if erro:
+        return erro
 
     produto_id = int(body.get('produto_id', 1))
     produto = get_produto_disponivel_web(produto_id)
