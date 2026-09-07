@@ -262,6 +262,8 @@
                     <option value="enviar_imagem">🖼 Enviar imagem</option>
                     <option value="enviar_arquivo">📄 Enviar arquivo</option>
                     <option value="enviar_mensagem">💬 Enviar mensagem</option>
+                    <option value="enviar_produto_whatsapp">📦 Enviar produto WhatsApp</option>
+                    <option value="enviar_produto">🔗 Enviar produto (botão Estante)</option>
                 </select>
             </div>
             <div></div>
@@ -284,10 +286,12 @@
             <div class="field-group span-full" id="field-mensagem" style="display:none;">
                 <span class="field-label">Mensagem</span>
                 <textarea name="mensagem" rows="3" placeholder="Texto da mensagem…"></textarea>
+                <small class="form-text text-muted" id="mensagem-hint">Use @nome_cliente para inserir o primeiro nome do cliente automaticamente.</small>
             </div>
             <div class="field-group" id="field-caption" style="display:none;">
                 <span class="field-label">Caption</span>
-                <input type="text" name="caption" placeholder="Legenda do arquivo">
+                <input type="text" name="caption" id="caption-input" placeholder="Legenda do arquivo">
+                <small class="form-text text-muted" id="caption-hint">Use @nome_cliente para inserir o primeiro nome do cliente automaticamente.</small>
             </div>
             <div class="field-group" id="field-nome_arquivo" style="display:none;">
                 <span class="field-label">Nome arquivo</span>
@@ -307,16 +311,34 @@
 {% block extra_js %}
 <script>
 function toggleContentFields() {
-    const acao = document.getElementById('acao-select').value;
+    const acaoSelect = document.getElementById('acao-select');
+    if (!acaoSelect) return;  // fluxo readonly ou usuário não-admin: form de adicionar não existe na página
+
+    const acao = acaoSelect.value;
     const url       = document.getElementById('field-url');
     const mensagem  = document.getElementById('field-mensagem');
     const caption   = document.getElementById('field-caption');
     const nomearq   = document.getElementById('field-nome_arquivo');
 
-    url.style.display      = (acao === 'enviar_audio' || acao === 'enviar_imagem' || acao === 'enviar_arquivo') ? '' : 'none';
-    mensagem.style.display = (acao === 'enviar_mensagem') ? '' : 'none';
-    caption.style.display  = (acao === 'enviar_arquivo') ? '' : 'none';
-    nomearq.style.display  = (acao === 'enviar_arquivo') ? '' : 'none';
+    const isTemplate = (acao === 'enviar_produto_whatsapp');
+    const isProduto  = (acao === 'enviar_produto');
+
+    url.style.display      = (acao === 'enviar_audio' || acao === 'enviar_imagem' || acao === 'enviar_arquivo' || isTemplate) ? '' : 'none';
+    mensagem.style.display = (acao === 'enviar_mensagem' || isTemplate || isProduto) ? '' : 'none';
+    caption.style.display  = (acao === 'enviar_arquivo' || isTemplate || isProduto) ? '' : 'none';
+    nomearq.style.display  = (acao === 'enviar_arquivo' || isTemplate) ? '' : 'none';
+
+    const captionInput = document.getElementById('caption-input');
+    if (isProduto) {
+        captionInput.setAttribute('maxlength', '20');
+        captionInput.placeholder = 'Texto do botão (ex: Ver produto)';
+    } else {
+        captionInput.removeAttribute('maxlength');
+        captionInput.placeholder = 'Legenda do arquivo';
+    }
+
+    document.getElementById('mensagem-hint').hidden = isTemplate;
+    document.getElementById('caption-hint').hidden  = isTemplate;
 }
 // init
 toggleContentFields();

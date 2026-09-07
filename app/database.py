@@ -1950,6 +1950,26 @@ def busca_produtos_disponiveis_web():
 _whatsapp_token_cache: dict = {}  # api_phone_number_id -> token string resolvido
 
 
+def get_token_env_key(api_phone_number_id: str) -> str:
+    """Retorna o nome da variável de ambiente (token_env_key) cadastrada em
+    telefones_produto para o phone_number_id dado, sem resolver o valor do token.
+    Lança ValueError se o número não estiver cadastrado.
+    """
+    if not api_phone_number_id:
+        return 'WHATSAPP_ACCESS_TOKEN'
+
+    row = db.execute_query(
+        "SELECT token_env_key FROM telefones_produto WHERE api_phone_number_id = %s LIMIT 1",
+        (api_phone_number_id,), fetch_one=True
+    )
+    if not row:
+        raise ValueError(
+            f"[WHATSAPP-TOKEN] ❌ phone_number_id '{api_phone_number_id}' não encontrado em telefones_produto. "
+            f"Cadastre o número no admin (produto → Números WhatsApp) e preencha o campo API phone_number_id."
+        )
+    return row.get('token_env_key') or 'WHATSAPP_ACCESS_TOKEN'
+
+
 def get_whatsapp_token(api_phone_number_id: str) -> str:
     """Retorna o token WhatsApp correto para o phone_number_id dado, com cache em memória.
     Lança ValueError com mensagem clara se o número não estiver cadastrado ou o token não estiver no .env.
@@ -1961,16 +1981,7 @@ def get_whatsapp_token(api_phone_number_id: str) -> str:
         return token
 
     if api_phone_number_id not in _whatsapp_token_cache:
-        row = db.execute_query(
-            "SELECT token_env_key FROM telefones_produto WHERE api_phone_number_id = %s LIMIT 1",
-            (api_phone_number_id,), fetch_one=True
-        )
-        if not row:
-            raise ValueError(
-                f"[WHATSAPP-TOKEN] ❌ phone_number_id '{api_phone_number_id}' não encontrado em telefones_produto. "
-                f"Cadastre o número no admin (produto → Números WhatsApp) e preencha o campo API phone_number_id."
-            )
-        key = row.get('token_env_key') or 'WHATSAPP_ACCESS_TOKEN'
+        key = get_token_env_key(api_phone_number_id)
         token = os.getenv(key)
         if not token:
             raise ValueError(

@@ -4,7 +4,8 @@ import logging
 import pytz
 from datetime import datetime
 from config import WHATSAPP_API_URL
-from database import Pedido, get_whatsapp_token
+from database import Pedido, get_whatsapp_token, get_token_env_key, garantir_guid_pedido
+from whatsapp_seguranca import dominio_por_token_env_key
 
 logger = logging.getLogger(__name__)
 
@@ -225,6 +226,79 @@ def enviar_mensagem(pedido: Pedido, mensagem: str):
     if is_transient:
         raise ErroTransienteWhatsApp(msg)
     raise ValueError(msg)
+
+def montar_link_estante(pedido: dict) -> str:
+    """Monta o link absoluto da Estante (`/pedido/<guid>`) usando o domínio do
+    número que está enviando (resolvido via token_env_key cadastrado em
+    telefones_produto), não uma APP_BASE_URL global.
+    """
+    guid = pedido.get('guid') or garantir_guid_pedido(pedido['id'])
+    phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
+    env_key = get_token_env_key(phone_number_id)
+    dominio = dominio_por_token_env_key(env_key)
+    if not dominio:
+        raise ValueError(
+            f"[LINK-ESTANTE] ❌ Domínio não mapeado para '{env_key}' (phone_number_id={phone_number_id}). "
+            f"Cadastre o host correspondente em whatsapp_seguranca._HOST_ACCESS_TOKEN_MAP."
+        )
+    return f"https://{dominio}/pedido/{guid}"
+
+
+def enviar_botao_link(pedido: Pedido, texto: str, url: str, texto_botao: str):
+    """Envia mensagem de sessão (Cloud API) com botão nativo de link (interactive/cta_url).
+    Não precisa de template aprovado pela Meta, mas só funciona dentro da janela de 24h.
+    """
+    if pedido is None:
+        raise ValueError("[BOTAO-LINK-ENVIAR] Não é possível enviar mensagem sem um pedido associado.")
+
+    phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
+    url_api = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+    token = get_whatsapp_token(phone_number_id)
+
+    headers_reais = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json; charset=utf-8",
+        "Accept": "application/json"
+    }
+
+    numero_remetente = pedido.get("contact_to") or pedido.get("contact_phone")
+
+    dados = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": numero_remetente,
+        "type": "interactive",
+        "interactive": {
+            "type": "cta_url",
+            "body": {"text": texto},
+            "action": {
+                "name": "cta_url",
+                "parameters": {"display_text": texto_botao, "url": url}
+            }
+        }
+    }
+
+    logger.info(f"[BOTAO-LINK-ENVIAR] Enviando botão de link para {numero_remetente} com o seguinte payload:")
+    logger.info(f"[BOTAO-LINK-ENVIAR] dados: {dados}")
+
+    response = requests.post(url_api, headers=headers_reais, json=dados, timeout=30)
+
+    if response.status_code == 200:
+        id_message = response.json().get('messages', [{}])[0].get('id')
+        logger.info(f"[BOTAO-LINK-ENVIAR] Mensagem enviada com sucesso! ID da mensagem: {id_message}")
+        return id_message
+
+    msg = f"[BOTAO-LINK-ENVIAR] ❌ Erro ao enviar botão de link: status={response.status_code} body={response.text}"
+    if response.status_code >= 500:
+        raise ErroTransienteWhatsApp(msg)
+    try:
+        is_transient = response.json().get('error', {}).get('is_transient', False)
+    except Exception:
+        is_transient = False
+    if is_transient:
+        raise ErroTransienteWhatsApp(msg)
+    raise ValueError(msg)
+
 
 def enviar_mensagem_digitando(message_id: str, phone_number_id: str = None):
     if message_id is None:

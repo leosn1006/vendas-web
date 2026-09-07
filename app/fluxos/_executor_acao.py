@@ -10,11 +10,12 @@ marcar_lida e digitando — nunca o ID de mensagens enviadas).
 """
 import logging
 import random
+import re
 import time
 from whatsapp import (
     marcar_como_lida, enviar_mensagem_digitando,
     enviar_audio, enviar_imagem, enviar_mensagem, enviar_documento,
-    enviar_produto_whatsapp,
+    enviar_produto_whatsapp, enviar_botao_link, montar_link_estante,
     ErroTransienteWhatsApp,
 )
 from database import salvar_mensagem_pedido, selecionar_e_avancar_variante
@@ -32,6 +33,39 @@ def _executar_com_retry(fn, tag: str, max_tentativas: int = 2, delay_s: float = 
                 time.sleep(delay_s)
             else:
                 raise
+
+
+# Faixas Unicode de emoji/símbolos/pictogramas + variation selector/ZWJ (usados
+# em sequências de emoji com tom de pele, ex. "🙏🏼") — removidas do nome antes
+# de decidir se ele é "aproveitável" para a saudação.
+_EMOJI_RE = re.compile(
+    '['
+    '\U0001F300-\U0001FAFF'  # símbolos e pictogramas (diversos, transporte, suplementares)
+    '\U00002600-\U000027BF'  # símbolos diversos e dingbats
+    '\U0001F1E6-\U0001F1FF'  # indicadores regionais (bandeiras)
+    '️'                 # variation selector-16 (força apresentação como emoji)
+    '‍'                 # zero-width joiner (junta emoji compostos, ex. tom de pele)
+    ']+'
+)
+
+
+def _nome_para_saudacao(contact_name: str | None) -> str:
+    """Primeiro nome do cliente, sem emoji, pronto pra usar numa saudação.
+    Cai para 'Cliente' quando não sobra nenhuma letra aproveitável (nome de
+    perfil do WhatsApp só com emoji, ex: '🙏🏼')."""
+    primeiro = (contact_name or '').strip().split(' ')[0]
+    limpo = _EMOJI_RE.sub('', primeiro).strip()
+    if not re.search(r'[^\W\d_]', limpo, re.UNICODE):
+        return 'Cliente'
+    return limpo
+
+
+def substituir_variaveis(texto, pedido: dict):
+    """Substitui placeholders de personalização no texto de uma ação (ex:
+    '@nome_cliente'). Devolve o texto como veio se não houver placeholder."""
+    if not texto or '@nome_cliente' not in texto:
+        return texto
+    return texto.replace('@nome_cliente', _nome_para_saudacao(pedido.get('contact_name')))
 
 
 def calcular_delay(acao: dict) -> float:
@@ -67,6 +101,16 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
         acao = next(v for v in grupo_variantes if v['variante'] == escolhida_numero)
 
     tipo = acao['acao']
+
+    # Substitui placeholders (ex: '@nome_cliente') nos campos de texto pro cliente.
+    # Pulado em 'enviar_produto_whatsapp': ali mensagem/caption têm outro significado
+    # (nome do template / idioma), não são texto exibido ao cliente.
+    if tipo != 'enviar_produto_whatsapp':
+        acao = dict(acao)
+        if acao.get('mensagem'):
+            acao['mensagem'] = substituir_variaveis(acao['mensagem'], pedido)
+        if acao.get('caption'):
+            acao['caption'] = substituir_variaveis(acao['caption'], pedido)
 
     if aplicar_delay:
         delay = calcular_delay(acao)
@@ -140,6 +184,14 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
         ), tag)
         salvar_mensagem_pedido(mid, pedido_id, f"[template] {acao['mensagem']}", tipo_mensagem='enviada')
         logger.debug(f"[{tag}] 📦 Template '{acao['mensagem']}' enviado para {pedido.get('contact_phone')}")
+
+    elif tipo == 'enviar_produto':
+        _exige_campo(acao, 'mensagem', tag)  # texto do corpo
+        _exige_campo(acao, 'caption', tag)   # texto do botão
+        link = montar_link_estante(pedido)
+        mid = _executar_com_retry(lambda: enviar_botao_link(pedido, acao['mensagem'], link, acao['caption']), tag)
+        salvar_mensagem_pedido(mid, pedido_id, f"[botão] {acao['caption']} → {link}", tipo_mensagem='enviada')
+        logger.debug(f"[{tag}] 🔗 Botão de link enviado: {link}")
 
     else:
         logger.warning(f"[{tag}] ⚠️ Tipo de ação desconhecido ignorado: '{tipo}'")

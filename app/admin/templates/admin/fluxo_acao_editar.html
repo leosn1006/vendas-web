@@ -69,6 +69,7 @@
                         ('enviar_arquivo',           '📄 Enviar arquivo'),
                         ('enviar_mensagem',          '💬 Enviar mensagem'),
                         ('enviar_produto_whatsapp',  '📦 Enviar produto WhatsApp'),
+                        ('enviar_produto',           '🔗 Enviar produto (botão Estante)'),
                     ] %}
                     <option value="{{ val }}" {% if acao.acao == val %}selected{% endif %}>{{ lbl }}</option>
                     {% endfor %}
@@ -101,12 +102,14 @@
             <div class="form-group" id="field-mensagem" style="display:none;">
                 <label>Mensagem</label>
                 <textarea name="mensagem" rows="4">{{ acao.mensagem or '' }}</textarea>
+                <small class="form-text text-muted" id="mensagem-hint">Use @nome_cliente para inserir o primeiro nome do cliente automaticamente.</small>
             </div>
 
             <div class="form-group" id="field-caption" style="display:none;">
                 <label>Caption</label>
-                <input type="text" name="caption"
+                <input type="text" name="caption" id="caption-input"
                        value="{{ acao.caption or '' }}" placeholder="Legenda do arquivo">
+                <small class="form-text text-muted" id="caption-hint">Use @nome_cliente para inserir o primeiro nome do cliente automaticamente.</small>
             </div>
 
             <div class="form-group" id="field-nome_arquivo" style="display:none;">
@@ -152,21 +155,38 @@ function toggleContentFields() {
     const param2    = document.getElementById('field-param2');
 
     const isTemplate = (acao === 'enviar_produto_whatsapp');
+    const isProduto  = (acao === 'enviar_produto');
 
     url.style.display      = (acao === 'enviar_audio' || acao === 'enviar_imagem' || acao === 'enviar_arquivo' || isTemplate) ? '' : 'none';
-    mensagem.style.display = (acao === 'enviar_mensagem' || isTemplate) ? '' : 'none';
-    caption.style.display  = (acao === 'enviar_arquivo' || isTemplate) ? '' : 'none';
+    mensagem.style.display = (acao === 'enviar_mensagem' || isTemplate || isProduto) ? '' : 'none';
+    caption.style.display  = (acao === 'enviar_arquivo' || isTemplate || isProduto) ? '' : 'none';
     nomearq.style.display  = (acao === 'enviar_arquivo' || isTemplate) ? '' : 'none';
     param1.style.display   = isTemplate ? '' : 'none';
     param2.style.display   = isTemplate ? '' : 'none';
 
-    // Ajusta labels para o contexto do template
+    const captionInput  = document.getElementById('caption-input');
+    const mensagemHint  = document.getElementById('mensagem-hint');
+    const captionHint   = document.getElementById('caption-hint');
+
+    // Ajusta labels/limites/dicas para o contexto da ação selecionada
     if (isTemplate) {
         mensagem.querySelector('label').textContent = 'Nome do template';
         caption.querySelector('label').textContent  = 'Idioma (ex: pt_BR)';
+        captionInput.removeAttribute('maxlength');
+        mensagemHint.hidden = true;
+        captionHint.hidden  = true;
+    } else if (isProduto) {
+        mensagem.querySelector('label').textContent = 'Mensagem';
+        caption.querySelector('label').textContent  = 'Texto do botão (link da Estante é gerado automaticamente)';
+        captionInput.setAttribute('maxlength', '20');
+        mensagemHint.hidden = false;
+        captionHint.hidden  = false;
     } else {
         mensagem.querySelector('label').textContent = 'Mensagem';
         caption.querySelector('label').textContent  = 'Caption';
+        captionInput.removeAttribute('maxlength');
+        mensagemHint.hidden = false;
+        captionHint.hidden  = false;
     }
 }
 // init on page load

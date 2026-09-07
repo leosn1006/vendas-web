@@ -157,6 +157,22 @@ class WhatsAppSecurity:
 whatsapp_security = WhatsAppSecurity()
 
 
+# Inverso de _HOST_ACCESS_TOKEN_MAP (env_key -> host), para resolver o domínio
+# "dono" de um número a partir do token_env_key cadastrado em telefones_produto
+# (usado para montar links absolutos, ex. botão da Estante). Domínios "espelho"
+# que compartilham o mesmo token_env_key (ex. lb-livros.site/lblivros.com.br)
+# colapsam no primeiro host cadastrado no mapa original — setdefault preserva
+# a ordem de inserção do dict, então o mais antigo dos dois vence.
+_ENV_KEY_HOST_MAP: dict = {}
+for _host, _env_key in WhatsAppSecurity._HOST_ACCESS_TOKEN_MAP.items():
+    _ENV_KEY_HOST_MAP.setdefault(_env_key, _host)
+
+
+def dominio_por_token_env_key(env_key: str) -> str | None:
+    """Domínio canônico associado a um WHATSAPP_ACCESS_TOKEN_*, ou None se não mapeado."""
+    return _ENV_KEY_HOST_MAP.get(env_key)
+
+
 # ============ DECORADORES ============
 
 def validar_assinatura_whatsapp():
