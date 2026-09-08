@@ -60,6 +60,18 @@
             flex-shrink: 0;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        .btn-voltar {
+            display: inline-block;
+            margin-top: 24px;
+            padding: 12px 20px;
+            background: var(--verde);
+            color: #fff;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 15px;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
@@ -87,6 +99,10 @@
                 <div class="emoji">🔍</div>
                 <h1>Pedido não encontrado</h1>
                 <p>Não encontramos nenhum pedido com este link. Verifique se o endereço foi copiado corretamente.</p>
+            {% endif %}
+
+            {% if pedido and pedido.guid %}
+                <a class="btn-voltar" href="/pedido/{{ pedido.guid }}">← Voltar para os seus produtos</a>
             {% endif %}
         </div>
     </div>
