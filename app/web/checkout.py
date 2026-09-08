@@ -621,11 +621,17 @@ def _pedido_pago(pedido) -> bool:
 def _produto_ja_entregue_whatsapp(pedido) -> bool:
     """No WhatsApp, o e-book principal só foi de fato entregue por mensagem quando o fluxo de
     'pedido' roda e manda o arquivo pro cliente — marcado por `data_envio_pedido` (setado junto
-    com estado_id=3, ver fluxo_pedido_dinamico.py). Antes disso (estado 1='clicou no anúncio',
-    2='intro enviada'), nada foi entregue ainda, mesmo que o pedido já tenha guid/pedido_itens
-    criados desde a hora da criação do lead. Pedido pago (estado_id=0) sempre conta como
-    entregue também, como rede de segurança."""
-    return pedido.get('data_envio_pedido') is not None or _pedido_pago(pedido)
+    com estado_id=3, ver fluxo_pedido_dinamico.py). Antes disso (estado 1='clicou no anúncio'),
+    nada foi entregue ainda, mesmo que o pedido já tenha guid/pedido_itens criados desde a hora
+    da criação do lead. Pedido pago (estado_id=0) sempre conta como entregue também, como rede
+    de segurança.
+
+    A partir de estado_id=2 ('respondeu a introdução' em diante — inclui o lock temporário 12
+    durante a execução do fluxo de pedido) o principal já libera como preview/isca, com o bônus
+    ainda bloqueado (ver resolver_pedido_por_guid) — usado pelo botão de link da Estante mandado
+    logo na introdução, antes da entrega de verdade."""
+    estado_id = pedido.get('estado_id') or 0
+    return pedido.get('data_envio_pedido') is not None or _pedido_pago(pedido) or estado_id >= 2
 
 
 def resolver_pedido_por_guid(guid: str, item_id: int = None):
@@ -635,9 +641,10 @@ def resolver_pedido_por_guid(guid: str, item_id: int = None):
       - Pedido web (estado_id >= 1000): tudo (principal/bônus/bump) só fica acessível com
         estado_id == 1000 (pago) — igual sempre funcionou.
       - Pedido WhatsApp (estado_id < 1000): o principal só fica acessível depois que o produto
-        foi de fato entregue por mensagem (ver _produto_ja_entregue_whatsapp) — um lead recém-
-        criado (acabou de clicar no anúncio) ainda não recebeu nada, mesmo já tendo guid/
-        pedido_itens. Uma vez entregue, o principal fica acessível; só os itens tipo='bonus'
+        foi de fato entregue por mensagem OU o cliente já respondeu a introdução (estado_id >= 2,
+        ver _produto_ja_entregue_whatsapp) — um lead recém-criado (acabou de clicar no anúncio,
+        estado 1) ainda não recebeu nada nem interagiu, mesmo já tendo guid/pedido_itens. A
+        partir daí o principal fica acessível como preview/isca; só os itens tipo='bonus'
         exigem estado_id == 0 (pago) — o bônus aparece na lista mesmo bloqueado, como chamariz
         pro cliente mandar o comprovante.
 
