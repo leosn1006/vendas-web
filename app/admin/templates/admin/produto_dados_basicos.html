@@ -112,6 +112,22 @@
                                    value="{{ produto.nome or '' }}" required>
                         </div>
 
+                        <div class="form-group">
+                            <label for="nome_nfe">Nome na NF-e</label>
+                            <input type="text" id="nome_nfe" name="nome_nfe" maxlength="120"
+                                   value="{{ produto.nome_nfe or '' }}"
+                                   placeholder="Deixe vazio para usar o nome do produto">
+                            <p class="field-hint">Aparece no campo xProd da NF-e (máx. 120 caracteres). Se vazio, usa o nome do produto.</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="isbn">ISBN</label>
+                            <input type="text" id="isbn" name="isbn" maxlength="20"
+                                   value="{{ produto.isbn or '' }}"
+                                   placeholder="Ex: 978-65-976357-0-2">
+                            <p class="field-hint">ISBN-13 com hífens. Usado como GTIN (cEAN/cEANTrib) na NF-e.</p>
+                        </div>
+
                         <div class="form-group span-2">
                             <label for="descricao">Descrição</label>
                             <textarea id="descricao" name="descricao" rows="4">{{ produto.descricao or '' }}</textarea>

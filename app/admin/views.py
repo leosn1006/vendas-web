@@ -209,6 +209,8 @@ def dados_basicos_produto(produto_id):
             db.execute_query("""
                 UPDATE produtos SET
                     nome                  = %s,
+                    nome_nfe              = %s,
+                    isbn                  = %s,
                     descricao             = %s,
                     preco                 = %s,
                     ativo                 = %s,
@@ -227,6 +229,8 @@ def dados_basicos_produto(produto_id):
                 WHERE id = %s
             """, (
                 request.form.get('nome'),
+                request.form.get('nome_nfe') or None,
+                request.form.get('isbn') or None,
                 request.form.get('descricao'),
                 request.form.get('preco'),
                 ativo_novo,
