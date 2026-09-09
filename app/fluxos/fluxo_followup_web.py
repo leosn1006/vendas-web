@@ -6,7 +6,7 @@ Fluxo:
   1. Busca pedidos elegíveis (estado 1002, e-mail cadastrado, QR ainda válido,
      followup ainda não enviado)
   2. Para cada um, monta e-mail fixo com os bônus/bumps escolhidos, o QR code
-     anexado inline (cid:) e um botão para pagar direto pelo site do Banco do Brasil
+     anexado inline (cid:) e um botão para pagar via PIX (checkout web)
   3. Envia via Gmail API (mesmo helper do e-mail de entrega)
   4. Marca data_followup_pagamento_web no pedido
 """
@@ -180,7 +180,7 @@ def _corpo_html(nome: str, nome_produto: str, itens_extras: list, tem_qrcode: bo
                      style="display:inline-block; background:{cor_secundaria}; color:#ffffff;
                             font-size:15px; font-weight:bold; text-decoration:none;
                             padding:14px 28px; border-radius:12px; margin:16px 0 0;">
-                    🏦 Pagar via Banco do Brasil
+                    💳 Pagar via PIX
                   </a>
                 </td>
               </tr>

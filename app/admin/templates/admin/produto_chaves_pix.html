@@ -17,6 +17,7 @@
                 <tr>
                     <th>Chave PIX</th>
                     <th>Status</th>
+                    <th>QR Venda Web</th>
                     <th>Cadastrado em</th>
                     {% if current_user.is_admin() %}<th></th>{% endif %}
                 </tr>
@@ -34,11 +35,25 @@
                         <span style="color: var(--muted); font-size: 13px;">○ Inativa</span>
                         {% endif %}
                     </td>
+                    <td>
+                        {% if c.para_venda_web %}
+                        <span style="color: #4a9632; font-size: 13px; font-weight: 600;" title="Esta chave é usada no QR Code do checkout web">✔ Sim</span>
+                        {% else %}
+                        <span style="color: var(--muted); font-size: 13px;">—</span>
+                        {% endif %}
+                    </td>
                     <td style="color: var(--muted); font-size: 13px;">
                         {{ c.criado_em.strftime('%d/%m/%Y %H:%M') if c.criado_em else '—' }}
                     </td>
                     {% if current_user.is_admin() %}
-                    <td style="text-align: right;">
+                    <td style="text-align: right; white-space: nowrap; display: flex; gap: 8px; justify-content: flex-end;">
+                        {% if c.ativo and not c.para_venda_web %}
+                        <form method="POST"
+                              action="{{ url_for('admin.toggle_para_venda_web', produto_id=produto.id, chave_id=c.id) }}"
+                              onsubmit="return confirm('Usar esta chave no QR do checkout web?')">
+                            <button type="submit" class="btn btn-secondary btn-sm">Usar no QR web</button>
+                        </form>
+                        {% endif %}
                         {% if c.ativo %}
                         <form method="POST"
                               action="{{ url_for('admin.desativar_chave_pix', produto_id=produto.id, chave_id=c.id) }}"

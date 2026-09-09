@@ -199,34 +199,79 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
         logger.error(f'[WEB-CHECKOUT] Erro ao gravar itens do pedido #{pedido_id}: {e}')
 
     try:
-        if not url_base:
-            url_base = os.getenv('APP_BASE_URL', 'http://localhost').rstrip('/')
-        url_retorno = f'{url_base}/pay/{produto_id}?pedido={pedido_id}'
-        _email = body.get('email', '')
-        _descricao = f'Pedido #{pedido_id} | {_email}' if _email else f'Pedido #{pedido_id}'
-        qr = criar_solicitacao(valor=valor, pedido_web_id=pedido_id,
-                               numero_convenio=numero_convenio,
-                               descricao=_descricao,
-                               url_retorno=url_retorno)
+        from web.pix_estatico import gerar_payload_pix, gerar_qrcode_base64 as _gerar_qr_estatico
+        from database import buscar_chave_pix_venda_web
+        from database import db as _db
+
+        chave_pix = buscar_chave_pix_venda_web(produto_id)
+        if not chave_pix:
+            raise RuntimeError(f'Produto #{produto_id} sem chave PIX para venda web (para_venda_web=1)')
+
+        # Ler nome_recebedor e cidade da config NF-e do produto
+        cfg_nfe = _db.execute_query(
+            """SELECT nc.razao_social, nc.x_mun
+               FROM produtos p
+               LEFT JOIN nfe_configuracao nc ON nc.id = p.nfe_config_id
+               WHERE p.id = %s""",
+            (produto_id,), fetch_one=True,
+        )
+        nome_recebedor = (cfg_nfe or {}).get('razao_social') or 'LBE LIVROS LTDA'
+        cidade         = (cfg_nfe or {}).get('x_mun') or 'Brasilia'
+
+        qrcode_texto = gerar_payload_pix(
+            chave_pix=chave_pix,
+            valor=valor,
+            nome_recebedor=nome_recebedor,
+            cidade=cidade,
+            txid=str(pedido_id),
+        )
+        qrcode_b64 = _gerar_qr_estatico(qrcode_texto)
         expiracao = (datetime.now() + timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
         atualizar_pedido_solicitacao_bb(
             pedido_id=pedido_id,
-            numero_solicitacao_bb=str(qr['numero_solicitacao']),
-            url_bbpay=qr.get('url_solicitacao', ''),
-            qr_code_pix=qr.get('qrcode_texto', ''),
+            numero_solicitacao_bb=None,   # QR estático — sem solicitação BB Pay
+            url_bbpay=None,
+            qr_code_pix=qrcode_texto,
             expiracao=expiracao,
         )
-        qrcode_b64 = _gerar_qrcode_base64(qr['qrcode_texto']) if qr.get('qrcode_texto') else ''
         return {
-            'txid':          str(qr['numero_solicitacao']),
-            'qrcode_texto':  qr.get('qrcode_texto', ''),
+            'txid':          str(pedido_id),
+            'qrcode_texto':  qrcode_texto,
             'qrcode_base64': qrcode_b64,
-            'url_bbpay':     qr.get('url_solicitacao', ''),
-            'valor':         qr['valor'],
+            'url_bbpay':     None,
+            'valor':         valor,
             'pedido_id':     pedido_id,
         }
+
+        # --- FLUXO BB PAY DINÂMICO (mantido para rollback) ---
+        # if not url_base:
+        #     url_base = os.getenv('APP_BASE_URL', 'http://localhost').rstrip('/')
+        # url_retorno = f'{url_base}/pay/{produto_id}?pedido={pedido_id}'
+        # _email = body.get('email', '')
+        # _descricao = f'Pedido #{pedido_id} | {_email}' if _email else f'Pedido #{pedido_id}'
+        # qr = criar_solicitacao(valor=valor, pedido_web_id=pedido_id,
+        #                        numero_convenio=numero_convenio,
+        #                        descricao=_descricao,
+        #                        url_retorno=url_retorno)
+        # expiracao = (datetime.now() + timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+        # atualizar_pedido_solicitacao_bb(
+        #     pedido_id=pedido_id,
+        #     numero_solicitacao_bb=str(qr['numero_solicitacao']),
+        #     url_bbpay=qr.get('url_solicitacao', ''),
+        #     qr_code_pix=qr.get('qrcode_texto', ''),
+        #     expiracao=expiracao,
+        # )
+        # qrcode_b64 = _gerar_qrcode_base64(qr['qrcode_texto']) if qr.get('qrcode_texto') else ''
+        # return {
+        #     'txid':          str(qr['numero_solicitacao']),
+        #     'qrcode_texto':  qr.get('qrcode_texto', ''),
+        #     'qrcode_base64': qrcode_b64,
+        #     'url_bbpay':     qr.get('url_solicitacao', ''),
+        #     'valor':         qr['valor'],
+        #     'pedido_id':     pedido_id,
+        # }
     except Exception as e:
-        logger.error(f'[WEB-CHECKOUT] Erro BB Pay ao gerar PIX: {e}')
+        logger.error(f'[WEB-CHECKOUT] Erro ao gerar PIX estático: {e}')
         return {
             'txid': None, 'qrcode_texto': '', 'qrcode_base64': '',
             'url_bbpay': None,
@@ -237,51 +282,85 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
 
 def verificar_pagamento(txid: str) -> dict:
     """
-    Consulta o BB Pay pelo numeroSolicitacao e confirma o pagamento se aprovado.
-    Ao confirmar, dispara a task Celery que envia o e-book por e-mail (único canal de entrega
-    do checkout web — WhatsApp não é mais usado aqui).
+    Verifica se o pedido foi pago e confirma se positivo.
+
+    txid = str(pedido_id) para pedidos com QR estático (novo fluxo).
+    txid = numero_solicitacao_bb para pedidos BB Pay dinâmico (fallback de transição).
 
     Retorna {'pago': bool} (ou {'pago': False, 'erro': True} em caso de falha).
     """
-    from web.bb_pay import consultar_pagamentos
-    from database import (get_pedido_by_solicitacao_bb, get_produto_disponivel_web,
-                          confirmar_pagamento_web, listar_itens_pedido, garantir_guid_pedido)
+    from database import (get_pedido, get_pedido_by_solicitacao_bb,
+                          get_produto_disponivel_web, confirmar_pagamento_web,
+                          listar_itens_pedido, garantir_guid_pedido,
+                          buscar_pagamento_pix_por_txid)
     try:
-        pedido = get_pedido_by_solicitacao_bb(txid)
+        # Tenta interpretar txid como pedido_id numérico (QR estático)
+        pedido = None
+        _usa_bb_pay = False
+        if txid.isdigit():
+            pedido = get_pedido(int(txid))
+            # Se pedido existe mas foi criado com BB Pay dinâmico, usar fallback
+            if pedido and pedido.get('numero_solicitacao_bb'):
+                _usa_bb_pay = True
+
+        if pedido is None and not txid.isdigit():
+            # txid não numérico → é numero_solicitacao_bb (pedido legado BB Pay)
+            pedido = get_pedido_by_solicitacao_bb(txid)
+            _usa_bb_pay = True
+
         if not pedido:
             return {'pago': False}
 
-        produto = get_produto_disponivel_web(pedido['produto_id'])
-        numero_convenio = int(produto['numero_convenio_bb']) if produto else 0
+        # --- FALLBACK BB PAY (pedidos legados com numero_solicitacao_bb) ---
+        if _usa_bb_pay:
+            from web.bb_pay import consultar_pagamentos
+            produto = get_produto_disponivel_web(pedido['produto_id'])
+            numero_convenio = int(produto['numero_convenio_bb']) if produto else 0
+            solicitacao_id = pedido.get('numero_solicitacao_bb') or txid
+            data = consultar_pagamentos(int(solicitacao_id), numero_convenio)
+            pago = data['pago']
+            if pago and pedido['estado_id'] != 1000:
+                pag = data['pagamento']
+                confirmou_agora = confirmar_pagamento_web(
+                    pedido_id=pedido['id'],
+                    valor=pag.get('valorOriginalPagamento', pedido.get('valor_pago', 0)),
+                    nome_pagador=pag.get('nomePagador', ''),
+                    cpf_cnpj_pagador=_formatar_documento(
+                        pag.get('numeroDocumentoPagador', ''),
+                        pag.get('tipoDocumentoPagador', 0),
+                    ),
+                    valor_liquido=pag.get('valorLiquidoRecebedor'),
+                    data_repasse=pag.get('dataRepassePagamento'),
+                    e2e_id=pag.get('e2eId', ''),
+                )
+                if confirmou_agora:
+                    import tasks
+                    tasks.enviar_email_entrega.delay(pedido['id'])
+            if not pago:
+                return {'pago': False}
 
-        data = consultar_pagamentos(int(txid), numero_convenio)
-        pago = data['pago']
-        if pago and pedido['estado_id'] != 1000:
-            pag = data['pagamento']
-            # confirmar_pagamento_web só retorna True pra quem realmente ganhou a "corrida" —
-            # se o polling do cliente e o sweep de resiliência caírem quase juntos pro mesmo
-            # pedido, só um deles dispara a entrega (evita e-mail duplicado).
-            confirmou_agora = confirmar_pagamento_web(
-                pedido_id=pedido['id'],
-                valor=pag.get('valorOriginalPagamento', pedido.get('valor_pago', 0)),
-                nome_pagador=pag.get('nomePagador', ''),
-                cpf_cnpj_pagador=_formatar_documento(
-                    pag.get('numeroDocumentoPagador', ''),
-                    pag.get('tipoDocumentoPagador', 0),
-                ),
-                valor_liquido=pag.get('valorLiquidoRecebedor'),
-                data_repasse=pag.get('dataRepassePagamento'),
-                e2e_id=pag.get('e2eId', ''),
-            )
-            if confirmou_agora:
-                import tasks
-                tasks.enviar_email_entrega.delay(pedido['id'])
+        # --- FLUXO PIX ESTÁTICO (txid numérico sem numero_solicitacao_bb) ---
+        else:
+            if pedido['estado_id'] != 1000:
+                # Consulta pagamento_pix pelo txid = str(pedido_id)
+                pix = buscar_pagamento_pix_por_txid(str(pedido['id']))
+                if not pix:
+                    return {'pago': False}
+                # confirmar_pagamento_web é idempotente — só o primeiro retorna True
+                confirmou_agora = confirmar_pagamento_web(
+                    pedido_id=pedido['id'],
+                    valor=float(pix.get('valor', pedido.get('valor_pago', 0))),
+                    nome_pagador=pix.get('nome_pagador', ''),
+                    cpf_cnpj_pagador=pix.get('cpf_cnpj', ''),
+                    valor_liquido=None,
+                    data_repasse=None,
+                    e2e_id=pix.get('e2e_id', ''),
+                )
+                if confirmou_agora:
+                    import tasks
+                    tasks.enviar_email_entrega.delay(pedido['id'])
 
-        if not pago:
-            return {'pago': False}
-
-        # Pago agora ou já estava pago numa consulta anterior — devolve os itens pra
-        # tela montar os botões de download (mesmo se o cliente reabrir o link depois).
+        # Pago (agora ou já estava) — devolve itens para botões de download
         itens = [
             {'id': item['id'], 'tipo': item['tipo'], 'nome': item['nome'], 'valor': float(item['valor'])}
             for item in listar_itens_pedido(pedido['id'])

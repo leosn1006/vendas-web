@@ -60,6 +60,10 @@ def executar(data_str: str = None, tenant_slug: str = 'lsn-livros'):
             novos += 1
             novos_ids.append(pix_id)
             por_produto[produto_id] = por_produto.get(produto_id, 0) + 1
+            # Tenta vincular automaticamente a um pedido web quando txid == pedido_id
+            txid = pix.get('txid') or ''
+            if txid.isdigit():
+                _tentar_vincular_pedido(int(txid), pix, pix_id)
         else:
             ignorados += 1
 
@@ -142,3 +146,35 @@ def buscar_devolucoes(inicio: datetime, fim: datetime, tenant_slug: str = 'lsn-l
             atualizadas += 1
 
     logger.info(f'[FLUXO-PIX-BB][{tenant_slug}] ✅ devoluções: {novas} nova(s), {atualizadas} atualizada(s)')
+
+
+def _tentar_vincular_pedido(pedido_id: int, pix: dict, pagamento_pix_id: int) -> None:
+    """
+    Tenta confirmar automaticamente um pedido web quando o txid do PIX é numérico
+    (= pedido_id gerado pelo QR estático). Chamado somente para PIX recém-inseridos.
+    """
+    import database
+    try:
+        pedido = database.get_pedido(pedido_id)
+        if not pedido or pedido.get('estado_id') != 1002:
+            return
+        if pedido.get('numero_solicitacao_bb'):
+            # Pedido antigo com BB Pay dinâmico — não tocar aqui
+            return
+
+        pagador  = pix.get('pagador') or {}
+        confirmou = database.confirmar_pagamento_web(
+            pedido_id=pedido_id,
+            valor=float(pix.get('valor', 0)),
+            nome_pagador=pagador.get('nome', ''),
+            cpf_cnpj_pagador=pagador.get('cpf') or pagador.get('cnpj') or '',
+            valor_liquido=None,
+            data_repasse=None,
+            e2e_id=pix.get('endToEndId', ''),
+        )
+        if confirmou:
+            from celery import current_app
+            current_app.send_task('tasks.enviar_email_entrega', args=[pedido_id])
+            logger.info(f'[FLUXO-PIX-BB] ✅ Pedido #{pedido_id} confirmado via txid do QR estático (pix_id={pagamento_pix_id})')
+    except Exception as exc:
+        logger.error(f'[FLUXO-PIX-BB] ❌ Erro ao vincular pedido #{pedido_id}: {exc}')

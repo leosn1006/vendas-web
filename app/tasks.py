@@ -684,3 +684,45 @@ def reprocessar_nfe_pendentes(self, config_id: int | None = None, limite: int = 
         logger.error(f'[{_TAG}] ❌ Erro: {exc}')
         import traceback
         traceback.print_exc()
+
+
+@shared_task(name='tasks.reconciliar_pix_pendentes_web', bind=True, max_retries=0)
+def reconciliar_pix_pendentes_web(self):
+    """
+    Beat task (15 min) — garante que pedidos web em estado_id=1002 com QR estático
+    (numero_solicitacao_bb IS NULL) sejam confirmados mesmo que o browser tenha
+    fechado antes do polling completar.
+    """
+    _TAG = 'TASK-RECONCILIA-PIX'
+    try:
+        from database import buscar_pedidos_pendentes_pix_estatico, buscar_pagamento_pix_por_txid, confirmar_pagamento_web
+        pendentes = buscar_pedidos_pendentes_pix_estatico()
+        if not pendentes:
+            logger.debug(f'[{_TAG}] Nenhum pedido pendente')
+            return
+        logger.info(f'[{_TAG}] {len(pendentes)} pedido(s) aguardando confirmação')
+        confirmados = 0
+        for pedido in pendentes:
+            pedido_id = pedido['id']
+            pix = buscar_pagamento_pix_por_txid(str(pedido_id))
+            if not pix:
+                continue
+            confirmou = confirmar_pagamento_web(
+                pedido_id=pedido_id,
+                valor=float(pix.get('valor', pedido.get('valor_pago', 0))),
+                nome_pagador=pix.get('nome_pagador', ''),
+                cpf_cnpj_pagador=pix.get('cpf_cnpj', ''),
+                valor_liquido=None,
+                data_repasse=None,
+                e2e_id=pix.get('e2e_id', ''),
+            )
+            if confirmou:
+                enviar_email_entrega.apply_async(args=[pedido_id])
+                confirmados += 1
+                logger.info(f'[{_TAG}] ✅ Pedido #{pedido_id} confirmado via reconciliação')
+        if confirmados:
+            logger.info(f'[{_TAG}] ✅ {confirmados} pedido(s) confirmado(s) nesta rodada')
+    except Exception as exc:
+        logger.error(f'[{_TAG}] ❌ Erro: {exc}')
+        import traceback
+        traceback.print_exc()

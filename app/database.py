@@ -2379,7 +2379,7 @@ def buscar_pedidos_aguardando_cartao_cielo() -> list:
 def listar_chaves_pix_produto(produto_id) -> list:
     """Lista todas as chaves PIX de um produto (ativas e inativas)."""
     return db.execute_query(
-        "SELECT id, chave_pix, ativo, criado_em FROM chaves_pix_produto WHERE produto_id = %s ORDER BY criado_em DESC",
+        "SELECT id, chave_pix, ativo, para_venda_web, criado_em FROM chaves_pix_produto WHERE produto_id = %s ORDER BY criado_em DESC",
         (produto_id,),
         fetch_all=True,
     ) or []
@@ -2985,6 +2985,41 @@ def buscar_pagamento_pix_por_id(pagamento_pix_id: int) -> dict | None:
            WHERE pp.id = %s""",
         (pagamento_pix_id,), fetch_one=True,
     )
+
+
+def buscar_pagamento_pix_por_txid(txid: str) -> dict | None:
+    """Retorna o pagamento_pix cujo txid bate com o pedido_id passado como string."""
+    return db.execute_query(
+        "SELECT * FROM pagamento_pix WHERE txid = %s LIMIT 1",
+        (txid,), fetch_one=True,
+    )
+
+
+def buscar_chave_pix_venda_web(produto_id: int) -> str | None:
+    """Retorna a chave PIX marcada para uso no QR estático do checkout web."""
+    row = db.execute_query(
+        "SELECT chave_pix FROM chaves_pix_produto WHERE produto_id = %s AND ativo = 1 AND para_venda_web = 1 LIMIT 1",
+        (produto_id,), fetch_one=True,
+    )
+    return row['chave_pix'] if row else None
+
+
+def buscar_pedidos_pendentes_pix_estatico() -> list:
+    """
+    Retorna pedidos em estado 1002 gerados pelo fluxo de QR estático
+    (numero_solicitacao_bb IS NULL) ainda dentro da janela de 24 h.
+    Usado pela rotina de reconciliação a cada 15 min.
+    """
+    return db.execute_query(
+        """SELECT p.id, p.produto_id, p.valor_pago, p.nome_pagador,
+                  p.cpf_cnpj_pagador, p.e2e_id, p.email, p.contact_name
+           FROM pedidos p
+           WHERE p.estado_id = 1002
+             AND p.numero_solicitacao_bb IS NULL
+             AND p.expiracao_solicitacao_bb > NOW()
+           ORDER BY p.data_ultima_atualizacao""",
+        fetch_all=True,
+    ) or []
 
 
 def incrementar_numero_nfe(config_id: int) -> int:

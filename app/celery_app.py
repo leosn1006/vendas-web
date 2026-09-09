@@ -76,6 +76,12 @@ celery_app.conf.beat_schedule = {
         'kwargs': {'tenant_slug': 'lbe-livros'},
         'options': {'queue': 'baixa'},
     },
+    # PIX estático — reconcilia pedidos web estado_id=1002 que foram pagos mas não confirmados
+    'reconciliar-pix-pendentes-web': {
+        'task': 'tasks.reconciliar_pix_pendentes_web',
+        'schedule': crontab(minute='*/15'),
+        'options': {'queue': 'baixa'},
+    },
     # NF-e — LBE LIVROS LTDA (config_id=2)
     # Habilitar quando conta corrente LBE estiver configurada e PIX fluindo pela LBE
     # 'reprocessar-nfe-pendentes-lbe': {

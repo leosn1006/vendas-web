@@ -3171,6 +3171,29 @@ def desativar_chave_pix(produto_id, chave_id):
     return redirect(url_for('admin.chaves_pix_produto', produto_id=produto_id))
 
 
+@admin_bp.route('/produto/<int:produto_id>/chaves-pix/<int:chave_id>/toggle-venda-web', methods=['POST'])
+@requer_admin
+def toggle_para_venda_web(produto_id, chave_id):
+    """Marca/desmarca a chave como a usada no QR estático do checkout web (apenas 1 ativa por produto)."""
+    from database import db as _db
+    try:
+        # Garante unicidade: remove flag de todas as chaves do produto antes de setar a nova
+        _db.execute_query(
+            "UPDATE chaves_pix_produto SET para_venda_web = 0 WHERE produto_id = %s",
+            (produto_id,),
+        )
+        _db.execute_query(
+            "UPDATE chaves_pix_produto SET para_venda_web = 1 WHERE id = %s AND produto_id = %s",
+            (chave_id, produto_id),
+        )
+        flash('Chave PIX marcada como chave para venda web.', 'success')
+        logger.info(f"[ADMIN] ✅ Chave PIX #{chave_id} marcada para_venda_web no produto #{produto_id} por {current_user.email}")
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao marcar chave PIX para venda web: {e}")
+        flash(f'Erro: {e}', 'danger')
+    return redirect(url_for('admin.chaves_pix_produto', produto_id=produto_id))
+
+
 # ── Pagamento com Cartão de Crédito (Cielo) ──────────────────────────────────
 
 @admin_bp.route('/produto/<int:produto_id>/pagamento-cartao', methods=['GET', 'POST'])
