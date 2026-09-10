@@ -145,16 +145,16 @@
 <!-- Filtros -->
 {% set todas_transacoes = financeiro.transacoes %}
 <div class="origem-filtro" style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
-    {% for val, label in [('todos','Todos'), ('web','🌐 Web'), ('whatsapp','📱 WhatsApp')] %}
-    {% set qtd = todas_transacoes|length if val == 'todos' else todas_transacoes|selectattr('origem', 'equalto', val)|list|length %}
-    <a href="{{ url_for('admin.financeiro_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, origem=val, forma=forma) }}"
-       class="btn btn-sm {{ 'btn-primary' if origem == val else 'btn-outline-secondary' }}">{{ label }} ({{ qtd }})</a>
+    {% for val, label in [('todos','Todos'), ('web','🌐 Web'), ('wpp','📱 WhatsApp')] %}
+    {% set qtd = todas_transacoes|length if val == 'todos' else todas_transacoes|selectattr('fluxo_inicial', 'equalto', val)|list|length %}
+    <a href="{{ url_for('admin.financeiro_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, fluxo_inicial=val, forma=forma) }}"
+       class="btn btn-sm {{ 'btn-primary' if fluxo_inicial == val else 'btn-outline-secondary' }}">{{ label }} ({{ qtd }})</a>
     {% endfor %}
 </div>
 <div class="forma-filtro" style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
     {% for val, label in [('todos','Todos'), ('pix','Pix'), ('cartao','Cartão'), ('devolucao','↩ Devolução')] %}
     {% set qtd = todas_transacoes|length if val == 'todos' else todas_transacoes|selectattr('forma', 'equalto', val)|list|length %}
-    <a href="{{ url_for('admin.financeiro_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, origem=origem, forma=val) }}"
+    <a href="{{ url_for('admin.financeiro_produto', produto_id=produto.id, data_ini=data_ini, data_fim=data_fim, fluxo_inicial=fluxo_inicial, forma=val) }}"
        class="btn btn-sm {{ 'btn-primary' if forma == val else 'btn-outline-secondary' }}">{{ label }} ({{ qtd }})</a>
     {% endfor %}
 </div>
@@ -183,10 +183,12 @@
                         {{ t.horario.strftime('%d/%m/%Y %H:%M') if t.horario else '—' }}
                     </td>
                     <td>
-                        {% if t.origem == 'web' %}
+                        {% if t.fluxo_inicial == 'web' %}
                         <span class="badge badge-blue">🌐 Web</span>
-                        {% else %}
+                        {% elif t.fluxo_inicial == 'wpp' %}
                         <span class="badge badge-green">📱 WhatsApp</span>
+                        {% else %}
+                        <span class="badge badge-gray">—</span>
                         {% endif %}
                     </td>
                     <td>

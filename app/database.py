@@ -261,6 +261,7 @@ def criar_pedido(pedido: Pedido):
            , guid
            , valor_pago
            , estado_id
+           , fluxo_inicial
            , gclid
            , wbraid
            , gbraid
@@ -297,6 +298,7 @@ def criar_pedido(pedido: Pedido):
            , %s
            , %s
            , %s
+           , 'wpp'
            , %s
            , %s
            , %s
@@ -304,7 +306,6 @@ def criar_pedido(pedido: Pedido):
            , %s
            , %s
            , CURRENT_TIMESTAMP
-           , %s
            , %s
            , %s
            , %s
@@ -715,6 +716,12 @@ def atualizar_pedido_com_interesse_produto(pedido_id, interesse_produto):
     db.execute_query(query, (interesse_produto, pedido_id))
     return pedido_id
 
+def atualizar_identidade_pedido(pedido_id: int, contact_name: str, email: str) -> None:
+    db.execute_query(
+        "UPDATE pedidos SET contact_name = %s, email = %s WHERE id = %s",
+        (contact_name, email, pedido_id),
+    )
+
 def atualizar_pedido_com_data_followup(pedido_id):
     """
     Atualiza um pedido com a data do followup.
@@ -775,7 +782,7 @@ def buscar_pedidos_followup_pagamento_web(minutos_sem_atualizacao: int = 60) -> 
         AND email IS NOT NULL AND email != ''
         AND data_followup_pagamento_web IS NULL
         AND data_ultima_atualizacao <= NOW() - INTERVAL %s MINUTE
-        AND expiracao_solicitacao_bb > NOW()
+        AND (expiracao_solicitacao_bb IS NULL OR expiracao_solicitacao_bb > NOW())
     """
     return db.execute_query(query, (minutos_sem_atualizacao,), fetch_all=True)
 
@@ -2062,10 +2069,10 @@ def criar_pedido_web_inicial(produto_id: int, estado_id: int, dns_origem: str = 
     guid = secrets.token_urlsafe(6)
     return db.execute_query(
         """INSERT INTO pedidos
-             (produto_id, guid, valor_pago, estado_id, gclid,
+             (produto_id, guid, valor_pago, estado_id, fluxo_inicial, gclid,
               data_ultima_atualizacao, data_contato_site,
               dns_origem, campaignid, adgroupid, creative, matchtype, device, placement, video_id)
-           VALUES (%s, %s, 0.0, %s, %s,
+           VALUES (%s, %s, 0.0, %s, 'web', %s,
                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
                    %s, %s, %s, %s, %s, %s, %s, %s)""",
         (produto_id, guid, estado_id, gclid or '',
@@ -2142,12 +2149,12 @@ def criar_pedido_web_unificado(produto_id: int, phone_number_id: str,
     guid = secrets.token_urlsafe(6)
     return db.execute_query(
         """INSERT INTO pedidos
-             (produto_id, guid, valor_pago, estado_id, gclid,
+             (produto_id, guid, valor_pago, estado_id, fluxo_inicial, gclid,
               data_ultima_atualizacao, data_contato_site, data_pedido,
               phone_number_id, contact_phone, contact_name, contact_to, email,
                 dns_origem,
               campaignid, adgroupid, creative, matchtype, device, placement, video_id)
-           VALUES (%s, %s, 0.0, 1001, %s,
+           VALUES (%s, %s, 0.0, 1001, 'web', %s,
                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
                    %s, %s, %s, %s, %s,
                     %s,
@@ -2379,17 +2386,17 @@ def buscar_pedidos_aguardando_cartao_cielo() -> list:
 def listar_chaves_pix_produto(produto_id) -> list:
     """Lista todas as chaves PIX de um produto (ativas e inativas)."""
     return db.execute_query(
-        "SELECT id, chave_pix, ativo, para_venda_web, criado_em FROM chaves_pix_produto WHERE produto_id = %s ORDER BY criado_em DESC",
+        "SELECT id, chave_pix, ativo, para_venda_web, tenant_slug, criado_em FROM chaves_pix_produto WHERE produto_id = %s ORDER BY criado_em DESC",
         (produto_id,),
         fetch_all=True,
     ) or []
 
 
-def adicionar_chave_pix_produto(produto_id, chave_pix: str) -> int:
+def adicionar_chave_pix_produto(produto_id, chave_pix: str, tenant_slug: str = 'lsn-livros') -> int:
     """Insere uma chave PIX para o produto. INSERT IGNORE evita duplicata."""
     return db.execute_query(
-        "INSERT IGNORE INTO chaves_pix_produto (produto_id, chave_pix) VALUES (%s, %s)",
-        (produto_id, chave_pix.strip()),
+        "INSERT IGNORE INTO chaves_pix_produto (produto_id, chave_pix, tenant_slug) VALUES (%s, %s, %s)",
+        (produto_id, chave_pix.strip(), tenant_slug),
     )
 
 
@@ -2401,30 +2408,18 @@ def desativar_chave_pix_produto(chave_id: int):
     )
 
 
-def busca_financeiro_pix(produto_id, data_ini, data_fim, origem: str = 'todos', forma: str = 'todos') -> dict:
+def busca_financeiro_produto(produto_id, data_ini, data_fim, fluxo_inicial: str = 'todos', forma: str = 'todos') -> dict:
     """
-    Retorna resumo e lista de transações (PIX + vendas web confirmadas + devoluções)
-    do produto no período, com origem ('whatsapp' ou 'web') e forma ('pix', 'cartao'
-    ou 'devolucao') por transação.
+    Retorna resumo e lista de transações do produto no período.
 
-    Pagamentos PIX já vinculados a um pedido web confirmado (mesmo e2e_id)
-    são excluídos do lado PIX para não contar a mesma venda duas vezes —
-    aparecem só como linha 'web'.
+    Fonte de verdade: tabelas de pagamento (pagamento_pix / pagamento_cartao / devolucoes_pix),
+    não pedidos. fluxo_inicial ('web', 'wpp') vem do campo homônimo em pedidos para PIX
+    vinculado e cartão; PIX sem pedido é sempre 'wpp'.
 
-    Devoluções entram como linhas de valor NEGATIVO, filtradas pela data da
-    própria devolução (horario_liquidacao), não pela data do PIX original.
-
-    `resumo` é sempre calculado sobre o período inteiro (não é afetado pelos
-    filtros `origem`/`forma` — esses só decidem o que aparece em `transacoes_filtradas`,
-    usado pela tabela detalhada).
-
-    Returns:
-        dict com keys 'resumo' (total_valor, qtd_transacoes, ticket_medio,
-                   total_cartao, total_devolucoes),
-                   'transacoes' (lista completa do período, ordenada por horario DESC,
-                   cada item já com a chave 'forma' calculada)
-                   e 'transacoes_filtradas' (subconjunto de 'transacoes' respeitando
-                   os filtros origem/forma, pronta pra tabela detalhada)
+    Leg 1: PIX sem pedido (WhatsApp/orgânico) — pedido_id IS NULL
+    Leg 2: PIX com pedido — fluxo_inicial do pedido (suporta web e wpp com QR estático)
+    Leg 3: Cartão aprovado (status_cielo=2) — sempre web
+    Leg 4: Devoluções PIX — valor negativo, filtradas por horario_liquidacao
     """
     transacoes = db.execute_query(
         """SELECT pp.horario, pp.valor, pp.chave_pix, pp.cpf_cnpj, pp.nome_pagador,
@@ -2432,32 +2427,45 @@ def busca_financeiro_pix(produto_id, data_ini, data_fim, origem: str = 'todos', 
                   pp.nfe_emitida_id,
                   ne.c_stat       AS nfe_c_stat,
                   ne.chave_acesso AS nfe_chave_acesso,
-                  'whatsapp'      AS origem,
-                  'pix'           AS metodo_pagamento
+                  'wpp'           AS fluxo_inicial,
+                  'pix'           AS forma
            FROM pagamento_pix pp
            LEFT JOIN nfe_emitidas ne ON ne.id = pp.nfe_emitida_id
            WHERE pp.produto_id = %s AND pp.horario BETWEEN %s AND %s
-             AND NOT EXISTS (
-                 SELECT 1 FROM pedidos ped
-                 WHERE ped.estado_id = 1000
-                   AND ped.e2e_id = pp.e2e_id
-                   AND ped.e2e_id != ''
-             )
+             AND pp.pedido_id IS NULL
 
            UNION ALL
 
-           SELECT ped.data_pagamento AS horario, ped.valor_pago AS valor,
+           SELECT pp.horario, pp.valor, pp.chave_pix, pp.cpf_cnpj, pp.nome_pagador,
+                  pp.txid, pp.e2e_id,
+                  pp.nfe_emitida_id,
+                  ne.c_stat       AS nfe_c_stat,
+                  ne.chave_acesso AS nfe_chave_acesso,
+                  ped.fluxo_inicial,
+                  'pix'           AS forma
+           FROM pagamento_pix pp
+           JOIN pedidos ped ON ped.id = pp.pedido_id
+           LEFT JOIN nfe_emitidas ne ON ne.id = pp.nfe_emitida_id
+           WHERE pp.produto_id = %s AND pp.horario BETWEEN %s AND %s
+             AND pp.pedido_id IS NOT NULL
+
+           UNION ALL
+
+           SELECT ped.data_pagamento AS horario,
+                  pc.valor,
                   NULL AS chave_pix,
                   REPLACE(REPLACE(REPLACE(ped.cpf_cnpj_pagador, '.', ''), '-', ''), '/', '') AS cpf_cnpj,
                   ped.nome_pagador,
-                  NULL AS txid, ped.e2e_id,
+                  NULL AS txid, NULL AS e2e_id,
                   NULL AS nfe_emitida_id,
                   NULL AS nfe_c_stat,
                   NULL AS nfe_chave_acesso,
-                  'web' AS origem,
-                  ped.metodo_pagamento
-           FROM pedidos ped
-           WHERE ped.produto_id = %s AND ped.estado_id = 1000
+                  ped.fluxo_inicial,
+                  'cartao' AS forma
+           FROM pagamento_cartao pc
+           JOIN pedidos ped ON ped.id = pc.pedido_id AND ped.estado_id = 1000
+           WHERE ped.produto_id = %s
+             AND pc.status_cielo = 2
              AND ped.data_pagamento BETWEEN %s AND %s
 
            UNION ALL
@@ -2468,8 +2476,8 @@ def busca_financeiro_pix(produto_id, data_ini, data_fim, origem: str = 'todos', 
                   NULL AS nfe_emitida_id,
                   NULL AS nfe_c_stat,
                   NULL AS nfe_chave_acesso,
-                  'devolucao' AS origem,
-                  NULL AS metodo_pagamento
+                  'devolucao' AS fluxo_inicial,
+                  'devolucao' AS forma
            FROM devolucoes_pix dp
            LEFT JOIN pagamento_pix pp ON pp.id = dp.pagamento_pix_id
            WHERE dp.produto_id = %s
@@ -2480,27 +2488,19 @@ def busca_financeiro_pix(produto_id, data_ini, data_fim, origem: str = 'todos', 
             produto_id, data_ini, data_fim,
             produto_id, data_ini, data_fim,
             produto_id, data_ini, data_fim,
+            produto_id, data_ini, data_fim,
         ),
         fetch_all=True,
     ) or []
 
-    for t in transacoes:
-        if t['origem'] == 'devolucao':
-            t['forma'] = 'devolucao'
-        elif t['metodo_pagamento'] == 'cartao':
-            t['forma'] = 'cartao'
-        else:
-            t['forma'] = 'pix'
-
-    recebimentos      = [t for t in transacoes if t['forma'] != 'devolucao']
-    total_pix         = float(sum(t['valor'] for t in recebimentos if t['forma'] == 'pix'))
-    total_cartao      = float(sum(t['valor'] for t in recebimentos if t['forma'] == 'cartao'))
-    qtd_pix           = sum(1 for t in recebimentos if t['forma'] == 'pix')
-    total_devolucoes  = float(-sum(t['valor'] for t in transacoes if t['forma'] == 'devolucao'))
+    total_pix        = float(sum(t['valor'] for t in transacoes if t['forma'] == 'pix'))
+    total_cartao     = float(sum(t['valor'] for t in transacoes if t['forma'] == 'cartao'))
+    qtd_pix          = sum(1 for t in transacoes if t['forma'] == 'pix')
+    total_devolucoes = float(-sum(t['valor'] for t in transacoes if t['forma'] == 'devolucao'))
 
     transacoes_filtradas = [
         t for t in transacoes
-        if (origem == 'todos' or t['origem'] == origem)
+        if (fluxo_inicial == 'todos' or t['fluxo_inicial'] == fluxo_inicial)
         and (forma == 'todos' or t['forma'] == forma)
     ]
 
@@ -2517,6 +2517,10 @@ def busca_financeiro_pix(produto_id, data_ini, data_fim, origem: str = 'todos', 
     }
 
 
+# Alias para compatibilidade com imports existentes
+busca_financeiro_pix = busca_financeiro_produto
+
+
 def busca_chaves_pix_produtos() -> dict:
     """
     Retorna dict {chave_pix: produto_id} com todas as chaves PIX ativas.
@@ -2529,12 +2533,13 @@ def busca_chaves_pix_produtos() -> dict:
     return {row['chave_pix']: row['produto_id'] for row in (rows or [])}
 
 
-def salvar_pagamento_pix(pix: dict, produto_id, tenant_slug: str = 'lsn-livros') -> bool:
+def salvar_pagamento_pix(pix: dict, produto_id, tenant_slug: str = 'lsn-livros') -> int | None:
     """
     Persiste uma transação PIX recebida, marcando de qual conta BB (tenant) veio.
     Usa INSERT IGNORE para evitar duplicatas (unicidade garantida por e2e_id).
+    Após inserir, faz back-fill de devoluções órfãs com o mesmo e2e_id.
 
-    Retorna True se inseriu (novo), False se já existia.
+    Retorna o id do registro inserido, ou None se já existia.
     """
     from datetime import datetime
 
@@ -2566,7 +2571,22 @@ def salvar_pagamento_pix(pix: dict, produto_id, tenant_slug: str = 'lsn-livros')
                 txid,
             ),
         )
-        return cursor.lastrowid if cursor.rowcount > 0 else None
+        pix_id = cursor.lastrowid if cursor.rowcount > 0 else None
+
+    # Back-fill: vincular devoluções órfãs que chegaram antes deste PIX ser ingerido
+    e2e_id = pix.get('endToEndId')
+    if e2e_id:
+        db.execute_query(
+            """UPDATE devolucoes_pix dp
+               JOIN pagamento_pix pp ON pp.e2e_id = dp.e2e_id
+               SET dp.pagamento_pix_id = pp.id,
+                   dp.produto_id       = COALESCE(dp.produto_id, pp.produto_id),
+                   dp.atualizado_em    = NOW()
+               WHERE dp.e2e_id = %s AND dp.pagamento_pix_id IS NULL""",
+            (e2e_id,),
+        )
+
+    return pix_id
 
 
 def salvar_devolucao_pix(devolucao: dict, tenant_slug: str = 'lsn-livros', chaves: dict = None) -> int:
@@ -2604,7 +2624,7 @@ def salvar_devolucao_pix(devolucao: dict, tenant_slug: str = 'lsn-livros', chave
             chaves = busca_chaves_pix_produtos()
         produto_id = chaves.get(devolucao.get('chave', ''))
     if not parent:
-        logger.warning(
+        logger.error(
             f"[PIX-DEVOL][{tenant_slug}] e2e_id {devolucao.get('endToEndId')} sem "
             f"pagamento_pix correspondente — gravando com pagamento_pix_id=NULL "
             f"(produto_id resolvido via chave: {produto_id})"
@@ -2988,9 +3008,9 @@ def buscar_pagamento_pix_por_id(pagamento_pix_id: int) -> dict | None:
 
 
 def buscar_pagamento_pix_por_txid(txid: str) -> dict | None:
-    """Retorna o pagamento_pix cujo txid bate com o pedido_id passado como string."""
+    """Retorna o pagamento_pix mais recente cujo txid bate com o pedido_id passado como string."""
     return db.execute_query(
-        "SELECT * FROM pagamento_pix WHERE txid = %s LIMIT 1",
+        "SELECT * FROM pagamento_pix WHERE txid = %s ORDER BY horario DESC LIMIT 1",
         (txid,), fetch_one=True,
     )
 
@@ -3004,22 +3024,65 @@ def buscar_chave_pix_venda_web(produto_id: int) -> str | None:
     return row['chave_pix'] if row else None
 
 
+def buscar_chave_pix_tenant_web(produto_id: int) -> dict | None:
+    """Retorna chave_pix e tenant_slug da chave web do produto — usado no per-txid da API BB."""
+    return db.execute_query(
+        "SELECT chave_pix, tenant_slug FROM chaves_pix_produto "
+        "WHERE produto_id = %s AND ativo = 1 AND para_venda_web = 1 LIMIT 1",
+        (produto_id,), fetch_one=True,
+    )
+
+
 def buscar_pedidos_pendentes_pix_estatico() -> list:
     """
-    Retorna pedidos em estado 1002 gerados pelo fluxo de QR estático
-    (numero_solicitacao_bb IS NULL) ainda dentro da janela de 24 h.
-    Usado pela rotina de reconciliação a cada 15 min.
+    Retorna pedidos em estado 1002 com QR estático (numero_solicitacao_bb IS NULL),
+    sem expiração ou ainda dentro da janela, gerados nos últimos 90 dias.
+    Inclui tenant_slug e data_ultima_atualizacao para consulta per-txid na API BB.
     """
     return db.execute_query(
         """SELECT p.id, p.produto_id, p.valor_pago, p.nome_pagador,
-                  p.cpf_cnpj_pagador, p.e2e_id, p.email, p.contact_name
+                  p.cpf_cnpj_pagador, p.e2e_id, p.email, p.contact_name,
+                  p.fluxo_inicial, p.data_ultima_atualizacao,
+                  cpp.tenant_slug
            FROM pedidos p
+           JOIN chaves_pix_produto cpp
+             ON cpp.produto_id = p.produto_id AND cpp.para_venda_web = 1
            WHERE p.estado_id = 1002
              AND p.numero_solicitacao_bb IS NULL
-             AND p.expiracao_solicitacao_bb > NOW()
+             AND (p.expiracao_solicitacao_bb IS NULL OR p.expiracao_solicitacao_bb > NOW())
+             AND p.data_ultima_atualizacao > NOW() - INTERVAL 24 HOUR
            ORDER BY p.data_ultima_atualizacao""",
         fetch_all=True,
     ) or []
+
+
+def buscar_tenants_pendentes_pix_estatico() -> list[str]:
+    """
+    Retorna os tenant_slugs únicos das contas BB que precisam ser consultadas
+    para confirmar pedidos web pendentes (estado_id=1002, QR estático).
+    Usa chaves_pix_produto.tenant_slug como fonte de verdade do tenant por chave.
+    """
+    rows = db.execute_query(
+        """SELECT DISTINCT cpp.tenant_slug
+           FROM pedidos p
+           JOIN chaves_pix_produto cpp
+             ON cpp.produto_id = p.produto_id
+            AND cpp.para_venda_web = 1
+          WHERE p.estado_id = 1002
+            AND p.numero_solicitacao_bb IS NULL
+            AND (p.expiracao_solicitacao_bb IS NULL OR p.expiracao_solicitacao_bb > NOW())
+            AND p.data_ultima_atualizacao > NOW() - INTERVAL 24 HOUR""",
+        fetch_all=True,
+    ) or []
+    return [r['tenant_slug'] for r in rows]
+
+
+def vincular_pedido_ao_pagamento_pix(pix_id: int, pedido_id: int) -> None:
+    """Grava pedido_id no pagamento_pix. Idempotente — não sobrescreve vínculo existente."""
+    db.execute_query(
+        "UPDATE pagamento_pix SET pedido_id = %s WHERE id = %s AND pedido_id IS NULL",
+        (pedido_id, pix_id),
+    )
 
 
 def incrementar_numero_nfe(config_id: int) -> int:

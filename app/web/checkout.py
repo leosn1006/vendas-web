@@ -226,13 +226,12 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
             txid=str(pedido_id),
         )
         qrcode_b64 = _gerar_qr_estatico(qrcode_texto)
-        expiracao = (datetime.now() + timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
         atualizar_pedido_solicitacao_bb(
             pedido_id=pedido_id,
             numero_solicitacao_bb=None,   # QR estático — sem solicitação BB Pay
             url_bbpay=None,
             qr_code_pix=qrcode_texto,
-            expiracao=expiracao,
+            expiracao=None,               # QR estático não expira — campo fica NULL
         )
         return {
             'txid':          str(pedido_id),
@@ -292,7 +291,8 @@ def verificar_pagamento(txid: str) -> dict:
     from database import (get_pedido, get_pedido_by_solicitacao_bb,
                           get_produto_disponivel_web, confirmar_pagamento_web,
                           listar_itens_pedido, garantir_guid_pedido,
-                          buscar_pagamento_pix_por_txid)
+                          buscar_pagamento_pix_por_txid, vincular_pedido_ao_pagamento_pix,
+                          buscar_chave_pix_tenant_web, salvar_pagamento_pix)
     try:
         # Tenta interpretar txid como pedido_id numérico (QR estático)
         pedido = None
@@ -333,7 +333,7 @@ def verificar_pagamento(txid: str) -> dict:
                     data_repasse=pag.get('dataRepassePagamento'),
                     e2e_id=pag.get('e2eId', ''),
                 )
-                if confirmou_agora:
+                if confirmou_agora and pedido.get('fluxo_inicial') == 'web':
                     import tasks
                     tasks.enviar_email_entrega.delay(pedido['id'])
             if not pago:
@@ -341,24 +341,64 @@ def verificar_pagamento(txid: str) -> dict:
 
         # --- FLUXO PIX ESTÁTICO (txid numérico sem numero_solicitacao_bb) ---
         else:
-            if pedido['estado_id'] != 1000:
-                # Consulta pagamento_pix pelo txid = str(pedido_id)
-                pix = buscar_pagamento_pix_por_txid(str(pedido['id']))
-                if not pix:
-                    return {'pago': False}
-                # confirmar_pagamento_web é idempotente — só o primeiro retorna True
-                confirmou_agora = confirmar_pagamento_web(
-                    pedido_id=pedido['id'],
-                    valor=float(pix.get('valor', pedido.get('valor_pago', 0))),
-                    nome_pagador=pix.get('nome_pagador', ''),
-                    cpf_cnpj_pagador=pix.get('cpf_cnpj', ''),
-                    valor_liquido=None,
-                    data_repasse=None,
-                    e2e_id=pix.get('e2e_id', ''),
-                )
-                if confirmou_agora:
-                    import tasks
-                    tasks.enviar_email_entrega.delay(pedido['id'])
+            pix = buscar_pagamento_pix_por_txid(str(pedido['id']))
+
+            if not pix:
+                # Fallback: consulta BB API diretamente por txid para confirmação imediata
+                # (sem esperar o beat horário ou a rodada de reconciliação de 15 min)
+                chave_info = buscar_chave_pix_tenant_web(pedido['produto_id'])
+                if chave_info:
+                    try:
+                        from bb_pix import consultar_pix_por_txid
+                        from datetime import timezone, timedelta as _td
+                        _sp = timezone(_td(hours=-3))
+                        _dt_base = pedido['data_ultima_atualizacao']
+                        if _dt_base.tzinfo is None:
+                            _dt_base = _dt_base.replace(tzinfo=_sp)
+                        _inicio = _dt_base - _td(hours=1)  # margem para clock skew
+                        _fim    = datetime.now(_sp)
+                        pix_bb = consultar_pix_por_txid(
+                            str(pedido['id']), _inicio, _fim,
+                            tenant_slug=chave_info['tenant_slug'],
+                        )
+                        if pix_bb:
+                            salvar_pagamento_pix(
+                                pix_bb, pedido['produto_id'],
+                                tenant_slug=chave_info['tenant_slug'],
+                            )
+                            # Re-fetch sempre: INSERT IGNORE retorna None se já existia
+                            # pelo e2e_id sem txid, mas o registro está no banco
+                            pix = buscar_pagamento_pix_por_txid(str(pedido['id']))
+                    except Exception as _exc:
+                        logger.warning(f'[WEB-CHECKOUT] Fallback per-txid falhou para pedido #{pedido["id"]}: {_exc}')
+
+            if not pix and pedido['estado_id'] != 1000:
+                return {'pago': False}
+            if pix:
+                # Vincular pagamento ao pedido (idempotente; marca duplicatas também)
+                vincular_pedido_ao_pagamento_pix(pix['id'], pedido['id'])
+                if pedido['estado_id'] != 1000:
+                    _valor_recebido = float(pix.get('valor', 0))
+                    _valor_esperado = float(pedido.get('valor_pago', 0))
+                    if _valor_recebido < _valor_esperado - 0.01:
+                        logger.warning(
+                            f'[WEB-CHECKOUT] Pedido #{pedido["id"]} valor insuficiente: '
+                            f'recebido=R${_valor_recebido:.2f}, esperado=R${_valor_esperado:.2f}'
+                        )
+                        return {'pago': False}
+                    # confirmar_pagamento_web é idempotente — só o primeiro retorna True
+                    confirmou_agora = confirmar_pagamento_web(
+                        pedido_id=pedido['id'],
+                        valor=_valor_recebido,
+                        nome_pagador=pix.get('nome_pagador', ''),
+                        cpf_cnpj_pagador=pix.get('cpf_cnpj', ''),
+                        valor_liquido=None,
+                        data_repasse=None,
+                        e2e_id=pix.get('e2e_id', ''),
+                    )
+                    if confirmou_agora and pedido.get('fluxo_inicial') == 'web':
+                        import tasks
+                        tasks.enviar_email_entrega.delay(pedido['id'])
 
         # Pago (agora ou já estava) — devolve itens para botões de download
         itens = [
@@ -405,6 +445,7 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     from database import (get_produto_disponivel_web, get_config_cartao_produto,
                           resolver_valor_principal_produto, garantir_guid_pedido,
                           criar_pedido_web_unificado, get_pedido_cartao_para_retry, finalizar_pedido_web,
+                          atualizar_identidade_pedido,
                           criar_itens_pedido_web, listar_bumps_validos, listar_itens_pedido,
                           avancar_pedido_cartao_aguardando, criar_tentativa_pagamento_cartao,
                           atualizar_tentativa_pagamento_cartao, confirmar_pagamento_web,
@@ -445,8 +486,10 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     eh_retry_de_negado = bool(pedido_existente and pedido_existente['estado_id'] == 1006)
     if pedido_existente:
         pedido_id = pedido_existente['id']
-        # No-op se o pedido já passou de 1003/1004 (ex: retry vindo de 1006) — identidade já
-        # foi capturada na tentativa anterior, WHERE da própria função protege contra regressão.
+        if eh_retry_de_negado:
+            # finalizar_pedido_web é no-op em estado 1006 (WHERE só aceita 1003/1004).
+            # Atualiza identidade explicitamente para capturar e-mail/nome corrigidos pelo cliente.
+            atualizar_identidade_pedido(pedido_id, body.get('nome', ''), body.get('email', ''))
         finalizar_pedido_web(pedido_id, phone_number_id='', contact_phone='',
                              contact_name=body.get('nome', ''), email=body.get('email', ''))
     else:
@@ -536,8 +579,11 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
             cpf_cnpj_pagador=_formatar_documento(cpf, 1),
         )
         if confirmou_agora:
-            import tasks
-            tasks.enviar_email_entrega.delay(pedido_id)
+            from database import get_pedido as _get_pedido
+            _pedido = _get_pedido(pedido_id) or {}
+            if _pedido.get('fluxo_inicial') == 'web':
+                import tasks
+                tasks.enviar_email_entrega.delay(pedido_id)
         itens = [
             {'id': item['id'], 'tipo': item['tipo'], 'nome': item['nome'], 'valor': float(item['valor'])}
             for item in listar_itens_pedido(pedido_id)
@@ -569,7 +615,8 @@ def reconciliar_cartao(pedido_id: int) -> dict:
     """
     from web import cielo
     from database import (get_ultima_tentativa_pagamento_cartao, confirmar_pagamento_web,
-                          marcar_pedido_cartao_negado, atualizar_tentativa_pagamento_cartao)
+                          marcar_pedido_cartao_negado, atualizar_tentativa_pagamento_cartao,
+                          get_pedido)
 
     tentativa = get_ultima_tentativa_pagamento_cartao(pedido_id)
     if not tentativa:
@@ -610,8 +657,10 @@ def reconciliar_cartao(pedido_id: int) -> dict:
         )
         confirmou_agora = confirmar_pagamento_web(pedido_id=pedido_id, valor=float(tentativa['valor']))
         if confirmou_agora:
-            import tasks
-            tasks.enviar_email_entrega.delay(pedido_id)
+            _pedido = get_pedido(pedido_id) or {}
+            if _pedido.get('fluxo_inicial') == 'web':
+                import tasks
+                tasks.enviar_email_entrega.delay(pedido_id)
         return {'pago': True, 'pedido_id': pedido_id}
 
     if teve_resposta:

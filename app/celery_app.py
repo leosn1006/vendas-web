@@ -157,6 +157,7 @@ celery_app.conf.update(
         "tasks.processar_pagamentos_pix_fechamento":     {"queue": "baixa"},
         "tasks.verificar_pagamentos_pendentes":          {"queue": "baixa"},
         "tasks.verificar_cartao_pendente":               {"queue": "baixa"},
+        "tasks.reconciliar_pix_pendentes_web":           {"queue": "baixa"},
         "tasks.processar_orcamento_sheets":              {"queue": "baixa"},
         "tasks.verificar_qualidade_whatsapp":            {"queue": "baixa"},
         "tasks.verificar_qualidade_whatsapp_produto":     {"queue": "normal"},

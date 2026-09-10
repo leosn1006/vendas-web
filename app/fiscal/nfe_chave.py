@@ -1,4 +1,4 @@
-import random
+import secrets
 from datetime import datetime
 
 
@@ -35,7 +35,7 @@ def gerar_chave(
     mod_fmt  = mod.zfill(2)
     serie_fmt = serie.zfill(3)
     nnf_fmt  = str(n_nf).zfill(9)
-    c_nf     = str(random.randint(10000000, 99999999))
+    c_nf     = str(secrets.randbelow(90000000) + 10000000)
 
     chave43 = f'{c_uf}{aamm}{cnpj_digits}{mod_fmt}{serie_fmt}{nnf_fmt}{tp_emis}{c_nf}'
     dv = calcular_dv(chave43)

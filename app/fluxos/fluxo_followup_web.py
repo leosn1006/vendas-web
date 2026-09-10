@@ -180,7 +180,7 @@ def _corpo_html(nome: str, nome_produto: str, itens_extras: list, tem_qrcode: bo
                      style="display:inline-block; background:{cor_secundaria}; color:#ffffff;
                             font-size:15px; font-weight:bold; text-decoration:none;
                             padding:14px 28px; border-radius:12px; margin:16px 0 0;">
-                    💳 Pagar via PIX
+                    🛒 Retomar minha compra
                   </a>
                 </td>
               </tr>

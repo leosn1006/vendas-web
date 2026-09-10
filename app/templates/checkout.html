@@ -1306,6 +1306,10 @@
             }
 
             if (metodoAtual === 'cartao') {
+                // Apaga campos sensíveis imediatamente após o servidor processar —
+                // impede reenvio por clique em voltar e evita sugestão do browser.
+                document.getElementById('inputNumeroCartao').value = '';
+                document.getElementById('inputCvv').value = '';
                 if (data.aprovado) {
                     pagamentoConfirmado(data.guid);
                 } else {

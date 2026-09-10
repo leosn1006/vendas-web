@@ -31,7 +31,7 @@ from database import (db,
     buscar_pedido_por_nome, acertar_valor_pedido,
     listar_chaves_pix_produto, adicionar_chave_pix_produto, desativar_chave_pix_produto,
     get_config_cartao_produto_admin, salvar_config_cartao_produto,
-    busca_financeiro_pix, buscar_tenant_slug_produto,
+    busca_financeiro_produto, buscar_tenant_slug_produto,
     listar_planilhas_dns_produto, adicionar_planilha_dns, atualizar_planilha_dns, remover_planilha_dns,
     listar_notificacoes_em_analise, marcar_notificacao_respondida, bloquear_pedido,
     buscar_notificacao_em_analise_pedido, bloquear_followup_pedido,
@@ -2814,12 +2814,7 @@ _SQL_ROI_REAL = """
             FROM pagamento_pix pp
             WHERE pp.produto_id = %s
               AND pp.horario BETWEEN %s AND %s
-              AND NOT EXISTS (
-                  SELECT 1 FROM pedidos ped
-                  WHERE ped.estado_id = 1000
-                    AND ped.e2e_id = pp.e2e_id
-                    AND ped.e2e_id != ''
-              )
+              AND pp.pedido_id IS NULL
         ), 0) AS total_pix_sem_duplicidade_web,
         COALESCE((
             SELECT SUM(oc.valor_investido)
@@ -2887,12 +2882,7 @@ _SQL_ROI_TODOS_PRODUTOS = """
         SELECT produto_id, SUM(valor) AS total_pix
         FROM pagamento_pix pp_inner
         WHERE horario BETWEEN %(ini)s AND %(fim)s
-          AND NOT EXISTS (
-              SELECT 1 FROM pedidos ped
-              WHERE ped.estado_id = 1000
-                AND ped.e2e_id = pp_inner.e2e_id
-                AND ped.e2e_id != ''
-          )
+          AND pedido_id IS NULL
         GROUP BY produto_id
     ) pp ON pp.produto_id = p.id
     LEFT JOIN (
@@ -3145,13 +3135,16 @@ def chaves_pix_produto(produto_id):
 @requer_admin
 def adicionar_chave_pix(produto_id):
     chave = request.form.get('chave_pix', '').strip()
+    tenant = request.form.get('tenant_slug', 'lsn-livros').strip()
+    if tenant not in ('lsn-livros', 'lbe-livros'):
+        tenant = 'lsn-livros'
     if not chave:
         flash('Informe a chave PIX.', 'warning')
         return redirect(url_for('admin.chaves_pix_produto', produto_id=produto_id))
     try:
-        adicionar_chave_pix_produto(produto_id, chave)
+        adicionar_chave_pix_produto(produto_id, chave, tenant_slug=tenant)
         flash(f'Chave PIX "{chave}" adicionada com sucesso!', 'success')
-        logger.info(f"[ADMIN] ✅ Chave PIX '{chave}' associada ao produto #{produto_id} por {current_user.email}")
+        logger.info(f"[ADMIN] ✅ Chave PIX '{chave}' ({tenant}) associada ao produto #{produto_id} por {current_user.email}")
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro ao adicionar chave PIX: {e}")
         flash(f'Erro ao adicionar chave PIX: {e}', 'danger')
@@ -3177,15 +3170,16 @@ def toggle_para_venda_web(produto_id, chave_id):
     """Marca/desmarca a chave como a usada no QR estático do checkout web (apenas 1 ativa por produto)."""
     from database import db as _db
     try:
-        # Garante unicidade: remove flag de todas as chaves do produto antes de setar a nova
-        _db.execute_query(
-            "UPDATE chaves_pix_produto SET para_venda_web = 0 WHERE produto_id = %s",
-            (produto_id,),
-        )
-        _db.execute_query(
-            "UPDATE chaves_pix_produto SET para_venda_web = 1 WHERE id = %s AND produto_id = %s",
-            (chave_id, produto_id),
-        )
+        # Transação atômica — evita janela em que nenhuma chave está ativa para o produto
+        with _db.get_cursor() as cursor:
+            cursor.execute(
+                "UPDATE chaves_pix_produto SET para_venda_web = 0 WHERE produto_id = %s",
+                (produto_id,),
+            )
+            cursor.execute(
+                "UPDATE chaves_pix_produto SET para_venda_web = 1 WHERE id = %s AND produto_id = %s",
+                (chave_id, produto_id),
+            )
         flash('Chave PIX marcada como chave para venda web.', 'success')
         logger.info(f"[ADMIN] ✅ Chave PIX #{chave_id} marcada para_venda_web no produto #{produto_id} por {current_user.email}")
     except Exception as e:
@@ -3314,8 +3308,8 @@ def financeiro_produto(produto_id):
     hoje = _hoje_sao_paulo()
     data_ini_str = request.args.get('data_ini', hoje.isoformat())
     data_fim_str = request.args.get('data_fim', hoje.isoformat())
-    origem = request.args.get('origem', 'todos')
-    forma  = request.args.get('forma', 'todos')
+    fluxo_inicial = request.args.get('fluxo_inicial', 'todos')
+    forma         = request.args.get('forma', 'todos')
 
     try:
         data_ini = datetime.datetime.fromisoformat(data_ini_str)
@@ -3326,7 +3320,7 @@ def financeiro_produto(produto_id):
         data_ini_str = data_fim_str = hoje.isoformat()
 
     try:
-        financeiro = busca_financeiro_pix(produto_id, data_ini, data_fim, origem=origem, forma=forma)
+        financeiro = busca_financeiro_produto(produto_id, data_ini, data_fim, fluxo_inicial=fluxo_inicial, forma=forma)
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro no financeiro produto #{produto_id}: {e}")
         flash('Erro ao carregar dados financeiros.', 'danger')
@@ -3340,12 +3334,12 @@ def financeiro_produto(produto_id):
         }
 
     return render_template('admin/produto_financeiro.html',
-        produto     = produto,
-        financeiro  = financeiro,
-        data_ini    = data_ini_str,
-        data_fim    = data_fim_str,
-        origem      = origem,
-        forma       = forma,
+        produto       = produto,
+        financeiro    = financeiro,
+        data_ini      = data_ini_str,
+        data_fim      = data_fim_str,
+        fluxo_inicial = fluxo_inicial,
+        forma         = forma,
     )
 
 

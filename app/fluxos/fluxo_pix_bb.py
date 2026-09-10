@@ -150,18 +150,54 @@ def buscar_devolucoes(inicio: datetime, fim: datetime, tenant_slug: str = 'lsn-l
 
 def _tentar_vincular_pedido(pedido_id: int, pix: dict, pagamento_pix_id: int) -> None:
     """
-    Tenta confirmar automaticamente um pedido web quando o txid do PIX é numérico
-    (= pedido_id gerado pelo QR estático). Chamado somente para PIX recém-inseridos.
+    Tenta vincular/confirmar um pedido quando o txid do PIX é numérico (= pedido_id).
+    Agnóstico ao canal — o estado_id determina a ação:
+      1002 → confirma pagamento + linka + envia e-mail (QR estático web; futuramente wpp)
+      1000 → já pago → registra duplicata para rastreabilidade
+      outros → ignora (pedido WhatsApp sem QR, cancelado etc.)
+    Chamado somente para PIX recém-inseridos.
     """
     import database
     try:
         pedido = database.get_pedido(pedido_id)
-        if not pedido or pedido.get('estado_id') != 1002:
-            return
-        if pedido.get('numero_solicitacao_bb'):
-            # Pedido antigo com BB Pay dinâmico — não tocar aqui
+        if not pedido:
             return
 
+        estado = pedido.get('estado_id')
+
+        if estado not in (1000, 1002):
+            # Estado sem ação (lead WhatsApp, cancelado etc.) — ignora sem consultas extras
+            logger.debug(f'[FLUXO-PIX-BB] Pedido #{pedido_id} em estado {estado} — ignorando txid numérico')
+            return
+
+        # Cross-check: chave_pix do PIX deve bater com a chave web do produto do pedido.
+        # Mismatch indica configuração errada (nunca deveria ocorrer); loga mas segue.
+        chave_esperada = database.buscar_chave_pix_venda_web(pedido['produto_id'])
+        chave_recebida = pix.get('chave', '')
+        if chave_esperada and chave_recebida != chave_esperada:
+            logger.error(
+                f'[FLUXO-PIX-BB] ⚠️ Chave PIX divergente para pedido #{pedido_id}: '
+                f'esperada={chave_esperada!r}, recebida={chave_recebida!r} — mantendo vínculo'
+            )
+
+        if estado == 1000:
+            # Pedido já confirmado: duplicata — link para rastreabilidade
+            database.vincular_pedido_ao_pagamento_pix(pagamento_pix_id, pedido_id)
+            logger.warning(f'[FLUXO-PIX-BB] ⚠️ Pedido #{pedido_id} já pago — PIX duplicado registrado (pix_id={pagamento_pix_id})')
+            return
+
+        # Valida valor: QR estático não força valor no banco do BB — cliente pode pagar menos
+        valor_recebido = float(pix.get('valor', 0))
+        valor_esperado = float(pedido.get('valor_pago', 0))
+        if valor_recebido < valor_esperado - 0.01:
+            logger.warning(
+                f'[FLUXO-PIX-BB] ⚠️ Pedido #{pedido_id} valor insuficiente: '
+                f'recebido=R${valor_recebido:.2f}, esperado=R${valor_esperado:.2f} — não confirmando'
+            )
+            database.vincular_pedido_ao_pagamento_pix(pagamento_pix_id, pedido_id)
+            return
+
+        # estado == 1002: confirmar e só depois linkar
         pagador  = pix.get('pagador') or {}
         confirmou = database.confirmar_pagamento_web(
             pedido_id=pedido_id,
@@ -173,8 +209,10 @@ def _tentar_vincular_pedido(pedido_id: int, pix: dict, pagamento_pix_id: int) ->
             e2e_id=pix.get('endToEndId', ''),
         )
         if confirmou:
-            from celery import current_app
-            current_app.send_task('tasks.enviar_email_entrega', args=[pedido_id])
+            database.vincular_pedido_ao_pagamento_pix(pagamento_pix_id, pedido_id)
+            if pedido.get('fluxo_inicial') == 'web':
+                from celery import current_app
+                current_app.send_task('tasks.enviar_email_entrega', args=[pedido_id])
             logger.info(f'[FLUXO-PIX-BB] ✅ Pedido #{pedido_id} confirmado via txid do QR estático (pix_id={pagamento_pix_id})')
     except Exception as exc:
         logger.error(f'[FLUXO-PIX-BB] ❌ Erro ao vincular pedido #{pedido_id}: {exc}')

@@ -18,6 +18,7 @@
                     <th>Chave PIX</th>
                     <th>Status</th>
                     <th>QR Venda Web</th>
+                    <th>Conta BB</th>
                     <th>Cadastrado em</th>
                     {% if current_user.is_admin() %}<th></th>{% endif %}
                 </tr>
@@ -41,6 +42,9 @@
                         {% else %}
                         <span style="color: var(--muted); font-size: 13px;">—</span>
                         {% endif %}
+                    </td>
+                    <td style="font-family: var(--mono); font-size: 12px; color: var(--muted);">
+                        {{ c.tenant_slug or 'lsn-livros' }}
                     </td>
                     <td style="color: var(--muted); font-size: 13px;">
                         {{ c.criado_em.strftime('%d/%m/%Y %H:%M') if c.criado_em else '—' }}
@@ -82,12 +86,19 @@
         </p>
         <form method="POST"
               action="{{ url_for('admin.adicionar_chave_pix', produto_id=produto.id) }}"
-              style="display: flex; gap: 12px; align-items: flex-end; max-width: 480px;">
+              style="display: flex; gap: 12px; align-items: flex-end; max-width: 600px;">
             <div style="flex: 1;">
                 <label for="chave_pix">Chave PIX</label>
                 <input type="text" id="chave_pix" name="chave_pix"
                        placeholder="ex: +5561998824782 ou email@dominio.com"
                        required autocomplete="off">
+            </div>
+            <div>
+                <label for="tenant_slug">Conta BB</label>
+                <select id="tenant_slug" name="tenant_slug">
+                    <option value="lsn-livros">lsn-livros</option>
+                    <option value="lbe-livros">lbe-livros</option>
+                </select>
             </div>
             <button type="submit" class="btn btn-primary" style="white-space: nowrap; margin-bottom: 0;">
                 + Adicionar
@@ -95,6 +106,7 @@
         </form>
         <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">
             Formatos aceitos: telefone com + (ex: +5561998824782), e-mail, CPF, CNPJ ou chave aleatória (EVP).
+            Selecione a conta BB onde a chave está cadastrada.
         </p>
     </div>
     {% endif %}

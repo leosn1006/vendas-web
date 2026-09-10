@@ -77,6 +77,12 @@ def gerar_payload_pix(
     ref   = ''.join(c for c in str(txid) if c.isalnum())[:25]
     valor_str = f'{float(valor):.2f}'
 
+    # BACEN limita chaves PIX (email ≤ 77 chars), mas validamos aqui para garantir que
+    # merchant_account ≤ 99 chars (campo 26 usa prefixo de 2 dígitos: máx "26" + "99" + valor).
+    # GUI subfield = 18 chars fixos → chave pode ter no máximo 77 chars.
+    if len(chave_pix) > 77:
+        raise ValueError(f'Chave PIX excede 77 caracteres (len={len(chave_pix)}): payload EMV seria inválido')
+
     merchant_account = (
         _campo('00', _PIX_GUI)
         + _campo('01', chave_pix)

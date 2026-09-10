@@ -689,37 +689,92 @@ def reprocessar_nfe_pendentes(self, config_id: int | None = None, limite: int = 
 @shared_task(name='tasks.reconciliar_pix_pendentes_web', bind=True, max_retries=0)
 def reconciliar_pix_pendentes_web(self):
     """
-    Beat task (15 min) — garante que pedidos web em estado_id=1002 com QR estático
-    (numero_solicitacao_bb IS NULL) sejam confirmados mesmo que o browser tenha
-    fechado antes do polling completar.
+    Beat task (15 min) — confirma pedidos web em estado_id=1002 com QR estático
+    que não foram confirmados pelo polling do checkout (browser fechado, timeout etc.).
+
+    Para cada pedido pendente:
+      1. Verifica banco local (rápido, sem custo de API)
+      2. Se não encontrou: consulta BB API diretamente por txid (per-txid)
+      3. Se encontrou: salva PIX, confirma e envia e-mail (se fluxo_inicial='web')
+
+    O beat horário (executar_pix_bb) continua responsável pela ingestion completa
+    de todos os PIX do dia — este task é focado em confirmação de pedidos pendentes.
     """
     _TAG = 'TASK-RECONCILIA-PIX'
     try:
-        from database import buscar_pedidos_pendentes_pix_estatico, buscar_pagamento_pix_por_txid, confirmar_pagamento_web
+        import bb_pix as _bb_pix
+        from datetime import datetime, timezone, timedelta
+        from database import (buscar_pedidos_pendentes_pix_estatico,
+                               buscar_pagamento_pix_por_txid,
+                               salvar_pagamento_pix,
+                               confirmar_pagamento_web,
+                               vincular_pedido_ao_pagamento_pix)
+
+        _SP_TZ = timezone(timedelta(hours=-3))
+
         pendentes = buscar_pedidos_pendentes_pix_estatico()
         if not pendentes:
             logger.debug(f'[{_TAG}] Nenhum pedido pendente')
             return
-        logger.info(f'[{_TAG}] {len(pendentes)} pedido(s) aguardando confirmação')
+
+        logger.info(f'[{_TAG}] {len(pendentes)} pedido(s) pendente(s) — iniciando reconciliação per-txid')
         confirmados = 0
+
         for pedido in pendentes:
             pedido_id = pedido['id']
-            pix = buscar_pagamento_pix_por_txid(str(pedido_id))
-            if not pix:
-                continue
-            confirmou = confirmar_pagamento_web(
-                pedido_id=pedido_id,
-                valor=float(pix.get('valor', pedido.get('valor_pago', 0))),
-                nome_pagador=pix.get('nome_pagador', ''),
-                cpf_cnpj_pagador=pix.get('cpf_cnpj', ''),
-                valor_liquido=None,
-                data_repasse=None,
-                e2e_id=pix.get('e2e_id', ''),
-            )
-            if confirmou:
-                enviar_email_entrega.apply_async(args=[pedido_id])
-                confirmados += 1
-                logger.info(f'[{_TAG}] ✅ Pedido #{pedido_id} confirmado via reconciliação')
+            try:
+                pix = buscar_pagamento_pix_por_txid(str(pedido_id))
+
+                if not pix:
+                    # Consulta BB API por txid — mais cirúrgico que varredura diária
+                    tenant = pedido.get('tenant_slug', 'lsn-livros')
+                    _dt_base = pedido['data_ultima_atualizacao']
+                    if _dt_base.tzinfo is None:
+                        _dt_base = _dt_base.replace(tzinfo=_SP_TZ)
+                    _inicio = _dt_base - timedelta(hours=1)
+                    _fim    = datetime.now(_SP_TZ)
+                    pix_bb = _bb_pix.consultar_pix_por_txid(
+                        str(pedido_id), _inicio, _fim, tenant_slug=tenant,
+                    )
+                    if pix_bb:
+                        salvar_pagamento_pix(
+                            pix_bb, pedido['produto_id'], tenant_slug=tenant,
+                        )
+                        # Re-fetch sempre: INSERT IGNORE retorna None se já existia pelo
+                        # e2e_id (beat diário gravou sem txid), mas o registro está no banco
+                        pix = buscar_pagamento_pix_por_txid(str(pedido_id))
+
+                if not pix:
+                    continue
+
+                valor_recebido = float(pix.get('valor', 0))
+                valor_esperado = float(pedido.get('valor_pago', 0))
+                if valor_recebido < valor_esperado - 0.01:
+                    logger.warning(
+                        f'[{_TAG}] ⚠️ Pedido #{pedido_id} valor insuficiente: '
+                        f'recebido=R${valor_recebido:.2f}, esperado=R${valor_esperado:.2f} — vinculando sem confirmar'
+                    )
+                    vincular_pedido_ao_pagamento_pix(pix['id'], pedido_id)
+                    continue
+
+                confirmou = confirmar_pagamento_web(
+                    pedido_id=pedido_id,
+                    valor=valor_recebido,
+                    nome_pagador=pix.get('nome_pagador', ''),
+                    cpf_cnpj_pagador=pix.get('cpf_cnpj', ''),
+                    valor_liquido=None,
+                    data_repasse=None,
+                    e2e_id=pix.get('e2e_id', ''),
+                )
+                if confirmou:
+                    vincular_pedido_ao_pagamento_pix(pix['id'], pedido_id)
+                    if pedido.get('fluxo_inicial') == 'web':
+                        enviar_email_entrega.apply_async(args=[pedido_id])
+                    confirmados += 1
+                    logger.info(f'[{_TAG}] ✅ Pedido #{pedido_id} confirmado (fluxo={pedido.get("fluxo_inicial")})')
+            except Exception as exc_pedido:
+                logger.error(f'[{_TAG}] ❌ Erro ao processar pedido #{pedido_id}: {exc_pedido}')
+
         if confirmados:
             logger.info(f'[{_TAG}] ✅ {confirmados} pedido(s) confirmado(s) nesta rodada')
     except Exception as exc:

@@ -119,6 +119,38 @@ def consultar_todos_pix(inicio: datetime, fim: datetime, tenant_slug: str = 'lsn
     return todos
 
 
+def consultar_pix_por_txid(txid: str, inicio: datetime, fim: datetime,
+                           tenant_slug: str = 'lsn-livros', token: str = None) -> dict | None:
+    """
+    Consulta um PIX específico pelo txid na janela [inicio, fim].
+    Retorna o dict do PIX ou None se não encontrado / erro.
+    Mais cirúrgico que consultar_todos_pix — uma chamada por pedido,
+    usada na reconciliação e no polling do checkout para confirmação imediata.
+    """
+    conta = _conta(tenant_slug)
+    token = token or _get_token(tenant_slug)
+    resp = requests.get(
+        f'{_API_URL}/pix',
+        params={
+            'txid':                     txid,
+            'inicio':                   inicio.isoformat(),
+            'fim':                      fim.isoformat(),
+            'gw-dev-app-key':           conta['app_key'],
+            'paginacao.itensPorPagina': 10,
+        },
+        headers={'Authorization': f'Bearer {token}'},
+        cert=(conta['cert_pem'], conta['cert_key']),
+        timeout=15,
+    )
+    if resp.status_code == 404:
+        return None
+    if not resp.ok:
+        logger.error(f'[BB-PIX][{tenant_slug}] consultar_pix_por_txid {txid}: {resp.status_code} {resp.text}')
+        return None
+    pix_list = resp.json().get('pix') or []
+    return pix_list[0] if pix_list else None
+
+
 def consultar_devolucoes_pix(inicio: datetime, fim: datetime, tenant_slug: str = 'lsn-livros', token: str = None) -> list:
     """
     Consulta devoluções de PIX no intervalo [inicio, fim] para a conta (tenant_slug)
