@@ -80,7 +80,7 @@ def get_pedido_finalizado_via_cookie(request_obj, produto_id: int):
         return None
 
     pedido = get_pedido(int(pedido_id_cookie))
-    if pedido and pedido['produto_id'] == produto_id and pedido['estado_id'] in (1000, 1001, 1002, 1005, 1006):
+    if pedido and pedido['produto_id'] == produto_id and pedido['estado_id'] in (1000, 1001, 1002, 1005, 1006, 1007):
         return pedido['id']
     return None
 
@@ -303,8 +303,8 @@ def verificar_pagamento(txid: str) -> dict:
             if pedido and pedido.get('numero_solicitacao_bb'):
                 _usa_bb_pay = True
 
-        if pedido is None and not txid.isdigit():
-            # txid não numérico → é numero_solicitacao_bb (pedido legado BB Pay)
+        if pedido is None:
+            # txid numérico sem match direto, ou txid não-numérico → tenta como numero_solicitacao_bb
             pedido = get_pedido_by_solicitacao_bb(txid)
             _usa_bb_pay = True
 
@@ -579,11 +579,8 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
             cpf_cnpj_pagador=_formatar_documento(cpf, 1),
         )
         if confirmou_agora:
-            from database import get_pedido as _get_pedido
-            _pedido = _get_pedido(pedido_id) or {}
-            if _pedido.get('fluxo_inicial') == 'web':
-                import tasks
-                tasks.enviar_email_entrega.delay(pedido_id)
+            import tasks
+            tasks.enviar_email_entrega.delay(pedido_id)
         itens = [
             {'id': item['id'], 'tipo': item['tipo'], 'nome': item['nome'], 'valor': float(item['valor'])}
             for item in listar_itens_pedido(pedido_id)
@@ -616,7 +613,9 @@ def reconciliar_cartao(pedido_id: int) -> dict:
     from web import cielo
     from database import (get_ultima_tentativa_pagamento_cartao, confirmar_pagamento_web,
                           marcar_pedido_cartao_negado, atualizar_tentativa_pagamento_cartao,
-                          get_pedido)
+                          marcar_pedido_nao_processado, buscar_idade_pedido)
+
+    _DIAS_EXPIRACAO_CARTAO = 7
 
     tentativa = get_ultima_tentativa_pagamento_cartao(pedido_id)
     if not tentativa:
@@ -632,7 +631,11 @@ def reconciliar_cartao(pedido_id: int) -> dict:
             return {'pago': False}
         payment_ids = [p['PaymentId'] for p in resultado.get('Payments', []) if p.get('PaymentId')]
         if not payment_ids:
-            # Cielo nunca recebeu a chamada original — segue em 1005, próxima rodada tenta de novo.
+            # Cielo não tem registro — verifica se o pedido já expirou (≥7 dias sem resposta).
+            idade = buscar_idade_pedido(pedido_id)
+            if idade and idade.days >= _DIAS_EXPIRACAO_CARTAO:
+                if marcar_pedido_nao_processado(pedido_id):
+                    logger.info(f'[WEB-CHECKOUT] Pedido #{pedido_id} expirado ({idade.days}d) sem registro Cielo → 1007')
             return {'pago': False}
 
     aprovado = None
@@ -657,15 +660,19 @@ def reconciliar_cartao(pedido_id: int) -> dict:
         )
         confirmou_agora = confirmar_pagamento_web(pedido_id=pedido_id, valor=float(tentativa['valor']))
         if confirmou_agora:
-            _pedido = get_pedido(pedido_id) or {}
-            if _pedido.get('fluxo_inicial') == 'web':
-                import tasks
-                tasks.enviar_email_entrega.delay(pedido_id)
+            import tasks
+            tasks.enviar_email_entrega.delay(pedido_id)
         return {'pago': True, 'pedido_id': pedido_id}
 
     if teve_resposta:
         # Teve resposta conclusiva da Cielo (Status != 2) e não é aprovado — negado.
         marcar_pedido_cartao_negado(pedido_id)
+    else:
+        # Sem resposta conclusiva — verifica se o pedido já expirou (≥7 dias).
+        idade = buscar_idade_pedido(pedido_id)
+        if idade and idade.days >= _DIAS_EXPIRACAO_CARTAO:
+            if marcar_pedido_nao_processado(pedido_id):
+                logger.info(f'[WEB-CHECKOUT] Pedido #{pedido_id} expirado ({idade.days}d) sem resposta Cielo → 1007')
     return {'pago': False}
 
 

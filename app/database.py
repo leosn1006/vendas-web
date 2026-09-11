@@ -2099,7 +2099,7 @@ def get_pedido_cartao_para_retry(pedido_id: int, produto_id: int):
     criar um pedido novo a cada tentativa negada (o que deixaria 'lixo' de pedidos 1005/1006
     órfãos). Usado só pelo fluxo de cartão; get_pedido_nao_finalizado continua igual pro Pix."""
     return db.execute_query(
-        "SELECT * FROM pedidos WHERE id = %s AND produto_id = %s AND estado_id IN (1004, 1003, 1006)",
+        "SELECT * FROM pedidos WHERE id = %s AND produto_id = %s AND estado_id IN (1004, 1003, 1006, 1007)",
         (pedido_id, produto_id), fetch_one=True
     )
 
@@ -2374,12 +2374,35 @@ def salvar_bandeira_bin_cache(bin_numero: str, bandeira: str = None, card_type: 
 
 def buscar_pedidos_aguardando_cartao_cielo() -> list:
     """Pedidos em 1005 (aguardando autorização Cielo) há mais de 5 minutos — candidatos ao
-    sweep de reconciliação do Celery Beat. Análogo a buscar_pedidos_aguardando_bb_pay."""
+    sweep de reconciliação do Celery Beat. Limite de 30 dias: pedidos mais antigos já
+    serão marcados como 1007 pelo reconciliar_cartao()."""
     return db.execute_query(
         """SELECT id FROM pedidos
-           WHERE estado_id = 1005 AND data_ultima_atualizacao < NOW() - INTERVAL 5 MINUTE""",
+           WHERE estado_id = 1005
+             AND data_ultima_atualizacao < NOW() - INTERVAL 5 MINUTE
+             AND data_ultima_atualizacao > NOW() - INTERVAL 30 DAY""",
         fetch_all=True
     ) or []
+
+
+def marcar_pedido_nao_processado(pedido_id: int) -> bool:
+    """CAS: 1005 → 1007. Retorna True se ganhou a corrida."""
+    linhas = db.execute_query(
+        """UPDATE pedidos SET estado_id = 1007, data_ultima_atualizacao = CURRENT_TIMESTAMP
+           WHERE id = %s AND estado_id = 1005""",
+        (pedido_id,), return_rowcount=True
+    )
+    return bool(linhas)
+
+
+def buscar_idade_pedido(pedido_id: int):
+    """Retorna timedelta desde data_ultima_atualizacao do pedido, ou None se não encontrado."""
+    from datetime import timedelta
+    row = db.execute_query(
+        "SELECT TIMESTAMPDIFF(SECOND, data_ultima_atualizacao, NOW()) AS segundos FROM pedidos WHERE id = %s",
+        (pedido_id,), fetch_one=True
+    )
+    return timedelta(seconds=row['segundos']) if row else None
 
 
 # ── pagamento_pix ─────────────────────────────────────────────────────────────
@@ -3148,10 +3171,9 @@ def vincular_nfe_ao_pagamento_pix(pagamento_pix_id: int, nfe_id: int) -> None:
 
 
 def vincular_nfe_ao_pagamento_cartao(pagamento_cartao_id: int, nfe_id: int) -> None:
-    db.execute_query(
-        "UPDATE nfe_emitidas SET pagamento_cartao_id = %s WHERE id = %s",
-        (pagamento_cartao_id, nfe_id),
-    )
+    # Mantido por compatibilidade — o vínculo real é nfe_emitidas.pagamento_cartao_id
+    # já inserido por inserir_nfe_emitida_cartao (UNIQUE INDEX garante unicidade).
+    pass
 
 
 def atualizar_nfe_autorizada(
@@ -3288,7 +3310,7 @@ def buscar_pagamentos_cartao_sem_nfe(
 
 
 def buscar_pagamento_cartao_por_id(cartao_id: int) -> dict | None:
-    rows = db.execute_query(
+    return db.execute_query(
         """SELECT pc.id, pc.valor, pc.bandeira, pc.cartao_mascarado,
                   ped.nome_pagador, ped.produto_id,
                   REPLACE(REPLACE(REPLACE(ped.cpf_cnpj_pagador,'.',''),'-',''),'/','') AS cpf_cnpj
@@ -3296,6 +3318,5 @@ def buscar_pagamento_cartao_por_id(cartao_id: int) -> dict | None:
            JOIN pedidos ped ON ped.id = pc.pedido_id
            WHERE pc.id = %s""",
         (cartao_id,),
-        fetch_all=True,
+        fetch_one=True,
     )
-    return rows[0] if rows else None
