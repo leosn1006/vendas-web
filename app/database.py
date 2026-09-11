@@ -2470,7 +2470,7 @@ def busca_financeiro_produto(produto_id, data_ini, data_fim, fluxo_inicial: str 
            FROM pagamento_pix pp
            JOIN pedidos ped ON ped.id = pp.pedido_id
            LEFT JOIN nfe_emitidas ne ON ne.id = pp.nfe_emitida_id
-           WHERE pp.produto_id = %s AND pp.horario BETWEEN %s AND %s
+           WHERE ped.produto_id = %s AND pp.horario BETWEEN %s AND %s
              AND pp.pedido_id IS NOT NULL
 
            UNION ALL

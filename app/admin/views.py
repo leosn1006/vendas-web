@@ -2845,6 +2845,7 @@ _SQL_ROI_REAL_WEB = """
         FROM pedidos
         WHERE produto_id = %s
           AND estado_id = 1000
+          AND fluxo_inicial = 'web'
           AND data_pagamento BETWEEN %s AND %s
     ) w
     JOIN (
@@ -2891,6 +2892,7 @@ _SQL_ROI_TODOS_PRODUTOS = """
             SUM(CASE WHEN metodo_pagamento = 'cartao' THEN valor_pago ELSE 0 END) AS total_cartao
         FROM pedidos
         WHERE estado_id = 1000
+          AND fluxo_inicial = 'web'
           AND data_pagamento BETWEEN %(ini)s AND %(fim)s
         GROUP BY produto_id
     ) pw ON pw.produto_id = p.id
