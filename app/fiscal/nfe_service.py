@@ -99,7 +99,7 @@ def emitir_nfe(
     # 5. Reserva número com lock (transação própria, commita antes do SOAP)
     n_nf = incrementar_numero_nfe(config['id'])
     serie = config.get('serie_padrao', '001')
-    data_emissao = datetime.now()
+    data_emissao = pix['horario']  # contador: usar data do pagamento, não data de emissão
     ambiente = int(config.get('ambiente', 2))
 
     # 6. Gera chave de acesso
@@ -274,7 +274,7 @@ def emitir_nfe_cartao(pagamento_cartao_id: int, config_id: int) -> dict:
 
     n_nf = incrementar_numero_nfe(config['id'])
     serie = config.get('serie_padrao', '001')
-    data_emissao = datetime.now()
+    data_emissao = cartao['data_pagamento']  # contador: usar data do pagamento, não data de emissão
     ambiente = int(config.get('ambiente', 2))
 
     chave44, c_nf = gerar_chave(_C_UF_DF, data_emissao, config['cnpj'], '55', serie, n_nf)

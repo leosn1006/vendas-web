@@ -3312,7 +3312,7 @@ def buscar_pagamentos_cartao_sem_nfe(
 def buscar_pagamento_cartao_por_id(cartao_id: int) -> dict | None:
     return db.execute_query(
         """SELECT pc.id, pc.valor, pc.bandeira, pc.cartao_mascarado,
-                  ped.nome_pagador, ped.produto_id,
+                  ped.nome_pagador, ped.produto_id, ped.data_pagamento,
                   REPLACE(REPLACE(REPLACE(ped.cpf_cnpj_pagador,'.',''),'-',''),'/','') AS cpf_cnpj
            FROM pagamento_cartao pc
            JOIN pedidos ped ON ped.id = pc.pedido_id

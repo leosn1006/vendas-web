@@ -83,14 +83,12 @@ celery_app.conf.beat_schedule = {
         'options': {'queue': 'baixa'},
     },
     # NF-e — LBE LIVROS LTDA: emite para PIX e cartão com mais de 7 dias (garantia)
-    # Beat desligado até confirmar com contador a questão de competência fiscal
-    # (data da NF-e = data de emissão vs data do pagamento, podendo cruzar mês)
-    # Habilitar após validação: descomentar as 4 linhas abaixo
-    # 'emitir-nfe-diaria-lbe': {
-    #     'task': 'tasks.emitir_nfe_diaria_lbe',
-    #     'schedule': crontab(hour=6, minute=0),  # 3h São Paulo = 6h UTC
-    #     'options': {'queue': 'baixa'},
-    # },
+    # dhEmi usa data do pagamento (validado com contador — prazo DF: até dia 20 do mês seguinte)
+    'emitir-nfe-diaria-lbe': {
+        'task': 'tasks.emitir_nfe_diaria_lbe',
+        'schedule': crontab(hour=6, minute=0),  # 3h São Paulo = 6h UTC
+        'options': {'queue': 'baixa'},
+    },
     'orcamento-sheets-horario': {
         'task': 'tasks.processar_orcamento_sheets',
         'schedule': crontab(minute=10),  # toda hora no :10 — hoje sempre; ontem também entre 00h–04h
