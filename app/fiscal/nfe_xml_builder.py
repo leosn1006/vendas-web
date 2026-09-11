@@ -111,17 +111,21 @@ def montar_nfe(
     chave44: str,
     c_nf: str,
     data_emissao: datetime | None = None,
+    forma_pagamento: str = 'pix',
+    valor_override: float | None = None,
 ) -> str:
     """
     Monta e serializa o XML da NF-e 4.00 (ainda não assinado).
 
     Args:
-        config:       dict de nfe_configuracao (serie_padrao, ambiente, x_prod, ncm, cfop)
-        pagamento:    dict de pagamento_pix (cpf_cnpj, nome_pagador, valor)
-        n_nf:         número sequencial da NF-e
-        chave44:      chave de acesso de 44 dígitos já calculada
-        c_nf:         código numérico aleatório de 8 dígitos (parte da chave)
-        data_emissao: datetime da emissão (default: agora)
+        config:          dict de nfe_configuracao (serie_padrao, ambiente, x_prod, ncm, cfop)
+        pagamento:       dict com cpf_cnpj, nome_pagador, valor (e campos opcionais)
+        n_nf:            número sequencial da NF-e
+        chave44:         chave de acesso de 44 dígitos já calculada
+        c_nf:            código numérico aleatório de 8 dígitos (parte da chave)
+        data_emissao:    datetime da emissão (default: agora)
+        forma_pagamento: 'pix' → tPag=17; qualquer outro → tPag=03 (cartão crédito)
+        valor_override:  substitui pagamento['valor'] (ex: PIX com devolução parcial)
 
     Returns:
         XML string sem declaração <?xml?> e sem assinatura.
@@ -151,8 +155,10 @@ def montar_nfe(
     cst_cofins = config.get('cst_cofins') or '06'
     cst_ibs_cbs  = config.get('cst_ibs_cbs') or '410'
     c_class_trib = config.get('c_class_trib') or '410009'
-    valor        = _fmt_valor(pagamento.get('valor', '0'))
-    v_icms_deson = _fmt_valor(Decimal(str(pagamento.get('valor', '0'))) * aliq_icms_deson)
+    _valor_base  = valor_override if valor_override is not None else pagamento.get('valor', '0')
+    valor        = _fmt_valor(_valor_base)
+    v_icms_deson = _fmt_valor(Decimal(str(_valor_base)) * aliq_icms_deson)
+    tpag         = '17' if forma_pagamento == 'pix' else '03'
     cpf_cnpj = ''.join(filter(str.isdigit, str(pagamento.get('cpf_cnpj') or '')))
     # Homologação exige xNome exato do destinatário (cStat=598 se diferente)
     if int(tp_amb) == 2:
@@ -243,7 +249,7 @@ def montar_nfe(
     pag = Tnfe.InfNfe.Pag(
         detPag=[
             Tnfe.InfNfe.Pag.DetPag(
-                tPag='17',   # 17 = PIX
+                tPag=tpag,
                 vPag=valor,
             )
         ]

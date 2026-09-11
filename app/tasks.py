@@ -642,12 +642,12 @@ def enviar_email_entrega(self, pedido_id: int):
 
 
 @shared_task(name='tasks.emitir_nfe', bind=True, max_retries=3)
-def emitir_nfe(self, pagamento_pix_id: int, config_id: int | None = None):
+def emitir_nfe(self, pagamento_pix_id: int, config_id: int | None = None, valor_override: float | None = None):
     """Emite NF-e para um pagamento PIX. Retry com backoff exponencial."""
     _TAG = 'TASK-NFE'
     try:
         from fiscal.nfe_service import emitir_nfe as _emitir
-        resultado = _emitir(pagamento_pix_id, config_id=config_id)
+        resultado = _emitir(pagamento_pix_id, config_id=config_id, valor_override=valor_override)
         status = resultado.get('status', '?')
         nfe_id = resultado.get('nfe_id')
         logger.info(f'[{_TAG}] PIX={pagamento_pix_id} nfe_id={nfe_id} → {status}')
@@ -669,21 +669,75 @@ def emitir_nfe(self, pagamento_pix_id: int, config_id: int | None = None):
 
 @shared_task(name='tasks.reprocessar_nfe_pendentes', bind=True, max_retries=0)
 def reprocessar_nfe_pendentes(self, config_id: int | None = None, limite: int = 50):
-    """Beat task — recupera PIX das últimas 24h sem NF-e, reagendando emissão."""
-    _TAG = 'TASK-NFE-REPRO'
+    """Substituída por emitir_nfe_diaria_lbe — mantida para compatibilidade de beat existente."""
+    logger.info('[TASK-NFE-REPRO] Desabilitada — usar emitir_nfe_diaria_lbe')
+
+
+@shared_task(name='tasks.emitir_nfe_cartao', bind=True, max_retries=3)
+def emitir_nfe_cartao(self, pagamento_cartao_id: int, config_id: int | None = None):
+    """Emite NF-e para um pagamento por cartão de crédito. Retry com backoff exponencial."""
+    _TAG = 'TASK-NFE-CARTAO'
     try:
-        from database import buscar_pagamentos_pix_sem_nfe
-        ids = buscar_pagamentos_pix_sem_nfe(limite=limite, dias_atras=1, config_id=config_id)
-        if not ids:
-            logger.debug(f'[{_TAG}] Nenhum PIX pendente')
-            return
-        logger.info(f'[{_TAG}] {len(ids)} PIX pendente(s) → agendando emissão (config_id={config_id})')
-        for pix_id in ids:
-            emitir_nfe.apply_async(args=[pix_id], kwargs={'config_id': config_id})
+        from fiscal.nfe_service import emitir_nfe_cartao as _emitir
+        resultado = _emitir(pagamento_cartao_id, config_id=config_id)
+        status = resultado.get('status', '?')
+        nfe_id = resultado.get('nfe_id')
+        logger.info(f'[{_TAG}] CARTAO={pagamento_cartao_id} nfe_id={nfe_id} → {status}')
+    except (ValueError, RuntimeError) as exc:
+        logger.error(f'[{_TAG}] ❌ Erro permanente CARTAO={pagamento_cartao_id}: {exc}')
+        notificar_admin_erro_sistema(f'TASK-NFE-CARTAO | CARTAO={pagamento_cartao_id} | {type(exc).__name__}: {str(exc)[:200]}')
     except Exception as exc:
-        logger.error(f'[{_TAG}] ❌ Erro: {exc}')
-        import traceback
-        traceback.print_exc()
+        tentativa = self.request.retries + 1
+        countdown  = 60 * (2 ** self.request.retries)
+        logger.exception(
+            f'[{_TAG}] ❌ CARTAO={pagamento_cartao_id} | '
+            f'Tentativa {tentativa}/{self.max_retries + 1} | retry em {countdown}s: {exc}'
+        )
+        if self.request.retries >= self.max_retries:
+            notificar_admin_erro_sistema(f'TASK-NFE-CARTAO | CARTAO={pagamento_cartao_id} | esgotou retries | {type(exc).__name__}')
+        raise self.retry(exc=exc, countdown=countdown)
+
+
+@shared_task(name='tasks.emitir_nfe_diaria_lbe', bind=True, max_retries=0)
+def emitir_nfe_diaria_lbe(self):
+    """
+    Rotina diária às 3h (São Paulo) — emite NF-e para todos os pagamentos LBE
+    (PIX + cartão) com mais de 7 dias (janela de devolução/garantia).
+    Descarta pagamentos < R$2 (testes) e PIX com devolução total.
+    """
+    _TAG = 'TASK-NFE-DIARIA'
+    LBE_TENANT_SLUG = 'lbe-livros'
+    LBE_CONFIG_ID   = 2
+
+    try:
+        from database import buscar_pagamentos_pix_sem_nfe, buscar_pagamentos_cartao_sem_nfe
+
+        pix_list = buscar_pagamentos_pix_sem_nfe(
+            tenant_slug=LBE_TENANT_SLUG, dias_minimos=7, valor_minimo=2.0, limite=500,
+        )
+        cartao_list = buscar_pagamentos_cartao_sem_nfe(
+            config_id=LBE_CONFIG_ID, dias_minimos=7, valor_minimo=2.0, limite=500,
+        )
+
+        for item in pix_list:
+            emitir_nfe.apply_async(
+                args=[item['id']],
+                kwargs={'config_id': LBE_CONFIG_ID, 'valor_override': item['valor_liquido']},
+                countdown=1,
+            )
+        for item in cartao_list:
+            emitir_nfe_cartao.apply_async(
+                args=[item['id']],
+                kwargs={'config_id': LBE_CONFIG_ID},
+                countdown=1,
+            )
+
+        logger.info(
+            f'[{_TAG}] {len(pix_list)} PIX + {len(cartao_list)} cartão agendados para NF-e'
+        )
+    except Exception as exc:
+        logger.error(f'[{_TAG}] ❌ Erro na rotina diária: {exc}')
+        notificar_admin_erro_sistema(f'TASK-NFE-DIARIA | {type(exc).__name__}: {str(exc)[:200]}')
 
 
 @shared_task(name='tasks.reconciliar_pix_pendentes_web', bind=True, max_retries=0)

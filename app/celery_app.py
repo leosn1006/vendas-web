@@ -82,12 +82,13 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute='*/15'),
         'options': {'queue': 'baixa'},
     },
-    # NF-e — LBE LIVROS LTDA (config_id=2)
-    # Habilitar quando conta corrente LBE estiver configurada e PIX fluindo pela LBE
-    # 'reprocessar-nfe-pendentes-lbe': {
-    #     'task': 'tasks.reprocessar_nfe_pendentes',
-    #     'schedule': crontab(minute='*/30'),
-    #     'kwargs': {'config_id': 2, 'limite': 50},
+    # NF-e — LBE LIVROS LTDA: emite para PIX e cartão com mais de 7 dias (garantia)
+    # Beat desligado até confirmar com contador a questão de competência fiscal
+    # (data da NF-e = data de emissão vs data do pagamento, podendo cruzar mês)
+    # Habilitar após validação: descomentar as 4 linhas abaixo
+    # 'emitir-nfe-diaria-lbe': {
+    #     'task': 'tasks.emitir_nfe_diaria_lbe',
+    #     'schedule': crontab(hour=6, minute=0),  # 3h São Paulo = 6h UTC
     #     'options': {'queue': 'baixa'},
     # },
     'orcamento-sheets-horario': {
@@ -164,6 +165,7 @@ celery_app.conf.update(
         "tasks.verificar_emails_clientes":               {"queue": "baixa"},
         # NF-e
         "tasks.emitir_nfe":                              {"queue": "normal"},
-        "tasks.reprocessar_nfe_pendentes":               {"queue": "baixa"},
+        "tasks.emitir_nfe_cartao":                       {"queue": "normal"},
+        "tasks.emitir_nfe_diaria_lbe":                   {"queue": "baixa"},
     },
 )

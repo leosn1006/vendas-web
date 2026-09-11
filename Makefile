@@ -1,4 +1,4 @@
-.PHONY: help upload-google-ads-now upload-google-sheets-now buscar-pix buscar-pix-periodo orcamento-sheets-now exportar-mensagens exportar-telefones-google-ads logs-worker logs-worker-normal logs-worker-baixa logs-files restart-worker restart-nginx reload-nginx atualizar-senha criar-usuario
+.PHONY: help upload-google-ads-now upload-google-sheets-now buscar-pix buscar-pix-periodo orcamento-sheets-now exportar-mensagens exportar-telefones-google-ads logs-worker logs-worker-normal logs-worker-baixa logs-files restart-worker restart-nginx reload-nginx atualizar-senha criar-usuario emitir-nfe-agora
 
 help:
 	@echo "Comandos disponíveis:"
@@ -22,6 +22,10 @@ help:
 	@echo "  make reload-nginx                 # Testa e recarrega a config do nginx sem derrubar o container (use isso, não restart-nginx, ao mexer em default.conf)"
 	@echo "  make atualizar-senha email=x senha=y  # Atualiza senha de um usuário admin"
 	@echo "  make criar-usuario email=x senha=y nome=z perfil=admin  # Cria novo usuário"
+
+emitir-nfe-agora:
+	@echo "Disparando rotina diária de NF-e LBE (PIX + cartão, ≥7 dias)..."
+	docker compose exec worker-baixa celery -A celery_app call tasks.emitir_nfe_diaria_lbe --queue baixa
 
 upload-google-ads-now:
 	@echo "Disparando task tasks.processar_uploads_google_ads..."

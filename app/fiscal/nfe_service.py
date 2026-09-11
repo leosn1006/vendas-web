@@ -23,9 +23,12 @@ from mysql.connector import IntegrityError
 from database import (
     buscar_nfe_configuracao_ativa,
     buscar_pagamento_pix_por_id,
+    buscar_pagamento_cartao_por_id,
     incrementar_numero_nfe,
     criar_nfe_pendente,
+    inserir_nfe_emitida_cartao,
     vincular_nfe_ao_pagamento_pix,
+    vincular_nfe_ao_pagamento_cartao,
     atualizar_nfe_autorizada,
     atualizar_nfe_rejeitada,
     atualizar_nfe_aguardando_retorno,
@@ -44,13 +47,18 @@ logger = logging.getLogger(__name__)
 _C_UF_DF = '53'
 
 
-def emitir_nfe(pagamento_pix_id: int, config_id: int | None = None) -> dict:
+def emitir_nfe(
+    pagamento_pix_id: int,
+    config_id: int | None = None,
+    valor_override: float | None = None,
+) -> dict:
     """
     Emite uma NF-e para um pagamento PIX.
 
     Args:
         pagamento_pix_id: PK de pagamento_pix
-        config_id: tenant específico; None usa o tenant ativo padrão
+        config_id:        tenant específico; None usa o tenant ativo padrão
+        valor_override:   valor líquido (ex: PIX com devolução parcial); None usa pagamento['valor']
 
     Returns dict com:
         status: 'autorizada' | 'rejeitada' | 'aguardando_retorno' | 'ja_emitida'
@@ -112,7 +120,8 @@ def emitir_nfe(pagamento_pix_id: int, config_id: int | None = None) -> dict:
                 key_pem = f.read()
 
             # 7. Monta e assina XML
-            xml          = montar_nfe(config, pix, n_nf, chave44, c_nf, data_emissao)
+            xml          = montar_nfe(config, pix, n_nf, chave44, c_nf, data_emissao,
+                                      forma_pagamento='pix', valor_override=valor_override)
             xml_assinado = assinar_nfe(xml, key_pem, cert_pem)
 
             # 8. Valida XSD — rejeita antes de comunicar com a SEFAZ
@@ -237,6 +246,139 @@ def _montar_nfe_proc(xml_assinado: bytes, prot_nfe_xml: str) -> str:
         f'{prot_nfe_xml}'
         '</nfeProc>'
     )
+
+
+def emitir_nfe_cartao(pagamento_cartao_id: int, config_id: int) -> dict:
+    """
+    Emite uma NF-e para um pagamento por cartão de crédito.
+
+    Args:
+        pagamento_cartao_id: PK de pagamento_cartao
+        config_id:           id de nfe_configuracao do tenant
+
+    Returns dict com status, nfe_id, c_stat, x_motivo, n_prot (quando disponível).
+    """
+    config = _buscar_config_por_id(config_id)
+    if not config:
+        raise RuntimeError(f'Configuração NF-e id={config_id} não encontrada')
+
+    cartao = buscar_pagamento_cartao_por_id(pagamento_cartao_id)
+    if not cartao:
+        raise ValueError(f'pagamento_cartao {pagamento_cartao_id} não encontrado')
+
+    senha = os.getenv(config['certificado_senha_env'], '')
+    if not senha:
+        raise RuntimeError(f'Variável {config["certificado_senha_env"]} não definida')
+    if not os.path.exists(config['certificado_path']):
+        raise RuntimeError(f'Certificado não encontrado: {config["certificado_path"]}')
+
+    n_nf = incrementar_numero_nfe(config['id'])
+    serie = config.get('serie_padrao', '001')
+    data_emissao = datetime.now()
+    ambiente = int(config.get('ambiente', 2))
+
+    chave44, c_nf = gerar_chave(_C_UF_DF, data_emissao, config['cnpj'], '55', serie, n_nf)
+    logger.info(f'[NF-e] Emitindo NF-e #{n_nf} chave={chave44} CARTAO={pagamento_cartao_id}')
+
+    soap_req = soap_resp = ''
+    status_http = 0
+    duracao_ms = 0.0
+    nfe_id = None
+
+    try:
+        with certificado_temp(config['certificado_path'], senha) as (cert_path, key_path, _):
+            with open(cert_path, 'rb') as f:
+                cert_pem = f.read()
+            with open(key_path, 'rb') as f:
+                key_pem = f.read()
+
+            xml = montar_nfe(config, cartao, n_nf, chave44, c_nf, data_emissao,
+                             forma_pagamento='cartao')
+            xml_assinado = assinar_nfe(xml, key_pem, cert_pem)
+
+            erros_xsd = validar_nfe(xml_assinado)
+            if erros_xsd:
+                raise ValueError(f'XML inválido (XSD): {erros_xsd[0]}')
+
+            try:
+                nfe_id = inserir_nfe_emitida_cartao(
+                    config['id'], pagamento_cartao_id, chave44,
+                    str(n_nf), serie, ambiente,
+                    xml_assinado.decode('utf-8'),
+                )
+            except IntegrityError:
+                logger.info(f'[NF-e] CARTAO {pagamento_cartao_id} já processado por task concorrente')
+                return {'status': 'ja_emitida', 'nfe_id': None}
+
+            ca_bundle = config.get('ca_bundle_path') or False
+            result = enviar_autorizacao(
+                xml_nfe_assinado=xml_assinado,
+                cert_path=cert_path,
+                key_path=key_path,
+                ambiente=ambiente,
+                verify=ca_bundle,
+            )
+
+        soap_req    = result['soap_request']
+        soap_resp   = result['soap_response']
+        status_http = result['status_http']
+        duracao_ms  = result['duracao_ms']
+
+        retorno = _processar_retorno_cartao(nfe_id, result, xml_assinado, pagamento_cartao_id)
+
+    except Exception as e:
+        logger.exception(f'[NF-e] Erro ao emitir NF-e CARTAO={pagamento_cartao_id}: {e}')
+        if nfe_id:
+            atualizar_nfe_erro(nfe_id, str(e))
+            gravar_log_soap(nfe_id, 'autorizacao', '', soap_req, soap_resp,
+                            status_http, duracao_ms)
+        raise
+
+    gravar_log_soap(
+        nfe_id, 'autorizacao', result.get('url', ''),
+        soap_req, soap_resp, status_http, duracao_ms,
+    )
+    return retorno
+
+
+def _processar_retorno_cartao(
+    nfe_id: int,
+    result: dict,
+    xml_assinado: bytes,
+    pagamento_cartao_id: int,
+) -> dict:
+    c_stat   = result['c_stat']
+    x_motivo = result['x_motivo']
+
+    if c_stat == '104':
+        prot_c_stat = result.get('prot_c_stat', '')
+        prot_motivo = result.get('prot_x_motivo', '')
+        n_prot      = result.get('n_prot', '')
+        dh_recbto   = result.get('dh_recbto', '')
+        prot_xml    = result.get('prot_nfe_xml', '')
+
+        if prot_c_stat == '100':
+            nfe_proc = _montar_nfe_proc(xml_assinado, prot_xml)
+            atualizar_nfe_autorizada(nfe_id, prot_c_stat, prot_motivo, n_prot, dh_recbto, nfe_proc)
+            vincular_nfe_ao_pagamento_cartao(pagamento_cartao_id, nfe_id)
+            logger.info(f'[NF-e] {nfe_id} autorizada — nProt={n_prot}')
+            return {
+                'status': 'autorizada', 'nfe_id': nfe_id,
+                'c_stat': prot_c_stat, 'x_motivo': prot_motivo, 'n_prot': n_prot,
+            }
+
+        atualizar_nfe_rejeitada(nfe_id, prot_c_stat, prot_motivo)
+        logger.warning(f'[NF-e] {nfe_id} rejeitada — cStat={prot_c_stat} {prot_motivo}')
+        return {'status': 'rejeitada', 'nfe_id': nfe_id, 'c_stat': prot_c_stat, 'x_motivo': prot_motivo}
+
+    if c_stat == '103':
+        n_rec = result.get('n_rec', '')
+        atualizar_nfe_aguardando_retorno(nfe_id, n_rec)
+        return {'status': 'aguardando_retorno', 'nfe_id': nfe_id, 'c_stat': c_stat, 'x_motivo': x_motivo}
+
+    atualizar_nfe_rejeitada(nfe_id, c_stat, x_motivo)
+    logger.warning(f'[NF-e] {nfe_id} lote rejeitado — cStat={c_stat} {x_motivo}')
+    return {'status': 'rejeitada', 'nfe_id': nfe_id, 'c_stat': c_stat, 'x_motivo': x_motivo}
 
 
 def _buscar_config_por_id(config_id: int) -> dict | None:

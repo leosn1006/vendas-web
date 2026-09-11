@@ -3120,10 +3120,36 @@ def criar_nfe_pendente(
     )
 
 
+def inserir_nfe_emitida_cartao(
+    tenant_id: int,
+    pagamento_cartao_id: int,
+    chave_acesso: str,
+    numero: int,
+    serie: str,
+    ambiente: int,
+    xml_assinado: str,
+) -> int:
+    """INSERT em nfe_emitidas para pagamento por cartão. Retorna o id gerado."""
+    return db.execute_query(
+        """INSERT INTO nfe_emitidas
+           (tenant_id, pagamento_cartao_id, chave_acesso, numero, serie, ambiente,
+            xml_assinado, status_emissao, tentativas)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, 'enviando', 1)""",
+        (tenant_id, pagamento_cartao_id, chave_acesso, numero, serie, ambiente, xml_assinado),
+    )
+
+
 def vincular_nfe_ao_pagamento_pix(pagamento_pix_id: int, nfe_id: int) -> None:
     db.execute_query(
         "UPDATE pagamento_pix SET nfe_emitida_id = %s WHERE id = %s",
         (nfe_id, pagamento_pix_id),
+    )
+
+
+def vincular_nfe_ao_pagamento_cartao(pagamento_cartao_id: int, nfe_id: int) -> None:
+    db.execute_query(
+        "UPDATE nfe_emitidas SET pagamento_cartao_id = %s WHERE id = %s",
+        (pagamento_cartao_id, nfe_id),
     )
 
 
@@ -3188,28 +3214,87 @@ def gravar_log_soap(
 
 
 def buscar_pagamentos_pix_sem_nfe(
+    tenant_slug: str,
+    dias_minimos: int = 7,
+    valor_minimo: float = 2.0,
     limite: int = 500,
-    dias_atras: int = 1,
-    config_id: int | None = None,
-) -> list[int]:
+) -> list[dict]:
     """
-    IDs de pagamento_pix dos últimos N dias sem NF-e autorizada.
-    Inclui: sem tentativa alguma (ne.id IS NULL) ou com tentativa em erro (para retry).
-    Exclui: rejeitadas (precisam de intervenção humana) e enviando (em progresso).
-    config_id filtra pelo tenant via produtos.nfe_config_id (evita emitir NF-e com CNPJ errado).
+    Pagamentos PIX do tenant elegíveis para emissão de NF-e.
+
+    Regras:
+    - Recebidos há pelo menos dias_minimos (janela de devolução/garantia).
+    - Valor original >= valor_minimo (descarta testes).
+    - Sem NF-e autorizada ainda (ne.id IS NULL ou status='erro' = retry).
+    - Exclui rejeitadas (precisam de intervenção humana) e enviando (em progresso).
+    - PIX com devolução total (valor_liquido <= 0) são excluídos via HAVING.
+    - PIX com devolução parcial retornam valor_liquido = valor - devoluções liquidadas.
+
+    Retorna lista de {id, valor_liquido}.
     """
-    sql = """SELECT pp.id
-             FROM pagamento_pix pp
-             LEFT JOIN produtos p ON p.id = pp.produto_id
-             LEFT JOIN nfe_emitidas ne ON ne.pagamento_pix_id = pp.id
-             WHERE pp.nfe_emitida_id IS NULL
-               AND (ne.id IS NULL OR ne.status_emissao = 'erro')
-               AND pp.horario >= NOW() - INTERVAL %s DAY"""
-    params: list = [dias_atras]
-    if config_id is not None:
-        sql += " AND p.nfe_config_id = %s"
-        params.append(config_id)
-    sql += " ORDER BY pp.id ASC LIMIT %s"
-    params.append(limite)
-    rows = db.execute_query(sql, params, fetch_all=True)
-    return [r['id'] for r in rows] if rows else []
+    rows = db.execute_query(
+        """SELECT pp.id,
+                  pp.valor - COALESCE(SUM(dp.valor), 0) AS valor_liquido
+           FROM pagamento_pix pp
+           LEFT JOIN nfe_emitidas ne ON ne.pagamento_pix_id = pp.id
+           LEFT JOIN devolucoes_pix dp ON dp.pagamento_pix_id = pp.id
+               AND dp.horario_liquidacao IS NOT NULL
+           WHERE pp.tenant_slug = %s
+             AND pp.horario <= NOW() - INTERVAL %s DAY
+             AND pp.valor >= %s
+             AND pp.nfe_emitida_id IS NULL
+             AND (ne.id IS NULL OR ne.status_emissao = 'erro')
+             AND (ne.status_emissao IS NULL OR ne.status_emissao NOT IN ('rejeitada', 'enviando'))
+           GROUP BY pp.id
+           HAVING valor_liquido > 0
+           ORDER BY pp.id ASC
+           LIMIT %s""",
+        (tenant_slug, dias_minimos, valor_minimo, limite),
+        fetch_all=True,
+    )
+    return [{'id': r['id'], 'valor_liquido': float(r['valor_liquido'])} for r in rows] if rows else []
+
+
+def buscar_pagamentos_cartao_sem_nfe(
+    config_id: int,
+    dias_minimos: int = 7,
+    valor_minimo: float = 2.0,
+    limite: int = 500,
+) -> list[dict]:
+    """
+    Pagamentos por cartão aprovados elegíveis para NF-e.
+    config_id filtra pelo tenant via produtos.nfe_config_id.
+    """
+    rows = db.execute_query(
+        """SELECT pc.id, pc.valor, ped.nome_pagador,
+                  REPLACE(REPLACE(REPLACE(ped.cpf_cnpj_pagador,'.',''),'-',''),'/','') AS cpf_cnpj,
+                  ped.produto_id
+           FROM pagamento_cartao pc
+           JOIN pedidos ped ON ped.id = pc.pedido_id AND ped.estado_id = 1000
+           JOIN produtos p ON p.id = ped.produto_id AND p.nfe_config_id = %s
+           LEFT JOIN nfe_emitidas ne ON ne.pagamento_cartao_id = pc.id
+           WHERE pc.status_cielo = 2
+             AND pc.valor >= %s
+             AND ped.data_pagamento <= NOW() - INTERVAL %s DAY
+             AND (ne.id IS NULL OR ne.status_emissao = 'erro')
+             AND (ne.status_emissao IS NULL OR ne.status_emissao NOT IN ('rejeitada', 'enviando'))
+           ORDER BY pc.id ASC
+           LIMIT %s""",
+        (config_id, valor_minimo, dias_minimos, limite),
+        fetch_all=True,
+    )
+    return list(rows) if rows else []
+
+
+def buscar_pagamento_cartao_por_id(cartao_id: int) -> dict | None:
+    rows = db.execute_query(
+        """SELECT pc.id, pc.valor, pc.bandeira, pc.cartao_mascarado,
+                  ped.nome_pagador, ped.produto_id,
+                  REPLACE(REPLACE(REPLACE(ped.cpf_cnpj_pagador,'.',''),'-',''),'/','') AS cpf_cnpj
+           FROM pagamento_cartao pc
+           JOIN pedidos ped ON ped.id = pc.pedido_id
+           WHERE pc.id = %s""",
+        (cartao_id,),
+        fetch_all=True,
+    )
+    return rows[0] if rows else None
