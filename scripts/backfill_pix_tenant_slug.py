@@ -34,8 +34,8 @@ def _marcar_lbe(e2e_id: str) -> None:
 
 
 def main():
-    from bb_pix import BbPixClient
-    client = BbPixClient(tenant_slug=TENANT)
+    from bb_pix import consultar_todos_pix
+    from datetime import datetime as dt
 
     dia = INICIO
     total_marcados = 0
@@ -43,9 +43,9 @@ def main():
         data_str = dia.strftime('%Y-%m-%d')
         print(f'[{data_str}] consultando API LBE...', end=' ', flush=True)
         try:
-            inicio_dt = f'{data_str}T00:00:00.000-03:00'
-            fim_dt    = f'{data_str}T23:59:59.999-03:00'
-            pix_list  = client.listar_pix(inicio_dt, fim_dt)
+            inicio_dt = dt.strptime(f'{data_str}T00:00:00', '%Y-%m-%dT%H:%M:%S')
+            fim_dt    = dt.strptime(f'{data_str}T23:59:59', '%Y-%m-%dT%H:%M:%S')
+            pix_list  = consultar_todos_pix(inicio_dt, fim_dt, tenant_slug=TENANT)
             marcados = 0
             for pix in pix_list:
                 e2e = pix.get('endToEndId') or ''
