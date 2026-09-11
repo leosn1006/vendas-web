@@ -2804,14 +2804,9 @@ _SQL_ROI = """
 _SQL_ROI_REAL = """
     SELECT
         COALESCE((
-            -- PIX sem pedido (WhatsApp puro): filtra pela chave do produto
-            -- PIX com pedido (web): filtra pelo produto do pedido, pois a chave PIX
-            -- pode pertencer a outro produto (ex: chave compartilhada de Páscoa)
             SELECT SUM(pp.valor)
             FROM pagamento_pix pp
-            LEFT JOIN pedidos ped ON ped.id = pp.pedido_id
-            WHERE (pp.pedido_id IS NULL AND pp.produto_id = %s
-                   OR pp.pedido_id IS NOT NULL AND ped.produto_id = %s)
+            WHERE pp.produto_id = %s
               AND pp.horario BETWEEN %s AND %s
         ), 0) AS total_pix,
         COALESCE((
@@ -3072,9 +3067,9 @@ def roi_produto(produto_id):
     try:
         roi_real_row = db.execute_query(
             _SQL_ROI_REAL,
-            (produto_id, produto_id, data_ini, data_fim,  # total_pix (2 produto_id: sem/com pedido)
-             produto_id, data_ini, data_fim,               # total_pix_sem_duplicidade_web
-             produto_id, data_ini_date, data_fim_date),    # total_investido
+            (produto_id, data_ini, data_fim,
+             produto_id, data_ini, data_fim,
+             produto_id, data_ini_date, data_fim_date),
             fetch_one=True
         )
         if roi_real_row:
