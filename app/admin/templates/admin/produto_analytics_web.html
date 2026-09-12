@@ -185,6 +185,9 @@
 
 <!-- ── Funil de Conversão ────────────────────────────────── -->
 <div class="section-title">Funil de Conversão — por data_contato_site</div>
+<div class="section-subtitle" style="margin-top:-8px; margin-bottom:16px; color:#888; font-size:13px;">
+    Conta pedidos criados no período (mesmo que o pagamento tenha sido confirmado depois) — por isso pode diferir do bloco de Receita abaixo, que soma por data do pagamento.
+</div>
 
 <div class="funil-container">
 
@@ -249,6 +252,9 @@
 <!-- ── Receita ─────────────────────────────────── -->
 {% if receita %}
 <div class="section-title">Receita — por data_pagamento (estado Pago via web)</div>
+<div class="section-subtitle" style="margin-top:-8px; margin-bottom:16px; color:#888; font-size:13px;">
+    Conta pagamentos confirmados no período, mesmo de pedidos criados em dias anteriores — por isso pode diferir do "Pagos" do funil acima.
+</div>
 <div class="metrics-grid">
     <div class="metric-card green">
         <div class="metric-label">Total Pagamentos</div>
@@ -271,13 +277,13 @@
 {% endif %}
 
 <!-- ── Botão de Ação: Ver Pagamentos ────────────────────────────── -->
-{% if funil.pagos > 0 %}
+{% if receita.total_pagamentos > 0 %}
 <div class="action-card" onclick="irParaPagamentos()">
     <div class="action-card-content">
         <div class="action-card-icon">💳</div>
         <div>
             <div class="action-card-title">Visualizar Lista Detalhada de Pagamentos</div>
-            <div class="action-card-subtitle">{{ funil.pagos }} pagamento{{ 's' if funil.pagos != 1 else '' }} no período — clique para ver comprovantes</div>
+            <div class="action-card-subtitle">{{ receita.total_pagamentos }} pagamento{{ 's' if receita.total_pagamentos != 1 else '' }} no período — clique para ver comprovantes</div>
         </div>
     </div>
     <div style="color: white; font-size: 20px;">→</div>
