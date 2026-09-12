@@ -2517,15 +2517,21 @@ def busca_financeiro_produto(produto_id, data_ini, data_fim, fluxo_inicial: str 
         fetch_all=True,
     ) or []
 
-    total_pix        = float(sum(t['valor'] for t in transacoes if t['forma'] == 'pix'))
-    total_cartao     = float(sum(t['valor'] for t in transacoes if t['forma'] == 'cartao'))
-    qtd_pix          = sum(1 for t in transacoes if t['forma'] == 'pix')
-    total_devolucoes = float(-sum(t['valor'] for t in transacoes if t['forma'] == 'devolucao'))
+    # Resumo respeita apenas o filtro de origem (fluxo_inicial), não o de forma —
+    # senão filtrar por forma='pix' zeraria as linhas de Cartão/Devolução do
+    # próprio card que existe pra mostrar a quebra por forma.
+    transacoes_origem = [
+        t for t in transacoes
+        if fluxo_inicial == 'todos' or t['fluxo_inicial'] == fluxo_inicial
+    ]
+    total_pix        = float(sum(t['valor'] for t in transacoes_origem if t['forma'] == 'pix'))
+    total_cartao     = float(sum(t['valor'] for t in transacoes_origem if t['forma'] == 'cartao'))
+    qtd_pix          = sum(1 for t in transacoes_origem if t['forma'] == 'pix')
+    total_devolucoes = float(-sum(t['valor'] for t in transacoes_origem if t['forma'] == 'devolucao'))
 
     transacoes_filtradas = [
-        t for t in transacoes
-        if (fluxo_inicial == 'todos' or t['fluxo_inicial'] == fluxo_inicial)
-        and (forma == 'todos' or t['forma'] == forma)
+        t for t in transacoes_origem
+        if forma == 'todos' or t['forma'] == forma
     ]
 
     return {

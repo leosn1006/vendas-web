@@ -181,7 +181,6 @@
     {% endif %}
 </div>
 
-{% set pix_recebido = (roi_real.total_pix | float) if not roi_real_erro else 0 %}
 {% set pix_investido = (roi_real.total_investido | float) if not roi_real_erro else 0 %}
 {% set pix_recebido_sem_duplicidade = (roi_real.total_pix_sem_duplicidade_web | float) if not roi_real_erro else 0 %}
 {% set web_recebido = (roi_real_web.total_web | float) if not roi_real_web_erro else 0 %}
@@ -190,8 +189,8 @@
 {% set web_total_recebido = web_recebido + cartao_recebido %}
 {% set total_erro = roi_real_erro or roi_real_web_erro %}
 
-{{ roi_summary_card('ROI Real (PIX)', 'Todos os pagamentos PIX recebidos no período (investido = campanhas não marcadas como Venda Web)',
-    'Recebido via PIX', pix_recebido, pix_investido, taxa_imposto, roi_real_erro) }}
+{{ roi_summary_card('ROI Real (PIX)', 'Pagamentos PIX sem pedido vinculado (WhatsApp/orgânico) no período (investido = campanhas não marcadas como Venda Web)',
+    'Recebido via PIX', pix_recebido_sem_duplicidade, pix_investido, taxa_imposto, roi_real_erro) }}
 
 {{ roi_summary_card('ROI Real Web', 'Pedidos com status pago (estado 1000) no período — PIX (BB Pay) + Cartão (Cielo) somados — contra campanhas marcadas como Venda Web (Imposto, ROI Real e Resultado Real usam a soma dos dois)',
     'Recebido via Pix', web_total_recebido, web_investido, taxa_imposto, roi_real_web_erro,

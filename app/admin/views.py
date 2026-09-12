@@ -2808,12 +2808,6 @@ _SQL_ROI_REAL = """
             FROM pagamento_pix pp
             WHERE pp.produto_id = %s
               AND pp.horario BETWEEN %s AND %s
-        ), 0) AS total_pix,
-        COALESCE((
-            SELECT SUM(pp.valor)
-            FROM pagamento_pix pp
-            WHERE pp.produto_id = %s
-              AND pp.horario BETWEEN %s AND %s
               AND pp.pedido_id IS NULL
         ), 0) AS total_pix_sem_duplicidade_web,
         COALESCE((
@@ -3062,13 +3056,12 @@ def roi_produto(produto_id):
     data_ini_date = data_ini.date().isoformat()
     data_fim_date = data_fim.date().isoformat()
 
-    roi_real = {'total_pix': 0, 'total_pix_sem_duplicidade_web': 0, 'total_investido': 0}
+    roi_real = {'total_pix_sem_duplicidade_web': 0, 'total_investido': 0}
     roi_real_erro = False
     try:
         roi_real_row = db.execute_query(
             _SQL_ROI_REAL,
             (produto_id, data_ini, data_fim,
-             produto_id, data_ini, data_fim,
              produto_id, data_ini_date, data_fim_date),
             fetch_one=True
         )
