@@ -84,11 +84,15 @@ celery_app.conf.beat_schedule = {
     },
     # NF-e — LBE LIVROS LTDA: emite para PIX e cartão com mais de 7 dias (garantia)
     # dhEmi usa data do pagamento (validado com contador — prazo DF: até dia 20 do mês seguinte)
-    'emitir-nfe-diaria-lbe': {
-        'task': 'tasks.emitir_nfe_diaria_lbe',
-        'schedule': crontab(hour=0, minute=10),  # 00h10 São Paulo (beat interpreta crontab direto no TZ configurado)
-        'options': {'queue': 'baixa'},
-    },
+    # PAUSADO em 2026-09-12: primeira rodada em lote rejeitou 503/500 NF-e com cStat=539
+    # (Duplicidade de NF-e, chave diferente) — SEFAZ já tem os números 6-508 autorizados por
+    # fora do nosso app. Religar só depois de confirmar com o contador/SEFAZ qual é o
+    # ultimo_numero_nfe correto pra série 001 do CNPJ 68.184.503/0001-06.
+    # 'emitir-nfe-diaria-lbe': {
+    #     'task': 'tasks.emitir_nfe_diaria_lbe',
+    #     'schedule': crontab(hour=0, minute=10),  # 00h10 São Paulo
+    #     'options': {'queue': 'baixa'},
+    # },
     'orcamento-sheets-horario': {
         'task': 'tasks.processar_orcamento_sheets',
         'schedule': crontab(minute=10),  # toda hora no :10 — hoje sempre; ontem também entre 00h–04h
