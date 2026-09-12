@@ -86,7 +86,7 @@ celery_app.conf.beat_schedule = {
     # dhEmi usa data do pagamento (validado com contador — prazo DF: até dia 20 do mês seguinte)
     'emitir-nfe-diaria-lbe': {
         'task': 'tasks.emitir_nfe_diaria_lbe',
-        'schedule': crontab(hour=3, minute=10),  # 00h10 São Paulo = 03h10 UTC
+        'schedule': crontab(hour=0, minute=10),  # 00h10 São Paulo (beat interpreta crontab direto no TZ configurado)
         'options': {'queue': 'baixa'},
     },
     'orcamento-sheets-horario': {
