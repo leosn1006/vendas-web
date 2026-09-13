@@ -46,6 +46,12 @@ logger = logging.getLogger(__name__)
 
 _C_UF_DF = '53'
 
+# cStat de autorização da NF-e: 100 = normal; 150 = autorizado fora do prazo
+# regulamentar de resposta da SEFAZ (SLA de processamento excedido do lado deles,
+# não um problema com os dados enviados) — ambos são autorização válida, com
+# protocolo real. Só cStat >= 200 (fora desse conjunto) é rejeição de fato.
+_C_STAT_AUTORIZADOS = {'100', '150'}
+
 
 def emitir_nfe(
     pagamento_pix_id: int,
@@ -199,17 +205,17 @@ def _processar_retorno(
         dh_recbto    = result.get('dh_recbto', '')
         prot_xml     = result.get('prot_nfe_xml', '')
 
-        if prot_c_stat == '100':
+        if prot_c_stat in _C_STAT_AUTORIZADOS:
             nfe_proc = _montar_nfe_proc(xml_assinado, prot_xml)
             atualizar_nfe_autorizada(nfe_id, prot_c_stat, prot_motivo, n_prot, dh_recbto, nfe_proc)
             vincular_nfe_ao_pagamento_pix(pagamento_pix_id, nfe_id)
-            logger.info(f'[NF-e] {nfe_id} autorizada — nProt={n_prot}')
+            logger.info(f'[NF-e] {nfe_id} autorizada — cStat={prot_c_stat} nProt={n_prot}')
             return {
                 'status': 'autorizada', 'nfe_id': nfe_id,
                 'c_stat': prot_c_stat, 'x_motivo': prot_motivo, 'n_prot': n_prot,
             }
 
-        # cStat dentro de protNFe ≠ 100 → rejeição (cStat ≥ 200)
+        # cStat dentro de protNFe fora de _C_STAT_AUTORIZADOS → rejeição de fato (cStat ≥ 200)
         atualizar_nfe_rejeitada(nfe_id, prot_c_stat, prot_motivo)
         logger.warning(f'[NF-e] {nfe_id} rejeitada — cStat={prot_c_stat} {prot_motivo}')
         return {
@@ -357,11 +363,11 @@ def _processar_retorno_cartao(
         dh_recbto   = result.get('dh_recbto', '')
         prot_xml    = result.get('prot_nfe_xml', '')
 
-        if prot_c_stat == '100':
+        if prot_c_stat in _C_STAT_AUTORIZADOS:
             nfe_proc = _montar_nfe_proc(xml_assinado, prot_xml)
             atualizar_nfe_autorizada(nfe_id, prot_c_stat, prot_motivo, n_prot, dh_recbto, nfe_proc)
             vincular_nfe_ao_pagamento_cartao(pagamento_cartao_id, nfe_id)
-            logger.info(f'[NF-e] {nfe_id} autorizada — nProt={n_prot}')
+            logger.info(f'[NF-e] {nfe_id} autorizada — cStat={prot_c_stat} nProt={n_prot}')
             return {
                 'status': 'autorizada', 'nfe_id': nfe_id,
                 'c_stat': prot_c_stat, 'x_motivo': prot_motivo, 'n_prot': n_prot,
