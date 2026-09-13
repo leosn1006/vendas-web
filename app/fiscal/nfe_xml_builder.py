@@ -164,7 +164,9 @@ def montar_nfe(
     if int(tp_amb) == 2:
         nome = 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL'
     else:
-        nome = (pagamento.get('nome_pagador') or 'CONSUMIDOR')[:60]
+        # Uppercase por padronização: PIX já vem em caixa alta da fonte (banco),
+        # cartão vem como o cliente digitou no checkout — uniformiza os dois.
+        nome = (pagamento.get('nome_pagador') or 'CONSUMIDOR').upper()[:60]
     dh_emi   = data_emissao.strftime('%Y-%m-%dT%H:%M:%S') + '-03:00'
 
     nfe_id = f'NFe{chave44}'

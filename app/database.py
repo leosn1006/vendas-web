@@ -3319,9 +3319,11 @@ def buscar_pagamento_cartao_por_id(cartao_id: int) -> dict | None:
     return db.execute_query(
         """SELECT pc.id, pc.valor, pc.bandeira, pc.cartao_mascarado,
                   ped.nome_pagador, ped.produto_id, ped.data_pagamento,
-                  REPLACE(REPLACE(REPLACE(ped.cpf_cnpj_pagador,'.',''),'-',''),'/','') AS cpf_cnpj
+                  REPLACE(REPLACE(REPLACE(ped.cpf_cnpj_pagador,'.',''),'-',''),'/','') AS cpf_cnpj,
+                  p.nome AS x_prod, p.isbn, p.nome_nfe
            FROM pagamento_cartao pc
            JOIN pedidos ped ON ped.id = pc.pedido_id
+           LEFT JOIN produtos p ON p.id = ped.produto_id
            WHERE pc.id = %s""",
         (cartao_id,),
         fetch_one=True,
