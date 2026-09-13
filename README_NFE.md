@@ -1,6 +1,6 @@
 # Integração NF-e Modelo 55 — SVRS/DF
 
-Módulo de emissão de Nota Fiscal Eletrônica (NF-e) Modelo 55 integrado ao sistema `vendas-web`. Emite automaticamente uma NF-e para cada pagamento PIX recebido, sem intervenção manual.
+Módulo de emissão de Nota Fiscal Eletrônica (NF-e) Modelo 55 integrado ao sistema `vendas-web`. Emite NF-e para pagamentos recebidos via PIX e cartão, multi-tenant (uma linha de configuração por empresa emitente).
 
 ---
 
@@ -8,17 +8,66 @@ Módulo de emissão de Nota Fiscal Eletrônica (NF-e) Modelo 55 integrado ao sis
 
 | Item | Detalhe |
 |---|---|
-| Empresa | LEONARDO SANTOS NEGREIROS — CNPJ 64.980.953/0001-46 |
-| Regime tributário | Lucro Presumido (CRT=3), ex-MEI |
+| Empresas emitentes | LSN Livros (pessoal, `tenant_slug=lsn-livros`) e LBE Livros LTDA (`tenant_slug=lbe-livros`) — ver [Multi-tenant](#multi-tenant) |
+| Regime tributário | Lucro Presumido (CRT=3) |
 | UF emitente | DF (cUF=53) |
 | Autoridade SEFAZ | SVRS — SEFAZ Virtual do Rio Grande do Sul |
 | Modelo | NF-e 55 (produto/mercadoria) |
-| Volume estimado | ~10.000 NF-e/mês |
-| Certificado | A1 (.pfx), emitido após conversão MEI→PE |
+| Certificado | A1 (.pfx), um por tenant |
 
-> **Por que NF-e e não NFS-e?** Livros digitais são classificados como mercadoria (NCM 49011000) pela Receita Federal — NF-e modelo 55, não NFS-e municipal. Confirmar NCM/CFOP final com o contador.
+> **Por que NF-e e não NFS-e?** Livros digitais são classificados como mercadoria (NCM 49011000) pela Receita Federal — NF-e modelo 55, não NFS-e municipal.
 
-> **Por que DIY e não SaaS?** 10.000 NF-e/mês × R$0,25 = R$2.500/mês. O desenvolvimento se paga em menos de 2 meses.
+> **Por que DIY e não SaaS?** Volume alto de notas de baixo valor torna o custo por nota de um SaaS proibitivo. O desenvolvimento se paga rápido.
+
+---
+
+## Multi-tenant
+
+Cada linha de `nfe_configuracao` é uma empresa emitente independente: próprio CNPJ, certificado `.pfx`, contador de numeração (`ultimo_numero_nfe`), tributação e `ambiente`. `produtos.nfe_config_id` liga cada produto ao tenant que deve emitir a nota dele (join usado nas queries de elegibilidade de cartão).
+
+| `id` | `tenant_slug` | CNPJ | Uso |
+|---|---|---|---|
+| 1 | `lsn-livros` | 64.980.953/0001-46 | Pessoal (Leonardo) |
+| 2 | `lbe-livros` | 68.184.503/0001-06 | LBE Livros LTDA |
+
+⚠️ **`ambiente` é por linha, não global.** Errar esse campo numa empresa não afeta a outra — mas errar num ambiente de *desenvolvimento* apontando pra `1` (produção) manda NF-e real pra SEFAZ de verdade. Ver [Isolamento de ambientes](#isolamento-de-ambientes-produção-vs-desenvolvimento) — é a causa raiz do maior incidente já registrado nesse módulo.
+
+---
+
+## Regras de Negócio
+
+Implementadas em `buscar_pagamentos_pix_sem_nfe()` / `buscar_pagamentos_cartao_sem_nfe()` (`app/database.py`) e usadas por `tasks.emitir_nfe_diaria_lbe`:
+
+1. **Só emite depois de 7 dias corridos do pagamento** (`dias_minimos=7`) — janela de garantia/devolução do PIX. Emitir antes disso arriscaria ter que desfazer uma nota já autorizada (ver seção de cancelamento abaixo, que na prática quase nunca é viável).
+2. **Valor mínimo R$2,00** (`valor_minimo=2.0`) — descarta pagamentos de teste.
+3. **`dhEmi` (data de emissão da nota) = data do pagamento, não a data em que a rotina realmente roda.** Confirmado com o contador: no DF a competência fiscal é a data do fato gerador (o pagamento), e o prazo de escrituração é **até o dia 20 do mês subsequente** à competência. Isso significa que pagamentos de início de mês têm bastante folga; pagamentos de fim de mês processados só quando o backlog "andar" podem ficar apertados — vale monitorar o backlog, não deixar crescer indefinidamente.
+4. **Devolução parcial de PIX**: emite pelo saldo líquido (`valor - devoluções liquidadas`), não pelo valor bruto.
+5. **Devolução total de PIX**: não emite (`valor_liquido <= 0`, excluído via `HAVING`).
+6. **`LIMIT 500` por execução, separado para PIX e para cartão.** Se o backlog elegível for maior que 500, sobra para a próxima rodada (a ordenação é `ORDER BY id ASC`, então processa sempre os mais antigos primeiro — determinístico e estável entre execuções).
+7. **Cartão**: só produtos com `nfe_config_id` apontando pro tenant em questão, pedido pago (`estado_id=1000`), cobrança aprovada na Cielo (`status_cielo=2`).
+8. **Cancelamento de NF-e não é uma ferramenta viável pro fluxo normal.** O prazo legal de cancelamento (evento 110111) no DF/SVRS é de **24 horas** após a autorização. Como a nota só é emitida no mínimo 7 dias depois do pagamento, qualquer cancelamento estaria sempre fora do prazo. Devoluções pós-emissão são tratadas só financeiramente (tabela `devolucoes_pix`), sem tocar a NF-e.
+
+---
+
+## Interpretação de `cStat` (autorizado vs rejeitado)
+
+**`cStat=100` e `cStat=150` são AMBOS autorização válida**, com protocolo real (`nProt`) — `_C_STAT_AUTORIZADOS = {'100', '150'}` em `app/fiscal/nfe_service.py`. `cStat=150` ("Autorizado o uso da NF-e, autorização fora do prazo regulamentar") só indica que a SEFAZ excedeu o próprio SLA de resposta síncrona — não é problema com os dados enviados, e **acontece com frequência em lotes grandes** (rodadas de centenas de notas de uma vez tendem a produzir isso). Qualquer outro `cStat` é rejeição de fato.
+
+> Histórico: até 12/09/2026 o código só tratava `cStat==100` como autorizado; `150` caía no branch de rejeição sem gravar `n_prot`/`dh_recbto`/`xml_nfe_proc` (embora os dados estivessem disponíveis na resposta e recuperáveis via `nfe_log_comunicacao.soap_response`). Corrigido — ver `scripts/corrigir_nfe_fora_de_prazo_lbe.py` para o script de recuperação usado.
+
+---
+
+## Isolamento de Ambientes (Produção vs Desenvolvimento)
+
+**Incidente de 10-13/09/2026** (referência para não repetir): o banco de **desenvolvimento** (neste Mac) tinha `nfe_configuracao.ambiente=1` (produção) para a LBE, com o certificado real, enquanto o BB Pay e o banco de dados dev são propositalmente isolados de produção. Um teste manual (`make emitir-nfe-agora`) rodado duas vezes seguidas nesse ambiente de dev emitiu **1002 NF-e reais e válidas** direto na SEFAZ de produção, para clientes reais — sem que o banco de **produção** soubesse. Quando a rotina de produção rodou pela primeira vez, colidiu (`cStat=539`, duplicidade de numeração) porque a SEFAZ já tinha essas notas.
+
+**Regra daqui pra frente**: `nfe_configuracao.ambiente` em qualquer banco que não seja o de produção real deve **sempre ser `2` (homologação)**. Antes de rodar `make emitir-nfe-agora` ou qualquer teste manual da rotina de NF-e, confirmar:
+```sql
+SELECT tenant_slug, ambiente FROM nfe_configuracao;
+```
+Se algum tenant estiver com `ambiente=1` fora do servidor de produção, corrigir antes de continuar.
+
+A recuperação desse incidente (reconciliar as 1002 notas reais no banco de produção usando o dev como fonte da verdade) está em `scripts/backfill_nfe_lbe_producao.py`.
 
 ---
 
@@ -27,156 +76,146 @@ Módulo de emissão de Nota Fiscal Eletrônica (NF-e) Modelo 55 integrado ao sis
 ```
 vendas-web/
 ├── app/
-│   ├── fiscal/                      ← módulo fiscal (novo)
-│   │   ├── __init__.py
+│   ├── fiscal/
 │   │   ├── certificado.py           # carrega .pfx → PEM (mTLS + assinatura)
-│   │   ├── nfe_chave.py             # gera chave de acesso 44 dígitos
-│   │   ├── nfe_xml_builder.py       # monta XML infNFe 4.00 com nfelib
+│   │   ├── nfe_chave.py             # gera chave de acesso 44 dígitos (cNF via secrets.randbelow)
+│   │   ├── nfe_xml_builder.py       # monta XML infNFe 4.00 com nfelib (PIX e cartão)
 │   │   ├── nfe_assinador.py         # assina XML (RSA-SHA1, enveloped, C14N 1.0)
 │   │   ├── nfe_validador.py         # valida XML contra XSD oficial (nfelib)
-│   │   ├── nfe_soap.py              # cliente SOAP raw (requests + mTLS)
-│   │   └── nfe_service.py           # orquestrador: une tudo e fala com o banco
-│   ├── database.py                  # +11 funções NF-e adicionadas
-│   ├── tasks.py                     # +2 tasks Celery (emitir_nfe, reprocessar_nfe_pendentes)
-│   ├── celery_app.py                # +beat schedule + task routes NF-e
+│   │   ├── nfe_soap.py              # cliente SOAP raw (requests + mTLS) + parser de retorno
+│   │   └── nfe_service.py           # orquestradores emitir_nfe / emitir_nfe_cartao
+│   ├── database.py                  # funções NF-e: config, seleção de elegíveis, CRUD nfe_emitidas
+│   ├── tasks.py                     # emitir_nfe, emitir_nfe_cartao, emitir_nfe_diaria_lbe
+│   ├── celery_app.py                # beat schedule (00h10 SP) + task routes NF-e
 │   └── fluxos/
-│       └── fluxo_pix_bb.py          # dispara emitir_nfe para cada PIX novo
+│       └── fluxo_pix_bb.py          # emissão automática por-PIX-imediato: DESABILITADA (comentada)
 ├── migrations/
-│   └── 039_nfe.sql                  # schema: nfe_configuracao, nfe_emitidas, nfe_log_comunicacao
+│   ├── 039_nfe.sql                  # schema base: nfe_configuracao, nfe_emitidas, nfe_log_comunicacao
+│   ├── 048_nfe_configuracao_parametros.sql  # c_benef, aliq_icms_deson, IBS/CBS (Reforma Tributária)
+│   ├── 049_produtos_nfe_config_id.sql       # liga produto → tenant emissor
+│   ├── 069_nfe_emitidas_cartao.sql          # suporte a NF-e de pagamento por cartão
+│   └── 070_pagamento_pix_tenant_slug.sql    # tenant_slug em pagamento_pix (multi-conta BB)
 ├── scripts/
 │   ├── testar_certificado_nfe.py    # teste: carrega .pfx
 │   ├── testar_status_svrs.py        # teste: ping SVRS (cStat=107)
-│   └── testar_emissao_nfe.py        # teste: fluxo completo sem banco
-└── docker-compose.yml               # +NF_CERT_SENHA no worker-normal
+│   ├── testar_emissao_nfe.py        # teste: fluxo completo sem banco (CNPJ pessoal, homologação)
+│   ├── emitir_nfe_pix.py            # emite em homologação p/ um pagamento_pix real (não grava no banco)
+│   ├── backfill_nfe_lbe_producao.py # recuperação do incidente de 09/2026 (ver histórico acima)
+│   └── corrigir_nfe_fora_de_prazo_lbe.py  # recupera notas com cStat=150 mal classificadas
+├── Makefile                          # target `emitir-nfe-agora` (chama a task diretamente, sem esperar o beat)
+└── docker-compose.yml                 # NF_CERT_SENHA / NF_CERT_SENHA_LBE nos workers
 ```
 
 ---
 
 ## Banco de Dados
 
-### `nfe_configuracao` — dados do emitente (multi-tenant)
-
-Cada linha representa uma empresa emitente. Hoje há apenas uma (a própria empresa).
+### `nfe_configuracao` — dados do emitente (multi-tenant, ver [Multi-tenant](#multi-tenant))
 
 | Coluna | Descrição |
 |---|---|
-| `tenant_slug` | Identificador único, ex: `lsn-livros` |
-| `api_key` | Chave SHA-256 para uso futuro da API REST |
+| `tenant_slug` | Identificador único, ex: `lbe-livros` |
 | `cnpj` | 14 dígitos sem formatação |
-| `ie` | Inscrição estadual (obrigatória para produção) |
+| `ie` | Inscrição estadual |
 | `crt` | Regime: `3` = Lucro Presumido |
-| `certificado_path` | Caminho absoluto do .pfx dentro do container |
-| `certificado_senha_env` | **Nome** da variável de ambiente que contém a senha (nunca a senha em si) |
+| `certificado_path` / `certificado_senha_env` | Caminho do `.pfx` e **nome** da env var com a senha (nunca a senha em si) |
 | `serie_padrao` | Série da NF-e, ex: `'001'` |
-| `ultimo_numero_nfe` | Contador atual — incrementado com `SELECT FOR UPDATE` |
-| `ambiente` | `1` = produção, `2` = homologação |
-| `x_prod` | Descrição padrão do produto na NF-e |
-| `ncm`, `cfop`, `cst_*` | Tributação — definir com contador |
+| `ultimo_numero_nfe` | Contador atual — incrementado com `SELECT FOR UPDATE`. **Compartilhado entre homologação e produção na mesma linha** — não há separação de contador por ambiente, só o endpoint SOAP muda |
+| `ambiente` | `1` = produção, `2` = homologação — ver aviso de isolamento acima |
+| `x_prod`, `ncm`, `cfop`, `cst_*`, `c_benef`, `aliq_icms_deson`, `mot_des_icms`, `cst_ibs_cbs`, `c_class_trib` | Tributação (livros: imunidade ICMS art. 150 VI-d + `cBenef=DF811004`; IBS/CBS Reforma Tributária CST=410) |
 | `ca_bundle_path` | Path do CA ICP-Brasil para verify SSL em produção |
 
-### `nfe_emitidas` — histórico de NF-e
+### `produtos.isbn` / `produtos.nome_nfe`
+
+Descrição do produto na nota (`xProd`) usa `nome_nfe` (ou `nome` como fallback) + ISBN quando presente. Cascata em `montar_nfe()`: `pagamento.get('nome_nfe') or pagamento.get('x_prod') or config.get('x_prod') or 'Livro Digital'`. **Para isso funcionar a query que busca o pagamento precisa fazer `LEFT JOIN produtos`** — `buscar_pagamento_pix_por_id` sempre fez; `buscar_pagamento_cartao_por_id` não fazia (bug corrigido em 13/09/2026, notas de cartão saíam com descrição genérica sem ISBN).
+
+### `nfe_emitidas` — histórico de NF-e (PIX e cartão)
 
 | Coluna | Descrição |
 |---|---|
-| `pagamento_pix_id` | Âncora fiscal: UNIQUE, garante 1 NF-e por PIX |
+| `pagamento_pix_id` | UNIQUE, nullable — preenchido para NF-e de PIX |
+| `pagamento_cartao_id` | UNIQUE (`uq_nfe_cartao`), nullable — preenchido para NF-e de cartão. **Um pagamento_cartao só pode ter UMA linha aqui, para sempre** — mesmo uma linha `rejeitada`/`erro` bloqueia um novo INSERT pra esse mesmo cartão (constraint UNIQUE, não filtra por status). Pra reprocessar um cartão travado assim: `UPDATE ... SET pagamento_cartao_id = NULL` na linha antiga (não dá pra simplesmente mudar o status). |
 | `chave_acesso` | 44 dígitos, UNIQUE |
+| `numero` / `serie` | Não são únicos por constraint no banco — a unicidade real é garantida pela SEFAZ (rejeita duplicata com `cStat=539`) |
 | `status_emissao` | `pendente` → `enviando` → `autorizada` / `rejeitada` / `erro` |
-| `c_stat` / `x_motivo` | Retorno da SEFAZ |
-| `n_prot` | Número do protocolo de autorização |
-| `xml_assinado` | XML da NF-e com assinatura digital |
-| `xml_nfe_proc` | XML `<nfeProc>` = NFe + protNFe (para DANFE e consulta) |
-| `tentativas` | Contador de tentativas de emissão |
-| `ultimo_erro` | Mensagem do último erro (para diagnóstico) |
+| `c_stat` / `x_motivo` | Retorno da SEFAZ — ver [Interpretação de cStat](#interpretação-de-cstat-autorizado-vs-rejeitado) |
+| `n_prot` / `dh_recbto` | Protocolo e data/hora de autorização |
+| `xml_assinado` | XML da NF-e assinado, gravado **antes** de enviar (sobrevive mesmo se a chamada à SEFAZ falhar) |
+| `xml_nfe_proc` | `<nfeProc>` = NFe + protNFe — usado pelo DANFE (`/admin/fiscal/nfe/<id>/danfe`, gera o PDF on-demand) |
+| `tentativas` / `ultimo_erro` | Diagnóstico |
 
-### `nfe_log_comunicacao` — log SOAP
+### `nfe_log_comunicacao` — log SOAP completo
 
-Registra cada chamada à SEFAZ com request/response completos, duração e status HTTP. Útil para diagnosticar rejeições.
+Guarda `soap_request`/`soap_response` de cada chamada. **Fonte de recuperação**: se uma nota foi mal classificada localmente mas a SEFAZ já tinha respondido, os dados completos (incluindo `nProt`) ainda estão aqui e são reparseáveis com `fiscal.nfe_soap._parsear_ret_envi_nfe` (foi assim que o incidente do `cStat=150` foi corrigido sem perder nada).
 
 ### Vínculo com `pagamento_pix`
 
-```sql
-ALTER TABLE pagamento_pix ADD COLUMN nfe_emitida_id INT NULL;
-```
-
-- `NULL` → NF-e ainda não emitida (ou rejeitada permanentemente)
-- `NOT NULL` → NF-e autorizada; valor = `nfe_emitidas.id`
-
-Este campo serve como **idempotência**: a task verifica se já está preenchido antes de tentar emitir.
+`pagamento_pix.nfe_emitida_id` — `NULL` = pendente, preenchido = autorizada. Idempotência: a seleção de elegíveis já filtra por isso.
 
 ---
 
-## Fluxo de Emissão
+## Fluxo de Emissão (rotina diária, LBE)
 
 ```
-Celery beat (a cada hora)
-  └─▶ processar_pagamentos_pix
-        └─▶ fluxo_pix_bb.executar()
-              ├─ consulta PIX recebidos no BB
-              ├─ salvar_pagamento_pix() → retorna pagamento_pix_id (novo) ou None (duplicata)
-              └─ para cada PIX novo:
-                   send_task('tasks.emitir_nfe', [pix_id], countdown=5s)
+Celery beat, todo dia às 00h10 SP (crontab(hour=0, minute=10) — CUIDADO: quando
+celery_app.conf.timezone está setado, o Beat interpreta o crontab DIRETO nesse
+fuso, sem conversão de UTC; não somar/subtrair fuso manualmente no crontab)
+  └─▶ tasks.emitir_nfe_diaria_lbe   [queue: baixa]
+        ├─ buscar_pagamentos_pix_sem_nfe(tenant='lbe-livros', dias_minimos=7,
+        │      valor_minimo=2.0, limite=500)
+        ├─ buscar_pagamentos_cartao_sem_nfe(config_id=2, dias_minimos=7,
+        │      valor_minimo=2.0, limite=500)
+        ├─ para cada PIX elegível: emitir_nfe.apply_async([pix_id], config_id=2,
+        │      valor_override=valor_liquido, countdown=1)   [queue: normal]
+        └─ para cada cartão elegível: emitir_nfe_cartao.apply_async([cartao_id],
+               config_id=2, countdown=1)                     [queue: normal]
 
-tasks.emitir_nfe  [queue: normal, max_retries=3, backoff: 60s→120s→240s]
-  └─▶ fiscal.nfe_service.emitir_nfe(pagamento_pix_id)
-        1. busca nfe_configuracao (tenant ativo)
-        2. busca pagamento_pix por id
-        3. checa idempotência: nfe_emitida_id preenchido? → retorna sem reemitir
-        4. valida env var da senha (falha rápido antes de reservar número)
-        5. incrementar_numero_nfe() — SELECT FOR UPDATE, commita imediatamente
-        6. gerar_chave() — 44 dígitos, cDV módulo 11
-        7. [dentro de certificado_temp]
-           ├─ montar_nfe() — nfelib dataclasses → lxml namespace fix
-           ├─ assinar_nfe() — RSA-SHA1, enveloped, C14N 1.0
-           ├─ validar_nfe() — XSD nfe_v4.00.xsd (falha ANTES de gastar número)
-           ├─ criar_nfe_pendente() → status='enviando'
-           └─ enviar_autorizacao() — SOAP indSinc=1
-        8. processar retorno:
-           ├─ cStat=104 + prot=100 → autorizada: salva nfeProc, vincula PIX
-           ├─ cStat=104 + prot≠100 → rejeitada: salva cStat+xMotivo
-           ├─ cStat=103 → aguardando: salva nRec (assíncrono raro)
-           └─ outros → rejeitada
-        9. gravar_log_soap()
-
-Celery beat (a cada 30 min)
-  └─▶ reprocessar_nfe_pendentes
-        └─ busca PIX das últimas 24h sem NF-e (status=erro ou sem tentativa)
-        └─ despacha emitir_nfe para cada um
+emitir_nfe / emitir_nfe_cartao  (app/fiscal/nfe_service.py)
+  1. busca nfe_configuracao pelo config_id
+  2. busca o pagamento (idempotência: nfe_emitida_id/pagamento_cartao_id já linkado? retorna sem reemitir)
+  3. valida env var da senha + existência do certificado (falha rápido, antes de reservar número)
+  4. incrementar_numero_nfe() — SELECT FOR UPDATE, commita imediatamente (número nunca reusado)
+  5. gerar_chave() — 44 dígitos, cNF aleatório (secrets.randbelow), cDV módulo 11
+  6. [dentro de certificado_temp]
+     ├─ montar_nfe() — nfelib dataclasses → lxml namespace fix
+     ├─ assinar_nfe() — RSA-SHA1, enveloped, C14N 1.0
+     ├─ validar_nfe() — XSD nfe_v4.00.xsd (falha ANTES de gastar número)
+     ├─ criar_nfe_pendente() / inserir_nfe_emitida_cartao() → status='enviando'
+     └─ enviar_autorizacao() — SOAP indSinc=1
+  7. processar retorno (_processar_retorno / _processar_retorno_cartao):
+     ├─ cStat=104 + prot em {100,150} → autorizada: salva nfeProc, vincula pagamento
+     ├─ cStat=104 + prot fora disso   → rejeitada: salva cStat+xMotivo (SEM nProt/xml_proc)
+     ├─ cStat=103                    → aguardando_retorno (assíncrono raro)
+     └─ outros                       → rejeitada
+  8. gravar_log_soap() — sempre, mesmo em erro
 ```
+
+**Disparo manual** (fora do horário agendado, mesmo código): `make emitir-nfe-agora` → `docker compose exec worker-baixa celery -A celery_app call tasks.emitir_nfe_diaria_lbe`. Só dispara — não espera o resultado; acompanhar via banco (`SELECT status_emissao, c_stat, COUNT(*) ... GROUP BY`) é mais confiável que log, porque os workers rodam com `--loglevel=warning` (`docker-compose.yml`) e `logger.info(...)` (autorizada) não aparece no `docker logs`, só no arquivo `/app/storage/logs/log_worker_normal_<data>_001.log` (nível INFO, configurado em `app/logging_setup.py` via `LOG_LEVEL`).
+
+> `app/fluxos/fluxo_pix_bb.py` tem um bloco de emissão **imediata** por-PIX (logo após buscar da API do BB) — está **comentado**, desabilitado deliberadamente. Comentar o `beat_schedule` só impede o disparo automático/agendado; não impede um disparo manual via `make emitir-nfe-agora`, que chama a task direto via Celery.
 
 ---
 
 ## Certificado Digital A1
 
-O certificado `.pfx` (PKCS#12) fica em `infra/nginx/certs/` e é montado read-only nos containers via volume Docker:
-
-```yaml
-volumes:
-  - ./infra/nginx/certs:/app/certs:ro
-```
-
-**Segurança da senha:**
+Um `.pfx` (PKCS#12) por tenant, montado read-only via volume Docker. Senha nunca em código/log/git — só o **nome** da env var fica no banco (`certificado_senha_env`), o valor vem do `.env` do servidor:
 
 ```
 .env (não sobe pro git)
-  NF_CERT_SENHA=suasenhaaqui
+  NF_CERT_SENHA_LBE=suasenha
 
-docker-compose.yml (sobe pro git — sem valor)
-  - NF_CERT_SENHA=${NF_CERT_SENHA:-}
-
-nfe_configuracao (banco de dados)
-  certificado_senha_env = 'NF_CERT_SENHA'   ← nome da variável, nunca a senha
+nfe_configuracao (banco)
+  certificado_senha_env = 'NF_CERT_SENHA_LBE'
 
 nfe_service.py (em runtime)
-  senha = os.getenv(config['certificado_senha_env'])   ← lê do ambiente
+  senha = os.getenv(config['certificado_senha_env'])
 ```
-
-A senha **nunca aparece** em código, log, banco ou git.
 
 ---
 
 ## Assinatura Digital
 
-O módulo usa `signxml 5.0` com subclasse para contornar o bloqueio de SHA1 (exigido pelo MOC NF-e 4.00):
+`signxml 5.0` com subclasse para contornar o bloqueio de SHA1 (exigido pelo MOC NF-e 4.00):
 
 | Parâmetro | Valor | Motivo |
 |---|---|---|
@@ -185,21 +224,9 @@ O módulo usa `signxml 5.0` com subclasse para contornar o bloqueio de SHA1 (exi
 | Canonicalização | C14N 1.0 | Exigência MOC NF-e 4.00 |
 | Método | Enveloped | `<Signature>` irmã de `<infNFe>` dentro de `<NFe>` |
 
-> SHA-1 é considerado depreciado para segurança geral, mas é obrigatório para NF-e por exigência do governo federal. A subclasse `_NFeSigner` em `nfe_assinador.py` faz esse bypass de forma controlada.
-
 ### Problema de namespace resolvido
 
-O `nfelib` (xsdata) serializa como:
-```xml
-<TNFe><ns0:infNFe xmlns:ns0="http://www.portalfiscal.inf.br/nfe">
-```
-
-A SEFAZ exige:
-```xml
-<NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe ...>
-```
-
-Solução em `nfe_xml_builder.py`: serializar com xsdata, extrair `infNFe` com lxml, criar `<NFe>` com `nsmap={None: NS}`.
+`nfelib` (xsdata) serializa com prefixo (`<ns0:infNFe xmlns:ns0="...">`); a SEFAZ exige sem prefixo (`<NFe xmlns="..."><infNFe>`). Solução em `nfe_xml_builder.py`: serializar com xsdata, extrair `infNFe` com lxml, remontar `<NFe>` com `nsmap={None: NS}`.
 
 ---
 
@@ -211,48 +238,28 @@ Solução em `nfe_xml_builder.py`: serializar com xsdata, extrair `infNFe` com l
 | Autorização | `nfe-homologacao.svrs.rs.gov.br/ws/NfeAutorizacao/...` | `nfe.svrs.rs.gov.br/ws/NfeAutorizacao/...` |
 | Ret. autorização | `nfe-homologacao.svrs.rs.gov.br/ws/NfeRetAutorizacao/...` | `nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/...` |
 | Consulta | `nfe-homologacao.svrs.rs.gov.br/ws/NfeConsulta/...` | `nfe.svrs.rs.gov.br/ws/NfeConsulta/...` |
-| Eventos | `nfe-homologacao.svrs.rs.gov.br/ws/recepcaoevento/...` | `nfe.svrs.rs.gov.br/ws/recepcaoevento/...` |
+| Eventos (cancelamento/CCe) | `nfe-homologacao.svrs.rs.gov.br/ws/recepcaoevento/...` | `nfe.svrs.rs.gov.br/ws/recepcaoevento/...` |
+| Inutilização | `nfe-homologacao.svrs.rs.gov.br/ws/NfeInutilizacao/...` | `nfe.svrs.rs.gov.br/ws/NfeInutilizacao/...` |
 
-A seleção é automática via campo `nfe_configuracao.ambiente` (`1`=produção, `2`=homologação).
+Seleção automática via `nfe_configuracao.ambiente` (`app/fiscal/nfe_soap.py:84-85`). **Eventos (cancelamento/CCe) e Inutilização têm as URLs mapeadas mas nenhuma função implementada ainda** — ver [Próximas Etapas](#próximas-etapas).
 
----
-
-## Tributação (Placeholders — Validar com Contador)
-
-Enquanto o contador não define a tributação definitiva, o sistema usa valores conservadores:
-
-| Imposto | Código | Significado |
-|---|---|---|
-| ICMS | CST=40 | Isenção |
-| PIS | CST=07 | Operação isenta |
-| COFINS | CST=07 | Operação isenta |
-| NCM | 49011000 | Livros (provisório) |
-| CFOP | 6107 | Venda interestadual a não-contribuinte (provisório) |
-
-Esses campos ficam em `nfe_configuracao` e podem ser atualizados no banco sem alterar código.
-
-**Atenção:** Para livros digitais no DF, a classificação correta (NF-e produto vs NFS-e serviço, NCM, CFOP, alíquotas DIFAL) precisa ser confirmada com o contador e com a SEFAZ-DF.
+**Consulta pública de NF-e** (`nfe.fazenda.gov.br` e o portal da Receita-DF) só aceita busca pela chave de acesso completa de 44 dígitos — não existe busca por CNPJ+número+série sem certificado digital nesses portais públicos. Pra descobrir se um número específico já foi usado sem ter a chave, a única forma correta seria implementar o webservice `NFeDistribuicaoDFe` (Distribuição de DFe) — não existe no código hoje.
 
 ---
 
 ## Dados do Destinatário (B2C)
 
-Para venda a consumidor final via PIX, a NF-e usa:
-
-- **CPF/CNPJ**: extraído de `pagamento_pix.cpf_cnpj` (quando disponível; campo opcional para B2C)
-- **Nome**: `pagamento_pix.nome_pagador` (produção) / string fixa em homologação (exigência SEFAZ: `cStat=598` se diferente)
-- **Endereço**: endereço do emitente como fallback B2C (sem entrega física — produto digital)
+- **CPF/CNPJ**: `pagamento_pix.cpf_cnpj` ou `pedidos.cpf_cnpj_pagador` (cartão)
+- **Nome**: uppercase forçado em `montar_nfe()` (PIX já vem em caixa alta da fonte/banco; cartão vem como o cliente digitou no checkout — padronizado desde 13/09/2026). Em homologação, `xNome` é sobrescrito pela string fixa exigida pela SEFAZ (`cStat=598` se diferente)
 - **indIEDest**: `9` = Não contribuinte
 
 ---
 
 ## Idempotência e Concorrência
 
-Três camadas de proteção contra emissão dupla:
-
-1. **`pagamento_pix.nfe_emitida_id`**: checado no início do service; se preenchido, retorna imediatamente
-2. **`UNIQUE KEY uq_pagamento_pix (pagamento_pix_id)`** em `nfe_emitidas`: `IntegrityError` capturado no service
-3. **`incrementar_numero_nfe` com `FOR UPDATE`**: o número nunca é gerado duas vezes para o mesmo PIX
+1. **`pagamento_pix.nfe_emitida_id`** / **`nfe_emitidas.pagamento_cartao_id` (UNIQUE)**: checado antes de tentar emitir
+2. **`IntegrityError` capturado** no service se dois workers tentarem o mesmo pagamento ao mesmo tempo
+3. **`incrementar_numero_nfe` com `FOR UPDATE`**: número nunca gerado duas vezes — mas **só protege dentro do mesmo banco**. Dois bancos diferentes (ex: dev com `ambiente=1` e produção) compartilhando a mesma SEFAZ real **não têm proteção nenhuma entre si** — cada um tem seu próprio contador, cego ao do outro. Isso é o que causou o incidente de 09/2026 (ver [Isolamento de Ambientes](#isolamento-de-ambientes-produção-vs-desenvolvimento)).
 
 ---
 
@@ -260,128 +267,42 @@ Três camadas de proteção contra emissão dupla:
 
 | Task | Fila | Retries | Descrição |
 |---|---|---|---|
-| `tasks.emitir_nfe` | normal | 3 (60s→120s→240s) | Emissão individual para um PIX |
-| `tasks.reprocessar_nfe_pendentes` | baixa | 0 | Beat a cada 30min; recupera falhas das últimas 24h |
+| `tasks.emitir_nfe_diaria_lbe` | baixa | 0 | Orquestrador diário (beat 00h10 SP) — busca elegíveis e dispara as duas abaixo |
+| `tasks.emitir_nfe` | normal | 3 (60s→120s→240s) | Emissão individual, PIX |
+| `tasks.emitir_nfe_cartao` | normal | conforme `nfe_service.py` | Emissão individual, cartão |
 
-**Erros permanentes** (não retentam, notificam admin):
-- `RuntimeError` — configuração ausente, senha não definida
-- `ValueError` — XSD inválido, PIX não encontrado
-
-**Erros transientes** (retentam com backoff):
-- Timeout de rede, HTTP 5xx, SEFAZ indisponível
+**Erros permanentes** (não retentam, notificam admin): `RuntimeError` (config/senha ausente), `ValueError` (XSD inválido, pagamento não encontrado).
+**Erros transientes** (retentam com backoff): timeout de rede, HTTP 5xx, SEFAZ indisponível.
 
 ---
 
-## Scripts de Teste
-
-Execute a partir da raiz do projeto:
+## Scripts
 
 ```bash
-# 1. Testa carregamento do certificado .pfx
+# Testes de infraestrutura (certificado, conectividade) — CNPJ pessoal, homologação
 NF_CERT_SENHA="suasenha" python scripts/testar_certificado_nfe.py
-
-# 2. Testa conectividade com SVRS (deve retornar cStat=107)
 NF_CERT_SENHA="suasenha" python scripts/testar_status_svrs.py
-
-# 3. Testa o fluxo completo de emissão sem banco de dados
 NF_CERT_SENHA="suasenha" python scripts/testar_emissao_nfe.py
 
-# 4. Ver o XML SOAP de resposta da SEFAZ
-NF_CERT_SENHA="suasenha" DEBUG_SOAP=1 python scripts/testar_emissao_nfe.py
+# Emite em HOMOLOGAÇÃO pra um pagamento_pix real da LBE, sem gravar no banco
+# (gera XMLs + DANFE em testes-nfe/pix-<ID>/, útil pra mandar exemplo pro contador)
+DB_HOST=localhost NF_CERT_PATH=/tmp/lbe-livros.pfx python scripts/emitir_nfe_pix.py [PIX_ID]
+
+# Disparo manual da rotina diária, produção — MESMO código do beat, ver aviso de ambiente acima
+make emitir-nfe-agora
 ```
+
+Scripts standalone rodam **fora do Docker** (no host do servidor) — usam o `.venv` próprio em `~/vendas-web/.venv` (dependências do `requirements.txt` também precisam estar instaladas ali, fora do container). `DB_HOST=db` (nome do serviço Docker) não resolve fora da rede Docker — os scripts corrigem automaticamente para `localhost`.
 
 ---
 
-## Resultados dos Testes Confirmados
+## Estado Atual (13/09/2026)
 
-| Teste | Resultado |
-|---|---|
-| Carregamento do .pfx | ✅ |
-| Consulta de status SVRS | ✅ cStat=107, HTTP 200, 224ms |
-| Geração de chave 44 dígitos | ✅ cDV correto |
-| Montagem de XML com nfelib | ✅ namespace correto |
-| Assinatura RSA-SHA1 | ✅ 6.2 KB, verificada |
-| Validação XSD nfe_v4.00.xsd | ✅ 0 erros |
-| Envio SOAP SVRS | ✅ HTTP 200, 247ms |
-| Lote processado (cStat=104) | ✅ |
-| Autorização (cStat=100) | ⏳ aguarda IE do DF |
-
-**Rejeições encontradas e corrigidas durante os testes:**
-
-| cStat | Motivo | Correção |
-|---|---|---|
-| 598 | xNome dest diferente do obrigatório em homologação | `xNome` fixo em homologação |
-| 434 | `indIntermed` ausente (NT 2020.006) | Adicionado `indIntermed=0` |
-| 209 | IE do emitente inválida | Aguarda IE do DF; campo `config['ie']` já pronto |
-
----
-
-## Checklist para Produção
-
-- [ ] **Obter IE do DF** junto à SEFAZ-DF após abertura da PE
-- [ ] **Confirmar com contador**: NCM, CFOP, CST corretos para livros digitais
-- [ ] **Baixar CA bundle ICP-Brasil** (cadeia de certificação SEFAZ):
-  ```bash
-  # Salvar em infra/nginx/certs/cadeia-icp-brasil.pem
-  ```
-- [ ] **Rodar migration**:
-  ```bash
-  mysql -u appuser -p vendasdb < migrations/039_nfe.sql
-  ```
-- [ ] **Inserir configuração no banco**:
-  ```sql
-  INSERT INTO nfe_configuracao (
-    tenant_slug, api_key, cnpj, ie, crt,
-    razao_social, nome_fantasia,
-    logradouro, numero, bairro, c_mun, x_mun, uf, cep,
-    serie_padrao, certificado_path, certificado_senha_env,
-    x_prod, ncm, cfop, cst_icms, cst_pis, cst_cofins,
-    ambiente, ca_bundle_path
-  ) VALUES (
-    'lsn-livros',
-    SHA2(UUID(), 256),
-    '64980953000146',
-    '<IE_DF>',             -- inserir quando obtida
-    3,
-    'LEONARDO SANTOS NEGREIROS',
-    'LSN LIVROS',
-    'SHA Conjunto 4 Chacara 19 Lote C', '5', 'Arniqueira',
-    5300108, 'Brasilia', 'DF', '71994120',
-    '001',
-    '/app/certs/64.980.953 LEONARDO SANTOS NEGREIROS_64980953000146.pfx',
-    'NF_CERT_SENHA',
-    'Livro Digital',
-    '49011000',            -- confirmar NCM com contador
-    '6107',               -- confirmar CFOP com contador
-    '40',                 -- confirmar CST ICMS com contador
-    '07',                 -- confirmar CST PIS com contador
-    '07',                 -- confirmar CST COFINS com contador
-    2,                    -- 2=homologação; trocar para 1 quando pronto para produção
-    NULL                  -- NULL=homologação sem verify; '/app/certs/cadeia-icp-brasil.pem' em produção
-  );
-  ```
-- [ ] **Adicionar senha ao `.env`** no servidor:
-  ```
-  NF_CERT_SENHA=suasenha
-  ```
-- [ ] **Fazer rebuild do docker-compose** para o worker-normal pegar a nova variável:
-  ```bash
-  docker compose up -d --build worker-normal
-  ```
-- [ ] **Testar em homologação** com `ambiente=2` até obter `cStat=100`
-- [ ] **Trocar para produção**: `UPDATE nfe_configuracao SET ambiente=1, ca_bundle_path='/app/certs/cadeia-icp-brasil.pem' WHERE id=1`
-
----
-
-## Dependências Adicionadas
-
-```
-nfelib==2.5.2      # dataclasses NF-e 4.00 geradas dos XSD oficiais
-lxml==6.1.1        # parsing/serialização XML + fix de namespace
-signxml==5.0.0     # assinatura XML enveloped (SHA1 via subclasse)
-```
-
-`cryptography` já era dependência transitiva do projeto.
+- ✅ LBE em produção real (`ambiente=1`), rotina diária ativa, ~2400 NF-e emitidas
+- ✅ PIX e cartão funcionando, `cStat=100` e `150` tratados corretamente como autorização
+- ✅ Descrição de produto (ISBN/nome_nfe) correta em ambas as vias de pagamento
+- ⚠️ LSN (CNPJ pessoal) ainda em homologação (`ambiente=2`) — sem rotina automática ativa
+- ⚠️ IBS/CBS (Reforma Tributária) configurado com valores confirmados pelo contador em setembro/2026, mas a legislação/alíquotas ainda estão em transição — revisar periodicamente
 
 ---
 
@@ -389,7 +310,9 @@ signxml==5.0.0     # assinatura XML enveloped (SHA1 via subclasse)
 
 | Etapa | Descrição |
 |---|---|
-| Admin UI | Listar NF-e emitidas, detalhes, download XML, retentar |
-| Eventos | Cancelamento (110111), CCe (110110), Inutilização |
-| API REST | `/api/fiscal/` com Bearer token para uso multi-tenant |
-| `consultar_retorno_nfe` | Task para o caso raro de `cStat=103` (assíncrono) |
+| Admin UI | Listar NF-e emitidas, detalhes, download XML, retentar manualmente |
+| Inutilização de numeração | Formalizar (evento de Inutilização) qualquer gap de número que fique definitivamente sem uso — hoje não há gaps conhecidos, mas o mecanismo não existe se precisar |
+| CCe (Carta de Correção) | Só serve para dados não-fiscais (endereço, informações complementares) — não resolve numeração nem valor. Não implementado; baixa prioridade dado o volume de erros desse tipo até hoje |
+| Consulta de Distribuição de DFe | Permitiria descobrir programaticamente que números já existem pra um CNPJ/série sem precisar de chave — teria evitado horas de investigação no incidente de 09/2026. Não implementado |
+| Trava de segurança ambiente | Considerar um guard no código que impeça `ambiente=1` fora do hostname de produção real, pra tornar o incidente de isolamento estruturalmente impossível em vez de depender de disciplina manual |
+| API REST | `/api/fiscal/` com Bearer token para uso multi-tenant externo |
