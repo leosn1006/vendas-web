@@ -198,6 +198,13 @@ def montar_nfe(
     )
 
     # Destinatário B2C: CPF ou CNPJ conforme tamanho
+    # CONHECIDO: quando o pagador usa CNPJ (empresa pagando com PIX da própria conta),
+    # a SEFAZ rejeita com cStat=232 "IE do destinatário não informada" — testado em
+    # homologação em 14/09/2026 com indIEDest=9 (original) e indIEDest=2 sem IE
+    # (tentativa de correção), ambos rejeitados com a mesma mensagem. Não é só sobre
+    # o valor de indIEDest — provavelmente exige a IE real do destinatário, que não
+    # coletamos no fluxo de pagamento. Pendente de decisão com o contador antes de
+    # tentar de novo. Baixo volume (2 em 507 numa rodada de produção).
     dest_kwargs = {
         'xNome':     nome,
         'enderDest': _endereco_dest_fallback(emit_data),
