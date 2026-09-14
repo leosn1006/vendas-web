@@ -656,6 +656,10 @@
         </a>
 
         <div class="nav-section">Gestão</div>
+        <a href="{{ url_for('admin.comparativo_estante_v2') }}"
+           class="nav-link {% if request.endpoint == 'admin.comparativo_estante_v2' %}active{% endif %}">
+            <span class="icon">🧪</span> Estante v1 x v2
+        </a>
         <a href="{{ url_for('admin.listar_usuarios') }}"
            class="nav-link {% if 'usuario' in request.endpoint %}active{% endif %}">
             <span class="icon">◎</span> Usuários

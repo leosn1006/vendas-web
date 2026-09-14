@@ -1878,6 +1878,94 @@ def busca_produtos_disponiveis_web():
     ) or []
 
 
+def listar_produtos_cross_sell_cliente(ebook_ids_possuidos):
+    """Produtos com venda web habilitada cujo e-book 'principal' o cliente ainda não possui —
+    usado pela seção de cross-sell da estante v2 (/pedido2/<guid>). `ebook_ids_possuidos` é o
+    conjunto de ebook_id que o cliente já tem (calculado pelo chamador a partir do retorno de
+    listar_itens_ebook_do_cliente, que já resolve isso pra tela da estante).
+
+    Só considera papel='principal' (produto vendável sozinho, com preço/NF-e próprios) — e-books
+    que só existem como bônus/bump de outros produtos ficam de fora de propósito (não têm preço
+    nem configuração fiscal independentes, ver contexto do plano)."""
+    rows = db.execute_query(
+        """SELECT ep.produto_id, ep.ebook_id, ep.preco_promocional,
+                  e.nome_venda, e.imagem_pequena, e.imagem_grande
+           FROM ebooks_produto ep
+           JOIN ebooks e ON e.id = ep.ebook_id
+           JOIN produtos p ON p.id = ep.produto_id
+           WHERE ep.papel = 'principal' AND p.disponivel_web = TRUE AND p.ativo = TRUE
+           ORDER BY p.id""",
+        fetch_all=True
+    ) or []
+    return [r for r in rows if r['ebook_id'] not in ebook_ids_possuidos]
+
+
+def registrar_visualizacao_estante(pedido_id: int, variante: str) -> None:
+    """Loga uma abertura de /pedido/<guid> (v1) ou /pedido2/<guid> (v2) — só pra ter o
+    denominador da taxa de clique (visualizou → comprou) na comparação v1/v2 do admin. Envolto
+    em try/except pelo chamador não é necessário aqui porque uma falha de INSERT não deve
+    derrubar a página da estante — mas como db.execute_query já propaga exceção, deixamos o
+    chamador decidir (ver rota /pedido2/<guid>)."""
+    db.execute_query(
+        "INSERT INTO estante_visualizacoes (pedido_id, variante) VALUES (%s, %s)",
+        (pedido_id, variante)
+    )
+
+
+def marcar_variante_pedido(pedido_id: int, variante: str) -> None:
+    """Marca em qual variante do checkout (v1/v2) um pedido nasceu — só a v2 (/pay2/<produto_id>)
+    chama isso hoje; pedidos do fluxo v1 mantêm o default 'v1' da coluna sem precisar de UPDATE."""
+    db.execute_query(
+        "UPDATE pedidos SET variante_checkout = %s WHERE id = %s",
+        (variante, pedido_id)
+    )
+
+
+def busca_comparativo_variante_checkout(data_ini, data_fim) -> dict:
+    """Compara v1 x v2 no período, pro piloto de cross-sell na estante (ver plano
+    peaceful-seeking-pizza.md). A v1 é o controle do A/B — não tem seção de cross-sell — por
+    isso só faz sentido medir visualização dela, não conversão; conversão de cross-sell só
+    existe na v2 (todo pedido variante_checkout='v2' nasce do botão 'Comprar' do cross-sell,
+    já que /pay2/<produto_id> só é alcançável a partir de lá).
+
+    'pedidos_criados_v2' filtra por data_pedido, que só é gravada quando o cliente preenche
+    nome/e-mail (finalizar_pedido_web/criar_pedido_web_unificado) — não na criação do rascunho
+    em /pay2. Ou seja, mede quem preencheu os dados, não quem só visitou o checkout e abandonou
+    antes disso (não há hoje um log de visualização de página de checkout, só da estante)."""
+    visualizacoes = db.execute_query(
+        """SELECT variante, COUNT(*) AS total
+           FROM estante_visualizacoes
+           WHERE criado_em BETWEEN %s AND %s
+           GROUP BY variante""",
+        (data_ini, data_fim), fetch_all=True
+    ) or []
+    views_por_variante = {row['variante']: row['total'] for row in visualizacoes}
+
+    cross_sell = db.execute_query(
+        """SELECT COUNT(*) AS pedidos_criados,
+                  SUM(estado_id = 1000) AS pedidos_pagos,
+                  SUM(CASE WHEN estado_id = 1000 THEN valor_pago ELSE 0 END) AS valor_total
+           FROM pedidos
+           WHERE variante_checkout = 'v2' AND data_pedido BETWEEN %s AND %s""",
+        (data_ini, data_fim), fetch_one=True
+    ) or {}
+
+    views_v1 = views_por_variante.get('v1', 0)
+    views_v2 = views_por_variante.get('v2', 0)
+    pedidos_pagos = int(cross_sell.get('pedidos_pagos') or 0)
+    valor_total = float(cross_sell.get('valor_total') or 0)
+
+    return {
+        'views_v1': views_v1,
+        'views_v2': views_v2,
+        'pedidos_criados_v2': int(cross_sell.get('pedidos_criados') or 0),
+        'pedidos_pagos_v2': pedidos_pagos,
+        'valor_total_v2': valor_total,
+        'ticket_medio_v2': round(valor_total / pedidos_pagos, 2) if pedidos_pagos else 0.0,
+        'taxa_conversao_v2': round(100 * pedidos_pagos / views_v2, 2) if views_v2 else 0.0,
+    }
+
+
 _whatsapp_token_cache: dict = {}  # api_phone_number_id -> token string resolvido
 
 

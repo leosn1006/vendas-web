@@ -227,10 +227,14 @@ def enviar_mensagem(pedido: Pedido, mensagem: str):
         raise ErroTransienteWhatsApp(msg)
     raise ValueError(msg)
 
-def montar_link_estante(pedido: dict) -> str:
-    """Monta o link absoluto da Estante (`/pedido/<guid>`) usando o domínio do
+def montar_link_estante(pedido: dict, caminho: str = '/pedido') -> str:
+    """Monta o link absoluto da Estante (`<caminho>/<guid>`) usando o domínio do
     número que está enviando (resolvido via token_env_key cadastrado em
     telefones_produto), não uma APP_BASE_URL global.
+
+    `caminho` default '/pedido' é a estante v1; o dispatcher de 'enviar_produto'
+    (`app/fluxos/_executor_acao.py`) passa '/pedido2' quando a ação está marcada pro
+    piloto da estante v2 (ver plano peaceful-seeking-pizza.md).
     """
     guid = pedido.get('guid') or garantir_guid_pedido(pedido['id'])
     phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
@@ -241,7 +245,7 @@ def montar_link_estante(pedido: dict) -> str:
             f"[LINK-ESTANTE] ❌ Domínio não mapeado para '{env_key}' (phone_number_id={phone_number_id}). "
             f"Cadastre o host correspondente em whatsapp_seguranca._HOST_ACCESS_TOKEN_MAP."
         )
-    return f"https://{dominio}/pedido/{guid}"
+    return f"https://{dominio}{caminho}/{guid}"
 
 
 def enviar_botao_link(pedido: Pedido, texto: str, url: str, texto_botao: str):

@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout — {{ ebook_principal.nome_venda }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+    {% if ebook_principal.imagem_grande %}
+    <link rel="preload" as="image" href="{{ url_for('static', filename='images/' + ebook_principal.imagem_grande) }}" fetchpriority="high">
+    {% endif %}
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --verde:    #4a7c59;
+            --azul-bb:  #465EFF;
+            --amarelo-bb: #FCFC30;
+            --cinza-bg: #f5f5f5;
+            --borda:    #ddd;
+            --texto:    #222;
+            --sub:      #666;
+            --erro:     #c0392b;
+            --laranja:  #b45309;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--cinza-bg);
+            color: var(--texto);
+            min-height: 100vh;
+        }
+
+        /* ── Barra de segurança ── */
+        .barra-seguranca {
+            background: #465EFF;
+            color: #fff;
+            text-align: center;
+            padding: 7px 16px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .barra-seguranca strong { font-weight: 900; }
+
+        /* ── Container ── */
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 20px 16px 40px;
+        }
+
+        /* ── Card genérico ── */
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--borda);
+        }
+
+        /* ── Resumo do produto (lista de itens, atualiza com os bumps marcados) ── */
+        .resumo-label { font-size: 12px; color: var(--sub); margin-bottom: 10px; }
+        .resumo-itens { display: flex; flex-direction: column; gap: 8px; }
+        .linha-item { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 14px; }
+        .linha-item span:first-child { flex: 1; min-width: 0; }
+        .linha-item span:last-child  { flex-shrink: 0; white-space: nowrap; }
+        .linha-item-principal { font-size: 17px; font-weight: 700; }
+        .linha-item-extra { font-size: 13px; color: var(--laranja); }
+        .resumo-total-wrap {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--borda);
+            font-size: 14px; color: var(--sub);
+        }
+        .resumo-total-wrap strong { font-size: 22px; font-weight: 900; color: var(--verde); }
+
+        /* ── Bônus ── */
+        .bonus-box {
+            background: #fffaf0; border: 1.5px dashed #f0b429;
+            border-radius: 12px; padding: 18px 20px; margin-bottom: 16px;
+        }
+        .bonus-titulo {
+            font-size: 14px; font-weight: 900; color: var(--laranja);
+            margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+        }
+        .bonus-item {
+            font-size: 14px; color: var(--texto); padding: 6px 0;
+            display: flex; align-items: flex-start; gap: 8px;
+        }
+        .bonus-item + .bonus-item { border-top: 1px dashed #f0dcae; }
+        .bonus-item .check { color: var(--verde); flex-shrink: 0; font-weight: 900; }
+
+        /* ── Títulos de seção ── */
+        .secao-titulo {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 17px; font-weight: 700; margin-bottom: 18px;
+        }
+        .secao-num {
+            background: #222; color: #fff;
+            width: 20px; height: 20px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 900; flex-shrink: 0;
+        }
+
+        /* ── Inputs ── */
+        .campo { margin-bottom: 14px; }
+        .campo label { display: block; font-size: 13px; color: var(--sub); margin-bottom: 5px; }
+        .campo input {
+            width: 100%; border: 1.5px solid var(--borda);
+            border-radius: 8px; padding: 12px 14px;
+            font-size: 15px; font-family: 'Lato', sans-serif;
+            outline: none; transition: border-color .15s;
+        }
+        .campo input:focus { border-color: var(--verde); }
+        .campo input.erro  { border-color: var(--erro); }
+
+        /* ── Campo WhatsApp com prefixo DDI ── */
+        .input-com-prefixo {
+            display: flex;
+            align-items: center;
+            border: 1.5px solid var(--borda);
+            border-radius: 8px;
+            background: #fafde7;
+            transition: border-color .15s;
+            overflow: hidden;
+        }
+        .input-com-prefixo:focus-within { border-color: var(--verde); }
+        .input-com-prefixo.invalido     { border-color: var(--erro); }
+        .input-com-prefixo input {
+            border: none;
+            background: transparent;
+            flex: 1;
+            width: auto;
+            padding: 12px 14px;
+            font-size: 15px;
+            font-family: inherit;
+            color: var(--texto);
+            outline: none;
+            min-width: 0;
+        }
+        .prefixo-ddi {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0 10px 0 14px;
+            color: var(--sub);
+            font-size: 14px;
+            white-space: nowrap;
+            user-select: none;
+            border-right: 1.5px solid var(--borda);
+            height: 100%;
+            min-height: 44px;
+        }
+        .prefixo-ddi .bandeira { font-size: 18px; line-height: 1; }
+        .erro-campo {
+            color: var(--erro);
+            font-size: 14px;
+            font-weight: 700;
+            margin-top: 4px;
+            min-height: 18px;
+            visibility: visible;
+        }
+        .erro-campo.oculto {
+            visibility: hidden;
+        }
+        .dica-campo {
+            color: var(--laranja);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .dica-campo a { color: var(--laranja); font-weight: 700; }
+        .dica-campo.oculto { display: none; }
+        .dica-inbox {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--laranja);
+            margin: -8px 0 14px;
+            line-height: 1.4;
+        }
+
+        /* ── Pagamento (só PIX por enquanto) ── */
+        .pagamento-tag {
+            display: flex; align-items: center; gap: 10px;
+            border: 1.5px solid var(--borda); border-radius: 10px;
+            padding: 12px 14px; margin-bottom: 14px;
+        }
+        .pix-icon {
+            width: 32px; height: 32px;
+            background: #32BCAD; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .pix-icon svg { width: 20px; height: 20px; fill: #fff; }
+        .pagamento-info { flex: 1; }
+        .pagamento-nome { font-weight: 700; font-size: 14px; }
+        .pagamento-sub  { font-size: 12px; color: var(--sub); margin-top: 1px; }
+
+        .bbpay-icon {
+            width: 36px; height: 36px;
+            background: var(--azul-bb); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; font-weight: 900; font-size: 12px;
+            color: var(--amarelo-bb); letter-spacing: -0.5px;
+        }
+
+        /* ── Seletor de método de pagamento (Pix / Cartão) ── */
+        .metodo-selector {
+            display: flex; gap: 8px; margin-bottom: 14px;
+        }
+        .metodo-btn {
+            flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+            border: 1.5px solid var(--borda); border-radius: 10px;
+            background: #fff; padding: 12px 10px; cursor: pointer;
+            font-family: 'Lato', sans-serif; font-size: 14px; font-weight: 700; color: var(--sub);
+            transition: border-color .15s, background .15s, color .15s;
+        }
+        .metodo-btn.ativo { border-color: var(--verde); background: #f0f7f3; color: var(--verde); }
+        .metodo-btn .metodo-emoji { font-size: 16px; }
+
+        /* ── Campos de cartão de crédito ── */
+        .campo-linha { display: flex; gap: 10px; }
+        .campo-linha .campo { flex: 1; min-width: 0; }
+        .campo select {
+            width: 100%; border: 1.5px solid var(--borda);
+            border-radius: 8px; padding: 12px 14px;
+            font-size: 15px; font-family: 'Lato', sans-serif;
+            outline: none; background: #fff; transition: border-color .15s;
+        }
+        .campo select:focus { border-color: var(--verde); }
+        .cartao-numero-wrap {
+            display: flex; align-items: center; gap: 10px;
+            border: 1.5px solid var(--borda); border-radius: 8px;
+            padding: 0 12px 0 0; transition: border-color .15s;
+        }
+        .cartao-numero-wrap:focus-within { border-color: var(--verde); }
+        .cartao-numero-wrap input {
+            border: none; flex: 1; min-width: 0; padding: 12px 14px;
+            font-size: 15px; font-family: inherit; outline: none;
+        }
+        .cartao-bandeira-icon { width: 38px; height: 24px; object-fit: contain; flex-shrink: 0; }
+
+        /* ── Order bumps ── */
+        .bump-card {
+            border: 2px dashed #f0b429; background: #fffdf5;
+            border-radius: 12px; padding: 16px; margin-bottom: 12px;
+            display: flex; gap: 12px; align-items: flex-start;
+            cursor: pointer; transition: border-color .15s, background .15s;
+        }
+        .bump-card:hover { border-color: #d99a1f; }
+        .bump-card.marcado { border-style: solid; background: #fff6e0; }
+        .bump-card input[type=checkbox] {
+            width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px; cursor: pointer;
+        }
+        .bump-selo {
+            display: inline-block; background: var(--laranja); color: #fff;
+            font-size: 10px; font-weight: 900; letter-spacing: .5px;
+            text-transform: uppercase; padding: 2px 8px; border-radius: 20px;
+            margin-bottom: 6px;
+        }
+        .bump-nome { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+        .bump-desc { font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+        .bump-precos { font-size: 13px; }
+        .bump-preco-original { color: var(--sub); text-decoration: line-through; margin-right: 6px; }
+        .bump-preco-promo { color: var(--verde); font-weight: 900; font-size: 15px; }
+
+        /* ── Miniatura do order bump ── */
+        .bump-thumb {
+            width: 64px; height: 64px; object-fit: cover;
+            border-radius: 8px; flex-shrink: 0;
+        }
+
+        /* ── Foto do produto principal (resumo) — estilo banner, sempre acima do texto,
+           altura livre conforme a proporção da imagem (sem recorte forçado). ── */
+        .resumo-hero { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+        .resumo-hero-img {
+            width: 100%; height: auto; max-height: 320px; object-fit: cover;
+            border-radius: 10px; display: block;
+        }
+
+        .total-linha {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 14px; color: var(--sub); margin-bottom: 10px; padding: 0 2px;
+        }
+        .total-linha strong { color: var(--texto); font-size: 18px; font-weight: 900; }
+
+        /* ── Erros ── */
+        .msg-erro {
+            background: #fff5f5; border: 1px solid #f5c6cb;
+            border-radius: 8px; padding: 12px 14px;
+            color: var(--erro); font-size: 14px; margin-bottom: 14px;
+            display: none;
+        }
+        .msg-erro ul { padding-left: 18px; margin-top: 4px; }
+
+        /* ── Botão principal ── */
+        .btn-finalizar {
+            display: block; width: 100%;
+            background: var(--verde); color: #fff;
+            border: none; border-radius: 50px;
+            padding: 17px; font-size: 16px; font-weight: 900;
+            font-family: 'Lato', sans-serif; cursor: pointer;
+            transition: background .15s; letter-spacing: 0.5px;
+        }
+        .btn-finalizar:hover    { background: #3a6347; }
+        .btn-finalizar:disabled { background: #aaa; cursor: not-allowed; }
+        .btn-sub-seguro {
+            text-align: center; font-size: 12px; color: var(--sub); margin-top: 10px;
+        }
+
+        /* ── Estado: PIX QR Code ── */
+        #estado-pix { display: none; }
+        .qr-titulo  { font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 12px; }
+        .pix-itens {
+            max-width: 280px; margin: 0 auto 12px; text-align: left;
+            background: #fafafa; border-radius: 8px; padding: 10px 14px;
+        }
+        .pix-itens .linha-item { font-size: 13px; padding: 3px 0; }
+        .qr-preco   { text-align: center; font-size: 20px; font-weight: 900; color: var(--verde); margin-bottom: 16px; }
+        .qr-img     { display: block; margin: 0 auto 16px; max-width: 220px; width: 100%; border-radius: 8px; }
+
+        .copiaecola-wrap {
+            display: flex; gap: 8px; align-items: stretch;
+            border: 1.5px solid var(--borda); border-radius: 8px;
+            overflow: hidden; margin-bottom: 14px;
+        }
+        .copiaecola-txt {
+            flex: 1; padding: 10px 12px; font-size: 11px;
+            color: var(--sub); word-break: break-all;
+            font-family: monospace; line-height: 1.4;
+        }
+        .btn-copiar {
+            background: #f0f0f0; border: none; padding: 0 14px;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            font-family: 'Lato', sans-serif; flex-shrink: 0;
+        }
+        .btn-copiar:hover { background: #e0e0e0; }
+
+        .bbpay-separator {
+            display: flex; align-items: center; gap: 10px;
+            margin: 14px 0; color: #aaa; font-size: 12px;
+        }
+        .bbpay-separator::before, .bbpay-separator::after {
+            content: ''; flex: 1; height: 1px; background: var(--borda);
+        }
+        .btn-bbpay-link {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            width: 100%; background: var(--azul-bb); color: #fff;
+            text-decoration: none; border-radius: 50px;
+            padding: 14px 20px; font-size: 15px; font-weight: 700;
+            font-family: 'Lato', sans-serif; transition: background .15s;
+        }
+        .btn-bbpay-link:hover { background: #3349dd; }
+        .bbpay-logo-badge {
+            background: var(--amarelo-bb); color: var(--azul-bb);
+            font-weight: 900; font-size: 12px;
+            padding: 2px 7px; border-radius: 4px; line-height: 1.4;
+        }
+
+        .spinner-wrap {
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; color: var(--sub); font-size: 13px; margin-top: 14px;
+        }
+        .spinner {
+            width: 18px; height: 18px; border: 2px solid #ddd;
+            border-top-color: var(--verde); border-radius: 50%;
+            animation: spin .8s linear infinite; flex-shrink: 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .countdown-txt { font-size: 12px; color: var(--verde); font-weight: 700; margin-left: 6px; }
+        .btn-tentar-novamente {
+            background: none; border: 1.5px solid var(--verde); color: var(--verde);
+            border-radius: 50px; padding: 8px 20px; font-size: 14px; font-weight: 700;
+            font-family: inherit; cursor: pointer; margin-top: 4px;
+        }
+        .btn-tentar-novamente:hover { background: #f0f7f3; }
+
+        /* Botão "já paguei" sempre visível junto ao QR (não só depois do timeout) */
+        .ja-paguei-wrap { text-align: center; margin-top: 16px; }
+        .ja-paguei-wrap p { font-size: 12px; color: #999; margin-top: 6px; }
+
+        /* ── Estado: sucesso ── */
+        #estado-sucesso { display: none; text-align: center; }
+        .sucesso-icone  { font-size: 48px; display: block; margin-bottom: 8px; }
+        .sucesso-titulo { font-size: 20px; font-weight: 900; margin-bottom: 8px; }
+        .sucesso-sub    { font-size: 14px; color: var(--sub); margin-bottom: 12px; }
+        .link-suporte { color: var(--verde); font-weight: 700; text-decoration: none; }
+        .link-suporte:hover { text-decoration: underline; }
+
+        /* ── Estado: fallback ── */
+        #estado-fallback { display: none; text-align: center; }
+
+        /* ── Rodapé ── */
+        .rodape {
+            text-align: center; font-size: 12px; color: #aaa; margin-top: 24px;
+        }
+
+        /* ── RESPONSIVO — tablet (≥640px) e desktop (≥1024px). Mobile-first: tudo acima é o
+           layout base (celular). Mesma convenção usada em tempero-e.html. ── */
+        @media (min-width: 640px) {
+            .container { max-width: 600px; }
+            .bump-thumb { width: 80px; height: 80px; }
+        }
+
+        @media (min-width: 1024px) {
+            .container { max-width: 720px; }
+            .resumo-hero-img { max-height: 400px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="barra-seguranca">
+    🔒 Ambiente <strong>100% seguro</strong>. Seus dados estão protegidos.
+</div>
+
+<div class="container">
+
+    <!-- Resumo do produto + bônus — só faz sentido no formulário; a tela de PIX já repete a
+         lista de itens no próprio card, então some daqui pra não duplicar. -->
+    <div id="resumoTopo">
+        <!-- Resumo do produto (vira uma listinha de itens quando um bump é marcado) -->
+        <div class="card">
+            <div class="resumo-hero">
+                {% if ebook_principal.imagem_grande %}
+                <img class="resumo-hero-img"
+                     src="{{ url_for('static', filename='images/' + ebook_principal.imagem_grande) }}"
+                     alt="{{ ebook_principal.nome_venda }}"
+                     fetchpriority="high"
+                     onerror="this.style.display='none'">
+                {% endif %}
+                <div class="resumo-hero-texto">
+                    <div class="resumo-label">Detalhes da sua compra:</div>
+                    <div id="resumoItens" class="resumo-itens">
+                        <div class="linha-item linha-item-principal">
+                            <span>{{ ebook_principal.nome_venda }}</span>
+                            <span>R$ {{ "%.2f"|format(ebook_principal.preco_promocional) }}</span>
+                        </div>
+                    </div>
+                    <div class="resumo-total-wrap">
+                        <span>Total</span>
+                        <strong id="resumoTotal">R$ {{ "%.2f"|format(ebook_principal.preco_promocional) }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if bonus %}
+        <!-- Bônus incluídos -->
+        <div class="bonus-box">
+            <div class="bonus-titulo">🎁 Você também recebe de bônus</div>
+            {% for b in bonus %}
+            <div class="bonus-item">
+                <span class="check">✓</span>
+                <span>
+                    <strong>{{ b.nome_venda }}</strong>{% if b.descricao %} — {{ b.descricao }}{% endif %}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div><!-- /resumoTopo -->
+
+    <!-- Formulário de checkout -->
+    <div id="estado-form">
+
+        <!-- Identificação -->
+        <div class="card">
+            <div class="secao-titulo">
+                <span class="secao-num">1</span> Seus dados
+            </div>
+
+            <div class="campo">
+                <label for="inputNome">Nome completo</label>
+                <input type="text" id="inputNome" placeholder="Seu nome completo" autocomplete="name" value="{{ prefill.nome or '' }}">
+            </div>
+            <div class="campo">
+                <label for="inputEmail">E-mail</label>
+                <input type="email" id="inputEmail" placeholder="seu@email.com" autocomplete="email" value="{{ prefill.email or '' }}">
+                <span class="dica-campo oculto" id="sugestaoEmail"></span>
+            </div>
+            <div class="campo">
+                {# inputEmailConfirma fica sempre vazio, mesmo com e-mail pré-preenchido: seu
+                   propósito é pegar erro de digitação, o que preencher junto anularia. #}
+                <label for="inputEmailConfirma">Confirme seu e-mail</label>
+                <input type="email" id="inputEmailConfirma" placeholder="digite o e-mail novamente" autocomplete="off">
+                <span class="erro-campo oculto" id="erroEmailConfirma">Os e-mails não são iguais</span>
+            </div>
+            <p class="dica-inbox">📩 Dica: se a caixa de entrada desse e-mail estiver cheia, o e-book pode não chegar — vale conferir antes de finalizar.</p>
+            <div class="campo">
+                <label for="inputWhatsapp">WhatsApp com DDD <span style="font-weight:400;color:#888;">(opcional)</span></label>
+                <div class="input-com-prefixo" id="wrapperWhatsapp">
+                    <span class="prefixo-ddi" data-ddi="55">
+                        <span class="bandeira">🇧🇷</span> +55
+                    </span>
+                    <input type="tel" id="inputWhatsapp" placeholder="(61) 98765-4321" maxlength="15" autocomplete="tel" value="{{ prefill.whatsapp or '' }}">
+                </div>
+                <span class="erro-campo oculto" id="erroWhatsapp">
+                    Número incompleto — informe com DDD (ex: 61 98765-4321)
+                </span>
+            </div>
+
+            {% if config_cartao %}
+            <div class="metodo-selector" id="metodoSelector">
+                <button type="button" class="metodo-btn ativo" id="btnMetodoPix" onclick="selecionarMetodo('pix')">
+                    <span class="metodo-emoji">💠</span> Pix
+                </button>
+                <button type="button" class="metodo-btn" id="btnMetodoCartao" onclick="selecionarMetodo('cartao')">
+                    <span class="metodo-emoji">💳</span> Cartão de crédito
+                </button>
+            </div>
+            {% endif %}
+
+            <div class="pagamento-tag" id="pagamentoPix">
+                <div class="pix-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div class="pagamento-info">
+                    <div class="pagamento-nome">Pagamento via PIX</div>
+                    <div class="pagamento-sub">Aprovação imediata</div>
+                </div>
+            </div>
+
+            {% if config_cartao %}
+            <div id="pagamentoCartao" style="display:none;">
+                <div class="campo">
+                    <label for="inputCpf">CPF</label>
+                    <input type="text" id="inputCpf" placeholder="000.000.000-00" maxlength="14" autocomplete="off" inputmode="numeric">
+                    <span class="erro-campo oculto" id="erroCpf">CPF inválido</span>
+                </div>
+                <div class="campo">
+                    <label for="inputNumeroCartao">Número do cartão</label>
+                    <div class="cartao-numero-wrap" id="wrapperCartaoNumero">
+                        <input type="text" id="inputNumeroCartao" placeholder="0000 0000 0000 0000" maxlength="23" autocomplete="cc-number" inputmode="numeric">
+                        <img id="bandeiraIcon" class="cartao-bandeira-icon"
+                             src="{{ url_for('static', filename='images/bandeiras/generico.webp') }}" alt="">
+                    </div>
+                </div>
+                <div class="campo-linha">
+                    <div class="campo">
+                        <label for="selectMes">Mês</label>
+                        <select id="selectMes"><option value="">MM</option></select>
+                    </div>
+                    <div class="campo">
+                        <label for="selectAno">Ano</label>
+                        <select id="selectAno"><option value="">AAAA</option></select>
+                    </div>
+                    <div class="campo">
+                        <label for="inputCvv">CVV</label>
+                        <input type="text" id="inputCvv" placeholder="123" maxlength="4" autocomplete="cc-csc" inputmode="numeric">
+                    </div>
+                </div>
+                <div class="campo">
+                    <label for="inputTitular">Nome impresso no cartão</label>
+                    <input type="text" id="inputTitular" placeholder="Nome como está no cartão" autocomplete="cc-name">
+                </div>
+                <div class="campo">
+                    <label for="selectParcelas">Parcelas</label>
+                    <select id="selectParcelas"><option value="1">1x</option></select>
+                </div>
+                <div class="msg-erro" id="msgErroCartao"></div>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if bumps %}
+        <!-- Order bumps -->
+        <div class="card">
+            <div class="secao-titulo">
+                <span class="secao-num">2</span> Aproveite e leve também
+            </div>
+            {% for b in bumps %}
+            <label class="bump-card" data-bump-wrap>
+                <input type="checkbox" class="bump-checkbox" data-id="{{ b.id }}" data-preco="{{ b.preco_promocional }}">
+                {% if b.imagem_pequena %}
+                <img class="bump-thumb"
+                     src="{{ url_for('static', filename='images/' + b.imagem_pequena) }}"
+                     alt="{{ b.nome_venda }}"
+                     loading="lazy" decoding="async"
+                     onerror="this.style.display='none'">
+                {% endif %}
+                <div>
+                    <span class="bump-selo">Oferta exclusiva</span>
+                    <div class="bump-nome">{{ b.nome_venda }}</div>
+                    {% if b.descricao %}<div class="bump-desc">{{ b.descricao }}</div>{% endif %}
+                    <div class="bump-precos">
+                        <span class="bump-preco-original">R$ {{ "%.2f"|format(b.preco_original) }}</span>
+                        <span class="bump-preco-promo">R$ {{ "%.2f"|format(b.preco_promocional) }}</span>
+                    </div>
+                </div>
+            </label>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Erros de validação -->
+        <div class="msg-erro" id="msgErro">
+            <strong>Antes de continuar, confira:</strong>
+            <ul id="listaErros"></ul>
+        </div>
+
+        <div class="total-linha">
+            <span>Total</span>
+            <strong id="totalDisplay">R$ {{ "%.2f"|format(ebook_principal.preco_promocional) }}</strong>
+        </div>
+
+        <button class="btn-finalizar" id="btnFinalizar">FINALIZAR COMPRA</button>
+        <div class="btn-sub-seguro" id="btnSubSeguro">🔒 Pagamento 100% seguro via PIX</div>
+
+    </div><!-- /estado-form -->
+
+    <!-- Estado: PIX QR Code -->
+    <div id="estado-pix" class="card" style="text-align:center;">
+        <div class="qr-titulo">Pague com PIX</div>
+        <div id="pixItens" class="pix-itens"></div>
+        <div class="qr-preco" id="pixPreco"></div>
+        <img id="qrImg" class="qr-img" src="" alt="QR Code PIX">
+        <div class="copiaecola-wrap">
+            <span class="copiaecola-txt" id="qrTexto">Carregando...</span>
+            <button class="btn-copiar" id="btnCopiar">Copiar</button>
+        </div>
+        <div id="bbpaySeparator" class="bbpay-separator" style="display:none;"><span>OU</span></div>
+        <a id="linkBBPay" href="#" target="_blank" class="btn-bbpay-link" style="display:none;">
+            <span class="bbpay-logo-badge">BB</span>
+            <span>Pagar com <strong>BB Pay</strong></span>
+        </a>
+        <div class="spinner-wrap" id="spinnerWrap">
+            <div class="spinner"></div>
+            <span>Aguardando confirmação do pagamento…<span id="countdownDisplay" class="countdown-txt"></span></span>
+        </div>
+        <div class="ja-paguei-wrap" id="jaPagueiWrap">
+            <button onclick="reiniciarPolling()" class="btn-tentar-novamente">✅ Já paguei — verificar agora</button>
+            <p>Pagou e não atualizou sozinho? Clique acima que a gente confere na hora.</p>
+        </div>
+        <div id="pixExpirado" style="display:none; font-size:13px; color:#888; margin-top:16px; text-align:center;">
+            Tempo de verificação encerrado.<br>
+            Se você já pagou, clique acima e vamos conferir.<br>
+            Caso precise de ajuda: <a href="mailto:admin@lsnlivros.com.br" class="link-suporte">admin@lsnlivros.com.br</a>
+            <br><br>
+            <button onclick="voltarFormulario()" class="btn-tentar-novamente" style="border-color:#aaa; color:#666;">✏️ Corrigir meus dados</button>
+        </div>
+    </div>
+
+    <!-- Estado: sucesso / entrega -->
+    <div id="estado-sucesso" class="card">
+        <span class="sucesso-icone">🎉</span>
+        <div class="sucesso-titulo">Pagamento confirmado!</div>
+        <p class="sucesso-sub">Redirecionando para seus produtos…</p>
+    </div>
+
+    <!-- Estado: fallback -->
+    <div id="estado-fallback" class="card" style="text-align:center;">
+        <div class="sucesso-titulo" style="font-size:17px;">Ops, algo deu errado</div>
+        <p class="sucesso-sub" style="margin-bottom:16px;">
+            Nosso sistema de pagamento está temporariamente indisponível.<br>Tente novamente em alguns instantes.
+        </p>
+        <button class="btn-finalizar" onclick="mostrarEstado('form')" style="max-width:240px;margin:0 auto;">
+            Tentar novamente
+        </button>
+    </div>
+
+    <div class="rodape">
+        Pagamento processado com segurança via BB Pay<br>
+        <a href="/politica-privacidade" style="color:#aaa;">Política de privacidade</a> ·
+        <a href="/termos-de-uso" style="color:#aaa;">Termos de uso</a>
+    </div>
+
+</div><!-- /container -->
+
+<script
+    data-produto-id="{{ produto.id }}"
+    data-preco="{{ '%.2f'|format(ebook_principal.preco_promocional) }}"
+    data-nome="{{ ebook_principal.nome_venda }}"
+    data-pedido-id-inicial="{{ pedido_id_inicial or '' }}"
+    data-tem-cartao="{{ '1' if config_cartao else '' }}"
+    id="checkout-config">
+</script>
+<script>
+    const _cfg = document.getElementById('checkout-config').dataset;
+    const PRODUTO_ID = parseInt(_cfg.produtoId);
+    const PRECO_BASE = parseFloat(_cfg.preco);
+    const PRODUTO_NOME = _cfg.nome;
+    const TEM_CARTAO = !!_cfg.temCartao;
+    // Pedido criado ao carregar a página (funil: chegou no checkout) — se o cliente finalizar,
+    // esse mesmo registro é atualizado em vez de criar um pedido novo. `let` (não `const`)
+    // porque a retomada via ?pedido=<id> (link salvo/reload) reatribui esse valor pra manter a
+    // mesma regra ao reenviar o formulário (ex: cartão negado, cliente volta e tenta de novo).
+    let PEDIDO_ID_INICIAL = _cfg.pedidoIdInicial ? parseInt(_cfg.pedidoIdInicial) : null;
+
+    let currentTxid     = null;
+    let currentPedidoId = null;
+    let pollingTimer    = null;
+    let countdownTimer  = null;
+    let metodoAtual     = 'pix';
+    let bandeiraAtual   = null;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const utmData = {
+        gclid:      urlParams.get('gclid')          || '',
+        campaignid: urlParams.get('gad_campaignid') || '',
+        adgroupid:  urlParams.get('adgroupid')      || '',
+        creative:   urlParams.get('creative')       || '',
+        matchtype:  urlParams.get('matchtype')      || '',
+        device:     urlParams.get('device')         || '',
+        placement:  urlParams.get('placement')      || '',
+        video_id:   urlParams.get('video_id')       || '',
+    };
+
+    // ── Order bumps: recalcula o total e mantém o resumo (topo) em sincronia ──
+    function formatarReal(v) { return 'R$ ' + v.toFixed(2).replace('.', ','); }
+
+    function itensSelecionados() {
+        const itens = [{ nome: PRODUTO_NOME, preco: PRECO_BASE }];
+        document.querySelectorAll('.bump-checkbox:checked').forEach(cb => {
+            const nome = cb.closest('.bump-card').querySelector('.bump-nome').textContent.trim();
+            itens.push({ nome, preco: parseFloat(cb.dataset.preco) });
+        });
+        return itens;
+    }
+
+    function renderizarLinhasItens(containerId, itens) {
+        const wrap = document.getElementById(containerId);
+        wrap.innerHTML = itens.map((item, i) => `
+            <div class="linha-item ${i === 0 ? 'linha-item-principal' : 'linha-item-extra'}">
+                <span>${i === 0 ? item.nome : '+ ' + item.nome}</span>
+                <span>${formatarReal(item.preco)}</span>
+            </div>`).join('');
+    }
+
+    function recalcularTotal() {
+        const itens = itensSelecionados();
+        const total = itens.reduce((soma, item) => soma + item.preco, 0);
+        renderizarLinhasItens('resumoItens', itens);
+        document.getElementById('resumoTotal').textContent = formatarReal(total);
+        document.getElementById('totalDisplay').textContent = formatarReal(total);
+        if (metodoAtual === 'cartao') atualizarParcelas(total);
+        return total;
+    }
+
+    document.querySelectorAll('.bump-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => {
+            cb.closest('.bump-card').classList.toggle('marcado', cb.checked);
+            recalcularTotal();
+        });
+    });
+
+    // ── Seletor de método de pagamento ──
+    function selecionarMetodo(metodo) {
+        metodoAtual = metodo;
+        document.getElementById('btnMetodoPix')?.classList.toggle('ativo', metodo === 'pix');
+        document.getElementById('btnMetodoCartao')?.classList.toggle('ativo', metodo === 'cartao');
+        document.getElementById('pagamentoPix').style.display = (metodo === 'pix') ? 'flex' : 'none';
+        const cartaoBlock = document.getElementById('pagamentoCartao');
+        if (cartaoBlock) cartaoBlock.style.display = (metodo === 'cartao') ? 'block' : 'none';
+        document.getElementById('btnSubSeguro').textContent =
+            (metodo === 'cartao') ? '🔒 Pagamento 100% seguro via cartão de crédito' : '🔒 Pagamento 100% seguro via PIX';
+        recalcularTotal(); // já atualiza as parcelas quando metodoAtual === 'cartao'
+    }
+
+    // ── Parcelas (cartão) ──
+    async function atualizarParcelas(total) {
+        const select = document.getElementById('selectParcelas');
+        if (!select) return;
+        try {
+            const resp = await fetch(`/api/v1/cartao/parcelas/${PRODUTO_ID}?valor=${total}`);
+            const data = await resp.json();
+            const valorSelecionado = select.value;
+            select.innerHTML = (data.opcoes || []).map(o => {
+                const rotulo = o.sem_juros
+                    ? `${o.parcelas}x de ${formatarReal(o.valor_parcela)} sem juros`
+                    : `${o.parcelas}x de ${formatarReal(o.valor_parcela)} (total ${formatarReal(o.valor_total)})`;
+                return `<option value="${o.parcelas}">${rotulo}</option>`;
+            }).join('');
+            // Mantém a parcela escolhida se ainda existir na nova lista (ex: bump marcado/desmarcado)
+            if (valorSelecionado && select.querySelector(`option[value="${valorSelecionado}"]`)) {
+                select.value = valorSelecionado;
+            }
+        } catch (e) { /* mantém as opções anteriores em caso de falha momentânea */ }
+    }
+
+    // ── Detecção de bandeira do cartão — consulta o backend (Consulta BIN Cielo, com cache)
+    // no blur do campo, nunca em tempo real: mostrar a bandeira ERRADA passa mais desconfiança
+    // pro cliente do que não mostrar nenhuma, então só troca o ícone quando temos uma resposta
+    // confirmada. Enquanto digita (ou se a consulta falhar) fica no ícone genérico — nunca
+    // bloqueia a compra por isso (ver validarCartao()). ──
+    (function () {
+        const inp = document.getElementById('inputNumeroCartao');
+        if (!inp) return; // produto sem cartão habilitado
+        const icone = document.getElementById('bandeiraIcon');
+        // Guarda de sequência: se o número mudar (ou outro blur disparar) antes de uma
+        // consulta em andamento responder, essa resposta chegando depois não pode mais
+        // sobrescrever o ícone — evita mostrar a bandeira de um número antigo.
+        let consultaSeq = 0;
+
+        function resetarParaGenerico() {
+            consultaSeq++;
+            bandeiraAtual = null;
+            icone.src = '/static/images/bandeiras/generico.webp';
+        }
+
+        inp.addEventListener('input', function () {
+            const cursor = this.selectionStart;
+            const antesLen = this.value.length;
+            const limpo = this.value.replace(/\D/g, '').slice(0, 19);
+            const agrupado = limpo.replace(/(\d{4})(?=\d)/g, '$1 ');
+            this.value = agrupado;
+            this.setSelectionRange(cursor + (agrupado.length - antesLen), cursor + (agrupado.length - antesLen));
+
+            // Invalida o ícone resolvido num blur anterior — o número mudou, o ícone antigo
+            // pode não valer mais pra esse número novo (só o próximo blur resolve de novo).
+            resetarParaGenerico();
+        });
+
+        inp.addEventListener('blur', async function () {
+            const bin = this.value.replace(/\D/g, '').slice(0, 6);
+            if (bin.length < 6) { resetarParaGenerico(); return; }
+            const minhaSeq = ++consultaSeq;
+            try {
+                const resp = await fetch(`/api/v1/cartao/bandeira?bin=${bin}`);
+                const data = await resp.json();
+                if (minhaSeq !== consultaSeq) return; // número mudou enquanto a consulta estava em voo — descarta
+                if (data.bandeira) {
+                    bandeiraAtual = data.bandeira;
+                    icone.src = `/static/images/bandeiras/${data.bandeira}.webp`;
+                } else {
+                    bandeiraAtual = null;
+                    icone.src = '/static/images/bandeiras/generico.webp';
+                }
+            } catch (e) {
+                if (minhaSeq !== consultaSeq) return;
+                bandeiraAtual = null;
+                icone.src = '/static/images/bandeiras/generico.webp'; // falha na consulta — não bloqueia a compra
+            }
+        });
+    })();
+
+    // ── Máscara CPF ──
+    (function () {
+        const inp = document.getElementById('inputCpf');
+        if (!inp) return;
+        inp.addEventListener('input', function () {
+            let v = this.value.replace(/\D/g, '').slice(0, 11);
+            if (v.length > 9) v = `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6,9)}-${v.slice(9)}`;
+            else if (v.length > 6) v = `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6)}`;
+            else if (v.length > 3) v = `${v.slice(0,3)}.${v.slice(3)}`;
+            this.value = v;
+        });
+    })();
+
+    // ── Popula Mês/Ano de validade ──
+    (function () {
+        const selMes = document.getElementById('selectMes');
+        const selAno = document.getElementById('selectAno');
+        if (!selMes || !selAno) return;
+        for (let m = 1; m <= 12; m++) {
+            const v = String(m).padStart(2, '0');
+            selMes.innerHTML += `<option value="${v}">${v}</option>`;
+        }
+        const anoAtual = new Date().getFullYear();
+        for (let a = anoAtual; a <= anoAtual + 15; a++) {
+            selAno.innerHTML += `<option value="${a}">${a}</option>`;
+        }
+    })();
+
+    function bumpIdsSelecionados() {
+        return Array.from(document.querySelectorAll('.bump-checkbox:checked')).map(cb => parseInt(cb.dataset.id));
+    }
+
+    // ── Máscara WhatsApp ──
+    (function () {
+        const inp     = document.getElementById('inputWhatsapp');
+        const erro    = document.getElementById('erroWhatsapp');
+        const wrapper = document.getElementById('wrapperWhatsapp');
+        let jaInteragiu = false;
+
+        function formatar(raw) {
+            let v = raw.replace(/\D/g, '');
+            // Remove DDI 55 se colado com ele (ex: 556181163324)
+            if (v.length > 11 && v.startsWith('55')) v = v.slice(2);
+            v = v.slice(0, 11);
+            if (v.length > 7) return `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+            if (v.length > 2) return `(${v.slice(0,2)}) ${v.slice(2)}`;
+            if (v.length > 0) return `(${v}`;
+            return '';
+        }
+
+        function validarCampo(forcar) {
+            const digits = inp.value.replace(/\D/g, '');
+            const invalido = digits.length > 0 && digits.length < 10;
+            if (forcar || jaInteragiu) {
+                erro.classList.toggle('oculto', !invalido);
+                wrapper.classList.toggle('invalido', invalido);
+            }
+        }
+
+        // Valor pré-preenchido pelo servidor (prefill.whatsapp) chega como dígitos crus — a
+        // máscara só roda no evento 'input', então formata uma vez no carregamento da página.
+        if (inp.value) inp.value = formatar(inp.value);
+
+        inp.addEventListener('input', function () {
+            jaInteragiu = true;
+            const cursor = this.selectionStart;
+            const oldVal = this.value;
+            const newVal = formatar(oldVal);
+            if (newVal === oldVal) { validarCampo(false); return; }
+
+            // Restaura cursor rastreando quantos dígitos havia antes dele
+            const digitsAntes = oldVal.slice(0, cursor).replace(/\D/g, '').length;
+            this.value = newVal;
+            let novoCursor = newVal.length;
+            let cnt = 0;
+            for (let i = 0; i < newVal.length; i++) {
+                if (/\d/.test(newVal[i])) cnt++;
+                if (cnt === digitsAntes) { novoCursor = i + 1; break; }
+            }
+            this.setSelectionRange(novoCursor, novoCursor);
+            validarCampo(false);
+        });
+
+        // Backspace sobre caractere de formatação: pula e apaga o dígito anterior
+        inp.addEventListener('keydown', function (e) {
+            if (e.key !== 'Backspace') return;
+            const pos = this.selectionStart;
+            if (pos !== this.selectionEnd || pos === 0) return;
+            if (/\D/.test(this.value[pos - 1])) {
+                e.preventDefault();
+                this.value = this.value.slice(0, pos - 1) + this.value.slice(pos);
+                this.setSelectionRange(pos - 1, pos - 1);
+                this.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+
+        // Valida ao sair do campo
+        inp.addEventListener('blur', function () {
+            jaInteragiu = true;
+            validarCampo(true);
+        });
+    })();
+
+    // ── Validação forte de e-mail — MANTER SINCRONIZADO com app/web/email_validacao.py ──
+    // (JS e Python não compartilham código; a lista de domínios e a regra de "sobra depois
+    // do domínio" precisam ser replicadas manualmente nos dois lados se um dia mudar.)
+    const DOMINIOS_COMUNS = [
+        'gmail.com', 'hotmail.com', 'outlook.com', 'hotmail.com.br', 'outlook.com.br',
+        'yahoo.com.br', 'yahoo.com', 'icloud.com', 'bol.com.br', 'uol.com.br',
+        'terra.com.br', 'ig.com.br', 'live.com', 'msn.com', 'oi.com.br',
+        'globo.com', 'globo.com.br',
+    ];
+    const REGEX_EMAIL_ESTRUTURAL =
+        /^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9_](?:[a-zA-Z0-9_-]{0,61}[a-zA-Z0-9_])?\.)+[a-zA-Z]{2,24}$/;
+
+    function distanciaLevenshtein(a, b) {
+        if (a === b) return 0;
+        if (!a) return b.length;
+        if (!b) return a.length;
+        let anterior = Array.from({ length: b.length + 1 }, (_, j) => j);
+        for (let i = 1; i <= a.length; i++) {
+            const atual = [i];
+            for (let j = 1; j <= b.length; j++) {
+                const custo = a[i - 1] === b[j - 1] ? 0 : 1;
+                atual[j] = Math.min(anterior[j] + 1, atual[j - 1] + 1, anterior[j - 1] + custo);
+            }
+            anterior = atual;
+        }
+        return anterior[b.length];
+    }
+
+    // Retorna { ok: bool, motivo?: 'formato'|'sobra_apos_dominio', sugestao?: string }.
+    // motivo só vem preenchido quando ok=false (bloqueio real). `sugestao` sozinha (com ok=true)
+    // é só uma dica não bloqueante (ex: possível "gmial.com" → "gmail.com").
+    function validarEmailForte(emailBruto) {
+        const email = (emailBruto || '').trim().toLowerCase();
+        if (!REGEX_EMAIL_ESTRUTURAL.test(email)) {
+            return { ok: false, motivo: 'formato' };
+        }
+        const dominio = email.split('@')[1];
+
+        // Primeiro passa por TODOS os domínios procurando igualdade exata — só depois de
+        // descartar essa hipótese é que testa "começa com" (ex: sem isso, "hotmail.com.br"
+        // seria injustamente bloqueado por "começar com" a entrada "hotmail.com" da lista).
+        if (DOMINIOS_COMUNS.includes(dominio)) return { ok: true };
+        for (const d of DOMINIOS_COMUNS) {
+            if (dominio.startsWith(d)) {
+                return { ok: false, motivo: 'sobra_apos_dominio', sugestao: d };
+            }
+        }
+        let melhor = null;
+        for (const d of DOMINIOS_COMUNS) {
+            // Limiar fixo em 2: é só sugestão (não bloqueia), então o custo de um falso positivo
+            // é baixo — e 2 é o necessário pra pegar typos comuns por transposição de letra
+            // adjacente (ex: "gmial.com"), que em Levenshtein "puro" custam 2 edições, não 1.
+            const limiar = 2;
+            const dist = distanciaLevenshtein(dominio, d);
+            if (dist > 0 && dist <= limiar && (!melhor || dist < melhor.dist)) melhor = { dominio: d, dist };
+        }
+        return melhor ? { ok: true, sugestao: melhor.dominio } : { ok: true };
+    }
+
+    // ── Confirmação de e-mail ──
+    (function () {
+        const email    = document.getElementById('inputEmail');
+        const confirma = document.getElementById('inputEmailConfirma');
+        const erro     = document.getElementById('erroEmailConfirma');
+
+        function validar() {
+            if (!confirma.value) { erro.classList.add('oculto'); return; }
+            const igual = email.value.trim().toLowerCase() === confirma.value.trim().toLowerCase();
+            erro.classList.toggle('oculto', igual);
+        }
+        confirma.addEventListener('input', validar);
+        confirma.addEventListener('blur', validar);
+        email.addEventListener('blur', validar);
+    })();
+
+    // ── Sugestão de domínio (dica não bloqueante, ex: "gmial.com" → "quis dizer gmail.com?") ──
+    (function () {
+        const email    = document.getElementById('inputEmail');
+        const confirma = document.getElementById('inputEmailConfirma');
+        const sugestao = document.getElementById('sugestaoEmail');
+
+        function validar() {
+            if (!email.value.trim()) { sugestao.classList.add('oculto'); return; }
+            const r = validarEmailForte(email.value);
+            if (r.ok && r.sugestao) {
+                sugestao.innerHTML = `Você quis dizer <a href="#" id="linkSugestaoEmail">${r.sugestao}</a>?`;
+                sugestao.classList.remove('oculto');
+                document.getElementById('linkSugestaoEmail').addEventListener('click', function (ev) {
+                    ev.preventDefault();
+                    const usuario = email.value.trim().split('@')[0];
+                    const corrigido = `${usuario}@${r.sugestao}`;
+                    email.value = corrigido;
+                    confirma.value = corrigido;
+                    sugestao.classList.add('oculto');
+                    confirma.dispatchEvent(new Event('blur'));
+                });
+            } else {
+                sugestao.classList.add('oculto');
+            }
+        }
+        email.addEventListener('blur', validar);
+        email.addEventListener('input', () => sugestao.classList.add('oculto'));
+    })();
+
+    // ── Mostrar/esconder estados ──
+    function mostrarEstado(estado) {
+        ['estado-form', 'estado-pix', 'estado-sucesso', 'estado-fallback'].forEach(id => {
+            document.getElementById(id).style.display = 'none';
+        });
+        if (estado === 'form') document.getElementById('estado-form').style.display = 'block';
+        else document.getElementById('estado-' + estado).style.display = 'block';
+
+        // Resumo do topo só faz sentido no formulário — nos outros estados a lista de itens
+        // já aparece dentro do próprio card (ex: pixItens em estado-pix).
+        document.getElementById('resumoTopo').style.display = (estado === 'form') ? '' : 'none';
+    }
+
+    // ── Validação (campos comuns aos dois métodos) ──
+    function validarComuns() {
+        const erros = [];
+        const nome     = document.getElementById('inputNome').value.trim();
+        const email    = document.getElementById('inputEmail').value.trim();
+        const emailConf = document.getElementById('inputEmailConfirma').value.trim();
+        const wa       = document.getElementById('inputWhatsapp').value.replace(/\D/g, '');
+
+        if (!nome)              erros.push('Nome completo');
+        if (!email || !validarEmailForte(email).ok) erros.push('E-mail válido — confira se não ficou nada digitado a mais sem querer');
+        else if (email.toLowerCase() !== emailConf.toLowerCase()) erros.push('Confirmação de e-mail (os dois campos precisam ser iguais)');
+
+        if (wa.length > 0 && wa.length < 10) {
+            erros.push('WhatsApp com DDD');
+            document.getElementById('erroWhatsapp').classList.remove('oculto');
+            document.getElementById('wrapperWhatsapp').classList.add('invalido');
+        } else {
+            document.getElementById('erroWhatsapp').classList.add('oculto');
+            document.getElementById('wrapperWhatsapp').classList.remove('invalido');
+        }
+
+        const divErro = document.getElementById('msgErro');
+        const lista   = document.getElementById('listaErros');
+        if (erros.length > 0) {
+            lista.innerHTML = erros.map(e => `<li>${e}</li>`).join('');
+            divErro.style.display = 'block';
+            return null;
+        }
+        divErro.style.display = 'none';
+        const ddi = document.querySelector('.prefixo-ddi')?.dataset.ddi || '55';
+        return { nome, email, ddi, whatsapp: wa };
+    }
+
+    // ── Validação específica do cartão ──
+    function validarCartao() {
+        const erros = [];
+        const cpf     = document.getElementById('inputCpf').value.replace(/\D/g, '');
+        const numero  = document.getElementById('inputNumeroCartao').value.replace(/\D/g, '');
+        const mes     = document.getElementById('selectMes').value;
+        const ano     = document.getElementById('selectAno').value;
+        const cvv     = document.getElementById('inputCvv').value.replace(/\D/g, '');
+        const titular = document.getElementById('inputTitular').value.trim();
+        const parcelas = parseInt(document.getElementById('selectParcelas').value || '1');
+
+        if (cpf.length !== 11) erros.push('CPF válido');
+        if (numero.length < 13 || numero.length > 19) erros.push('Número do cartão');
+        if (!mes || !ano) erros.push('Validade do cartão');
+        if (cvv.length < 3) erros.push('Código de segurança (CVV)');
+        if (!titular) erros.push('Nome impresso no cartão');
+        // Bandeira NÃO entra na validação: não identificar a bandeira não pode impedir a
+        // venda (o servidor resolve por conta própria na autorização, com a mesma consulta).
+
+        const divErro = document.getElementById('msgErroCartao');
+        if (erros.length > 0) {
+            divErro.innerHTML = `<strong>Confira os dados do cartão:</strong><ul>${erros.map(e => `<li>${e}</li>`).join('')}</ul>`;
+            divErro.style.display = 'block';
+            return null;
+        }
+        divErro.style.display = 'none';
+        return { cpf, numero_cartao: numero, mes, ano, cvv, titular, bandeira: bandeiraAtual, parcelas };
+    }
+
+    // ── Copiar código PIX ──
+    document.getElementById('btnCopiar').addEventListener('click', () => {
+        const txt = document.getElementById('qrTexto').textContent;
+        navigator.clipboard.writeText(txt).then(() => {
+            const btn = document.getElementById('btnCopiar');
+            btn.textContent = '✓';
+            setTimeout(() => btn.textContent = 'Copiar', 2000);
+        });
+    });
+
+    // ── Polling de status ──
+    const POLLING_INTERVAL_MS = 8000;
+    const POLLING_TIMEOUT_MS  = 8 * 60 * 1000; // 8 minutos
+
+    function pararPolling() {
+        clearInterval(pollingTimer);
+        clearInterval(countdownTimer);
+        pollingTimer  = null;
+        countdownTimer = null;
+    }
+
+    function iniciarPolling() {
+        if (!currentTxid) return;
+
+        // Esconde opção BB Pay enquanto aguarda confirmação PIX
+        document.getElementById('linkBBPay').style.display = 'none';
+        document.getElementById('bbpaySeparator').style.display = 'none';
+
+        const expiracao = Date.now() + POLLING_TIMEOUT_MS;
+
+        // Countdown visual a cada segundo
+        countdownTimer = setInterval(() => {
+            const restante = expiracao - Date.now();
+            const el = document.getElementById('countdownDisplay');
+            if (!el) return;
+            if (restante <= 0) { el.textContent = ''; return; }
+            const min = String(Math.floor(restante / 60000)).padStart(2, '0');
+            const seg = String(Math.floor((restante % 60000) / 1000)).padStart(2, '0');
+            el.textContent = ` · ${min}:${seg}`;
+        }, 1000);
+
+        // Consulta o backend a cada 8s
+        pollingTimer = setInterval(async () => {
+            if (Date.now() >= expiracao) {
+                pararPolling();
+                document.getElementById('spinnerWrap').style.display = 'none';
+                document.getElementById('pixExpirado').style.display = 'block';
+                return;
+            }
+            try {
+                const resp = await fetch(`/api/v1/pix/status/${currentTxid}`);
+                const data = await resp.json();
+                if (data.pago) {
+                    pararPolling();
+                    pagamentoConfirmado(data.guid);
+                }
+            } catch (e) { /* continua tentando */ }
+        }, POLLING_INTERVAL_MS);
+    }
+
+    // ── Pagamento confirmado — mostra a mensagem de sucesso por um instante e redireciona
+    // pra /pedido2/<guid> (variante v2 da estante, não /pedido/<guid>) — mantém o cliente na
+    // mesma experiência que ele já estava usando, já que essa compra nasceu do cross-sell da
+    // estante v2. location.replace (não .href) pra não deixar o checkout já finalizado no
+    // histórico do navegador.
+    function pagamentoConfirmado(guid) {
+        mostrarEstado('sucesso');
+        setTimeout(() => {
+            window.location.replace('/pedido2/' + guid);
+        }, 1500);
+    }
+
+    // Reinicia o polling sem recarregar a página (cliente já pagou mas polling expirou)
+    function reiniciarPolling() {
+        document.getElementById('pixExpirado').style.display  = 'none';
+        document.getElementById('spinnerWrap').style.display  = '';
+        document.getElementById('countdownDisplay').textContent = '';
+        iniciarPolling();
+    }
+
+    // Preenche o card de PIX (itens, QR code, copia-e-cola, link BB Pay) — usado tanto na
+    // geração inicial (btnFinalizar) quanto na retomada de um pedido já iniciado (?pedido=<id>),
+    // que devolve os mesmos campos reconstruídos a partir do que foi salvo em gerar_pix().
+    function exibirPix(data, itens) {
+        renderizarLinhasItens('pixItens', itens);
+        const totalItens = itens.reduce((soma, item) => soma + item.preco, 0);
+        document.getElementById('pixPreco').textContent =
+            formatarReal(data.valor != null ? parseFloat(data.valor) : totalItens);
+
+        const qrImg = document.getElementById('qrImg');
+        if (data.qrcode_base64) {
+            qrImg.src = 'data:image/png;base64,' + data.qrcode_base64;
+            qrImg.style.display = '';
+        } else {
+            qrImg.style.display = 'none';
+        }
+        document.getElementById('qrTexto').textContent = data.qrcode_texto || '';
+
+        const linkBB = document.getElementById('linkBBPay');
+        const separador = document.getElementById('bbpaySeparator');
+        if (data.url_bbpay) {
+            linkBB.href = data.url_bbpay;
+            linkBB.style.display = 'flex';
+            separador.style.display = 'flex';
+        } else {
+            linkBB.style.display = 'none';
+            separador.style.display = 'none';
+        }
+    }
+
+    // Volta ao formulário sem recarregar (cliente quer corrigir os dados)
+    function voltarFormulario() {
+        // Reseta o botão para o estado inicial
+        const btnFinalizar = document.getElementById('btnFinalizar');
+        btnFinalizar.disabled = false;
+        btnFinalizar.textContent = 'FINALIZAR COMPRA';
+
+        mostrarEstado('form');
+    }
+
+
+    // ── Retorno do BB Pay ou reabertura do link (urlRetorno/link com ?pedido=) ──
+    // ?pedido= tem prioridade: sempre verifica no backend, ignora localStorage
+    const retornoPedidoId = urlParams.get('pedido');
+    if (retornoPedidoId) {
+        currentPedidoId = parseInt(retornoPedidoId);
+        fetch(`/api/v1/pix/pedido/${retornoPedidoId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.pago) {
+                    pagamentoConfirmado(data.guid);
+                } else if (data.txid) {
+                    const itensServidor = (data.itens || []).map(i => ({ nome: i.nome, preco: i.valor }));
+                    exibirPix(data, itensServidor);
+                    currentTxid = data.txid;
+                    mostrarEstado('pix');
+                    iniciarPolling();
+                } else {
+                    // Sem txid e não pago: ou é pedido de cartão ainda em aberto (aguardando/negado),
+                    // ou um pedido pré-identificação. Em qualquer caso, reaproveita esse pedido_id na
+                    // próxima tentativa em vez de deixar o form criar um pedido novo do zero.
+                    PEDIDO_ID_INICIAL = currentPedidoId;
+                    mostrarEstado('form');
+                }
+            })
+            .catch(() => mostrarEstado('form'));
+    }
+
+    // ── Finalizar compra ──
+    document.getElementById('btnFinalizar').addEventListener('click', async function () {
+        const dados = validarComuns();
+        if (!dados) return;
+
+        let dadosCartao = null;
+        if (metodoAtual === 'cartao') {
+            dadosCartao = validarCartao();
+            if (!dadosCartao) return;
+        }
+
+        this.disabled = true;
+        this.textContent = 'Processando...';
+
+        const bumpIds = bumpIdsSelecionados();
+        const itensAntesDoEnvio = itensSelecionados();
+        recalcularTotal();
+
+        // gerar2 (não gerar): checkout v2 cobra VALOR_TESTE_CHECKOUT_V2 de verdade, pro piloto
+        // de demo com stakeholders — ver app/web/checkout.py.
+        const endpoint = (metodoAtual === 'cartao') ? '/api/v1/cartao/gerar2' : '/api/v1/pix/gerar2';
+        const payload = { produto_id: PRODUTO_ID, pedido_id: PEDIDO_ID_INICIAL, bump_ids: bumpIds, ...dados, ...utmData };
+        if (dadosCartao) Object.assign(payload, dadosCartao);
+
+        try {
+            const resp = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await resp.json();
+            currentPedidoId = data.pedido_id;
+
+            if (data.erro_validacao) {
+                // Pro motivo 'dominio_inexistente' isso É o primeiro aviso que o cliente vê —
+                // o navegador não tem como consultar DNS, então essa checagem só roda aqui no
+                // servidor, na hora de finalizar. Os outros motivos já foram barrados antes
+                // pelo validarEmailForte() no client; chegar aqui com eles é só defesa contra
+                // bypass (script direto na API, sem passar pelo form).
+                const msg = (data.motivo === 'dominio_inexistente')
+                    ? 'Não conseguimos confirmar esse e-mail — confira se não ficou faltando ou sobrando alguma letra e tente de novo.'
+                    : 'Esse e-mail parece ter algo digitado a mais sem querer — confira antes de continuar.';
+                if (metodoAtual === 'cartao') {
+                    const divErro = document.getElementById('msgErroCartao');
+                    divErro.innerHTML = `<strong>${msg}</strong>`;
+                    divErro.style.display = 'block';
+                } else {
+                    document.getElementById('listaErros').innerHTML = `<li>${msg}</li>`;
+                    document.getElementById('msgErro').style.display = 'block';
+                }
+                this.disabled = false;
+                this.textContent = 'FINALIZAR COMPRA';
+                return;
+            }
+
+            if (metodoAtual === 'cartao') {
+                // Apaga campos sensíveis imediatamente após o servidor processar —
+                // impede reenvio por clique em voltar e evita sugestão do browser.
+                document.getElementById('inputNumeroCartao').value = '';
+                document.getElementById('inputCvv').value = '';
+                if (data.aprovado) {
+                    pagamentoConfirmado(data.guid);
+                } else {
+                    // Negado ou instabilidade: mensagem amena inline, permite tentar de novo
+                    // sem sair do formulário (permite_retry — outro cartão ou trocar pra Pix).
+                    const divErro = document.getElementById('msgErroCartao');
+                    divErro.innerHTML = `<strong>${data.mensagem || 'Não foi possível processar o pagamento.'}</strong>`;
+                    divErro.style.display = 'block';
+                    this.disabled = false;
+                    this.textContent = 'FINALIZAR COMPRA';
+                }
+                return;
+            }
+
+            if (data.fallback) {
+                mostrarEstado('fallback');
+                this.disabled = false;
+                this.textContent = 'FINALIZAR COMPRA';
+                return;
+            }
+
+            currentTxid = data.txid;
+
+            // PIX: mostra QR Code e inicia polling
+            exibirPix(data, itensAntesDoEnvio);
+            mostrarEstado('pix');
+            iniciarPolling();
+
+        } catch (err) {
+            console.error('[CHECKOUT]', err);
+            mostrarEstado('fallback');
+            this.disabled = false;
+            this.textContent = 'FINALIZAR COMPRA';
+        }
+    });
+</script>
+
+</body>
+</html>

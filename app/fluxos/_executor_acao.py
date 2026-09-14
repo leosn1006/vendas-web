@@ -188,7 +188,12 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
     elif tipo == 'enviar_produto':
         _exige_campo(acao, 'mensagem', tag)  # texto do corpo
         _exige_campo(acao, 'caption', tag)   # texto do botão
-        link = montar_link_estante(pedido)
+        # 'url' não tem uso pra este tipo de ação (diferente de enviar_produto_whatsapp acima,
+        # que grava o link do documento ali) — reaproveitado como flag pro piloto da estante v2:
+        # url='v2' manda pra /pedido2/<guid> em vez de /pedido/<guid>. Ver plano
+        # peaceful-seeking-pizza.md.
+        caminho_estante = '/pedido2' if acao.get('url') == 'v2' else '/pedido'
+        link = montar_link_estante(pedido, caminho=caminho_estante)
         mid = _executar_com_retry(lambda: enviar_botao_link(pedido, acao['mensagem'], link, acao['caption']), tag)
         salvar_mensagem_pedido(mid, pedido_id, f"[botão] {acao['caption']} → {link}", tipo_mensagem='enviada')
         logger.debug(f"[{tag}] 🔗 Botão de link enviado: {link}")

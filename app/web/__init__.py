@@ -55,6 +55,91 @@ def checkout(produto_id):
     return resp
 
 
+@web_bp.get('/pay2/<int:produto_id>')
+def checkout_v2(produto_id):
+    """Variante v2 do checkout (piloto de cross-sell), ver plano peaceful-seeking-pizza.md.
+    Espelha /pay/<produto_id>, com três diferenças: (1) pré-preenche nome/e-mail/whatsapp a
+    partir do pedido de origem (?ref=<guid>, a estante de onde veio o clique em "Comprar"),
+    editável no formulário; (2) marca o pedido rascunho com variante_checkout='v2'; (3) quando
+    vem da estante (ref conhecido), tira dos bônus/bumps os e-books que esse cliente já possui
+    — não faz sentido oferecer de bônus/order bump algo que ele já tem. Sem ref (cliente
+    chegando pelo funil de anúncio, ainda sem identidade conhecida), bônus/bumps aparecem
+    completos como no checkout v1 — não tem como filtrar o que não se sabe de quem é. Usa um
+    prefixo de cookie próprio (pedido_web_v2_<produto_id>) pra não colidir com o rascunho do
+    checkout v1 do mesmo produto."""
+    from urllib.parse import quote
+    from database import (get_produto_disponivel_web, get_ebook_principal_produto,
+                          listar_ebooks_bonus_produto, listar_ebooks_bump_produto,
+                          get_config_cartao_produto, marcar_variante_pedido)
+    from web.checkout import (rastrear_visita_funil, get_pedido_finalizado_via_cookie,
+                               COOKIE_MAX_AGE_FUNIL, listar_itens_ebook_do_cliente,
+                               resolver_pedido_por_guid)
+    produto = get_produto_disponivel_web(produto_id)
+    if not produto:
+        return 'Produto não encontrado', 404
+
+    ebook_principal = get_ebook_principal_produto(produto_id)
+    if not ebook_principal:
+        return 'Produto não encontrado', 404
+
+    config_cartao = get_config_cartao_produto(produto_id)
+
+    prefill = {}
+    bonus = listar_ebooks_bonus_produto(produto_id)
+    bumps = listar_ebooks_bump_produto(produto_id)
+    ref_guid = request.args.get('ref')
+    if ref_guid:
+        # resolver_pedido_por_guid (não get_pedido_by_guid puro) — mesmo gate de acesso usado
+        # por /pedido/<guid> e /pedido2/<guid>: só segue se o pedido de origem já pode
+        # legitimamente ser visto (pago/entregue). Sem isso, um guid que já circulou antes do
+        # pagamento (ex: link da Estante mandado ainda na introdução do WhatsApp) exporia
+        # nome/e-mail/telefone de terceiro pré-preenchidos neste formulário.
+        pedido_origem, _, erro_origem = resolver_pedido_por_guid(ref_guid)
+        if pedido_origem and not erro_origem:
+            prefill = {
+                'nome': pedido_origem.get('contact_name') or '',
+                'email': pedido_origem.get('email') or '',
+                'whatsapp': pedido_origem.get('contact_phone') or '',
+            }
+            itens_possuidos = listar_itens_ebook_do_cliente(pedido_origem)
+            # not item.get('bloqueado'): um bônus do WhatsApp ainda não pago não conta como
+            # "já possuído" — senão um item legítimo de bônus/bump em outro produto some do
+            # cross-sell por engano (ver achado de code review).
+            ebook_ids_possuidos = {
+                item['ebook_id'] for item in itens_possuidos
+                if item.get('ebook_id') and not item.get('bloqueado')
+            }
+            bonus = [b for b in bonus if b['ebook_id'] not in ebook_ids_possuidos]
+            bumps = [b for b in bumps if b['ebook_id'] not in ebook_ids_possuidos]
+
+    pedido_id_inicial = None
+    if not request.args.get('pedido'):
+        pedido_id_retomar = get_pedido_finalizado_via_cookie(request, produto_id, cookie_prefixo='pedido_web_v2')
+        if pedido_id_retomar is not None:
+            url_retomar = f'/pay2/{produto_id}?pedido={pedido_id_retomar}'
+            if ref_guid:
+                url_retomar += f'&ref={quote(ref_guid)}'
+            resp = redirect(url_retomar)
+            resp.set_cookie(f'pedido_web_v2_{produto_id}', str(pedido_id_retomar), max_age=COOKIE_MAX_AGE_FUNIL)
+            return resp
+        pedido_id_inicial = rastrear_visita_funil(request, produto_id, estado_novo=1003, cookie_prefixo='pedido_web_v2')
+        marcar_variante_pedido(pedido_id_inicial, 'v2')
+
+    resp = make_response(render_template(
+        'checkout-2.html',
+        produto=produto,
+        ebook_principal=ebook_principal,
+        bonus=bonus,
+        bumps=bumps,
+        pedido_id_inicial=pedido_id_inicial,
+        config_cartao=config_cartao,
+        prefill=prefill,
+    ))
+    if pedido_id_inicial is not None:
+        resp.set_cookie(f'pedido_web_v2_{produto_id}', str(pedido_id_inicial), max_age=COOKIE_MAX_AGE_FUNIL)
+    return resp
+
+
 @web_bp.post('/api/v1/pix/gerar')
 def pix_gerar():
     from web.checkout import gerar_pix
@@ -76,6 +161,36 @@ def cartao_gerar():
         request.get_json(force=True, silent=True) or {},
         url_base=url_base,
         dns_origem=dns_origem,
+    ))
+
+
+@web_bp.post('/api/v1/pix/gerar2')
+def pix_gerar_v2():
+    """Igual a /api/v1/pix/gerar, mas cobra VALOR_TESTE_CHECKOUT_V2 de verdade no Pix — usada
+    só pelo checkout-2.html, pro piloto de demo com stakeholders. Ver checkout.py."""
+    from web.checkout import gerar_pix, VALOR_TESTE_CHECKOUT_V2
+    url_base = request.url_root.rstrip('/')
+    dns_origem = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return jsonify(gerar_pix(
+        request.get_json(force=True, silent=True) or {},
+        url_base=url_base,
+        dns_origem=dns_origem,
+        valor_fixo_teste=VALOR_TESTE_CHECKOUT_V2,
+    ))
+
+
+@web_bp.post('/api/v1/cartao/gerar2')
+def cartao_gerar_v2():
+    """Igual a /api/v1/cartao/gerar, mas cobra VALOR_TESTE_CHECKOUT_V2 de verdade na Cielo —
+    usada só pelo checkout-2.html, pro piloto de demo com stakeholders. Ver checkout.py."""
+    from web.checkout import gerar_cartao, VALOR_TESTE_CHECKOUT_V2
+    url_base = request.url_root.rstrip('/')
+    dns_origem = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
+    return jsonify(gerar_cartao(
+        request.get_json(force=True, silent=True) or {},
+        url_base=url_base,
+        dns_origem=dns_origem,
+        valor_fixo_teste=VALOR_TESTE_CHECKOUT_V2,
     ))
 
 
@@ -150,6 +265,7 @@ def baixar_item(pedido_id, item_id):
 @web_bp.get('/pedido/<guid>')
 def pedido_publico(guid):
     from web.checkout import resolver_pedido_por_guid, listar_itens_ebook_do_cliente
+    from database import registrar_visualizacao_estante
 
     pedido, _, erro = resolver_pedido_por_guid(guid)
     if erro == 'nao_encontrado':
@@ -162,7 +278,50 @@ def pedido_publico(guid):
     itens = listar_itens_ebook_do_cliente(pedido)
     primeiro_nome = (pedido.get('contact_name') or '').strip().split(' ')[0] or 'cliente'
 
+    try:
+        registrar_visualizacao_estante(pedido['id'], 'v1')
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"[ESTANTE] Erro ao registrar visualização v1 do pedido #{pedido['id']}: {e}")
+
     return render_template('pedido.html', primeiro_nome=primeiro_nome, itens=itens)
+
+
+@web_bp.get('/pedido2/<guid>')
+def pedido_publico_v2(guid):
+    """Variante v2 da estante (piloto de cross-sell), ver plano peaceful-seeking-pizza.md.
+    Espelha /pedido/<guid> e reaproveita a mesma resolução de acesso — só acrescenta a lista
+    de produtos que o cliente ainda não tem e o registro de visualização com variante='v2'."""
+    from web.checkout import resolver_pedido_por_guid, listar_itens_ebook_do_cliente
+    from database import registrar_visualizacao_estante, listar_produtos_cross_sell_cliente
+
+    pedido, _, erro = resolver_pedido_por_guid(guid)
+    if erro == 'nao_encontrado':
+        return render_template('pedido_indisponivel.html', motivo='nao_encontrado'), 404
+    if erro == 'aguardando_pagamento':
+        return render_template('pedido_indisponivel.html', motivo='aguardando_pagamento', canal='web', pedido=pedido)
+    if erro == 'ainda_nao_entregue':
+        return render_template('pedido_indisponivel.html', motivo='ainda_nao_entregue', pedido=pedido)
+
+    itens = listar_itens_ebook_do_cliente(pedido)
+    # not item.get('bloqueado'): um bônus do WhatsApp ainda não pago não conta como "já
+    # possuído" pro cross-sell — senão um produto legítimo some da lista por engano (ver
+    # mesma correção em checkout_v2).
+    ebook_ids_possuidos = {
+        item['ebook_id'] for item in itens
+        if item.get('ebook_id') and not item.get('bloqueado')
+    }
+    cross_sell = listar_produtos_cross_sell_cliente(ebook_ids_possuidos)
+    primeiro_nome = (pedido.get('contact_name') or '').strip().split(' ')[0] or 'cliente'
+
+    try:
+        registrar_visualizacao_estante(pedido['id'], 'v2')
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"[ESTANTE] Erro ao registrar visualização v2 do pedido #{pedido['id']}: {e}")
+
+    return render_template('pedido-2.html', primeiro_nome=primeiro_nome, itens=itens,
+                            cross_sell=cross_sell, guid=guid)
 
 
 @web_bp.get('/pedido/<guid>/ler/<int:item_id>')
@@ -178,7 +337,12 @@ def pedido_leitor(guid, item_id):
     if erro == 'ainda_nao_entregue':
         return render_template('pedido_indisponivel.html', motivo='ainda_nao_entregue', pedido=pedido)
 
-    return render_template('pedido_leitor.html', guid=guid, item=item)
+    # A tela de leitura é uma única rota pras duas versões da estante — o link de origem
+    # (pedido-2.html) marca ?estante=v2 pra "← Meus livros" voltar pra /pedido2, não /pedido.
+    # Sem o parâmetro (link antigo, favorito salvo, e-mail), volta pra v1 como sempre foi.
+    voltar_para = f'/pedido2/{guid}' if request.args.get('estante') == 'v2' else f'/pedido/{guid}'
+
+    return render_template('pedido_leitor.html', guid=guid, item=item, voltar_para=voltar_para)
 
 
 @web_bp.get('/pedido/<guid>/arquivo/<int:item_id>')

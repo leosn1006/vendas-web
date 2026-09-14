@@ -34,7 +34,7 @@ from database import (db,
     buscar_notificacao_em_analise_pedido, bloquear_followup_pedido,
     buscar_pedido_web_por_email, buscar_mensagens_email_pedido, buscar_anexos_email_pedido,
     buscar_notificacao_email_pedido, bloquear_pedido_email, buscar_anexo_email_por_id,
-    buscar_notificacao_por_id)
+    buscar_notificacao_por_id, busca_comparativo_variante_checkout)
 
 _FLUXOS = ['introducao', 'pedido', 'comprovante', 'responder', 'followup', 'confirmacao_web', 'followup_interesse_1', 'followup_interesse_2']
 _FLUXOS_READONLY = {'responder'}
@@ -3190,6 +3190,41 @@ def financeiro_produto(produto_id):
         data_fim      = data_fim_str,
         fluxo_inicial = fluxo_inicial,
         forma         = forma,
+    )
+
+
+@admin_bp.route('/experimentos/estante-v2')
+@requer_admin
+def comparativo_estante_v2():
+    """Compara v1 x v2 do piloto de cross-sell na estante (ver plano
+    peaceful-seeking-pizza.md). Página global (não por produto) — a v2 é produto-agnóstica,
+    então requer_admin em vez de requer_acesso_produto."""
+    hoje = _hoje_sao_paulo()
+    data_ini_str = request.args.get('data_ini', hoje.isoformat())
+    data_fim_str = request.args.get('data_fim', hoje.isoformat())
+
+    try:
+        data_ini = datetime.datetime.fromisoformat(data_ini_str)
+        data_fim = datetime.datetime.fromisoformat(data_fim_str) + datetime.timedelta(days=1, seconds=-1)
+    except ValueError:
+        data_ini = datetime.datetime.combine(hoje, datetime.time.min)
+        data_fim = datetime.datetime.combine(hoje, datetime.time.max)
+        data_ini_str = data_fim_str = hoje.isoformat()
+
+    try:
+        comparativo = busca_comparativo_variante_checkout(data_ini, data_fim)
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro no comparativo v1/v2 da estante: {e}")
+        flash('Erro ao carregar o comparativo.', 'danger')
+        comparativo = {
+            'views_v1': 0, 'views_v2': 0, 'pedidos_criados_v2': 0, 'pedidos_pagos_v2': 0,
+            'valor_total_v2': 0, 'ticket_medio_v2': 0, 'taxa_conversao_v2': 0,
+        }
+
+    return render_template('admin/comparativo_variantes.html',
+        comparativo = comparativo,
+        data_ini    = data_ini_str,
+        data_fim    = data_fim_str,
     )
 
 

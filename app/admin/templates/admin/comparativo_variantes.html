@@ -1,0 +1,112 @@
+{% extends "admin/base.html" %}
+{% block title %}Estante v1 x v2 — Comparativo{% endblock %}
+
+{% block extra_css %}
+{% include 'admin/includes/_filtro_periodo_styles.html' %}
+<style>
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 28px;
+    }
+
+    .metric-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px 20px;
+        position: relative;
+        overflow: hidden;
+    }
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: var(--border);
+    }
+    .metric-card.green::before { background: var(--accent2); }
+    .metric-card.accent::before { background: var(--accent); }
+
+    .metric-label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-family: var(--mono);
+        margin-bottom: 8px;
+    }
+    .metric-value {
+        font-size: 28px;
+        font-weight: 600;
+        font-family: var(--mono);
+        color: #3d2510;
+        line-height: 1;
+    }
+    .metric-sub {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+    }
+
+    .grupo-titulo {
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        color: var(--muted);
+        margin: 24px 0 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">🧪 Estante v1 x v2</h1>
+        <p class="page-subtitle">Piloto de cross-sell na estante — visualizações e conversão por variante</p>
+    </div>
+</div>
+
+{% include 'admin/includes/_filtro_periodo.html' %}
+
+<div class="grupo-titulo">Visualizações da estante (v1 = controle, v2 = piloto)</div>
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-label">Estante v1</div>
+        <div class="metric-value">{{ comparativo.views_v1 }}</div>
+        <div class="metric-sub">aberturas de /pedido/&lt;guid&gt;</div>
+    </div>
+    <div class="metric-card accent">
+        <div class="metric-label">Estante v2</div>
+        <div class="metric-value">{{ comparativo.views_v2 }}</div>
+        <div class="metric-sub">aberturas de /pedido2/&lt;guid&gt;</div>
+    </div>
+</div>
+
+<div class="grupo-titulo">Conversão de cross-sell (só existe na v2 — a v1 é o controle, sem seção de cross-sell)</div>
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-label">Pedidos criados</div>
+        <div class="metric-value">{{ comparativo.pedidos_criados_v2 }}</div>
+        <div class="metric-sub">preencheram nome/e-mail no checkout v2 (não conta quem só visitou e abandonou antes disso)</div>
+    </div>
+    <div class="metric-card green">
+        <div class="metric-label">Pedidos pagos</div>
+        <div class="metric-value">{{ comparativo.pedidos_pagos_v2 }}</div>
+        <div class="metric-sub">taxa de conversão: {{ comparativo.taxa_conversao_v2 }}% das visualizações</div>
+    </div>
+    <div class="metric-card green">
+        <div class="metric-label">Valor gerado</div>
+        <div class="metric-value" style="font-size:22px;">{{ comparativo.valor_total_v2|brl }}</div>
+        <div class="metric-sub">ticket médio {{ comparativo.ticket_medio_v2|brl }}</div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{% include 'admin/includes/_filtro_periodo_js.html' %}
+{% endblock %}

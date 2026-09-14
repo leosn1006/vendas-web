@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sua Estante</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+    {% if itens and itens[0].imagem_pequena %}
+    <link rel="preload" as="image" href="{{ url_for('static', filename='images/' + itens[0].imagem_pequena) }}" fetchpriority="high">
+    {% endif %}
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --azul-esc:   #1967D2;
+            --azul:       #4285F4;
+            --glow-1:     #346BF1;
+            --glow-2:     #4FA0FF;
+            --fundo:      #0b1120;
+            --cinza-bg:   #131c30;
+            --borda:      #24304a;
+            --texto:      #eef2fb;
+            --sub:        #9aa7c2;
+            /* Os cards de e-book continuam brancos (flutuando sobre o fundo escuro) — por
+               isso precisam da própria dupla texto/sub escura, independente dos tokens acima
+               (que são pro texto direto no fundo escuro da página: saudação, rodapé, vazio). */
+            --texto-card: #1a1a2e;
+            --sub-card:   #5f6b7a;
+            --preco:      #0c7a3b;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--fundo);
+            color: var(--texto);
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* ── Glow de fundo da página inteira — mesma técnica dos halos animados, só que
+           fixo no viewport (não rola com a página) e bem mais sutil, pra dar profundidade
+           ao fundo escuro sem competir com os cards claros por cima. ── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: -10%;
+            background:
+                radial-gradient(circle at 15% 20%, var(--glow-1) 0%, transparent 40%),
+                radial-gradient(circle at 85% 15%, var(--glow-2) 0%, transparent 38%),
+                radial-gradient(circle at 50% 90%, var(--azul-esc) 0%, transparent 45%);
+            filter: blur(90px);
+            opacity: 0.28;
+            z-index: 0;
+            pointer-events: none;
+            animation: bgDrift 22s ease-in-out infinite alternate;
+        }
+        @keyframes bgDrift {
+            0%   { transform: translate3d(0, 0, 0) scale(1); }
+            100% { transform: translate3d(-2%, 2%, 0) scale(1.08); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            body::before { animation: none; }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 20px 16px 48px;
+        }
+
+        /* ── Header com glow azul (mesma técnica de 2 camadas do fatia-e.html: halo
+           borrado animado atrás + card sólido na frente, deixando só o brilho vazar
+           pela borda) ── */
+        .topo-wrap { position: relative; margin-bottom: 28px; }
+        .topo-halo {
+            position: absolute;
+            inset: -6%;
+            background: linear-gradient(120deg, var(--glow-1), var(--glow-2), var(--azul-esc), var(--glow-1));
+            background-size: 300% 300%;
+            filter: blur(28px);
+            opacity: 0.55;
+            border-radius: 24px;
+            animation: glowShift 9s ease infinite;
+            pointer-events: none;
+        }
+        @keyframes glowShift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .topo-halo { animation: none; }
+        }
+        header.topo {
+            position: relative;
+            background: linear-gradient(135deg, var(--azul-esc) 0%, var(--azul) 100%);
+            color: #fff;
+            border-radius: 20px;
+            padding: 26px 22px;
+        }
+        .topo .marca {
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            opacity: .85;
+            margin-bottom: 10px;
+        }
+        .topo h1 { font-size: 23px; font-weight: 900; margin-bottom: 6px; }
+        .topo p { font-size: 14px; opacity: .9; }
+
+        .secao-titulo-lista {
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: .5px;
+            color: var(--sub);
+            text-transform: uppercase;
+            margin: 28px 0 12px;
+        }
+
+        /* ── Grid de e-books — todo item igual, só capa pequena + título ── */
+        .grid-ebooks {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        .item-ebook {
+            display: block;
+            background: #fff;
+            border-radius: 14px;
+            border: 1px solid var(--borda);
+            overflow: hidden;
+            text-decoration: none;
+            color: var(--texto-card);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, .35);
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+        .item-ebook:hover, .item-ebook:active {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, .5), 0 0 0 1px var(--glow-2) inset;
+        }
+
+        .capa-wrap { position: relative; }
+        .capa {
+            width: 100%;
+            aspect-ratio: 3 / 4;
+            object-fit: cover;
+            background: #eef1f8;
+            display: block;
+        }
+        .capa.placeholder {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px;
+        }
+        .titulo { padding: 10px 12px 4px; font-size: 13px; font-weight: 700; line-height: 1.3; }
+
+        /* Liberado (já pago): sem filtro na capa + texto explícito de que é clicável — sem
+           isso o card não deixa claro que dá pra clicar (público 35+ não assume "tudo é
+           clicável" como um usuário mais jovem). */
+        .cta-ler {
+            padding: 0 12px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--azul-esc);
+        }
+
+        /* Comprado, pagamento pendente: cinza + cadeado — sinaliza "aguarde", estado correto
+           pra algo que já é do cliente mas ainda não foi confirmado. */
+        .item-ebook.bloqueado .capa { filter: grayscale(1); opacity: .55; }
+        .badge-cadeado {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(26,26,46,.65);
+            color: #fff;
+            font-size: 13px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .legenda-bloqueado {
+            font-size: 11px;
+            color: var(--sub-card);
+            padding: 0 12px 10px;
+            line-height: 1.3;
+            margin-top: -4px;
+        }
+
+        /* Cross-sell (não comprado, disponível): capa em COR NORMAL de propósito — reaproveitar
+           o cinza do .bloqueado passaria a mensagem errada (parece indisponível/quebrado, não
+           "à venda"). Só uma faixa de preço no canto, sem mexer na opacidade da imagem. */
+        .badge-preco {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--preco);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 900;
+            padding: 4px 9px;
+            border-radius: 999px;
+            box-shadow: 0 2px 6px rgba(0,0,0,.3);
+        }
+        .btn-comprar {
+            display: block;
+            margin: 0 12px 12px;
+            padding: 8px;
+            text-align: center;
+            background: var(--azul);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 900;
+            border-radius: 8px;
+        }
+
+        .vazio { text-align: center; color: var(--sub); padding: 40px 0; }
+
+        .rodape-suporte {
+            text-align: center;
+            font-size: 13px;
+            color: var(--sub);
+            margin-top: 32px;
+        }
+        .rodape-suporte a { color: var(--glow-2); font-weight: 700; text-decoration: none; }
+        .rodape-suporte a:hover { text-decoration: underline; }
+
+        /* ── RESPONSIVO — desktop (≥1024px). Mobile-first: tudo acima é o layout base
+           (celular). Mesma convenção usada em checkout.html/pedido_leitor.html. ── */
+        @media (min-width: 1024px) {
+            .container { max-width: 1040px; padding: 40px 24px 64px; }
+
+            header.topo { padding: 40px 44px; }
+            .topo h1 { font-size: 30px; }
+            .topo p { font-size: 16px; }
+
+            .grid-ebooks {
+                /* auto-fit (não auto-fill): colunas "fantasmas" sem item colapsam e o espaço
+                   delas é redistribuído pros cards que existem de verdade. Teto de 210px (em
+                   vez de 1fr): sem o teto, poucos itens fariam o(s) card(s) esticar pra
+                   preencher a largura toda (com 1 item, quase 900px de largura — desproporcional).
+                   Card em tamanho normal + cabeçalho do mesmo tamanho que a grade (ver
+                   .estante-conteudo.compacta abaixo) resolve os dois problemas de uma vez. */
+                grid-template-columns: repeat(auto-fit, minmax(160px, 210px));
+                gap: 20px;
+            }
+            /* Menos itens do que cabe numa fileira cheia (4, no tamanho de card acima): em vez
+               de deixar o cabeçalho na largura total do container enquanto a grade ocupa só uma
+               fração dela (visualmente desalinhado), encolhe os dois juntos pra largura exata
+               que N cards ocupariam — mesma conta de repeat(auto-fit, minmax(160px,210px)) faria
+               sozinho, só que aplicada também no cabeçalho. --n-itens vem do Jinja (contagem real
+               de itens), então o cálculo bate sempre, sem valor chutado. */
+            .estante-conteudo.compacta {
+                max-width: calc(var(--n-itens) * 210px + (var(--n-itens) - 1) * 20px);
+            }
+            .titulo { font-size: 14px; padding: 12px 14px 6px; }
+        }
+    </style>
+</head>
+<body>
+    {# Menos itens do que cabe numa fileira de 4 (o máximo que o container comporta em 210px +
+       20px de gap, ver .grid-ebooks): cabeçalho e grade ficam do mesmo tamanho "encolhido" —
+       calc() usa exatamente a mesma conta de largura que repeat(auto-fit, minmax(160px,210px))
+       produziria pra esses N itens, então os dois batem certinho sem escolher um valor no chute.
+       Com 4+ itens, a fileira já preenche a largura toda dos dois lados igualmente — não precisa
+       encolher nada (ver alternativa mais antiga, que só limitava o tamanho do card e deixava
+       header/grade desalinhados quando sobrava espaço). #}
+    {% set compacta = itens and itens|length < 4 %}
+    <div class="container">
+        <div class="estante-conteudo{% if compacta %} compacta{% endif %}"
+             {% if compacta %}style="--n-itens: {{ itens|length }}"{% endif %}>
+            <div class="topo-wrap">
+                <div class="topo-halo"></div>
+                <header class="topo">
+                    <div class="marca">📚 SUA ESTANTE</div>
+                    <h1>Olá, {{ primeiro_nome }}!</h1>
+                    <p>Todos os seus e-books estão aqui.</p>
+                </header>
+            </div>
+
+            {% if itens %}
+            <div class="grid-ebooks">
+                {% for item in itens %}
+                <a class="item-ebook{% if item.bloqueado %} bloqueado{% endif %}" href="/pedido/{{ item.guid_pedido }}/ler/{{ item.id }}?estante=v2">
+                    <div class="capa-wrap">
+                        {% if item.imagem_pequena %}
+                        <img class="capa" src="{{ url_for('static', filename='images/' + item.imagem_pequena) }}" alt="{{ item.nome }}"
+                             {% if loop.index0 == 0 %}fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}>
+                        {% else %}
+                        <div class="capa placeholder">📖</div>
+                        {% endif %}
+                        {% if item.bloqueado %}<span class="badge-cadeado">🔒</span>{% endif %}
+                    </div>
+                    <div class="titulo">{{ item.nome }}</div>
+                    {% if item.bloqueado %}
+                    <div class="legenda-bloqueado">Libera após confirmar o pagamento</div>
+                    {% else %}
+                    <div class="cta-ler">📖 Ler agora</div>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="vazio">Nenhum item encontrado.</div>
+            {% endif %}
+
+            {% if cross_sell %}
+            <div class="secao-titulo-lista">Livros que você ainda não tem</div>
+            <div class="grid-ebooks">
+                {% for produto in cross_sell %}
+                <a class="item-ebook disponivel" href="/pay2/{{ produto.produto_id }}?ref={{ guid }}">
+                    <div class="capa-wrap">
+                        {% if produto.imagem_pequena %}
+                        <img class="capa" src="{{ url_for('static', filename='images/' + produto.imagem_pequena) }}" alt="{{ produto.nome_venda }}"
+                             loading="lazy" decoding="async">
+                        {% else %}
+                        <div class="capa placeholder">📖</div>
+                        {% endif %}
+                        <span class="badge-preco">{{ produto.preco_promocional|brl }}</span>
+                    </div>
+                    <div class="titulo">{{ produto.nome_venda }}</div>
+                    <div class="btn-comprar">Comprar</div>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <p class="rodape-suporte">
+            Precisa de ajuda? Entre em contato:<br>
+            <a href="mailto:admin@lsnlivros.com.br">admin@lsnlivros.com.br</a>
+        </p>
+    </div>
+</body>
+</html>

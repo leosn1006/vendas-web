@@ -157,7 +157,7 @@ function toggleContentFields() {
     const isTemplate = (acao === 'enviar_produto_whatsapp');
     const isProduto  = (acao === 'enviar_produto');
 
-    url.style.display      = (acao === 'enviar_audio' || acao === 'enviar_imagem' || acao === 'enviar_arquivo' || isTemplate) ? '' : 'none';
+    url.style.display      = (acao === 'enviar_audio' || acao === 'enviar_imagem' || acao === 'enviar_arquivo' || isTemplate || isProduto) ? '' : 'none';
     mensagem.style.display = (acao === 'enviar_mensagem' || isTemplate || isProduto) ? '' : 'none';
     caption.style.display  = (acao === 'enviar_arquivo' || isTemplate || isProduto) ? '' : 'none';
     nomearq.style.display  = (acao === 'enviar_arquivo' || isTemplate) ? '' : 'none';
@@ -169,6 +169,8 @@ function toggleContentFields() {
     const captionHint   = document.getElementById('caption-hint');
 
     // Ajusta labels/limites/dicas para o contexto da ação selecionada
+    const urlInput = url.querySelector('input');
+
     if (isTemplate) {
         mensagem.querySelector('label').textContent = 'Nome do template';
         caption.querySelector('label').textContent  = 'Idioma (ex: pt_BR)';
@@ -181,12 +183,19 @@ function toggleContentFields() {
         captionInput.setAttribute('maxlength', '20');
         mensagemHint.hidden = false;
         captionHint.hidden  = false;
+        // Piloto de cross-sell (ver plano peaceful-seeking-pizza.md): 'url' não tem uso pra
+        // esta ação (o link é sempre montado automaticamente), reaproveitado como flag de
+        // versão da Estante — vazio = v1 (/pedido/<guid>), 'v2' = piloto (/pedido2/<guid>).
+        url.querySelector('label').textContent = 'Versão da Estante';
+        urlInput.placeholder = "deixe vazio para v1, ou escreva 'v2' pro piloto de cross-sell";
     } else {
         mensagem.querySelector('label').textContent = 'Mensagem';
         caption.querySelector('label').textContent  = 'Caption';
         captionInput.removeAttribute('maxlength');
         mensagemHint.hidden = false;
         captionHint.hidden  = false;
+        url.querySelector('label').textContent = 'URL';
+        urlInput.placeholder = 'https://…';
     }
 }
 // init on page load
