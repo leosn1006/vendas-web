@@ -2,7 +2,7 @@
 import logging
 import os
 import redis as redis_lib
-from celery import shared_task
+from celery import shared_task, group, chord
 from whatsapp import notificar_admin_erro_sistema
 
 logger = logging.getLogger(__name__)
@@ -643,7 +643,13 @@ def enviar_email_entrega(self, pedido_id: int):
 
 @shared_task(name='tasks.emitir_nfe', bind=True, max_retries=3)
 def emitir_nfe(self, pagamento_pix_id: int, config_id: int | None = None, valor_override: float | None = None):
-    """Emite NF-e para um pagamento PIX. Retry com backoff exponencial."""
+    """
+    Emite NF-e para um pagamento PIX. Retry com backoff exponencial.
+
+    Sempre retorna um dict (nunca deixa exceção escapar) — necessário pro chord da
+    rotina diária (tasks.finalizar_execucao_nfe_diaria só roda se todas as tasks do
+    grupo terminarem sem exceção não tratada).
+    """
     _TAG = 'TASK-NFE'
     try:
         from fiscal.nfe_service import emitir_nfe as _emitir
@@ -651,19 +657,32 @@ def emitir_nfe(self, pagamento_pix_id: int, config_id: int | None = None, valor_
         status = resultado.get('status', '?')
         nfe_id = resultado.get('nfe_id')
         logger.info(f'[{_TAG}] PIX={pagamento_pix_id} nfe_id={nfe_id} → {status}')
+        return {
+            'pagamento_pix_id': pagamento_pix_id, 'nfe_id': nfe_id, 'status': status,
+            'c_stat': resultado.get('c_stat'), 'x_motivo': resultado.get('x_motivo'),
+        }
     except (ValueError, RuntimeError) as exc:
         # Erros permanentes (config faltando, XSD inválido, PIX não encontrado)
         logger.error(f'[{_TAG}] ❌ Erro permanente PIX={pagamento_pix_id}: {exc}')
         notificar_admin_erro_sistema(f'TASK-NFE | PIX={pagamento_pix_id} | {type(exc).__name__}: {str(exc)[:200]}')
+        return {
+            'pagamento_pix_id': pagamento_pix_id, 'nfe_id': None, 'status': 'erro_permanente',
+            'c_stat': None, 'x_motivo': f'{type(exc).__name__}: {str(exc)[:200]}',
+        }
     except Exception as exc:
         tentativa = self.request.retries + 1
         countdown  = 60 * (2 ** self.request.retries)   # 60s → 120s → 240s
+        if self.request.retries >= self.max_retries:
+            logger.exception(f'[{_TAG}] ❌ PIX={pagamento_pix_id} | esgotou {tentativa} tentativas: {exc}')
+            notificar_admin_erro_sistema(f'TASK-NFE | PIX={pagamento_pix_id} | esgotou retries | {type(exc).__name__}')
+            return {
+                'pagamento_pix_id': pagamento_pix_id, 'nfe_id': None, 'status': 'erro_transiente_esgotado',
+                'c_stat': None, 'x_motivo': f'{type(exc).__name__}: {str(exc)[:200]}',
+            }
         logger.exception(
             f'[{_TAG}] ❌ PIX={pagamento_pix_id} | '
             f'Tentativa {tentativa}/{self.max_retries + 1} | retry em {countdown}s: {exc}'
         )
-        if self.request.retries >= self.max_retries:
-            notificar_admin_erro_sistema(f'TASK-NFE | PIX={pagamento_pix_id} | esgotou retries | {type(exc).__name__}')
         raise self.retry(exc=exc, countdown=countdown)
 
 
@@ -675,7 +694,12 @@ def reprocessar_nfe_pendentes(self, config_id: int | None = None, limite: int = 
 
 @shared_task(name='tasks.emitir_nfe_cartao', bind=True, max_retries=3)
 def emitir_nfe_cartao(self, pagamento_cartao_id: int, config_id: int | None = None):
-    """Emite NF-e para um pagamento por cartão de crédito. Retry com backoff exponencial."""
+    """
+    Emite NF-e para um pagamento por cartão de crédito. Retry com backoff exponencial.
+
+    Sempre retorna um dict (nunca deixa exceção escapar) — necessário pro chord da
+    rotina diária, mesmo motivo de tasks.emitir_nfe.
+    """
     _TAG = 'TASK-NFE-CARTAO'
     try:
         from fiscal.nfe_service import emitir_nfe_cartao as _emitir
@@ -683,61 +707,109 @@ def emitir_nfe_cartao(self, pagamento_cartao_id: int, config_id: int | None = No
         status = resultado.get('status', '?')
         nfe_id = resultado.get('nfe_id')
         logger.info(f'[{_TAG}] CARTAO={pagamento_cartao_id} nfe_id={nfe_id} → {status}')
+        return {
+            'pagamento_cartao_id': pagamento_cartao_id, 'nfe_id': nfe_id, 'status': status,
+            'c_stat': resultado.get('c_stat'), 'x_motivo': resultado.get('x_motivo'),
+        }
     except (ValueError, RuntimeError) as exc:
         logger.error(f'[{_TAG}] ❌ Erro permanente CARTAO={pagamento_cartao_id}: {exc}')
         notificar_admin_erro_sistema(f'TASK-NFE-CARTAO | CARTAO={pagamento_cartao_id} | {type(exc).__name__}: {str(exc)[:200]}')
+        return {
+            'pagamento_cartao_id': pagamento_cartao_id, 'nfe_id': None, 'status': 'erro_permanente',
+            'c_stat': None, 'x_motivo': f'{type(exc).__name__}: {str(exc)[:200]}',
+        }
     except Exception as exc:
         tentativa = self.request.retries + 1
         countdown  = 60 * (2 ** self.request.retries)
+        if self.request.retries >= self.max_retries:
+            logger.exception(f'[{_TAG}] ❌ CARTAO={pagamento_cartao_id} | esgotou {tentativa} tentativas: {exc}')
+            notificar_admin_erro_sistema(f'TASK-NFE-CARTAO | CARTAO={pagamento_cartao_id} | esgotou retries | {type(exc).__name__}')
+            return {
+                'pagamento_cartao_id': pagamento_cartao_id, 'nfe_id': None, 'status': 'erro_transiente_esgotado',
+                'c_stat': None, 'x_motivo': f'{type(exc).__name__}: {str(exc)[:200]}',
+            }
         logger.exception(
             f'[{_TAG}] ❌ CARTAO={pagamento_cartao_id} | '
             f'Tentativa {tentativa}/{self.max_retries + 1} | retry em {countdown}s: {exc}'
         )
-        if self.request.retries >= self.max_retries:
-            notificar_admin_erro_sistema(f'TASK-NFE-CARTAO | CARTAO={pagamento_cartao_id} | esgotou retries | {type(exc).__name__}')
         raise self.retry(exc=exc, countdown=countdown)
 
 
 @shared_task(name='tasks.emitir_nfe_diaria_lbe', bind=True, max_retries=0)
 def emitir_nfe_diaria_lbe(self):
     """
-    Rotina diária às 3h (São Paulo) — emite NF-e para todos os pagamentos LBE
-    (PIX + cartão) com mais de 7 dias (janela de devolução/garantia).
+    Rotina diária às 00h10 (São Paulo) — emite NF-e para todos os pagamentos LBE
+    (PIX + cartão) com mais de 2 dias (janela de devolução/garantia).
     Descarta pagamentos < R$2 (testes) e PIX com devolução total.
+
+    Só dispara as emissões individuais (não espera o resultado) — o relatório final
+    é montado por tasks.finalizar_execucao_nfe_diaria, encadeado via chord, que só
+    roda depois que TODAS as emissões da rodada realmente terminarem.
     """
     _TAG = 'TASK-NFE-DIARIA'
     LBE_TENANT_SLUG = 'lbe-livros'
     LBE_CONFIG_ID   = 2
+    LIMITE          = 500
 
     try:
-        from database import buscar_pagamentos_pix_sem_nfe, buscar_pagamentos_cartao_sem_nfe
+        from database import buscar_pagamentos_pix_sem_nfe, buscar_pagamentos_cartao_sem_nfe, criar_execucao_nfe
 
         pix_list = buscar_pagamentos_pix_sem_nfe(
-            tenant_slug=LBE_TENANT_SLUG, dias_minimos=7, valor_minimo=2.0, limite=500,
+            tenant_slug=LBE_TENANT_SLUG, dias_minimos=2, valor_minimo=2.0, limite=LIMITE,
         )
         cartao_list = buscar_pagamentos_cartao_sem_nfe(
-            config_id=LBE_CONFIG_ID, dias_minimos=7, valor_minimo=2.0, limite=500,
+            config_id=LBE_CONFIG_ID, dias_minimos=2, valor_minimo=2.0, limite=LIMITE,
         )
 
-        for item in pix_list:
-            emitir_nfe.apply_async(
-                args=[item['id']],
-                kwargs={'config_id': LBE_CONFIG_ID, 'valor_override': item['valor_liquido']},
-                countdown=1,
-            )
-        for item in cartao_list:
-            emitir_nfe_cartao.apply_async(
-                args=[item['id']],
-                kwargs={'config_id': LBE_CONFIG_ID},
-                countdown=1,
-            )
+        execucao_id = criar_execucao_nfe(
+            tenant_id=LBE_CONFIG_ID,
+            pix_elegiveis=len(pix_list),
+            pix_limite_atingido=len(pix_list) == LIMITE,
+            cartao_elegiveis=len(cartao_list),
+            cartao_limite_atingido=len(cartao_list) == LIMITE,
+        )
+
+        if not pix_list and not cartao_list:
+            from database import finalizar_execucao_nfe
+            finalizar_execucao_nfe(execucao_id, [])
+            logger.info(f'[{_TAG}] Nada elegível — execucao_id={execucao_id} fechada sem disparos')
+            return
+
+        signatures = [
+            emitir_nfe.s(item['id'], config_id=LBE_CONFIG_ID, valor_override=item['valor_liquido'])
+            for item in pix_list
+        ] + [
+            emitir_nfe_cartao.s(item['id'], config_id=LBE_CONFIG_ID)
+            for item in cartao_list
+        ]
+
+        chord(group(signatures))(finalizar_execucao_nfe_diaria.s(execucao_id))
 
         logger.info(
-            f'[{_TAG}] {len(pix_list)} PIX + {len(cartao_list)} cartão agendados para NF-e'
+            f'[{_TAG}] {len(pix_list)} PIX + {len(cartao_list)} cartão agendados para NF-e '
+            f'(execucao_id={execucao_id})'
         )
     except Exception as exc:
         logger.error(f'[{_TAG}] ❌ Erro na rotina diária: {exc}')
         notificar_admin_erro_sistema(f'TASK-NFE-DIARIA | {type(exc).__name__}: {str(exc)[:200]}')
+
+
+@shared_task(name='tasks.finalizar_execucao_nfe_diaria', bind=True, max_retries=0)
+def finalizar_execucao_nfe_diaria(self, resultados: list[dict], execucao_id: int):
+    """
+    Callback do chord da rotina diária — roda uma única vez, depois que todas as
+    emissões da rodada (emitir_nfe/emitir_nfe_cartao) terminaram de verdade.
+    Agrega os resultados e fecha o relatório em nfe_execucoes (ver
+    /admin/fiscal/nfe/execucoes).
+    """
+    _TAG = 'TASK-NFE-DIARIA-RELATORIO'
+    try:
+        from database import finalizar_execucao_nfe
+        finalizar_execucao_nfe(execucao_id, resultados)
+        logger.info(f'[{_TAG}] execucao_id={execucao_id} finalizada — {len(resultados)} resultado(s)')
+    except Exception as exc:
+        logger.error(f'[{_TAG}] ❌ Erro ao finalizar execucao_id={execucao_id}: {exc}')
+        notificar_admin_erro_sistema(f'TASK-NFE-DIARIA-RELATORIO | execucao_id={execucao_id} | {type(exc).__name__}: {str(exc)[:200]}')
 
 
 @shared_task(name='tasks.reconciliar_pix_pendentes_web', bind=True, max_retries=0)

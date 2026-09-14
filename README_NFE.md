@@ -38,14 +38,14 @@ Cada linha de `nfe_configuracao` é uma empresa emitente independente: próprio 
 
 Implementadas em `buscar_pagamentos_pix_sem_nfe()` / `buscar_pagamentos_cartao_sem_nfe()` (`app/database.py`) e usadas por `tasks.emitir_nfe_diaria_lbe`:
 
-1. **Só emite depois de 7 dias corridos do pagamento** (`dias_minimos=7`) — janela de garantia/devolução do PIX. Emitir antes disso arriscaria ter que desfazer uma nota já autorizada (ver seção de cancelamento abaixo, que na prática quase nunca é viável).
+1. **Só emite depois de 2 dias corridos do pagamento** (`dias_minimos=2`, reduzido de 7 em 13/09/2026 para regularizar mais rápido enquanto a empresa está no início do cadastro) — janela de garantia/devolução do PIX. Emitir antes disso arriscaria ter que desfazer uma nota já autorizada (ver seção de cancelamento abaixo, que na prática quase nunca é viável).
 2. **Valor mínimo R$2,00** (`valor_minimo=2.0`) — descarta pagamentos de teste.
 3. **`dhEmi` (data de emissão da nota) = data do pagamento, não a data em que a rotina realmente roda.** Confirmado com o contador: no DF a competência fiscal é a data do fato gerador (o pagamento), e o prazo de escrituração é **até o dia 20 do mês subsequente** à competência. Isso significa que pagamentos de início de mês têm bastante folga; pagamentos de fim de mês processados só quando o backlog "andar" podem ficar apertados — vale monitorar o backlog, não deixar crescer indefinidamente.
 4. **Devolução parcial de PIX**: emite pelo saldo líquido (`valor - devoluções liquidadas`), não pelo valor bruto.
 5. **Devolução total de PIX**: não emite (`valor_liquido <= 0`, excluído via `HAVING`).
 6. **`LIMIT 500` por execução, separado para PIX e para cartão.** Se o backlog elegível for maior que 500, sobra para a próxima rodada (a ordenação é `ORDER BY id ASC`, então processa sempre os mais antigos primeiro — determinístico e estável entre execuções).
 7. **Cartão**: só produtos com `nfe_config_id` apontando pro tenant em questão, pedido pago (`estado_id=1000`), cobrança aprovada na Cielo (`status_cielo=2`).
-8. **Cancelamento de NF-e não é uma ferramenta viável pro fluxo normal.** O prazo legal de cancelamento (evento 110111) no DF/SVRS é de **24 horas** após a autorização. Como a nota só é emitida no mínimo 7 dias depois do pagamento, qualquer cancelamento estaria sempre fora do prazo. Devoluções pós-emissão são tratadas só financeiramente (tabela `devolucoes_pix`), sem tocar a NF-e.
+8. **Cancelamento de NF-e não é uma ferramenta viável pro fluxo normal.** O prazo legal de cancelamento (evento 110111) no DF/SVRS é de **24 horas** após a autorização. Como a nota só é emitida no mínimo 2 dias depois do pagamento, qualquer cancelamento estaria sempre fora do prazo. Devoluções pós-emissão são tratadas só financeiramente (tabela `devolucoes_pix`), sem tocar a NF-e.
 
 ---
 
@@ -94,7 +94,8 @@ vendas-web/
 │   ├── 048_nfe_configuracao_parametros.sql  # c_benef, aliq_icms_deson, IBS/CBS (Reforma Tributária)
 │   ├── 049_produtos_nfe_config_id.sql       # liga produto → tenant emissor
 │   ├── 069_nfe_emitidas_cartao.sql          # suporte a NF-e de pagamento por cartão
-│   └── 070_pagamento_pix_tenant_slug.sql    # tenant_slug em pagamento_pix (multi-conta BB)
+│   ├── 070_pagamento_pix_tenant_slug.sql    # tenant_slug em pagamento_pix (multi-conta BB)
+│   └── 072_nfe_execucoes.sql                # relatório consolidado de cada rodada da rotina
 ├── scripts/
 │   ├── testar_certificado_nfe.py    # teste: carrega .pfx
 │   ├── testar_status_svrs.py        # teste: ping SVRS (cStat=107)
@@ -148,6 +149,15 @@ Descrição do produto na nota (`xProd`) usa `nome_nfe` (ou `nome` como fallback
 
 Guarda `soap_request`/`soap_response` de cada chamada. **Fonte de recuperação**: se uma nota foi mal classificada localmente mas a SEFAZ já tinha respondido, os dados completos (incluindo `nProt`) ainda estão aqui e são reparseáveis com `fiscal.nfe_soap._parsear_ret_envi_nfe` (foi assim que o incidente do `cStat=150` foi corrigido sem perder nada).
 
+### `nfe_execucoes` — relatório de cada rodada da rotina diária (migration 072)
+
+Uma linha por execução de `tasks.emitir_nfe_diaria_lbe`: elegíveis vs. disparados (PIX e cartão,
+separado), se bateu no `LIMIT 500`, contagem de autorizadas (100 vs 150), rejeitadas, erros, já
+emitidas, valor total autorizado, último número da rodada, e um `detalhe_rejeicoes_json` com
+motivo de cada rejeição/erro. Preenchida em duas etapas: `criar_execucao_nfe()` no início
+(`status='em_andamento'`) e `finalizar_execucao_nfe()` no callback do chord, quando todas as
+emissões da rodada já terminaram de verdade. Consultável em `/admin/fiscal/nfe/execucoes`.
+
 ### Vínculo com `pagamento_pix`
 
 `pagamento_pix.nfe_emitida_id` — `NULL` = pendente, preenchido = autorizada. Idempotência: a seleção de elegíveis já filtra por isso.
@@ -160,15 +170,17 @@ Guarda `soap_request`/`soap_response` de cada chamada. **Fonte de recuperação*
 Celery beat, todo dia às 00h10 SP (crontab(hour=0, minute=10) — CUIDADO: quando
 celery_app.conf.timezone está setado, o Beat interpreta o crontab DIRETO nesse
 fuso, sem conversão de UTC; não somar/subtrair fuso manualmente no crontab)
-  └─▶ tasks.emitir_nfe_diaria_lbe   [queue: baixa]
-        ├─ buscar_pagamentos_pix_sem_nfe(tenant='lbe-livros', dias_minimos=7,
+  └─▶ tasks.emitir_nfe_diaria_lbe   [queue: normal — unificado em 13/09/2026,
+      antes rodava em 'baixa' separado das emissões individuais, dificultando achar log]
+        ├─ buscar_pagamentos_pix_sem_nfe(tenant='lbe-livros', dias_minimos=2,
         │      valor_minimo=2.0, limite=500)
-        ├─ buscar_pagamentos_cartao_sem_nfe(config_id=2, dias_minimos=7,
+        ├─ buscar_pagamentos_cartao_sem_nfe(config_id=2, dias_minimos=2,
         │      valor_minimo=2.0, limite=500)
-        ├─ para cada PIX elegível: emitir_nfe.apply_async([pix_id], config_id=2,
-        │      valor_override=valor_liquido, countdown=1)   [queue: normal]
-        └─ para cada cartão elegível: emitir_nfe_cartao.apply_async([cartao_id],
-               config_id=2, countdown=1)                     [queue: normal]
+        ├─ criar_execucao_nfe() — grava início da rodada em nfe_execucoes
+        ├─ monta um celery.group() com uma signature emitir_nfe.s(...)/emitir_nfe_cartao.s(...)
+        │      por elegível (tudo [queue: normal])
+        └─ chord(group)(finalizar_execucao_nfe_diaria.s(execucao_id)) — dispara o grupo e
+               encadeia o fechamento do relatório pra depois que TODAS terminarem
 
 emitir_nfe / emitir_nfe_cartao  (app/fiscal/nfe_service.py)
   1. busca nfe_configuracao pelo config_id
@@ -188,9 +200,22 @@ emitir_nfe / emitir_nfe_cartao  (app/fiscal/nfe_service.py)
      ├─ cStat=103                    → aguardando_retorno (assíncrono raro)
      └─ outros                       → rejeitada
   8. gravar_log_soap() — sempre, mesmo em erro
+  9. retorna um dict {status, nfe_id, c_stat, x_motivo} — SEMPRE, mesmo em erro
+     permanente ou após esgotar retries (nunca deixa exceção escapar da task,
+     senão o chord acima trava e o relatório não fecha)
+
+finalizar_execucao_nfe_diaria(resultados, execucao_id)  [queue: normal]
+  └─▶ agrega os resultados (contagem por status/cStat, soma valor autorizado via
+      join com pagamento_pix/pagamento_cartao) e fecha a linha em nfe_execucoes
+      — ver /admin/fiscal/nfe/execucoes
 ```
 
-**Disparo manual** (fora do horário agendado, mesmo código): `make emitir-nfe-agora` → `docker compose exec worker-baixa celery -A celery_app call tasks.emitir_nfe_diaria_lbe`. Só dispara — não espera o resultado; acompanhar via banco (`SELECT status_emissao, c_stat, COUNT(*) ... GROUP BY`) é mais confiável que log, porque os workers rodam com `--loglevel=warning` (`docker-compose.yml`) e `logger.info(...)` (autorizada) não aparece no `docker logs`, só no arquivo `/app/storage/logs/log_worker_normal_<data>_001.log` (nível INFO, configurado em `app/logging_setup.py` via `LOG_LEVEL`).
+**Relatório de cada rodada**: `/admin/fiscal/nfe/execucoes` — elegíveis vs. disparados, autorizadas
+(cStat 100 vs 150), rejeitadas, erros, valor total autorizado, se bateu no limite de 500. Não
+substitui os logs de warning/error (que continuam existindo linha a linha) — é a visão consolidada
+"o que essa rodada fez", sem precisar vasculhar log ou banco na mão.
+
+**Disparo manual** (fora do horário agendado, mesmo código): `make emitir-nfe-agora` → `docker compose exec worker-normal celery -A celery_app call tasks.emitir_nfe_diaria_lbe --queue normal`. O disparo em si só enfileira o grupo — o resultado real leva o tempo de processar todos os itens; acompanhar pela tela de execuções ou via banco (`SELECT status_emissao, c_stat, COUNT(*) ... GROUP BY`) é mais confiável que log, porque os workers rodam com `--loglevel=warning` (`docker-compose.yml`) e `logger.info(...)` (autorizada) não aparece no `docker logs`, só no arquivo `/app/storage/logs/log_worker_normal_<data>_001.log` (nível INFO, configurado em `app/logging_setup.py` via `LOG_LEVEL`).
 
 > `app/fluxos/fluxo_pix_bb.py` tem um bloco de emissão **imediata** por-PIX (logo após buscar da API do BB) — está **comentado**, desabilitado deliberadamente. Comentar o `beat_schedule` só impede o disparo automático/agendado; não impede um disparo manual via `make emitir-nfe-agora`, que chama a task direto via Celery.
 
@@ -267,9 +292,10 @@ Seleção automática via `nfe_configuracao.ambiente` (`app/fiscal/nfe_soap.py:8
 
 | Task | Fila | Retries | Descrição |
 |---|---|---|---|
-| `tasks.emitir_nfe_diaria_lbe` | baixa | 0 | Orquestrador diário (beat 00h10 SP) — busca elegíveis e dispara as duas abaixo |
-| `tasks.emitir_nfe` | normal | 3 (60s→120s→240s) | Emissão individual, PIX |
-| `tasks.emitir_nfe_cartao` | normal | conforme `nfe_service.py` | Emissão individual, cartão |
+| `tasks.emitir_nfe_diaria_lbe` | normal | 0 | Orquestrador diário (beat 00h10 SP) — busca elegíveis e dispara um `chord` com as duas abaixo |
+| `tasks.emitir_nfe` | normal | 3 (60s→120s→240s) | Emissão individual, PIX — sempre retorna um dict, nunca deixa exceção escapar (chord-safe) |
+| `tasks.emitir_nfe_cartao` | normal | 3 (60s→120s→240s) | Emissão individual, cartão — mesma garantia de retorno |
+| `tasks.finalizar_execucao_nfe_diaria` | normal | 0 | Callback do chord — fecha o relatório em `nfe_execucoes` depois que todas as emissões da rodada terminam |
 
 **Erros permanentes** (não retentam, notificam admin): `RuntimeError` (config/senha ausente), `ValueError` (XSD inválido, pagamento não encontrado).
 **Erros transientes** (retentam com backoff): timeout de rede, HTTP 5xx, SEFAZ indisponível.
@@ -301,6 +327,8 @@ Scripts standalone rodam **fora do Docker** (no host do servidor) — usam o `.v
 - ✅ LBE em produção real (`ambiente=1`), rotina diária ativa, ~2400 NF-e emitidas
 - ✅ PIX e cartão funcionando, `cStat=100` e `150` tratados corretamente como autorização
 - ✅ Descrição de produto (ISBN/nome_nfe) correta em ambas as vias de pagamento
+- ✅ Janela de elegibilidade em 2 dias (reduzida de 7); fila unificada em `normal`; relatório de
+  cada rodada em `/admin/fiscal/nfe/execucoes` (chord — só fecha depois que tudo termina de verdade)
 - ⚠️ LSN (CNPJ pessoal) ainda em homologação (`ambiente=2`) — sem rotina automática ativa
 - ⚠️ IBS/CBS (Reforma Tributária) configurado com valores confirmados pelo contador em setembro/2026, mas a legislação/alíquotas ainda estão em transição — revisar periodicamente
 

@@ -82,15 +82,17 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute='*/15'),
         'options': {'queue': 'baixa'},
     },
-    # NF-e — LBE LIVROS LTDA: emite para PIX e cartão com mais de 7 dias (garantia)
+    # NF-e — LBE LIVROS LTDA: emite para PIX e cartão com mais de 2 dias (garantia)
     # dhEmi usa data do pagamento (validado com contador — prazo DF: até dia 20 do mês seguinte)
     # Religada em 2026-09-13: causa raiz era ambiente=1 (produção) no banco de dev, que emitiu
     # 1002 NF-e reais (números 6-1007) sem persistir em produção — reconciliado via
     # scripts/backfill_nfe_lbe_producao.py; ultimo_numero_nfe corrigido pra 1007.
+    # Fila unificada em 'normal' (2026-09-13) — orquestrador e emissão individual no mesmo
+    # worker/log, mais fácil de acompanhar.
     'emitir-nfe-diaria-lbe': {
         'task': 'tasks.emitir_nfe_diaria_lbe',
         'schedule': crontab(hour=0, minute=10),  # 00h10 São Paulo
-        'options': {'queue': 'baixa'},
+        'options': {'queue': 'normal'},
     },
     'orcamento-sheets-horario': {
         'task': 'tasks.processar_orcamento_sheets',
@@ -164,9 +166,10 @@ celery_app.conf.update(
         "tasks.verificar_qualidade_whatsapp":            {"queue": "baixa"},
         "tasks.verificar_qualidade_whatsapp_produto":     {"queue": "normal"},
         "tasks.verificar_emails_clientes":               {"queue": "baixa"},
-        # NF-e
+        # NF-e — tudo na fila 'normal' (orquestrador, emissão individual e relatório)
         "tasks.emitir_nfe":                              {"queue": "normal"},
         "tasks.emitir_nfe_cartao":                       {"queue": "normal"},
-        "tasks.emitir_nfe_diaria_lbe":                   {"queue": "baixa"},
+        "tasks.emitir_nfe_diaria_lbe":                   {"queue": "normal"},
+        "tasks.finalizar_execucao_nfe_diaria":           {"queue": "normal"},
     },
 )

@@ -3251,3 +3251,105 @@ def buscar_pagamento_cartao_por_id(cartao_id: int) -> dict | None:
         (cartao_id,),
         fetch_one=True,
     )
+
+
+def criar_execucao_nfe(
+    tenant_id: int,
+    pix_elegiveis: int,
+    pix_limite_atingido: bool,
+    cartao_elegiveis: int,
+    cartao_limite_atingido: bool,
+) -> int:
+    """Registra o início de uma rodada da rotina diária de NF-e. Retorna o id gerado."""
+    return db.execute_query(
+        """INSERT INTO nfe_execucoes
+               (tenant_id, iniciado_em, pix_elegiveis, pix_disparados, pix_limite_atingido,
+                cartao_elegiveis, cartao_disparados, cartao_limite_atingido, status)
+           VALUES (%s, NOW(), %s, %s, %s, %s, %s, %s, 'em_andamento')""",
+        (
+            tenant_id, pix_elegiveis, pix_elegiveis, int(pix_limite_atingido),
+            cartao_elegiveis, cartao_elegiveis, int(cartao_limite_atingido),
+        ),
+    )
+
+
+def finalizar_execucao_nfe(
+    execucao_id: int,
+    resultados: list[dict],
+) -> None:
+    """
+    Fecha uma execução da rotina diária: agrega os resultados de cada
+    emitir_nfe/emitir_nfe_cartao (status, c_stat), soma o valor autorizado via
+    join com pagamento_pix/pagamento_cartao, e grava tudo em nfe_execucoes.
+    """
+    import json
+    from collections import Counter
+
+    contagem = Counter(r.get('status', 'desconhecido') for r in resultados)
+    qtd_autorizada_100 = sum(1 for r in resultados if r.get('status') == 'autorizada' and r.get('c_stat') == '100')
+    qtd_autorizada_150 = sum(1 for r in resultados if r.get('status') == 'autorizada' and r.get('c_stat') == '150')
+    nfe_ids = [r['nfe_id'] for r in resultados if r.get('nfe_id')]
+
+    valor_total = 0.0
+    if nfe_ids:
+        placeholders = ','.join(['%s'] * len(nfe_ids))
+        row = db.execute_query(
+            f"""SELECT SUM(COALESCE(pp.valor, pc.valor)) AS total
+               FROM nfe_emitidas ne
+               LEFT JOIN pagamento_pix pp ON pp.id = ne.pagamento_pix_id
+               LEFT JOIN pagamento_cartao pc ON pc.id = ne.pagamento_cartao_id
+               WHERE ne.id IN ({placeholders}) AND ne.status_emissao = 'autorizada'""",
+            tuple(nfe_ids),
+            fetch_one=True,
+        )
+        valor_total = float(row['total']) if row and row['total'] is not None else 0.0
+
+    detalhe = [
+        {
+            'pagamento_pix_id': r.get('pagamento_pix_id'),
+            'pagamento_cartao_id': r.get('pagamento_cartao_id'),
+            'nfe_id': r.get('nfe_id'),
+            'status': r.get('status'),
+            'c_stat': r.get('c_stat'),
+            'x_motivo': r.get('x_motivo'),
+        }
+        for r in resultados
+        if r.get('status') in ('rejeitada', 'erro_permanente', 'erro_transiente_esgotado')
+    ]
+
+    ultimo_numero = db.execute_query(
+        """SELECT ne.ultimo_numero_nfe AS n FROM nfe_execucoes ex
+           JOIN nfe_configuracao ne ON ne.id = ex.tenant_id
+           WHERE ex.id = %s""",
+        (execucao_id,),
+        fetch_one=True,
+    )
+
+    db.execute_query(
+        """UPDATE nfe_execucoes
+           SET finalizado_em = NOW(), status = 'concluido',
+               qtd_autorizada_100 = %s, qtd_autorizada_150 = %s, qtd_rejeitada = %s,
+               qtd_erro = %s, qtd_ja_emitida = %s, valor_total_autorizado = %s,
+               ultimo_numero_nfe_final = %s, detalhe_rejeicoes_json = %s
+           WHERE id = %s""",
+        (
+            qtd_autorizada_100,
+            qtd_autorizada_150,
+            contagem.get('rejeitada', 0),
+            contagem.get('erro_permanente', 0) + contagem.get('erro_transiente_esgotado', 0),
+            contagem.get('ja_emitida', 0),
+            valor_total,
+            ultimo_numero['n'] if ultimo_numero else None,
+            json.dumps(detalhe, ensure_ascii=False, default=str) if detalhe else None,
+            execucao_id,
+        ),
+    )
+
+
+def listar_execucoes_nfe(tenant_id: int, limite: int = 30) -> list[dict]:
+    return db.execute_query(
+        """SELECT * FROM nfe_execucoes WHERE tenant_id = %s
+           ORDER BY iniciado_em DESC LIMIT %s""",
+        (tenant_id, limite),
+        fetch_all=True,
+    ) or []

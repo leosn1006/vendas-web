@@ -1,0 +1,108 @@
+{% extends 'admin/base.html' %}
+{% block title %}Execuções da Rotina de NF-e{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Execuções da Rotina de NF-e</div>
+        <div class="page-subtitle">Últimas rodadas de emissão diária — o que foi processado e o que não foi</div>
+    </div>
+    <a href="{{ url_for('admin.fiscal_nfe_configuracao_lista') }}" class="btn btn-sm btn-secondary">← Configurações NF-e</a>
+</div>
+
+<div class="card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Início</th>
+                <th>Duração</th>
+                <th>PIX (elegíveis → disparados)</th>
+                <th>Cartão (elegíveis → disparados)</th>
+                <th>Autorizadas</th>
+                <th>Rejeitadas</th>
+                <th>Erros</th>
+                <th>Já emitidas</th>
+                <th>Valor autorizado</th>
+                <th>Último nº</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for ex in execucoes %}
+            <tr>
+                <td>{{ ex.iniciado_em.strftime('%d/%m/%Y %H:%M') if ex.iniciado_em else '—' }}</td>
+                <td>
+                    {% if ex.duracao_segundos is not none %}
+                        {{ (ex.duracao_segundos // 60) }}min {{ (ex.duracao_segundos % 60) }}s
+                    {% else %}
+                        <span class="badge badge-gray">em andamento</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {{ ex.pix_elegiveis }} → {{ ex.pix_disparados }}
+                    {% if ex.pix_limite_atingido %}<span class="badge badge-warning" title="Bateu no limite de 500 — sobrou backlog pra próxima rodada">limite</span>{% endif %}
+                </td>
+                <td>
+                    {{ ex.cartao_elegiveis }} → {{ ex.cartao_disparados }}
+                    {% if ex.cartao_limite_atingido %}<span class="badge badge-warning" title="Bateu no limite de 500 — sobrou backlog pra próxima rodada">limite</span>{% endif %}
+                </td>
+                <td>
+                    {% if ex.qtd_autorizada_100 is not none %}
+                        {{ (ex.qtd_autorizada_100 or 0) + (ex.qtd_autorizada_150 or 0) }}
+                        <span style="color:var(--text-muted)">({{ ex.qtd_autorizada_100 or 0 }} no prazo, {{ ex.qtd_autorizada_150 or 0 }} fora do prazo)</span>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>
+                    {% if ex.qtd_rejeitada %}
+                    <span class="badge badge-red">{{ ex.qtd_rejeitada }}</span>
+                    {% else %}
+                    {{ ex.qtd_rejeitada if ex.qtd_rejeitada is not none else '—' }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if ex.qtd_erro %}
+                    <span class="badge badge-red">{{ ex.qtd_erro }}</span>
+                    {% else %}
+                    {{ ex.qtd_erro if ex.qtd_erro is not none else '—' }}
+                    {% endif %}
+                </td>
+                <td>{{ ex.qtd_ja_emitida if ex.qtd_ja_emitida is not none else '—' }}</td>
+                <td>{{ 'R$ %.2f'|format(ex.valor_total_autorizado) if ex.valor_total_autorizado is not none else '—' }}</td>
+                <td>{{ ex.ultimo_numero_nfe_final or '—' }}</td>
+                <td>
+                    {% if ex.status == 'em_andamento' %}
+                    <span class="badge badge-gray">em andamento</span>
+                    {% elif ex.status == 'erro' %}
+                    <span class="badge badge-red">erro</span>
+                    {% elif ex.qtd_rejeitada or ex.qtd_erro %}
+                    <span class="badge badge-warning">concluído com pendências</span>
+                    {% else %}
+                    <span class="badge badge-success">concluído</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% if ex.detalhe_rejeicoes %}
+            <tr>
+                <td colspan="11" style="background:var(--bg-subtle, #f8f8f8); font-size:0.9em;">
+                    <strong>Detalhe das rejeições/erros:</strong>
+                    <ul style="margin:4px 0 0 0; padding-left:18px;">
+                    {% for d in ex.detalhe_rejeicoes %}
+                        <li>
+                            {% if d.pagamento_pix_id %}PIX #{{ d.pagamento_pix_id }}{% endif %}
+                            {% if d.pagamento_cartao_id %}Cartão #{{ d.pagamento_cartao_id }}{% endif %}
+                            — {{ d.status }}{% if d.c_stat %} (cStat={{ d.c_stat }}){% endif %}{% if d.x_motivo %}: {{ d.x_motivo }}{% endif %}
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            {% endif %}
+        {% else %}
+            <tr><td colspan="11" style="text-align:center;color:var(--text-muted)">Nenhuma execução registrada ainda.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

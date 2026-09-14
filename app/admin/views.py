@@ -3203,6 +3203,22 @@ def fiscal_nfe_configuracao_lista():
     return render_template('admin/fiscal_nfe_configuracao_lista.html', configs=configs)
 
 
+@admin_bp.route('/fiscal/nfe/execucoes')
+@requer_admin
+def fiscal_nfe_execucoes_lista():
+    import json
+    from database import listar_execucoes_nfe
+    tenant_id = request.args.get('tenant_id', 2, type=int)
+    execucoes = listar_execucoes_nfe(tenant_id=tenant_id, limite=30)
+    for ex in execucoes:
+        ex['detalhe_rejeicoes'] = json.loads(ex['detalhe_rejeicoes_json']) if ex.get('detalhe_rejeicoes_json') else []
+        if ex.get('iniciado_em') and ex.get('finalizado_em'):
+            ex['duracao_segundos'] = int((ex['finalizado_em'] - ex['iniciado_em']).total_seconds())
+        else:
+            ex['duracao_segundos'] = None
+    return render_template('admin/fiscal_nfe_execucoes.html', execucoes=execucoes, tenant_id=tenant_id)
+
+
 _NFE_CONFIG_DEFAULTS = {
     'id': None,
     'tenant_slug': '',

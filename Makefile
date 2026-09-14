@@ -24,8 +24,8 @@ help:
 	@echo "  make criar-usuario email=x senha=y nome=z perfil=admin  # Cria novo usuário"
 
 emitir-nfe-agora:
-	@echo "Disparando rotina diária de NF-e LBE (PIX + cartão, ≥7 dias)..."
-	docker compose exec worker-baixa celery -A celery_app call tasks.emitir_nfe_diaria_lbe --queue baixa
+	@echo "Disparando rotina diária de NF-e LBE (PIX + cartão, ≥2 dias)..."
+	docker compose exec worker-normal celery -A celery_app call tasks.emitir_nfe_diaria_lbe --queue normal
 
 upload-google-ads-now:
 	@echo "Disparando task tasks.processar_uploads_google_ads..."

@@ -7,7 +7,10 @@
         <div class="page-title">Configurações NF-e</div>
         <div class="page-subtitle">Empresas emitentes cadastradas</div>
     </div>
-    <a href="{{ url_for('admin.fiscal_nfe_configuracao_novo') }}" class="btn btn-primary">+ Nova Config</a>
+    <div style="display:flex; gap:8px;">
+        <a href="{{ url_for('admin.fiscal_nfe_execucoes_lista') }}" class="btn btn-sm btn-secondary">Execuções da rotina</a>
+        <a href="{{ url_for('admin.fiscal_nfe_configuracao_novo') }}" class="btn btn-primary">+ Nova Config</a>
+    </div>
 </div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
