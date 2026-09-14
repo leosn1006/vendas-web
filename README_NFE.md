@@ -51,7 +51,9 @@ Implementadas em `buscar_pagamentos_pix_sem_nfe()` / `buscar_pagamentos_cartao_s
 
 ## Interpretação de `cStat` (autorizado vs rejeitado)
 
-**`cStat=100` e `cStat=150` são AMBOS autorização válida**, com protocolo real (`nProt`) — `_C_STAT_AUTORIZADOS = {'100', '150'}` em `app/fiscal/nfe_service.py`. `cStat=150` ("Autorizado o uso da NF-e, autorização fora do prazo regulamentar") só indica que a SEFAZ excedeu o próprio SLA de resposta síncrona — não é problema com os dados enviados, e **acontece com frequência em lotes grandes** (rodadas de centenas de notas de uma vez tendem a produzir isso). Qualquer outro `cStat` é rejeição de fato.
+**`cStat=100` e `cStat=150` são AMBOS autorização válida**, com protocolo real (`nProt`) — `_C_STAT_AUTORIZADOS = {'100', '150'}` em `app/fiscal/nfe_service.py`. `cStat=150` ("Autorizado o uso da NF-e, autorização fora do prazo regulamentar") indica que o `dhEmi` (data do pagamento, usada como data de emissão) está fora do prazo regulamentar de transmissão — **confirmado empiricamente em 14/09/2026 (produção): o prazo é de 7 dias**. Pagamento com até 7 dias de idade na hora da transmissão sai `cStat=100`; com 8 dias ou mais sai `cStat=150` (ainda autorizado, só com esse aviso). Não é problema com os dados enviados. Qualquer outro `cStat` é rejeição de fato.
+
+> Isso reforça a importância de manter o backlog de emissão sob controle — se o atraso entre pagamento e emissão passar de 7 dias (por acúmulo de fila, rotina parada, etc.), as notas ainda saem, só que como "fora do prazo".
 
 > Histórico: até 12/09/2026 o código só tratava `cStat==100` como autorizado; `150` caía no branch de rejeição sem gravar `n_prot`/`dh_recbto`/`xml_nfe_proc` (embora os dados estivessem disponíveis na resposta e recuperáveis via `nfe_log_comunicacao.soap_response`). Corrigido — ver `scripts/corrigir_nfe_fora_de_prazo_lbe.py` para o script de recuperação usado.
 

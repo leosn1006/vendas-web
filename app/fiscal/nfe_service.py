@@ -47,9 +47,11 @@ logger = logging.getLogger(__name__)
 _C_UF_DF = '53'
 
 # cStat de autorização da NF-e: 100 = normal; 150 = autorizado fora do prazo
-# regulamentar de resposta da SEFAZ (SLA de processamento excedido do lado deles,
-# não um problema com os dados enviados) — ambos são autorização válida, com
-# protocolo real. Só cStat >= 200 (fora desse conjunto) é rejeição de fato.
+# regulamentar — confirmado empiricamente em 14/09/2026: o prazo é de 7 dias entre
+# dhEmi (data do pagamento, usada como data de emissão) e a data real de transmissão;
+# dhEmi com 8+ dias de idade sai como 150, até 7 dias sai como 100. Não é problema
+# com os dados enviados — ambos são autorização válida, com protocolo real. Só
+# cStat >= 200 (fora desse conjunto) é rejeição de fato.
 _C_STAT_AUTORIZADOS = {'100', '150'}
 
 
