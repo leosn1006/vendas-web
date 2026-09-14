@@ -734,10 +734,11 @@ def baixar_item_pedido(pedido_id: int, item_id: int):
     if not pedido or pedido.get('estado_id') != 1000:
         return None, 403
 
-    # produto_bonus/produto_bump.path_arquivo é preenchido no admin como URL pública completa
-    # (convenção do fluxo WhatsApp, que precisa de link pra enviar como mídia) — aqui só
-    # interessa o nome do arquivo em si, pra juntar com as pastas locais. os.path.basename
-    # funciona tanto pra URL completa quanto pra nome puro (caso do produto principal).
+    # pedido_itens.path_arquivo é um snapshot do catálogo de origem (e-book/bônus/bump) no
+    # momento da compra, preenchido no admin como URL pública completa (convenção do fluxo
+    # WhatsApp, que precisa de link pra enviar como mídia) — aqui só interessa o nome do
+    # arquivo em si, pra juntar com as pastas locais. os.path.basename funciona tanto pra URL
+    # completa quanto pra nome puro (caso do produto principal).
     nome_arquivo_fisico = os.path.basename(item['path_arquivo'])
 
     caminho, erro = _resolver_caminho_entregavel(nome_arquivo_fisico)
