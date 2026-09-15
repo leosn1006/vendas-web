@@ -45,7 +45,8 @@ Implementadas em `buscar_pagamentos_pix_sem_nfe()` / `buscar_pagamentos_cartao_s
 5. **Devolução total de PIX**: não emite (`valor_liquido <= 0`, excluído via `HAVING`).
 6. **`LIMIT 500` por execução, separado para PIX e para cartão.** Se o backlog elegível for maior que 500, sobra para a próxima rodada (a ordenação é `ORDER BY id ASC`, então processa sempre os mais antigos primeiro — determinístico e estável entre execuções).
 7. **Cartão**: só produtos com `nfe_config_id` apontando pro tenant em questão, pedido pago (`estado_id=1000`), cobrança aprovada na Cielo (`status_cielo=2`).
-8. **Cancelamento de NF-e não é uma ferramenta viável pro fluxo normal.** O prazo legal de cancelamento (evento 110111) no DF/SVRS é de **24 horas** após a autorização. Como a nota só é emitida no mínimo 2 dias depois do pagamento, qualquer cancelamento estaria sempre fora do prazo. Devoluções pós-emissão são tratadas só financeiramente (tabela `devolucoes_pix`), sem tocar a NF-e.
+8. **Pagador com CNPJ (14 dígitos) não emite NF-e** — decisão do contador (14/09/2026). A SEFAZ rejeita (`cStat=232`, "IE do destinatário não informada") tanto `indIEDest=9` quanto `=2` sem uma IE real, que não coletamos no checkout (é venda B2C via PIX/cartão, não B2B). Em vez de tentar e ser rejeitado, esses pagamentos ficam de fora da seleção de elegíveis desde a origem (`buscar_pagamentos_pix_sem_nfe`/`buscar_pagamentos_cartao_sem_nfe`) — nunca geram tentativa nem número de NF-e.
+9. **Cancelamento de NF-e não é uma ferramenta viável pro fluxo normal.** O prazo legal de cancelamento (evento 110111) no DF/SVRS é de **24 horas** após a autorização. Como a nota só é emitida no mínimo 2 dias depois do pagamento, qualquer cancelamento estaria sempre fora do prazo. Devoluções pós-emissão são tratadas só financeiramente (tabela `devolucoes_pix`), sem tocar a NF-e.
 
 ---
 

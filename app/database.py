@@ -3269,6 +3269,9 @@ def buscar_pagamentos_pix_sem_nfe(
     - Exclui rejeitadas (precisam de intervenção humana) e enviando (em progresso).
     - PIX com devolução total (valor_liquido <= 0) são excluídos via HAVING.
     - PIX com devolução parcial retornam valor_liquido = valor - devoluções liquidadas.
+    - Pagador com CNPJ (14 dígitos) é excluído: decisão do contador (14/09/2026) —
+      SEFAZ rejeita (cStat=232, IE do destinatário não informada) sem a IE real da
+      empresa, que não coletamos no checkout. Fica de fora, sem tentar.
 
     Retorna lista de {id, valor_liquido}.
     """
@@ -3285,6 +3288,8 @@ def buscar_pagamentos_pix_sem_nfe(
              AND pp.nfe_emitida_id IS NULL
              AND (ne.id IS NULL OR ne.status_emissao = 'erro')
              AND (ne.status_emissao IS NULL OR ne.status_emissao NOT IN ('rejeitada', 'enviando'))
+             AND (pp.cpf_cnpj IS NULL
+                  OR LENGTH(REPLACE(REPLACE(REPLACE(pp.cpf_cnpj,'.',''),'-',''),'/','')) != 14)
            GROUP BY pp.id
            HAVING valor_liquido > 0
            ORDER BY pp.id ASC
@@ -3304,6 +3309,10 @@ def buscar_pagamentos_cartao_sem_nfe(
     """
     Pagamentos por cartão aprovados elegíveis para NF-e.
     config_id filtra pelo tenant via produtos.nfe_config_id.
+
+    Pagador com CNPJ (14 dígitos) é excluído: decisão do contador (14/09/2026) —
+    SEFAZ rejeita (cStat=232, IE do destinatário não informada) sem a IE real da
+    empresa, que não coletamos no checkout. Fica de fora, sem tentar.
     """
     rows = db.execute_query(
         """SELECT pc.id, pc.valor, ped.nome_pagador,
@@ -3318,6 +3327,8 @@ def buscar_pagamentos_cartao_sem_nfe(
              AND ped.data_pagamento <= NOW() - INTERVAL %s DAY
              AND (ne.id IS NULL OR ne.status_emissao = 'erro')
              AND (ne.status_emissao IS NULL OR ne.status_emissao NOT IN ('rejeitada', 'enviando'))
+             AND (ped.cpf_cnpj_pagador IS NULL
+                  OR LENGTH(REPLACE(REPLACE(REPLACE(ped.cpf_cnpj_pagador,'.',''),'-',''),'/','')) != 14)
            ORDER BY pc.id ASC
            LIMIT %s""",
         (config_id, valor_minimo, dias_minimos, limite),
