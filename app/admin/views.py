@@ -537,7 +537,40 @@ def apagar_pedido_usuario(usuario_id, pedido_id):
             flash('Pedido não encontrado ou não pertence ao telefone deste usuário.', 'danger')
             return redirect(url_for('admin.listar_pedidos_telefone', usuario_id=usuario_id))
 
-        db.execute_query("DELETE FROM pedidos WHERE id = %s", (pedido_id,))
+        # Bloqueia exclusão se houver NF-e emitida (documento fiscal, não pode
+        # sumir silenciosamente) ou devolução PIX registrada para este pedido.
+        nfe_vinculada = db.execute_query(
+            """SELECT ne.id FROM nfe_emitidas ne
+               LEFT JOIN pagamento_pix pp ON pp.id = ne.pagamento_pix_id
+               LEFT JOIN pagamento_cartao pc ON pc.id = ne.pagamento_cartao_id
+               WHERE pp.pedido_id = %s OR pc.pedido_id = %s
+               LIMIT 1""",
+            (pedido_id, pedido_id), fetch_one=True
+        )
+        if nfe_vinculada:
+            flash(f'Pedido #{pedido_id} tem NF-e emitida e não pode ser apagado por aqui.', 'danger')
+            return redirect(url_for('admin.listar_pedidos_telefone', usuario_id=usuario_id))
+
+        devolucao_vinculada = db.execute_query(
+            """SELECT dp.id FROM devolucoes_pix dp
+               JOIN pagamento_pix pp ON pp.id = dp.pagamento_pix_id
+               WHERE pp.pedido_id = %s
+               LIMIT 1""",
+            (pedido_id,), fetch_one=True
+        )
+        if devolucao_vinculada:
+            flash(f'Pedido #{pedido_id} tem devolução PIX registrada e não pode ser apagado por aqui.', 'danger')
+            return redirect(url_for('admin.listar_pedidos_telefone', usuario_id=usuario_id))
+
+        # Algumas tabelas filhas não têm ON DELETE CASCADE (ex: estante_visualizacoes,
+        # notificacoes_pedido, pagamento_cartao, pagamento_pix) — apaga tudo numa
+        # única transação antes do pedido em si.
+        with db.get_cursor() as cursor:
+            cursor.execute("DELETE FROM estante_visualizacoes WHERE pedido_id = %s", (pedido_id,))
+            cursor.execute("DELETE FROM notificacoes_pedido WHERE pedido_id = %s", (pedido_id,))
+            cursor.execute("DELETE FROM pagamento_cartao WHERE pedido_id = %s", (pedido_id,))
+            cursor.execute("DELETE FROM pagamento_pix WHERE pedido_id = %s", (pedido_id,))
+            cursor.execute("DELETE FROM pedidos WHERE id = %s", (pedido_id,))
         flash(f'Pedido #{pedido_id} apagado com sucesso.', 'success')
         logger.info(f"[ADMIN] ✅ Pedido #{pedido_id} apagado por {current_user.email} (telefone {usuario['telefone']})")
     except Exception as e:
