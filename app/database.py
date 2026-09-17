@@ -1921,6 +1921,62 @@ def marcar_variante_pedido(pedido_id: int, variante: str) -> None:
     )
 
 
+def gravar_vinculo_pedido(pedido_id_origem: int, pedido_id_adquirido: int) -> None:
+    """Vincula explicitamente dois pedidos do mesmo cliente — gravado no momento em que o
+    vínculo é conhecido de verdade (clique em 'Comprar' a partir de uma estante específica,
+    /pay2/<produto_id>?ref=<guid>), sem depender do que o cliente digitar depois no formulário
+    de identificação (que é editável de propósito). Complementa (não substitui) a busca por
+    e-mail/telefone em listar_pedidos_pagos_relacionados — ver plano peaceful-seeking-pizza.md.
+
+    INSERT IGNORE porque o mesmo vínculo pode ser gravado de novo em F5 (UNIQUE KEY
+    uk_pedidos_vinculados faz o no-op) e porque é um extra que enriquece a busca futura, não
+    algo que pode quebrar a compra em si."""
+    db.execute_query(
+        "INSERT IGNORE INTO pedidos_vinculados (pedido_id_origem, pedido_id_adquirido) VALUES (%s, %s)",
+        (pedido_id_origem, pedido_id_adquirido)
+    )
+
+
+def listar_pedidos_vinculados_pagos(pedido_id: int) -> list:
+    """Travessia em cadeia sobre pedidos_vinculados a partir de pedido_id — acha vínculos
+    diretos, acrescenta ao conjunto, repete até não achar nada novo. Cobre cross-sell em
+    múltiplos saltos (A→B→C): um vínculo direto só acharia B a partir de A, não C (que só está
+    ligado a B) — por isso o laço, em vez de uma única query.
+
+    Retorna só pedidos pagos (estado_id IN (0,1000)) — o vínculo nasce ANTES do pagamento (no
+    GET do /pay2), então a tabela pode ter linhas de pedidos nunca pagos/abandonados; isso é
+    seguro pra travessia em si (um pedido não pago nunca vira ponte pra mais nada, porque virar
+    ref de um novo cross-sell exige passar pelo mesmo gate de resolver_pedido_por_guid, que já
+    exige pagamento/entrega), só precisa filtrar no fim, antes de considerar os itens desses
+    pedidos como 'já possuídos'.
+
+    Mesmo formato de listar_pedidos_pagos_relacionados (list de dicts id+guid), pra poder ser
+    somado (união por id) ao resultado dela sem mudar o resto de listar_itens_ebook_do_cliente."""
+    ids_conhecidos = {pedido_id}
+    fronteira = ids_conhecidos
+    for _ in range(10):  # teto defensivo — nunca deveria chegar perto disso numa cadeia real
+        placeholders = ','.join(['%s'] * len(fronteira))
+        linhas = db.execute_query(
+            f"""SELECT pedido_id_origem, pedido_id_adquirido FROM pedidos_vinculados
+                WHERE pedido_id_origem IN ({placeholders}) OR pedido_id_adquirido IN ({placeholders})""",
+            tuple(fronteira) * 2, fetch_all=True
+        ) or []
+        encontrados = {row['pedido_id_origem'] for row in linhas} | {row['pedido_id_adquirido'] for row in linhas}
+        fronteira = encontrados - ids_conhecidos
+        if not fronteira:
+            break
+        ids_conhecidos |= fronteira
+
+    ids_conhecidos.discard(pedido_id)
+    if not ids_conhecidos:
+        return []
+    placeholders = ','.join(['%s'] * len(ids_conhecidos))
+    return db.execute_query(
+        f"SELECT id, guid FROM pedidos WHERE id IN ({placeholders}) AND estado_id IN (0, 1000)",
+        tuple(ids_conhecidos), fetch_all=True
+    ) or []
+
+
 def busca_comparativo_variante_checkout(data_ini, data_fim) -> dict:
     """Compara v1 x v2 no período, pro piloto de cross-sell na estante (ver plano
     peaceful-seeking-pizza.md). A v1 é o controle do A/B — não tem seção de cross-sell — por

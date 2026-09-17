@@ -563,13 +563,19 @@ def apagar_pedido_usuario(usuario_id, pedido_id):
             return redirect(url_for('admin.listar_pedidos_telefone', usuario_id=usuario_id))
 
         # Algumas tabelas filhas não têm ON DELETE CASCADE (ex: estante_visualizacoes,
-        # notificacoes_pedido, pagamento_cartao, pagamento_pix) — apaga tudo numa
-        # única transação antes do pedido em si.
+        # notificacoes_pedido, pagamento_cartao, pagamento_pix, pedidos_vinculados) — apaga
+        # tudo numa única transação antes do pedido em si.
         with db.get_cursor() as cursor:
             cursor.execute("DELETE FROM estante_visualizacoes WHERE pedido_id = %s", (pedido_id,))
             cursor.execute("DELETE FROM notificacoes_pedido WHERE pedido_id = %s", (pedido_id,))
             cursor.execute("DELETE FROM pagamento_cartao WHERE pedido_id = %s", (pedido_id,))
             cursor.execute("DELETE FROM pagamento_pix WHERE pedido_id = %s", (pedido_id,))
+            # pedidos_vinculados referencia o pedido em duas colunas (origem e adquirido) —
+            # precisa dos dois lados, senão a FK do lado não coberto ainda bloqueia o DELETE.
+            cursor.execute(
+                "DELETE FROM pedidos_vinculados WHERE pedido_id_origem = %s OR pedido_id_adquirido = %s",
+                (pedido_id, pedido_id)
+            )
             cursor.execute("DELETE FROM pedidos WHERE id = %s", (pedido_id,))
         flash(f'Pedido #{pedido_id} apagado com sucesso.', 'success')
         logger.info(f"[ADMIN] ✅ Pedido #{pedido_id} apagado por {current_user.email} (telefone {usuario['telefone']})")

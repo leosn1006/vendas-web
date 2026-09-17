@@ -870,6 +870,7 @@ def listar_itens_ebook_do_cliente(pedido):
     está pago (web) ou que o produto já foi entregue (whatsapp) — ver ali as regras de acesso.
     """
     from database import (listar_itens_pedido_ebook, listar_pedidos_pagos_relacionados,
+                          listar_pedidos_vinculados_pagos,
                           listar_itens_pedido_ebook_multiplos, garantir_guid_pedido)
 
     canal_web = pedido['estado_id'] >= 1000
@@ -882,9 +883,18 @@ def listar_itens_ebook_do_cliente(pedido):
         item['bloqueado'] = (not canal_web and item['tipo'] == 'bonus' and not pago)
         linhas.append(item)
 
-    relacionados = listar_pedidos_pagos_relacionados(
-        pedido['id'], pedido.get('email'), pedido.get('contact_phone')
-    )
+    # União de dois sinais de "mesmo cliente": o heurístico por e-mail/telefone (não pega se o
+    # cliente trocou o contato no cross-sell da v2) e o vínculo explícito gravado em
+    # /pay2?ref=<guid> (não depende do contato digitado). Dedup por id — o mesmo pedido pode
+    # aparecer nos dois.
+    relacionados_por_id = {
+        r['id']: r for r in listar_pedidos_pagos_relacionados(
+            pedido['id'], pedido.get('email'), pedido.get('contact_phone')
+        )
+    }
+    for r in listar_pedidos_vinculados_pagos(pedido['id']):
+        relacionados_por_id.setdefault(r['id'], r)
+    relacionados = list(relacionados_por_id.values())
     outros_ids = [r['id'] for r in relacionados]
     if outros_ids:
         # Só chama garantir_guid_pedido pra quem realmente não tem guid ainda (a maioria já

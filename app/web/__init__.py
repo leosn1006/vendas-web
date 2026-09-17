@@ -70,7 +70,8 @@ def checkout_v2(produto_id):
     from urllib.parse import quote
     from database import (get_produto_disponivel_web, get_ebook_principal_produto,
                           listar_ebooks_bonus_produto, listar_ebooks_bump_produto,
-                          get_config_cartao_produto, marcar_variante_pedido)
+                          get_config_cartao_produto, marcar_variante_pedido,
+                          gravar_vinculo_pedido)
     from web.checkout import (rastrear_visita_funil, get_pedido_finalizado_via_cookie,
                                COOKIE_MAX_AGE_FUNIL, listar_itens_ebook_do_cliente,
                                resolver_pedido_por_guid)
@@ -87,6 +88,7 @@ def checkout_v2(produto_id):
     prefill = {}
     bonus = listar_ebooks_bonus_produto(produto_id)
     bumps = listar_ebooks_bump_produto(produto_id)
+    pedido_origem_id = None
     ref_guid = request.args.get('ref')
     if ref_guid:
         # resolver_pedido_por_guid (não get_pedido_by_guid puro) — mesmo gate de acesso usado
@@ -96,6 +98,7 @@ def checkout_v2(produto_id):
         # nome/e-mail/telefone de terceiro pré-preenchidos neste formulário.
         pedido_origem, _, erro_origem = resolver_pedido_por_guid(ref_guid)
         if pedido_origem and not erro_origem:
+            pedido_origem_id = pedido_origem['id']
             prefill = {
                 'nome': pedido_origem.get('contact_name') or '',
                 'email': pedido_origem.get('email') or '',
@@ -124,6 +127,14 @@ def checkout_v2(produto_id):
             return resp
         pedido_id_inicial = rastrear_visita_funil(request, produto_id, estado_novo=1003, cookie_prefixo='pedido_web_v2')
         marcar_variante_pedido(pedido_id_inicial, 'v2')
+        if pedido_origem_id is not None:
+            try:
+                gravar_vinculo_pedido(pedido_origem_id, pedido_id_inicial)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(
+                    f"[ESTANTE] Erro ao gravar vínculo pedido {pedido_origem_id}→{pedido_id_inicial}: {e}"
+                )
 
     resp = make_response(render_template(
         'checkout-2.html',
