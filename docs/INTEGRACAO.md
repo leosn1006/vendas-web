@@ -93,11 +93,24 @@ O vendas-web escolhe o segredo pelo **Host** da requisição (`_HOST_SECRET_MAP`
 **o mesmo segredo** desse host; o admin faz isso sozinho ao parear (`wpp_web_gateway.garantir_webhook`), a partir de
 `WPP_WEB_WEBHOOK_URL`.
 
-**Decisão recomendada:** um subdomínio **dedicado** ao gateway (ex.: `wpp.<dominio>`), com um segredo aleatório só dele,
-em vez de reutilizar um domínio de produto: reutilizar coloca o **App Secret real da Meta** daquele domínio em texto
-puro no `chips.json` do servidor do gateway. Custo: registro DNS, bloco no nginx, certificado (runbook em
-`infra/certbot/README.md`), 1 entrada em `_HOST_SECRET_MAP` e 1 variável de segredo nos 4 serviços do compose.
-Reutilizar um domínio já mapeado é aceitável só como solução provisória.
+**Decisão (20/09/2026): `kpnlivros.com.br`.** A BM desse domínio foi banida pela Meta, então ela não entrega mais
+webhook ali e o `WHATSAPP_APP_SECRET_KPN` pode ser **substituído por um segredo aleatório só do gateway**
+(`openssl rand -hex 32`). Assim o App Secret real da Meta não vai para o `chips.json` do servidor do gateway, e não é
+preciso criar domínio, bloco de nginx nem variável nova (o host já está em `_HOST_SECRET_MAP` e a variável já está nos 4
+serviços do compose). O domínio resolve para o Hetzner e o webhook passa pelo `location /` do bloco 443 dele.
+
+Condições e cuidados:
+- **Defina `WHATSAPP_APP_SECRET_KPN` ANTES de parear o primeiro chip e não o troque depois.** O admin lê esse valor no
+  momento do pareamento e o grava no chip; se o segredo mudar depois, o chip fica com o antigo e o webhook passa a dar
+  401 (a outbox espera). Para corrigir: `wpp chip webhook <numero> <url> --secret <novo>` ou `PATCH /admin/chips/:id`.
+- Confirmar em produção que nenhum número ativo usa `WHATSAPP_ACCESS_TOKEN_KPN`:
+  `SELECT id, telefone FROM telefones_produto WHERE token_env_key = 'WHATSAPP_ACCESS_TOKEN_KPN'`.
+- **O certificado do KPN é RapidSSL manual (`kpnlivros_chain.pem`) e vence em 12/11/2026.** O `infra/certbot/renew.sh`
+  não o renova (só `livrinhosdigitais.site` e `leituraemais.site` estão no Let's Encrypt). Vencido, o gateway recusa o TLS
+  e as mensagens ficam na outbox e depois vão para `dead`, sem alerta. Migrar o KPN para o Let's Encrypt é um assunto
+  à parte, a ser tratado antes dessa data (runbook em `infra/certbot/README.md`).
+- Se o domínio for trocado no futuro, os chips já pareados **mantêm a URL antiga** (`garantir_webhook` só configura chip
+  sem webhook próprio): trocar por `wpp chip webhook`/`PATCH`.
 
 Rate limit do nginx é **por IP** e todos os chips chegam do mesmo IP do gateway; como a entrega é serial por chip, não
 deve incomodar, e um 503 é reentregue pela outbox.
@@ -145,7 +158,8 @@ deduplica pelo wamid no Redis por 25 h. Mensagens recuperadas após uma queda ch
 # vendas-web (.env, Hetzner)
 WPP_WEB_API_URL=https://apiwppweb.site/v24.0/
 GATEWAY_TOKEN_WPP=<GATEWAY_TOKEN do gateway>
-WPP_WEB_WEBHOOK_URL=https://<host-mapeado>/api/v1/webhook-whatsapp
+WPP_WEB_WEBHOOK_URL=https://kpnlivros.com.br/api/v1/webhook-whatsapp
+WHATSAPP_APP_SECRET_KPN=<openssl rand -hex 32>   # antes de parear o 1º chip; não trocar depois
 
 # gateway (.env, servidor do gateway)
 MEDIA_BASE_URL=https://apiwppweb.site
@@ -158,9 +172,12 @@ MEDIA_BASE_URL=https://apiwppweb.site
   renderizado no servidor). Restrinja o acesso ao IP de saída do `app` **e dos workers** do vendas-web (no proxy
   reverso do gateway e/ou no firewall do provedor). O IP `87.99.145.114` foi informado como o do vendas-web:
   **confirmar** que app e workers saem por ele.
-- Certificado: o Let's Encrypt precisa da porta 80 alcançável na emissão. Opções: abrir 80/443 e fazer o proxy responder
-  403 a qualquer IP que não seja o do vendas-web (exceto o desafio ACME; testar); ou usar desafio DNS. Alternativa sem
-  exposição pública: túnel privado (WireGuard/Tailscale) entre os servidores.
+- **Deploy HTTPS do gateway:** o projeto dele traz `deploy/setup-https.sh` (nginx + Let's Encrypt, renovação pelo
+  `certbot.timer`): `./wpp up` e depois `sudo ./deploy/setup-https.sh apiwppweb.site <email>`. O script exige DNS já
+  apontando para o servidor e 80/443 abertos, aborta se existir `docker-compose.override.yml` publicando 80/443, e
+  **grava `MEDIA_BASE_URL=https://apiwppweb.site` no `.env` do gateway**. O `nginx.conf` dele **não tem allowlist de IP**:
+  o único cadeado é o `GATEWAY_TOKEN`. Recomendado, depois de emitir o certificado, no firewall do provedor: porta 80
+  aberta (a renovação precisa; ela só redireciona) e **443 só para o IP do vendas-web**.
 - Antes de produção, no gateway: remover os bind mounts `./src ./cli ./test` do compose, build para a arquitetura do
   servidor (provavelmente amd64; o desenvolvimento foi em arm64).
 - `chips.json` guarda `appSecret` e a senha do proxy em texto: o volume e seus backups são sensíveis.
@@ -172,8 +189,8 @@ MEDIA_BASE_URL=https://apiwppweb.site
 
 ## 11. Decisões em aberto
 
-1. Domínio do webhook: subdomínio dedicado (recomendado) ou reutilizar um domínio mapeado (seção 6).
-2. Firewall/certificado do `apiwppweb.site`: 80/443 abertos com allowlist no proxy, desafio DNS ou túnel privado.
+1. ~~Domínio do webhook~~ — decidido: `kpnlivros.com.br` (seção 6). Pendente: migrar o certificado dele para o Let's Encrypt antes de 12/11/2026.
+2. Firewall do `apiwppweb.site`: 443 restrita ao IP do vendas-web (seção 10); confirmar o IP de saída do `app` e dos workers.
 3. Se os produtos que forem para o gateway ainda usam a ação de template (`enviar_produto_whatsapp`,
    `confirmacao_web`): ela não existe no gateway e deve ser trocada por `enviar_produto`/`enviar_mensagem`. No banco de
    dev o produto 1 ainda a tem (dado antigo).
