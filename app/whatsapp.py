@@ -78,6 +78,14 @@ def exigir_numero_operacional(pedido: dict):
     )
 
 
+def _host_da_base_url(valor: str) -> str:
+    """Só o host de uma URL base (APP_BASE_URL=https://x.com/). Diferente do dns_origem (vem de um header do
+    cliente, tratado com rigor), este valor é configuração nossa, então tolera esquema, porta, caminho e caixa.
+    'http://localhost' (padrão do compose sem APP_BASE_URL) não tem ponto e é recusado adiante."""
+    v = re.sub(r'^https?://', '', (valor or '').strip().lower())
+    return re.split(r'[/:]', v, maxsplit=1)[0]
+
+
 _HOSTNAME_RE = re.compile(r'^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$')
 
 
@@ -299,7 +307,8 @@ def enviar_mensagem(pedido: Pedido, mensagem: str):
 def montar_link_estante(pedido: dict, caminho: str = '/pedido') -> str:
     """Monta o link absoluto da Estante (`<caminho>/<guid>`) usando o domínio do
     número que está enviando (resolvido via token_env_key cadastrado em
-    telefones_produto), não uma APP_BASE_URL global.
+    telefones_produto). Número do gateway (wpp_web): dns_origem do pedido, ou APP_BASE_URL
+    quando o cliente veio direto pelo WhatsApp (sem dns_origem).
 
     `caminho` default '/pedido' é a estante v1; o dispatcher de 'enviar_produto'
     (`app/fluxos/_executor_acao.py`) passa '/pedido2' quando a ação está marcada pro
@@ -308,14 +317,21 @@ def montar_link_estante(pedido: dict, caminho: str = '/pedido') -> str:
     guid = pedido.get('guid') or garantir_guid_pedido(pedido['id'])
     phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
     if get_provedor_numero(phone_number_id) == 'wpp_web':
-        # Chip do gateway não tem token por domínio (todos usam o mesmo GATEWAY_TOKEN_WPP): o domínio
-        # do link é o de onde o cliente veio (pedidos.dns_origem, gravado no clique da landing/checkout).
+        # Chip do gateway não tem token por domínio (todos usam o mesmo GATEWAY_TOKEN_WPP). O domínio do link é o de
+        # onde o cliente veio (pedidos.dns_origem, gravado no clique da landing/checkout). Cliente que mandou mensagem
+        # direto ao WhatsApp não tem dns_origem: cai no domínio de APP_BASE_URL (o mesmo que o e-mail de entrega e os
+        # follow-ups da web já usam para montar links).
         dominio = (pedido.get('dns_origem') or '').split(':')[0].strip().lower()
         if not _HOSTNAME_RE.match(dominio):
-            raise ValueError(
-                f"[LINK-ESTANTE] ❌ Pedido {pedido.get('id')} sem dns_origem válido ({dominio!r}); "
-                f"número wpp_web ({phone_number_id}) não tem domínio próprio para montar o link."
-            )
+            base_url = os.getenv('APP_BASE_URL', '')
+            padrao = _host_da_base_url(base_url)
+            if not _HOSTNAME_RE.match(padrao):
+                raise ValueError(
+                    f"[LINK-ESTANTE] ❌ Pedido {pedido.get('id')} sem dns_origem válido ({dominio!r}) e APP_BASE_URL "
+                    f"sem domínio válido no .env ({base_url!r}); número wpp_web ({phone_number_id}) não tem "
+                    f"domínio para montar o link."
+                )
+            dominio = padrao
         return f"https://{dominio}{caminho}/{guid}"
     env_key = get_token_env_key(phone_number_id)
     dominio = dominio_por_token_env_key(env_key)

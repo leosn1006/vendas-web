@@ -138,11 +138,57 @@ def test_link_estante_wpp_web_ignora_porta_e_caixa_do_dns_origem(provedores):
     assert whatsapp.montar_link_estante(pedido) == 'https://lsnlivros.com.br/pedido/abc'
 
 
+@pytest.fixture(autouse=True)
+def _sem_app_base_url(monkeypatch):
+    # cada teste decide se há APP_BASE_URL; o valor do .env de quem roda os testes não pode vazar para cá
+    monkeypatch.delenv('APP_BASE_URL', raising=False)
+
+
 @pytest.mark.parametrize('dns', [None, '', 'localhost', 'evil.com/x', 'a b.com', 'http://x.com'])
-def test_link_estante_wpp_web_sem_dns_valido_falha(provedores, dns):
+def test_link_estante_wpp_web_sem_dns_valido_e_sem_app_base_url_falha(provedores, dns):
     provedores['web-1'] = 'wpp_web'
     pedido = {'id': 1, 'guid': 'abc', 'phone_number_id': 'web-1', 'dns_origem': dns}
     with pytest.raises(ValueError, match='dns_origem'):
+        whatsapp.montar_link_estante(pedido)
+
+
+@pytest.mark.parametrize('dns', [None, ''])
+def test_link_estante_cliente_que_veio_direto_pelo_whatsapp_usa_app_base_url(provedores, monkeypatch, dns):
+    """Caso que quebrou em produção: mensagem direta ao número (sem site) => pedido sem dns_origem.
+    Antes o fluxo 'pedido' parava com erro e o cliente ficava sem resposta."""
+    provedores['web-1'] = 'wpp_web'
+    monkeypatch.setenv('APP_BASE_URL', 'https://lsnlivros.com.br')
+    pedido = {'id': 345550, 'guid': 'abc', 'phone_number_id': 'web-1', 'dns_origem': dns}
+    assert whatsapp.montar_link_estante(pedido) == 'https://lsnlivros.com.br/pedido/abc'
+    assert whatsapp.montar_link_estante(pedido, '/pedido2') == 'https://lsnlivros.com.br/pedido2/abc'
+
+
+def test_link_estante_dns_origem_do_pedido_tem_prioridade_sobre_app_base_url(provedores, monkeypatch):
+    provedores['web-1'] = 'wpp_web'
+    monkeypatch.setenv('APP_BASE_URL', 'https://lsnlivros.com.br')
+    pedido = {'id': 1, 'guid': 'abc', 'phone_number_id': 'web-1', 'dns_origem': 'lneditor.com.br'}
+    assert whatsapp.montar_link_estante(pedido) == 'https://lneditor.com.br/pedido/abc'
+
+
+@pytest.mark.parametrize('base,esperado', [
+    ('https://lsnlivros.com.br/', 'lsnlivros.com.br'),      # barra final
+    ('https://lsnlivros.com.br:443/x', 'lsnlivros.com.br'),  # porta e caminho
+    ('LSNLivros.com.br', 'lsnlivros.com.br'),                # sem esquema, caixa
+])
+def test_link_estante_app_base_url_tolera_formatos_do_env(provedores, monkeypatch, base, esperado):
+    provedores['web-1'] = 'wpp_web'
+    monkeypatch.setenv('APP_BASE_URL', base)
+    pedido = {'id': 1, 'guid': 'abc', 'phone_number_id': 'web-1', 'dns_origem': None}
+    assert whatsapp.montar_link_estante(pedido) == f'https://{esperado}/pedido/abc'
+
+
+@pytest.mark.parametrize('base', ['http://localhost', 'http://localhost:8000', '', 'https://a b.com'])
+def test_link_estante_app_base_url_do_compose_padrao_nao_serve(provedores, monkeypatch, base):
+    """O compose usa http://localhost quando APP_BASE_URL não está definida: não pode virar link para o cliente."""
+    provedores['web-1'] = 'wpp_web'
+    monkeypatch.setenv('APP_BASE_URL', base)
+    pedido = {'id': 1, 'guid': 'abc', 'phone_number_id': 'web-1', 'dns_origem': None}
+    with pytest.raises(ValueError, match='APP_BASE_URL'):
         whatsapp.montar_link_estante(pedido)
 
 

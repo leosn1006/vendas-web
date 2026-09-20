@@ -24,7 +24,7 @@ Fora de escopo, de propósito: templates, catálogo, grupos, reações, `block_u
 | Migration `076` | `telefones_produto.provedor`; `pedidos.phone_number_id` e `variantes_fluxo_cursor.phone_number_id` para `VARCHAR(50)` (o id do chip é `web-<numero>`). **Aplicada à mão em produção.** |
 | Roteamento (`database.get_whatsapp_api_url`, `whatsapp.py`, `whatsapp_upload.receber_audio`, `tasks._checar_qualidade_telefone`) | URL por número: gateway para `wpp_web`, Graph API para o resto. Provedor em cache de **60 s** (não permanente: editar no admin vale sem reiniciar). Falha de banco não vira `meta` (propaga; usa cache vencido se houver). |
 | Timeouts (`whatsapp._timeout_envio`) | Meta: 30 s. Gateway: 60 s texto / 180 s mídia (o gateway leva até 25 s para texto, 30 s para baixar o link e 120 s para enviar mídia, numa fila serial por chip). Com 30 s o app desistia antes do erro do gateway. |
-| Link da Estante (`whatsapp.montar_link_estante`) | Número do gateway usa `pedidos.dns_origem` (o gateway não tem token por domínio). Sem `dns_origem` válido, erro explícito. |
+| Link da Estante (`whatsapp.montar_link_estante`) | Número do gateway usa `pedidos.dns_origem` (o gateway não tem token por domínio) e, **quando o cliente veio direto pelo WhatsApp (pedido sem `dns_origem`)**, o domínio de `APP_BASE_URL`. Sem nenhum dos dois válidos (ex.: `APP_BASE_URL` ausente, o compose assume `http://localhost`), erro explícito e o fluxo `pedido` para. |
 | Dedupe do webhook (`tasks._WEBHOOK_DEDUPE_TTL_S`) | 300 s → 25 h. O gateway reentrega por até 24 h e `mensagens_pedidos.message_id` não é UNIQUE. |
 | Chip caído (`whatsapp.exigir_numero_operacional`) | Executor de ações, follow-ups e `responder` **não enviam** com o chip fora (`ChipForaDoArWhatsApp`, transiente). Com status ruim, o gateway é consultado na hora antes de bloquear (status velho não segura o envio). Follow-up que perde o chip **no meio** da sequência é dado como concluído (não reenvia o que já saiu). |
 | Sorteio de número (`database.selecionar_telefone_produto`) | Chip do gateway só recebe lead novo se `status_api = 'CONNECTED'`. |
@@ -40,6 +40,7 @@ Fora de escopo, de propósito: templates, catálogo, grupos, reações, `block_u
 | `WPP_WEB_API_URL` | app + 3 workers | Base do gateway, com `/vNN.N/` (ex.: `https://apiwppweb.site/v24.0/`). Vazio = número `wpp_web` não envia (erro explícito). |
 | `GATEWAY_TOKEN_WPP` | app + 3 workers | Bearer do gateway (= `GATEWAY_TOKEN` do `.env` do gateway). É o `token_env_key` dos chips do gateway. |
 | `WPP_WEB_WEBHOOK_URL` | app | URL que o gateway chama para entregar mensagens; o admin a grava no chip ao parear. O **host** precisa estar em `WhatsAppSecurity._HOST_SECRET_MAP` (dele sai o segredo que assina o webhook). |
+| `APP_BASE_URL` | app + 3 workers | Já existia (e-mail de entrega, follow-ups da web). Passa a ser também o domínio do link da Estante para número do gateway quando o pedido não tem `dns_origem`. **Precisa ser a URL do site em produção**, não `http://localhost`. |
 | `WHATSAPP_API_URL` | app + 3 workers | **Só dev**: `http://127.0.0.1:9/` bloqueia qualquer chamada à Meta. Vazio/ausente em produção = Graph API. |
 
 Depois de mudar `config.py` ou o `.env`: `docker compose up -d --build` (o código fica dentro da imagem) e
@@ -202,7 +203,10 @@ MEDIA_BASE_URL=https://apiwppweb.site
 - `_PHONE_SECRET_MAP` **não existe**; só `_HOST_SECRET_MAP`.
 - `numero_empresa_operacional` **não** bloqueava o envio automático (só a tela de conversa do admin). Passou a bloquear via
   `exigir_numero_operacional`.
-- `montar_link_estante` quebrava para número do gateway (dependia do token por domínio).
+- `montar_link_estante` quebrava para número do gateway (dependia do token por domínio). Depois, o primeiro teste em
+  produção mostrou outra lacuna: cliente que manda mensagem direto ao número (sem site) não tem `dns_origem`, e o
+  fluxo `pedido` parava sem responder. Corrigido com o fallback em `APP_BASE_URL`. **O fluxo `pedido` do produto 1 em dev
+  não tem a ação `enviar_produto`**, então esse caminho só apareceu em produção: confira as ações de cada produto.
 - O cache do token é permanente por processo (não invalida ao editar no admin); o do provedor é de 60 s.
 - `pedidos.phone_number_id` era `VARCHAR(20)`.
 - `marcar_como_lida` não tinha timeout.
