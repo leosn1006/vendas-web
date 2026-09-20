@@ -1,0 +1,89 @@
+{% extends "admin/base.html" %}
+{% block title %}Parear WhatsApp Web — {{ telefone.telefone }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="{{ url_for('admin.numeros_whatsapp', produto_id=produto_id) }}" style="font-size: 13px; color: var(--muted); text-decoration: none;">
+            ← Voltar
+        </a>
+        <h1 class="page-title">Parear WhatsApp Web</h1>
+        <p class="page-subtitle">{{ telefone.telefone }} ({{ telefone.api_phone_number_id }})</p>
+    </div>
+</div>
+
+<div class="card" style="max-width: 560px;">
+    <p id="qr-mensagem" style="font-size: 15px; margin-bottom: 16px;">Consultando o gateway…</p>
+
+    <div id="qr-box" style="display: none; text-align: center; margin-bottom: 16px;">
+        <div id="qr-img" style="display: inline-block; width: 280px; max-width: 100%; background: #fff; padding: 8px; border-radius: 8px;"></div>
+        <ol style="text-align: left; font-size: 13px; color: var(--muted); margin-top: 16px; padding-left: 20px;">
+            <li>No celular do número {{ telefone.telefone }}, abra o WhatsApp.</li>
+            <li>Toque em <b>Aparelhos conectados</b> → <b>Conectar um aparelho</b>.</li>
+            <li>Aponte a câmera para este QR. Ele renova sozinho a cada ~20 segundos.</li>
+        </ol>
+    </div>
+
+    <p style="font-size: 12px; color: var(--muted); margin-bottom: 16px;">
+        Este QR dá controle total sobre o número. Não compartilhe a tela nem tire print.
+    </p>
+
+    <button type="button" class="btn btn-secondary" id="btn-reiniciar" onclick="reiniciar()">Reiniciar pareamento</button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const URL_STATUS    = "{{ url_for('admin.qr_numero_whatsapp_status', produto_id=produto_id, telefone_id=telefone.id) }}";
+const URL_REINICIAR = "{{ url_for('admin.qr_numero_whatsapp_reiniciar', produto_id=produto_id, telefone_id=telefone.id) }}";
+const msg = document.getElementById('qr-mensagem');
+const box = document.getElementById('qr-box');
+const img = document.getElementById('qr-img');
+let timer = null;
+
+function agendar(ms) { clearTimeout(timer); timer = setTimeout(consultar, ms); }
+
+function consultar() {
+    fetch(URL_STATUS, { cache: 'no-store' })
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok || !data.ok) {
+                box.style.display = 'none';
+                msg.textContent = '⚠ ' + (data.msg || 'Falha ao consultar o gateway.');
+                return agendar(5000);
+            }
+            if (data.status === 'connected') {
+                box.style.display = 'none';
+                img.innerHTML = '';
+                msg.textContent = '✅ Conectado. O número já pode enviar e receber pelo WhatsApp Web.';
+                return;  // pareado: para o polling
+            }
+            msg.textContent = data.message || data.status || '';
+            if (data.qrSvg) {
+                img.innerHTML = data.qrSvg;
+                const svg = img.querySelector('svg');
+                if (svg) { svg.style.width = '100%'; svg.style.height = 'auto'; }
+                box.style.display = 'block';
+            } else {
+                box.style.display = 'none';
+                img.innerHTML = '';
+            }
+            agendar(3000);
+        })
+        .catch(() => { msg.textContent = '⚠ Erro de rede ao consultar o gateway.'; agendar(5000); });
+}
+
+function reiniciar() {
+    const btn = document.getElementById('btn-reiniciar');
+    btn.disabled = true;
+    fetch(URL_REINICIAR, { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { if (!d.ok) alert(d.msg || 'Falha ao reiniciar.'); })
+        .catch(() => alert('Erro de rede ao reiniciar.'))
+        .finally(() => { btn.disabled = false; agendar(1500); });
+}
+
+window.addEventListener('beforeunload', () => clearTimeout(timer));
+consultar();
+</script>
+{% endblock %}

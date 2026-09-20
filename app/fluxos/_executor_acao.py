@@ -16,7 +16,7 @@ from whatsapp import (
     marcar_como_lida, enviar_mensagem_digitando,
     enviar_audio, enviar_imagem, enviar_mensagem, enviar_documento,
     enviar_produto_whatsapp, enviar_botao_link, montar_link_estante,
-    ErroTransienteWhatsApp,
+    ErroTransienteWhatsApp, ChipForaDoArWhatsApp, exigir_numero_operacional,
 )
 from database import salvar_mensagem_pedido, selecionar_e_avancar_variante
 
@@ -88,7 +88,12 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
         pedido_id: ID do pedido (para salvar_mensagem_pedido)
         tag: prefixo para os logs (ex: 'FLUXO-PEDIDO-DIN')
         aplicar_delay: False quando o delay já foi consumido como countdown Celery
+
+    Raises:
+        ChipForaDoArWhatsApp: número do gateway WhatsApp Web sem status CONNECTED (nada foi enviado).
     """
+    exigir_numero_operacional(pedido)
+
     grupo_variantes = acao.get('_variantes_grupo')
     if grupo_variantes and pedido.get('phone_number_id'):
         # Resolve a variante de verdade (atômico, com lock) só agora, no momento

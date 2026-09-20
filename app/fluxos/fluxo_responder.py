@@ -1,6 +1,7 @@
 import logging
 import random
-from whatsapp import marcar_como_lida, enviar_mensagem, enviar_mensagem_digitando, criar_notificacao_admin
+from whatsapp import (marcar_como_lida, enviar_mensagem, enviar_mensagem_digitando, criar_notificacao_admin,
+                      exigir_numero_operacional)
 from database import (salvar_mensagem_pedido, buscar_historico_conversa, get_produto_by_id,
                       tem_notificacao_em_analise, contar_total_mensagens_pedido,
                       buscar_ultima_mensagem_recebida_por_pedido)
@@ -127,6 +128,9 @@ def executar(pedido, mensagem_whatsapp):
 
 
 def enviar_resposta(pedido, resposta_cliente, pedido_id):
+    # Chip do gateway caído: levanta ChipForaDoArWhatsApp (transiente) e a task reagenda a mesma resposta
+    # já gerada, sem gastar outra chamada à IA e sem tentar enviar contra um chip desconectado.
+    exigir_numero_operacional(pedido)
     message_id_resposta = enviar_mensagem(pedido, resposta_cliente)
     salvar_mensagem_pedido(message_id_resposta, pedido_id, resposta_cliente, tipo_mensagem='enviada')
     logger.info(f"[FLUXO-RESPONDER-MENSAGEM] ✅ Resposta enviada ao cliente | pedido #{pedido_id}")

@@ -43,6 +43,13 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute=30, hour='22,0'),  # 22h30 e 00h30 (antes do upload do Google Ads às 01h-02h)
         'options': {'queue': 'baixa'},
     },
+    # Chips do gateway WhatsApp Web: status a cada 2 min (a checagem horária de qualidade é lenta demais para
+    # perceber um chip deslogado). Só consulta o gateway, nunca a Graph API da Meta.
+    'verificar-status-wpp-web': {
+        'task': 'tasks.verificar_status_wpp_web',
+        'schedule': crontab(minute='*/2'),
+        'options': {'queue': 'baixa'},
+    },
     'verificar-pagamentos-bb-pay': {
         'task': 'tasks.verificar_pagamentos_pendentes',
         'schedule': crontab(minute='*/10'),  # a cada 10 minutos
@@ -164,6 +171,7 @@ celery_app.conf.update(
         "tasks.reconciliar_pix_pendentes_web":           {"queue": "baixa"},
         "tasks.processar_orcamento_sheets":              {"queue": "baixa"},
         "tasks.verificar_qualidade_whatsapp":            {"queue": "baixa"},
+        "tasks.verificar_status_wpp_web":                {"queue": "baixa"},
         "tasks.verificar_qualidade_whatsapp_produto":     {"queue": "normal"},
         "tasks.verificar_emails_clientes":               {"queue": "baixa"},
         # NF-e — tudo na fila 'normal' (orquestrador, emissão individual e relatório)

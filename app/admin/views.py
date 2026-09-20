@@ -10,6 +10,12 @@ from flask_login import current_user
 from werkzeug.utils import secure_filename
 from admin import admin_bp
 from admin.auth import requer_login, requer_admin, requer_acesso_produto, usuario_tem_acesso_produto
+from wpp_web_gateway import (
+    ErroGatewayWppWeb, qr_para_svg, normalizar_cadastro_numero, garantir_webhook,
+    remover_chip as remover_chip_gateway,
+    buscar_chip as buscar_chip_gateway, criar_chip as criar_chip_gateway,
+    buscar_qr as buscar_qr_gateway, reiniciar_chip as reiniciar_chip_gateway,
+)
 from Whatsapp_config import ativa_whatsapp
 from database import (db,
     listar_telefones_produto, adicionar_telefone_produto, remover_telefone_produto, atualizar_telefone_produto,
@@ -24,7 +30,7 @@ from database import (db,
     get_pedido, get_ultimo_pedido_by_phone, salvar_mensagem_pedido, listar_itens_pedido,
     buscar_todas_mensagens_pedido,
     pedido_dentro_da_janela_24h, buscar_data_ultima_mensagem_recebida_pedido,
-    numero_empresa_operacional, buscar_status_numero_empresa,
+    numero_empresa_operacional, buscar_status_numero_empresa, get_provedor_numero, atualizar_status_api_numero,
     buscar_pedido_por_nome, acertar_valor_pedido,
     listar_chaves_pix_produto, adicionar_chave_pix_produto, desativar_chave_pix_produto,
     get_config_cartao_produto_admin, salvar_config_cartao_produto,
@@ -840,8 +846,11 @@ def conversa_enviar_mensagem(produto_id, pedido_id):
     if not numero_empresa_operacional(pedido.get('phone_number_id')):
         status_info = buscar_status_numero_empresa(pedido.get('phone_number_id'))
         if status_info:
+            origem = ('no WhatsApp Web (chip desconectado ou pareamento pendente)'
+                      if get_provedor_numero(pedido.get('phone_number_id')) == 'wpp_web'
+                      else 'na Meta (possível banimento/restrição)')
             flash(f"Não é possível enviar: o número da empresa ({status_info['telefone']}) está "
-                  f"com status \"{status_info['status_api']}\" na Meta (possível banimento/restrição). "
+                  f"com status \"{status_info['status_api']}\" {origem}. "
                   f"Contate o time técnico.", 'danger')
         else:
             flash('Não é possível enviar: o número da empresa vinculado a este pedido não está mais '
@@ -1170,10 +1179,15 @@ def adicionar_numero_whatsapp(produto_id):
     if not telefone:
         flash('Informe o número.', 'warning')
         return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
-    api_phone_number_id = request.form.get('api_phone_number_id', '').strip() or None
-    token_env_key = request.form.get('token_env_key', '').strip() or 'WHATSAPP_ACCESS_TOKEN'
+    provedor = request.form.get('provedor', 'meta')
     try:
-        adicionar_telefone_produto(telefone, produto_id, api_phone_number_id, token_env_key)
+        api_phone_number_id, token_env_key = normalizar_cadastro_numero(
+            provedor, telefone, request.form.get('api_phone_number_id'), request.form.get('token_env_key'))
+    except ValueError as e:
+        flash(str(e), 'warning')
+        return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+    try:
+        adicionar_telefone_produto(telefone, produto_id, api_phone_number_id, token_env_key, provedor)
         flash(f'Número {telefone} adicionado com sucesso!', 'success')
         logger.info(f"[ADMIN] ✅ Telefone '{telefone}' associado ao produto #{produto_id} por {current_user.email}")
     except Exception as e:
@@ -1185,6 +1199,22 @@ def adicionar_numero_whatsapp(produto_id):
 @admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/<int:telefone_id>/remover', methods=['POST'])
 @requer_acesso_produto
 def remover_numero_whatsapp(produto_id, telefone_id):
+    telefone = next((t for t in listar_telefones_produto(produto_id) if t['id'] == telefone_id), None)
+    if telefone and telefone.get('provedor') == 'wpp_web' and telefone.get('api_phone_number_id'):
+        # Sem isto o chip ficaria conectado no gateway (gastando RAM e recebendo mensagens de um número que
+        # o app já não reconhece). Desvincular é irreversível sem novo QR e o WhatsApp registra o evento,
+        # por isso só admin, e só remove a linha se o gateway confirmar (ou o chip já não existir lá).
+        if not current_user.is_admin():
+            flash('Somente administradores removem números do WhatsApp Web (isso desconecta o aparelho).', 'warning')
+            return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+        try:
+            existia = remover_chip_gateway(telefone['api_phone_number_id'])
+            logger.info(f"[ADMIN] 🔌 Chip {telefone['api_phone_number_id']} "
+                        f"{'desconectado' if existia else 'já não existia'} no gateway por {current_user.email}")
+        except ErroGatewayWppWeb as e:
+            logger.warning(f"[ADMIN] ⚠️ Falha ao desconectar chip {telefone['api_phone_number_id']}: {e}")
+            flash(f'Não foi possível desconectar o chip no gateway ({e}). O número NÃO foi removido; tente de novo.', 'danger')
+            return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
     try:
         remover_telefone_produto(telefone_id, produto_id)
         flash('Número removido.', 'success')
@@ -1202,14 +1232,20 @@ def editar_numero_whatsapp(produto_id, telefone_id):
     if not telefone:
         flash('Informe o número.', 'warning')
         return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
-    api_phone_number_id = request.form.get('api_phone_number_id', '').strip() or None
-    token_env_key = request.form.get('token_env_key', '').strip() or 'WHATSAPP_ACCESS_TOKEN'
+    provedor = request.form.get('provedor', 'meta')
+    try:
+        api_phone_number_id, token_env_key = normalizar_cadastro_numero(
+            provedor, telefone, request.form.get('api_phone_number_id'), request.form.get('token_env_key'))
+    except ValueError as e:
+        flash(str(e), 'warning')
+        return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
     try:
         contador_uso = max(0, int(request.form.get('contador_uso', 0) or 0))
     except (ValueError, TypeError):
         contador_uso = 0
     try:
-        atualizar_telefone_produto(telefone_id, produto_id, telefone, api_phone_number_id, token_env_key, contador_uso)
+        atualizar_telefone_produto(telefone_id, produto_id, telefone, api_phone_number_id, token_env_key, contador_uso,
+                                   provedor)
         flash(f'Número {telefone} atualizado com sucesso!', 'success')
         logger.info(f"[ADMIN] ✅ Telefone #{telefone_id} atualizado por {current_user.email}")
     except Exception as e:
@@ -1226,6 +1262,9 @@ def ativar_numero_whatsapp(produto_id):
     if not api_phone_number_id:
         flash('Informe o API phone_number_id para ativar.', 'warning')
         return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+    if get_provedor_numero(api_phone_number_id) == 'wpp_web':
+        flash('Ativação (/register) só existe na API oficial da Meta. Para o WhatsApp Web, use "Parear (QR)".', 'warning')
+        return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
     token = os.getenv(token_env_key, '')
     if not token:
         flash(f'Token não encontrado para a chave "{token_env_key}".', 'danger')
@@ -1237,6 +1276,81 @@ def ativar_numero_whatsapp(produto_id):
     else:
         flash(f'Falha ao ativar o número {api_phone_number_id}. Verifique os logs.', 'danger')
     return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+
+
+def _telefone_wpp_web_ou_404(produto_id, telefone_id):
+    """Telefone do produto que usa o gateway WhatsApp Web, ou None."""
+    telefone = next((t for t in listar_telefones_produto(produto_id) if t['id'] == telefone_id), None)
+    if not telefone or telefone.get('provedor') != 'wpp_web' or not telefone.get('api_phone_number_id'):
+        return None
+    return telefone
+
+
+@admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/<int:telefone_id>/parear')
+@requer_admin
+def qr_numero_whatsapp(produto_id, telefone_id):
+    """Tela de pareamento do chip do gateway: lê o QR com o app do WhatsApp para autorizar o WhatsApp Web."""
+    session['produto_ativo_id'] = produto_id
+    telefone = _telefone_wpp_web_ou_404(produto_id, telefone_id)
+    if not telefone:
+        flash('Número não encontrado ou não é do provedor WhatsApp Web.', 'danger')
+        return redirect(url_for('admin.numeros_whatsapp', produto_id=produto_id))
+    return render_template('admin/numero_qr.html', produto_id=produto_id, telefone=telefone)
+
+
+@admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/<int:telefone_id>/parear/status')
+@requer_admin
+def qr_numero_whatsapp_status(produto_id, telefone_id):
+    """JSON para o polling da tela de QR. Cria o chip no gateway se ainda não existir."""
+    telefone = _telefone_wpp_web_ou_404(produto_id, telefone_id)
+    if not telefone:
+        return jsonify({'ok': False, 'msg': 'Número não é do provedor WhatsApp Web.'}), 404
+    chip_ref = telefone['api_phone_number_id']
+    try:
+        # cadastro incoerente (id != web-<telefone>) criaria um chip diferente do que o webhook informa
+        normalizar_cadastro_numero('wpp_web', telefone['telefone'], chip_ref, telefone.get('token_env_key'))
+    except ValueError as e:
+        return jsonify({'ok': False, 'msg': str(e)}), 400
+    try:
+        chip = buscar_chip_gateway(chip_ref)
+        if chip is None:
+            criar_chip_gateway(telefone['telefone'])
+            chip = buscar_chip_gateway(chip_ref) or {}
+        garantir_webhook(chip, chip_ref)  # sem webhook o chip conecta mas não entrega nada ao vendas-web
+        estado = buscar_qr_gateway(chip_ref)
+        qr_svg = qr_para_svg(estado['qr']) if estado.get('qr') else None
+        # Reflete o pareamento na hora: sem isso o número só passaria a receber leads/envios na próxima
+        # checagem horária (e, depois de re-parear, ficaria bloqueado por status velho).
+        if estado.get('status'):
+            atualizar_status_api_numero(chip_ref, str(estado['status']).upper())
+    except ErroGatewayWppWeb as e:
+        logger.warning(f"[ADMIN] ⚠️ Gateway WhatsApp Web (chip {chip_ref}): {e}")
+        return jsonify({'ok': False, 'msg': str(e)}), 502
+    resposta = jsonify({
+        'ok': True,
+        'status': estado.get('status'),
+        'action': estado.get('action'),
+        'needsAction': estado.get('needsAction'),
+        'message': estado.get('message'),
+        'qrSvg': qr_svg,
+    })
+    resposta.headers['Cache-Control'] = 'no-store'
+    return resposta
+
+
+@admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/<int:telefone_id>/parear/reiniciar', methods=['POST'])
+@requer_admin
+def qr_numero_whatsapp_reiniciar(produto_id, telefone_id):
+    telefone = _telefone_wpp_web_ou_404(produto_id, telefone_id)
+    if not telefone:
+        return jsonify({'ok': False, 'msg': 'Número não é do provedor WhatsApp Web.'}), 404
+    try:
+        reiniciar_chip_gateway(telefone['api_phone_number_id'])
+    except ErroGatewayWppWeb as e:
+        logger.warning(f"[ADMIN] ⚠️ Falha ao reiniciar chip {telefone['api_phone_number_id']}: {e}")
+        return jsonify({'ok': False, 'msg': str(e)}), 502
+    logger.info(f"[ADMIN] 🔄 Chip {telefone['api_phone_number_id']} reiniciado por {current_user.email}")
+    return jsonify({'ok': True})
 
 
 @admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/atualizar-qualidade', methods=['POST'])

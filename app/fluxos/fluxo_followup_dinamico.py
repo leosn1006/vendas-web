@@ -5,6 +5,7 @@ from database import (
     atualizar_estado_pedido, atualizar_pedido_com_data_followup,
 )
 from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, selecionar_variantes
+from whatsapp import ChipForaDoArWhatsApp
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +49,32 @@ def executar():
 
             # message_id_original é None no followup (sem mensagem recebida)
             # Não configure ações marcar_lida/digitando neste fluxo
+            enviadas = 0
             for acao in acoes:
                 logger.debug(f"[{_TAG}] ▶ #{acao['ordem']} [{acao['acao']}] ({acao['condicao']})")
-                executar_acao(acao, pedido, message_id_original=None, pedido_id=pedido_id, tag=_TAG)
+                try:
+                    executar_acao(acao, pedido, message_id_original=None, pedido_id=pedido_id, tag=_TAG)
+                except ChipForaDoArWhatsApp:
+                    if enviadas == 0:
+                        raise  # nada saiu: adia o pedido inteiro (tratado abaixo), segue elegível
+                    # O chip caiu no meio da sequência. Repetir o followup depois reenviaria as ações que já
+                    # saíram (spam para o cliente, risco de ban), então o followup é dado como concluído.
+                    logger.error(
+                        f"[{_TAG}] ⚠️ Chip caiu após {enviadas}/{len(acoes)} ação(ões) do followup do pedido "
+                        f"#{pedido_id}; as restantes foram descartadas para não duplicar o que já foi enviado."
+                    )
+                    break
+                enviadas += 1
 
             atualizar_estado_pedido(pedido_id, 4)
             atualizar_pedido_com_data_followup(pedido_id)
             logger.debug(f"[{_TAG}] ✅ Followup concluído para pedido #{pedido_id} → estado 4.")
 
+        except ChipForaDoArWhatsApp as e:
+            # Chip do gateway caído ANTES de enviar qualquer ação: adia só este pedido (segue elegível na próxima
+            # rodada) em vez de abortar o lote.
+            logger.warning(f"[{_TAG}] ⏸️ {e}")
+            continue
         except Exception as e:
             logger.error(f"[{_TAG}] ❌ Erro no pedido #{pedido['id']}: {e}")
             raise

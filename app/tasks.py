@@ -9,6 +9,11 @@ logger = logging.getLogger(__name__)
 
 _redis = redis_lib.from_url(os.getenv("REDIS_URL", "redis://redis:6379/0"), decode_responses=True)
 
+# O gateway WhatsApp Web entrega "pelo menos uma vez" e reentrega por até 24 h (outbox em disco) após
+# uma queda; mensagens_pedidos.message_id não é UNIQUE, então esta chave é a única barreira contra
+# duplicata. 300 s bastava para a Meta (retry curto); para o gateway precisa cobrir a janela da outbox.
+_WEBHOOK_DEDUPE_TTL_S = 25 * 3600
+
 #TODO rever max_retries e countdown, para não ficar tentando para sempre em caso de erro persistente, e para não demorar muito para tentar novamente em caso de erro temporário
 @shared_task(name="tasks.processar_webhook", bind=True, max_retries=0)
 def processar_webhook(self, body):
@@ -17,7 +22,7 @@ def processar_webhook(self, body):
     try:
         msg_id = body['entry'][0]['changes'][0]['value']['messages'][0]['id']
         redis_key = f"wha:msg:{msg_id}"
-        if not _redis.set(redis_key, 1, nx=True, ex=300):
+        if not _redis.set(redis_key, 1, nx=True, ex=_WEBHOOK_DEDUPE_TTL_S):
             logger.warning(f"[TASK-WEBHOOK] ⚠️ Webhook duplicado ignorado: {msg_id}")
             return
     except (KeyError, IndexError):
@@ -441,24 +446,25 @@ def _registrar_mudancas_estado(t, nova_qualidade, novo_status):
         )
 
 
-def _checar_qualidade_telefone(t, _TAG, WHATSAPP_API_URL):
-    """Consulta a Graph API pra um número e persiste o resultado. Roda em thread própria
+def _checar_qualidade_telefone(t, _TAG):
+    """Consulta a Graph API (ou o gateway WhatsApp Web, conforme o provedor do número) pra um número e persiste o resultado. Roda em thread própria
     (chamada via ThreadPoolExecutor) — cada chamada usa sua própria conexão do pool do MySQL,
     então é segura em paralelo. Retorna True em caso de sucesso, False em falha."""
     import requests
-    from database import (get_whatsapp_token, atualizar_qualidade_telefone,
+    from database import (get_whatsapp_token, get_whatsapp_api_url, atualizar_qualidade_telefone,
                            registrar_erro_qualidade_telefone, normalizar_quality_rating)
 
     telefone_id = t['id']
     try:
         token = get_whatsapp_token(t['api_phone_number_id'])
+        url_base = get_whatsapp_api_url(t['api_phone_number_id'])
     except ValueError as e:
         registrar_erro_qualidade_telefone(telefone_id, str(e)[:255])
         logger.warning(f"[{_TAG}] ⚠️ Telefone #{telefone_id} ({t['telefone']}): {e}")
         return False
     try:
         resp = requests.get(
-            f"{WHATSAPP_API_URL}{t['api_phone_number_id']}",
+            f"{url_base}{t['api_phone_number_id']}",
             headers={"Authorization": f"Bearer {token}"},
             params={"fields": "quality_rating,status,name_status,health_status"},
             timeout=15,
@@ -488,14 +494,13 @@ def _executar_checagem_qualidade(telefones, _TAG):
     resultado. Compartilhado pela rodada horária (todos os números) e pela rodada sob
     demanda (só os números de um produto)."""
     from concurrent.futures import ThreadPoolExecutor
-    from config import WHATSAPP_API_URL
 
     logger.info(f"[{_TAG}] 🔍 Checando qualidade de {len(telefones)} números...")
 
     # Chamadas de rede em paralelo (I/O-bound) — o pool de conexões do MySQL tem
     # pool_size=5, então limitamos a mesma quantidade de threads simultâneas.
     with ThreadPoolExecutor(max_workers=5) as pool:
-        resultados = list(pool.map(lambda t: _checar_qualidade_telefone(t, _TAG, WHATSAPP_API_URL), telefones))
+        resultados = list(pool.map(lambda t: _checar_qualidade_telefone(t, _TAG), telefones))
 
     ok = sum(1 for r in resultados if r)
     falhas = len(resultados) - ok
@@ -528,6 +533,30 @@ def verificar_qualidade_whatsapp(self):
         notificar_admin_erro_sistema(f"{_TAG} | erro geral: {type(exc).__name__}")
     finally:
         _redis.delete(lock_key)
+
+
+@shared_task(name="tasks.verificar_status_wpp_web", bind=True, max_retries=0)
+def verificar_status_wpp_web(self):
+    """Checagem rápida (a cada 2 min) só dos chips do gateway WhatsApp Web.
+
+    A checagem horária de qualidade é lenta para o gateway: se o chip cai (logout pelo celular, conflito de
+    sessão), o vendas-web só descobre no minuto :20 seguinte e, até lá, os fluxos automáticos continuam
+    tentando enviar. Aqui a consulta é leve (GET no gateway, nunca na Meta) e reaproveita
+    _checar_qualidade_telefone, que grava status_api e registra a mudança em notificacoes_telefone.
+
+    Não usa _executar_checagem_qualidade de propósito: aquela dispara alerta ao admin com >=30% de falhas, e
+    com poucos chips um gateway fora do ar seria 100% de falha a cada 2 minutos (spam)."""
+    _TAG = "TASK-STATUS-WPP-WEB"
+    if not _redis.set("lock:status_wpp_web", 1, nx=True, ex=90):
+        logger.info(f"[{_TAG}] ⏭ Outra instância já em execução — ignorando")
+        return
+    try:
+        from database import listar_telefones_com_token
+        for t in listar_telefones_com_token():
+            if t.get('provedor') == 'wpp_web':
+                _checar_qualidade_telefone(t, _TAG)
+    except Exception as exc:
+        logger.error(f"[{_TAG}] ❌ Erro geral: {exc}")
 
 
 @shared_task(name="tasks.verificar_qualidade_whatsapp_produto", bind=True, max_retries=0)

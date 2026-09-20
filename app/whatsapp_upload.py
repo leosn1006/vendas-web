@@ -4,8 +4,7 @@ import time
 import logging
 from datetime import datetime
 from pathlib import Path
-from config import WHATSAPP_API_URL
-from database import get_whatsapp_token
+from database import get_whatsapp_token, get_whatsapp_api_url
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +114,7 @@ def receber_audio(tipo_midia, id_audio, mime_type, pedido_id, phone_number_id=No
     try:
         logger.debug(f"[WHATSAPP-UPLOAD-AUDIO] Obtendo URL de download do áudio: ID={id_audio}, Pedido ID={pedido_id}")
         # 5. Primeiro obtém a URL de download do WhatsApp API
-        url_metadata = f"{WHATSAPP_API_URL}{id_audio}"
+        url_metadata = f"{get_whatsapp_api_url(phone_number_id)}{id_audio}"
         headers = {"Authorization": f"Bearer {access_token}"}
         resposta_metadata = requests.get(url_metadata, headers=headers, timeout=20)
 

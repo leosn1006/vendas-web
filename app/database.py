@@ -9,6 +9,7 @@ from mysql.connector import Error, IntegrityError
 from contextlib import contextmanager
 import logging
 from typing import TypedDict, Optional
+from config import WHATSAPP_API_URL, WPP_WEB_API_URL
 
 logger = logging.getLogger(__name__)
 
@@ -1014,7 +1015,7 @@ def listar_telefones_produto(produto_id):
         list: Lista de dicts com id, telefone, api_phone_number_id, token_env_key, created_at
     """
     query = """
-        SELECT id, telefone, api_phone_number_id, token_env_key, created_at, contador_uso,
+        SELECT id, telefone, api_phone_number_id, token_env_key, provedor, created_at, contador_uso,
                quality_rating, status_api, name_status_api, qualidade_atualizada_em, qualidade_erro
         FROM telefones_produto
         WHERE produto_id = %s
@@ -1023,13 +1024,15 @@ def listar_telefones_produto(produto_id):
     return db.execute_query(query, (produto_id,), fetch_all=True) or []
 
 
-def atualizar_telefone_produto(telefone_id, produto_id, telefone, api_phone_number_id, token_env_key, contador_uso=0):
+def atualizar_telefone_produto(telefone_id, produto_id, telefone, api_phone_number_id, token_env_key, contador_uso=0, provedor='meta'):
     query = """
         UPDATE telefones_produto
-        SET telefone = %s, api_phone_number_id = %s, token_env_key = %s, contador_uso = %s
+        SET telefone = %s, api_phone_number_id = %s, token_env_key = %s, contador_uso = %s, provedor = %s
         WHERE id = %s AND produto_id = %s
     """
-    db.execute_query(query, (telefone, api_phone_number_id or None, token_env_key or 'WHATSAPP_ACCESS_TOKEN', contador_uso, telefone_id, produto_id))
+    db.execute_query(query, (telefone, api_phone_number_id or None, token_env_key or 'WHATSAPP_ACCESS_TOKEN', contador_uso,
+                             _normalizar_provedor(provedor), telefone_id, produto_id))
+    _whatsapp_provedor_cache.clear()
 
 
 def selecionar_telefone_produto(produto_id):
@@ -1039,13 +1042,16 @@ def selecionar_telefone_produto(produto_id):
     ignorando o histórico de pedidos anteriores.
 
     Returns:
-        dict com id, telefone, api_phone_number_id, token_env_key ou None se não houver telefones
+        dict com id, telefone, api_phone_number_id, token_env_key, provedor ou None se não houver telefones
     """
     with db.get_cursor() as cursor:
         cursor.execute("""
-            SELECT id, telefone, api_phone_number_id, token_env_key
+            SELECT id, telefone, api_phone_number_id, token_env_key, provedor
             FROM telefones_produto
             WHERE produto_id = %s
+              -- chip do gateway sem pareamento (status_api NULL) ou caído não recebe lead novo: o cliente
+              -- abriria o wa.me de um número que não responde. Números da Meta seguem como sempre.
+              AND (provedor = 'meta' OR status_api = 'CONNECTED')
             ORDER BY contador_uso ASC, created_at ASC
             LIMIT 1
         """, (produto_id,))
@@ -1058,7 +1064,7 @@ def selecionar_telefone_produto(produto_id):
     return telefone
 
 
-def adicionar_telefone_produto(telefone, produto_id, api_phone_number_id=None, token_env_key='WHATSAPP_ACCESS_TOKEN'):
+def adicionar_telefone_produto(telefone, produto_id, api_phone_number_id=None, token_env_key='WHATSAPP_ACCESS_TOKEN', provedor='meta'):
     """
     Adiciona um mapeamento telefone → produto.
 
@@ -1067,17 +1073,19 @@ def adicionar_telefone_produto(telefone, produto_id, api_phone_number_id=None, t
         produto_id: ID do produto
         api_phone_number_id: ID da API Meta (ex: 492584860944948), usado para enviar mensagens
         token_env_key: nome da variável de ambiente com o token desta conta (ex: 'WHATSAPP_ACCESS_TOKEN_2')
+        provedor: 'meta' (Graph API oficial) ou 'wpp_web' (gateway WhatsApp Web)
 
     Returns:
         int: ID do registro criado
     """
-    query = "INSERT INTO telefones_produto (telefone, produto_id, api_phone_number_id, token_env_key) VALUES (%s, %s, %s, %s)"
-    return db.execute_query(query, (telefone, produto_id, api_phone_number_id, token_env_key))
+    query = "INSERT INTO telefones_produto (telefone, produto_id, api_phone_number_id, token_env_key, provedor) VALUES (%s, %s, %s, %s, %s)"
+    return db.execute_query(query, (telefone, produto_id, api_phone_number_id, token_env_key, _normalizar_provedor(provedor)))
 
 
 def remover_telefone_produto(telefone_id, produto_id):
     query = "DELETE FROM telefones_produto WHERE id = %s AND produto_id = %s"
     db.execute_query(query, (telefone_id, produto_id))
+    _whatsapp_provedor_cache.clear()
 
 
 def listar_telefones_com_token(produto_id=None):
@@ -1091,7 +1099,7 @@ def listar_telefones_com_token(produto_id=None):
         list: dicts com id, produto_id, telefone, api_phone_number_id, token_env_key
     """
     query = """
-        SELECT id, produto_id, telefone, api_phone_number_id, token_env_key,
+        SELECT id, produto_id, telefone, api_phone_number_id, token_env_key, provedor,
                quality_rating, status_api, waba_id
         FROM telefones_produto
         WHERE api_phone_number_id IS NOT NULL AND api_phone_number_id != ''
@@ -1127,6 +1135,15 @@ def atualizar_qualidade_telefone(telefone_id, quality_rating, status_api=None, n
                qualidade_atualizada_em = NOW(), qualidade_erro = NULL
            WHERE id = %s""",
         (quality_rating, status_api, name_status_api, waba_id, telefone_id)
+    )
+
+
+def atualizar_status_api_numero(api_phone_number_id, status_api):
+    """Grava só o status_api do número (ex.: após parear o chip do gateway, ou quando o gateway confirma
+    que o chip voltou), sem esperar a checagem horária — que é o único outro lugar que o atualiza."""
+    db.execute_query(
+        "UPDATE telefones_produto SET status_api = %s WHERE api_phone_number_id = %s",
+        (status_api, api_phone_number_id)
     )
 
 
@@ -2020,6 +2037,58 @@ def busca_comparativo_variante_checkout(data_ini, data_fim) -> dict:
         'ticket_medio_v2': round(valor_total / pedidos_pagos, 2) if pedidos_pagos else 0.0,
         'taxa_conversao_v2': round(100 * pedidos_pagos / views_v2, 2) if views_v2 else 0.0,
     }
+
+
+_PROVEDORES_VALIDOS = ('meta', 'wpp_web')
+_PROVEDOR_CACHE_TTL_S = 60
+_whatsapp_provedor_cache: dict = {}  # api_phone_number_id -> (provedor, expira_em_monotonic)
+
+
+def _normalizar_provedor(provedor) -> str:
+    return provedor if provedor in _PROVEDORES_VALIDOS else 'meta'
+
+
+def get_provedor_numero(api_phone_number_id: str) -> str:
+    """'meta' ou 'wpp_web' do número cadastrado em telefones_produto.
+    Número vazio ou não cadastrado cai em 'meta' (comportamento anterior à coluna).
+    Falha de banco NÃO vira 'meta': adivinhar mandaria o token do gateway para a Graph API (ou o inverso).
+    Com valor vencido em cache, ele é reaproveitado (stale-if-error); sem cache, a exceção propaga.
+    Cache curto (TTL) em vez de permanente: editar o provedor no admin vale em até um minuto em todos
+    os processos (gunicorn e workers Celery), sem reiniciar nada."""
+    if not api_phone_number_id:
+        return 'meta'
+    agora = time.monotonic()
+    em_cache = _whatsapp_provedor_cache.get(api_phone_number_id)
+    if em_cache and em_cache[1] > agora:
+        return em_cache[0]
+    try:
+        row = db.execute_query(
+            "SELECT provedor FROM telefones_produto WHERE api_phone_number_id = %s LIMIT 1",
+            (api_phone_number_id,), fetch_one=True
+        )
+    except Exception as e:
+        if em_cache:
+            logging.getLogger(__name__).warning(
+                f"[WHATSAPP-PROVEDOR] ⚠️ Banco indisponível; usando provedor em cache de {api_phone_number_id}: {e}")
+            return em_cache[0]
+        raise
+    provedor = _normalizar_provedor(row.get('provedor') if row else None)
+    _whatsapp_provedor_cache[api_phone_number_id] = (provedor, agora + _PROVEDOR_CACHE_TTL_S)
+    return provedor
+
+
+def get_whatsapp_api_url(api_phone_number_id: str) -> str:
+    """URL base (com barra final) para falar com o número: gateway WhatsApp Web para provedor
+    'wpp_web', Graph API da Meta para o resto. Lança ValueError se o número é wpp_web mas
+    WPP_WEB_API_URL não está configurada."""
+    if get_provedor_numero(api_phone_number_id) != 'wpp_web':
+        return WHATSAPP_API_URL
+    if not WPP_WEB_API_URL:
+        raise ValueError(
+            f"[WHATSAPP-URL] ❌ Número {api_phone_number_id} é provedor 'wpp_web' mas WPP_WEB_API_URL não está "
+            f"definida no .env (ex.: http://api-wpp-web:3100/v24.0/)."
+        )
+    return WPP_WEB_API_URL if WPP_WEB_API_URL.endswith('/') else WPP_WEB_API_URL + '/'
 
 
 _whatsapp_token_cache: dict = {}  # api_phone_number_id -> token string resolvido

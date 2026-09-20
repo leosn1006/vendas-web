@@ -1,10 +1,14 @@
+import re
 import requests
 import os
 import logging
 import pytz
 from datetime import datetime
 from config import WHATSAPP_API_URL
-from database import Pedido, get_whatsapp_token, get_token_env_key, garantir_guid_pedido
+from database import (
+    Pedido, get_whatsapp_token, get_token_env_key, garantir_guid_pedido,
+    get_whatsapp_api_url, get_provedor_numero, numero_empresa_operacional, atualizar_status_api_numero,
+)
 from whatsapp_seguranca import dominio_por_token_env_key
 
 logger = logging.getLogger(__name__)
@@ -14,11 +18,74 @@ class ErroTransienteWhatsApp(Exception):
     pass
 
 
+class ChipForaDoArWhatsApp(ErroTransienteWhatsApp):
+    """Número do gateway WhatsApp Web com status_api != CONNECTED (queda, logout, QR pendente).
+    Levantada ANTES de tentar enviar, para os fluxos automáticos adiarem o pedido em vez de disparar
+    uma rajada de 503 (o pedido continua elegível, pois o estado não avança)."""
+
+
+def _timeout_envio(phone_number_id: str, midia: bool = False) -> int:
+    """Timeout (s) da chamada de envio. Meta: 30 s. Gateway WhatsApp Web: o app precisa esperar mais que o
+    pior caso do gateway, senão desiste antes de receber o erro estruturado (is_transient) e o envio pode
+    completar sem o app saber. Gateway: texto até 25 s + espera na fila serial do chip; mídia baixa o link
+    (30 s) e envia (até 120 s)."""
+    if get_provedor_numero(phone_number_id) != 'wpp_web':
+        return 30
+    return 180 if midia else 60
+
+
+def _gateway_confirma_conectado(phone_number_id: str) -> bool:
+    """Pergunta ao gateway (GET /{id}) se o chip está CONNECTED. Qualquer falha = não confirma."""
+    try:
+        resp = requests.get(
+            f"{get_whatsapp_api_url(phone_number_id)}{phone_number_id}",
+            headers={"Authorization": f"Bearer {get_whatsapp_token(phone_number_id)}"},
+            timeout=5,
+        )
+        return resp.ok and resp.json().get('status') == 'CONNECTED'
+    except Exception:
+        return False
+
+
+def _exigir_provedor_meta(phone_number_id: str, tag: str, recurso: str):
+    if get_provedor_numero(phone_number_id) == 'wpp_web':
+        raise ValueError(f"[{tag}] ❌ '{recurso}' só existe na API oficial da Meta; não há no gateway WhatsApp Web "
+                         f"(número {phone_number_id}).")
+
+
+def exigir_numero_operacional(pedido: dict):
+    """Só números do gateway (wpp_web): bloqueia o envio quando o chip está fora do ar.
+
+    status_api só é atualizado de hora em hora (e ao parear pelo admin), então um status ruim pode estar
+    velho: o chip já voltou e mensagens de clientes chegam. Por isso, com status ruim, o gateway é
+    consultado na hora antes de bloquear; se ele confirmar CONNECTED, o status é corrigido e o envio segue.
+    O caso inverso (chip caiu e o status ainda diz CONNECTED) cai no 503 transitório do gateway + retry.
+
+    Raises:
+        ChipForaDoArWhatsApp: chip do pedido fora do ar (a ação atual não foi enviada).
+    """
+    phone_number_id = pedido.get('phone_number_id')
+    if not phone_number_id or get_provedor_numero(phone_number_id) != 'wpp_web':
+        return
+    if numero_empresa_operacional(phone_number_id):
+        return
+    if _gateway_confirma_conectado(phone_number_id):
+        atualizar_status_api_numero(phone_number_id, 'CONNECTED')
+        logger.info(f"[WHATSAPP-CHIP] ✅ Chip {phone_number_id} confirmado CONNECTED pelo gateway; status_api corrigido.")
+        return
+    raise ChipForaDoArWhatsApp(
+        f"Chip {phone_number_id} fora do ar (status_api != CONNECTED); pedido #{pedido.get('id')} adiado."
+    )
+
+
+_HOSTNAME_RE = re.compile(r'^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$')
+
+
 
 def marcar_como_lida(message_id: str, phone_number_id: str = None):
 
     phone_number_id = phone_number_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
-    url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+    url = f"{get_whatsapp_api_url(phone_number_id)}{phone_number_id}/messages"
     token = get_whatsapp_token(phone_number_id)
 
     headers = {
@@ -33,14 +100,14 @@ def marcar_como_lida(message_id: str, phone_number_id: str = None):
         "message_id": message_id  # wamid.xxx que vem no webhook
     }
 
-    response = requests.post(url, headers=headers, json=dados)
+    response = requests.post(url, headers=headers, json=dados, timeout=_timeout_envio(phone_number_id))
     response.raise_for_status()
     return response.json()
 
 def enviar_reacao(message_id: str, numero: str, emoji: str, phone_number_id: str = None):
     """Reage a uma mensagem específica do cliente (wamid) em vez de enviar uma mensagem de texto nova."""
     phone_number_id = phone_number_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
-    url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+    url = f"{get_whatsapp_api_url(phone_number_id)}{phone_number_id}/messages"
     token = get_whatsapp_token(phone_number_id)
 
     headers = {
@@ -62,7 +129,7 @@ def enviar_reacao(message_id: str, numero: str, emoji: str, phone_number_id: str
 
     logger.info(f"[REACAO-ENVIAR] Reagindo a {message_id} para {numero} com '{emoji}'")
 
-    response = requests.post(url, headers=headers, json=dados, timeout=30)
+    response = requests.post(url, headers=headers, json=dados, timeout=_timeout_envio(phone_number_id))
 
     if response.status_code == 200:
         id_message = response.json().get('messages', [{}])[0].get('id')
@@ -78,6 +145,7 @@ def enviar_reacao(message_id: str, numero: str, emoji: str, phone_number_id: str
 def bloquear_numero_whatsapp(numero: str, phone_number_id: str = None):
     """Bloqueia o contato de fato na Cloud API da Meta (Block Users API), além da flag interna `pedidos.bloqueado`."""
     phone_number_id = phone_number_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
+    _exigir_provedor_meta(phone_number_id, 'BLOQUEAR-NUMERO', 'block_users')
     url = f"{WHATSAPP_API_URL}{phone_number_id}/block_users"
     token = get_whatsapp_token(phone_number_id)
 
@@ -109,6 +177,7 @@ def bloquear_numero_whatsapp(numero: str, phone_number_id: str = None):
 def desbloquear_numero_whatsapp(numero: str, phone_number_id: str = None):
     """Reverte bloquear_numero_whatsapp() — útil caso o bloqueio tenha sido um engano."""
     phone_number_id = phone_number_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
+    _exigir_provedor_meta(phone_number_id, 'DESBLOQUEAR-NUMERO', 'block_users')
     url = f"{WHATSAPP_API_URL}{phone_number_id}/block_users"
     token = get_whatsapp_token(phone_number_id)
 
@@ -142,7 +211,7 @@ def enviar_audio(pedido: Pedido, url_audio: str):
         raise ValueError("[AUDIO-ENVIAR] Não é possível enviar mensagem sem um pedido associado.")
 
     phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
-    url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+    url = f"{get_whatsapp_api_url(phone_number_id)}{phone_number_id}/messages"
     token = get_whatsapp_token(phone_number_id)
 
     headers_reais = {
@@ -167,7 +236,7 @@ def enviar_audio(pedido: Pedido, url_audio: str):
     logger.info(f"[AUDIO-ENVIAR] Enviando mensagem para {numero_remetente} com o seguinte payload:")
     logger.info(f"[AUDIO-ENVIAR] dados: {dados}")
 
-    response = requests.post(url, headers=headers_reais, json=dados, timeout=30)
+    response = requests.post(url, headers=headers_reais, json=dados, timeout=_timeout_envio(phone_number_id, midia=True))
 
     if response.status_code == 200:
         id_message = response.json().get('messages', [{}])[0].get('id')
@@ -184,7 +253,7 @@ def enviar_mensagem(pedido: Pedido, mensagem: str):
         raise ValueError("[MENSAGEM-ENVIAR] Não é possível enviar mensagem sem um pedido associado.")
 
     phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
-    url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+    url = f"{get_whatsapp_api_url(phone_number_id)}{phone_number_id}/messages"
     token = get_whatsapp_token(phone_number_id)
 
     headers_reais = {
@@ -209,7 +278,7 @@ def enviar_mensagem(pedido: Pedido, mensagem: str):
     logger.info(f"[MENSAGEM-ENVIAR] Enviando mensagem para {numero_remetente} com o seguinte payload:")
     logger.info(f"[MENSAGEM-ENVIAR] dados: {dados}")
 
-    response = requests.post(url, headers=headers_reais, json=dados, timeout=30)
+    response = requests.post(url, headers=headers_reais, json=dados, timeout=_timeout_envio(phone_number_id))
 
     if response.status_code == 200:
         id_message = response.json().get('messages', [{}])[0].get('id')
@@ -238,6 +307,16 @@ def montar_link_estante(pedido: dict, caminho: str = '/pedido') -> str:
     """
     guid = pedido.get('guid') or garantir_guid_pedido(pedido['id'])
     phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
+    if get_provedor_numero(phone_number_id) == 'wpp_web':
+        # Chip do gateway não tem token por domínio (todos usam o mesmo GATEWAY_TOKEN_WPP): o domínio
+        # do link é o de onde o cliente veio (pedidos.dns_origem, gravado no clique da landing/checkout).
+        dominio = (pedido.get('dns_origem') or '').split(':')[0].strip().lower()
+        if not _HOSTNAME_RE.match(dominio):
+            raise ValueError(
+                f"[LINK-ESTANTE] ❌ Pedido {pedido.get('id')} sem dns_origem válido ({dominio!r}); "
+                f"número wpp_web ({phone_number_id}) não tem domínio próprio para montar o link."
+            )
+        return f"https://{dominio}{caminho}/{guid}"
     env_key = get_token_env_key(phone_number_id)
     dominio = dominio_por_token_env_key(env_key)
     if not dominio:
@@ -256,7 +335,7 @@ def enviar_botao_link(pedido: Pedido, texto: str, url: str, texto_botao: str):
         raise ValueError("[BOTAO-LINK-ENVIAR] Não é possível enviar mensagem sem um pedido associado.")
 
     phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
-    url_api = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+    url_api = f"{get_whatsapp_api_url(phone_number_id)}{phone_number_id}/messages"
     token = get_whatsapp_token(phone_number_id)
 
     headers_reais = {
@@ -285,7 +364,7 @@ def enviar_botao_link(pedido: Pedido, texto: str, url: str, texto_botao: str):
     logger.info(f"[BOTAO-LINK-ENVIAR] Enviando botão de link para {numero_remetente} com o seguinte payload:")
     logger.info(f"[BOTAO-LINK-ENVIAR] dados: {dados}")
 
-    response = requests.post(url_api, headers=headers_reais, json=dados, timeout=30)
+    response = requests.post(url_api, headers=headers_reais, json=dados, timeout=_timeout_envio(phone_number_id))
 
     if response.status_code == 200:
         id_message = response.json().get('messages', [{}])[0].get('id')
@@ -309,7 +388,7 @@ def enviar_mensagem_digitando(message_id: str, phone_number_id: str = None):
         raise ValueError("[MENSAGEM-DIGITANDO] Não é possível enviar mensagem sem um ID de mensagem associado.")
 
     phone_number_id = phone_number_id or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
-    url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+    url = f"{get_whatsapp_api_url(phone_number_id)}{phone_number_id}/messages"
     token = get_whatsapp_token(phone_number_id)
 
     headers_reais = {
@@ -330,7 +409,7 @@ def enviar_mensagem_digitando(message_id: str, phone_number_id: str = None):
     logger.info(f"[MENSAGEM-DIGITANDO] Enviando status de digitando para a mensagem ID {message_id} com o seguinte payload:")
     logger.info(f"[MENSAGEM-DIGITANDO] dados: {dados}")
 
-    response = requests.post(url, headers=headers_reais, json=dados, timeout=30)
+    response = requests.post(url, headers=headers_reais, json=dados, timeout=_timeout_envio(phone_number_id))
 
     if response.status_code == 200:
         id_message = response.json().get('messages', [{}])[0].get('id')
@@ -345,7 +424,7 @@ def enviar_documento(pedido: Pedido, url_documento: str, caption: str, filename:
         raise ValueError("[DOCUMENTO-ENVIAR] Não é possível enviar mensagem sem um pedido associado.")
 
     phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
-    url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+    url = f"{get_whatsapp_api_url(phone_number_id)}{phone_number_id}/messages"
     token = get_whatsapp_token(phone_number_id)
 
     headers_reais = {
@@ -371,7 +450,7 @@ def enviar_documento(pedido: Pedido, url_documento: str, caption: str, filename:
     logger.info(f"[DOCUMENTO-ENVIAR] Enviando mensagem para {numero_remetente} com o seguinte payload:")
     logger.info(f"[DOCUMENTO-ENVIAR] dados: {dados}")
 
-    response = requests.post(url, headers=headers_reais, json=dados, timeout=30)
+    response = requests.post(url, headers=headers_reais, json=dados, timeout=_timeout_envio(phone_number_id, midia=True))
 
     if response.status_code == 200:
         id_message = response.json().get('messages', [{}])[0].get('id')
@@ -388,7 +467,7 @@ def enviar_imagem(pedido: Pedido, url_imagem: str):
         raise ValueError("[IMAGEM-ENVIAR] Não é possível enviar mensagem sem um pedido associado.")
 
     phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
-    url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
+    url = f"{get_whatsapp_api_url(phone_number_id)}{phone_number_id}/messages"
     token = get_whatsapp_token(phone_number_id)
 
     headers_reais = {
@@ -412,7 +491,7 @@ def enviar_imagem(pedido: Pedido, url_imagem: str):
     logger.info(f"[IMAGEM-ENVIAR] Enviando mensagem para {numero_remetente} com o seguinte payload:")
     logger.info(f"[IMAGEM-ENVIAR] dados: {dados}")
 
-    response = requests.post(url, headers=headers_reais, json=dados, timeout=30)
+    response = requests.post(url, headers=headers_reais, json=dados, timeout=_timeout_envio(phone_number_id, midia=True))
 
     if response.status_code == 200:
         id_message = response.json().get('messages', [{}])[0].get('id')
@@ -433,6 +512,11 @@ def enviar_produto_whatsapp(pedido: dict, template_name: str, language: str,
     onde a API exige templates pré-aprovados pois não há janela de 24h ativa.
     """
     phone_number_id = pedido.get('phone_number_id') or os.getenv('WHATSAPP_PHONE_NUMBER_ID')
+    if get_provedor_numero(phone_number_id) == 'wpp_web':
+        raise ValueError(
+            f"[PRODUTO-WHATSAPP] ❌ Template não existe no gateway WhatsApp Web (número {phone_number_id}). "
+            f"Troque a ação 'enviar_produto_whatsapp' por 'enviar_produto' ou 'enviar_mensagem' neste fluxo."
+        )
     url = f"{WHATSAPP_API_URL}{phone_number_id}/messages"
     token = get_whatsapp_token(phone_number_id)
 
