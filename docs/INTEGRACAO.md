@@ -29,7 +29,7 @@ Fora de escopo, de propósito: templates, catálogo, grupos, reações, `block_u
 | Chip caído (`whatsapp.exigir_numero_operacional`) | Executor de ações, follow-ups e `responder` **não enviam** com o chip fora (`ChipForaDoArWhatsApp`, transiente). Com status ruim, o gateway é consultado na hora antes de bloquear (status velho não segura o envio). Follow-up que perde o chip **no meio** da sequência é dado como concluído (não reenvia o que já saiu). |
 | Sorteio de número (`database.selecionar_telefone_produto`) | Chip do gateway só recebe lead novo se `status_api = 'CONNECTED'`. |
 | Checagem rápida (`tasks.verificar_status_wpp_web`) | A cada **2 min**, só chips do gateway (consulta o gateway, nunca a Meta). Sem ela, uma queda só era percebida na checagem horária (:20). Não alerta o admin em falha (evita spam). |
-| Admin (`admin/views.py`, `numeros_whatsapp.html`, `numero_qr.html`, `wpp_web_gateway.py`) | Seletor de provedor; cadastro coerente (`web-<telefone>` + `GATEWAY_TOKEN_WPP`, recusa incoerência); tela **Parear (QR)** (só admin) que cria o chip, **configura o webhook sozinho** e grava `status_api`; **Remover** um número do gateway desconecta o chip lá (só admin, com confirmação). |
+| Admin (`admin/views.py`, `numeros_whatsapp.html`, `numero_qr.html`, `wpp_web_gateway.py`) | Seletor de provedor; cadastro coerente (`web-<telefone>` + `GATEWAY_TOKEN_WPP`, recusa incoerência); tela **Parear (QR)** (só admin) que cria o chip, **configura o webhook sozinho** e grava `status_api`; **Remover** um número do gateway desconecta o chip lá (só admin, com confirmação); **Recriar do zero** (só admin, na tela de QR) apaga a sessão do chip no gateway e recria vazio — ver seção 15. |
 | Recursos só da Meta | Template, `block_users`: erro claro para número do gateway (não mandam o token do gateway à Meta). |
 | Testes | `tests/whatsapp/` (pytest, sem banco nem rede). `pytest.ini` não precisa de ajuste: o `conftest.py` da pasta põe `app/` no `sys.path`. |
 
@@ -211,6 +211,25 @@ MEDIA_BASE_URL=https://apiwppweb.site
 - `pedidos.phone_number_id` era `VARCHAR(20)`.
 - `marcar_como_lida` não tinha timeout.
 - Não foi necessário coluna `api_base_url`: um único gateway, configurado por `WPP_WEB_API_URL`.
+
+## 15. Pareamento travado: sessão do Chromium corrompida (achado em produção, 22/09/2026)
+
+Um segundo chip do produto 11, em produção, ficou preso em `INIT_FAILED` com o erro
+`Cannot read properties of null (reading 'Socket')` (lido dentro da página pelo `whatsapp-web.js`, em
+`window.require('WAWebSocketModel').Socket` — código do próprio WhatsApp Web, não do gateway). **Nem restart do
+container, nem "Reiniciar pareamento" (que só reinicia o processo), nem trocar o IP de saída por um proxy
+resolveram** — todos repetiam o mesmo erro, porque nenhum deles apaga a pasta de sessão do chip
+(`/data/sessions/session-<id>`). Ela ficou com um perfil de Chromium corrompido desde a primeira tentativa
+falha, e cada tentativa nova reaproveitava a mesma pasta.
+
+**Diagnóstico que isolou a causa:** o mesmo `Client` do `whatsapp-web.js`, no mesmo servidor, com `NoAuth`
+(sessão descartável, sem gravar nada em disco) gerou o QR de primeira. A única diferença para o gateway de
+verdade é o `LocalAuth` (sessão persistente em disco) — confirmando que a pasta em si era o problema, não rede,
+não IP, não versão do Chromium/Puppeteer (checados e descartados nessa ordem antes de chegar aqui).
+
+**Conserto:** `DELETE /admin/chips/:id` (apaga a sessão inteira) seguido de `POST /admin/chips` (recria vazio).
+Isso agora é um botão só, **"Recriar do zero"**, na tela de pareamento do admin (`wpp_web_gateway.recriar_do_zero`),
+ao lado de "Reiniciar pareamento". Use-o quando o restart simples não resolver um chip travado.
 
 ## 13. Como validar (resumo do que foi feito com chip real, em dev)
 

@@ -29,6 +29,12 @@
     </p>
 
     <button type="button" class="btn btn-secondary" id="btn-reiniciar" onclick="reiniciar()">Reiniciar pareamento</button>
+    <button type="button" class="btn btn-danger" id="btn-recriar" onclick="recriar()" style="margin-left: 8px;">Recriar do zero</button>
+    <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">
+        "Reiniciar" tenta de novo sem apagar nada. "Recriar do zero" apaga a sessão salva deste chip no gateway e começa
+        do início — use se o pareamento ficar travado (ex.: erro repetido mesmo depois de reiniciar). Depois de recriar,
+        aguarde alguns segundos e o QR aparece de novo aqui.
+    </p>
 </div>
 {% endblock %}
 
@@ -36,6 +42,7 @@
 <script>
 const URL_STATUS    = "{{ url_for('admin.qr_numero_whatsapp_status', produto_id=produto_id, telefone_id=telefone.id) }}";
 const URL_REINICIAR = "{{ url_for('admin.qr_numero_whatsapp_reiniciar', produto_id=produto_id, telefone_id=telefone.id) }}";
+const URL_RECRIAR   = "{{ url_for('admin.qr_numero_whatsapp_recriar', produto_id=produto_id, telefone_id=telefone.id) }}";
 const msg = document.getElementById('qr-mensagem');
 const box = document.getElementById('qr-box');
 const img = document.getElementById('qr-img');
@@ -80,6 +87,20 @@ function reiniciar() {
         .then(r => r.json())
         .then(d => { if (!d.ok) alert(d.msg || 'Falha ao reiniciar.'); })
         .catch(() => alert('Erro de rede ao reiniciar.'))
+        .finally(() => { btn.disabled = false; agendar(1500); });
+}
+
+function recriar() {
+    if (!confirm('Apagar a sessão salva deste chip e recriar do zero?\n\nSe ele já estava pareado, vai perder a conexão e precisar de um QR novo.')) return;
+    const btn = document.getElementById('btn-recriar');
+    btn.disabled = true;
+    msg.textContent = 'Recriando…';
+    img.innerHTML = '';
+    box.style.display = 'none';
+    fetch(URL_RECRIAR, { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { if (!d.ok) alert(d.msg || 'Falha ao recriar.'); })
+        .catch(() => alert('Erro de rede ao recriar.'))
         .finally(() => { btn.disabled = false; agendar(1500); });
 }
 

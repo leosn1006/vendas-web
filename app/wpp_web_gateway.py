@@ -154,6 +154,18 @@ def remover_chip(chip_ref: str) -> bool:
         raise
 
 
+def recriar_do_zero(chip_ref: str, telefone: str) -> None:
+    """Apaga o chip (sessão + cadastro) no gateway e recria vazio, pronto para gerar um QR novo.
+
+    Usado quando o chip trava em estados que o simples restart não resolve: a sessão do Chromium
+    (perfil em disco) ficou corrompida numa tentativa anterior e o gateway só limpa arquivos de trava
+    entre tentativas normais, não a pasta inteira — então o restart sozinho repete o mesmo erro. Caso real:
+    INIT_FAILED com "Cannot read properties of null (reading 'Socket')" resistente a restart e a proxy,
+    resolvido só apagando e recriando (ver docs/INTEGRACAO.md)."""
+    remover_chip(chip_ref)
+    criar_chip(telefone)
+
+
 def buscar_qr(chip_ref: str) -> dict:
     """{status, action, needsAction, message, qr, pairingCode}. `qr` é a string crua do QR."""
     return _chamar('GET', f'/admin/chips/{quote(chip_ref, safe="")}/qr')

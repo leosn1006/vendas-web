@@ -1353,6 +1353,24 @@ def qr_numero_whatsapp_reiniciar(produto_id, telefone_id):
     return jsonify({'ok': True})
 
 
+@admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/<int:telefone_id>/parear/recriar', methods=['POST'])
+@requer_admin
+def qr_numero_whatsapp_recriar(produto_id, telefone_id):
+    """Apaga a sessão do chip no gateway e recria do zero. Diferente de 'Reiniciar pareamento' (que só
+    reinicia o processo): resolve quando o perfil do Chromium em disco ficou corrompido e o restart sozinho
+    repete o mesmo erro (ver docs/INTEGRACAO.md)."""
+    telefone = _telefone_wpp_web_ou_404(produto_id, telefone_id)
+    if not telefone:
+        return jsonify({'ok': False, 'msg': 'Número não é do provedor WhatsApp Web.'}), 404
+    try:
+        recriar_do_zero_gateway(telefone['api_phone_number_id'], telefone['telefone'])
+    except ErroGatewayWppWeb as e:
+        logger.warning(f"[ADMIN] ⚠️ Falha ao recriar chip {telefone['api_phone_number_id']}: {e}")
+        return jsonify({'ok': False, 'msg': str(e)}), 502
+    logger.info(f"[ADMIN] 🗑️ Chip {telefone['api_phone_number_id']} recriado do zero por {current_user.email}")
+    return jsonify({'ok': True})
+
+
 @admin_bp.route('/produto/<int:produto_id>/numeros-whatsapp/atualizar-qualidade', methods=['POST'])
 @requer_acesso_produto
 def atualizar_qualidade_numeros_whatsapp(produto_id):

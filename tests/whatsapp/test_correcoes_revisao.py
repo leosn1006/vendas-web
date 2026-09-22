@@ -341,3 +341,30 @@ def test_checagem_rapida_esta_agendada_a_cada_2_minutos_na_fila_baixa():
     assert entrada['options'] == {'queue': 'baixa'}
     assert str(entrada['schedule'].minute) == str({m for m in range(0, 60, 2)})
     assert celery_app.celery_app.conf.task_routes['tasks.verificar_status_wpp_web'] == {'queue': 'baixa'}
+
+
+# ─── recriar chip do zero (perfil de Chromium corrompido) ────────────────────
+
+def test_recriar_do_zero_apaga_e_recria(monkeypatch):
+    chamadas = []
+    monkeypatch.setattr(wpp_web_gateway, '_chamar', lambda m, caminho, body=None: chamadas.append((m, caminho, body)) or {})
+    wpp_web_gateway.recriar_do_zero('web-5561982397693', '5561982397693')
+    assert chamadas == [
+        ('DELETE', '/admin/chips/web-5561982397693', None),
+        ('POST', '/admin/chips', {'phone': '5561982397693', 'pairing': 'qr'}),
+    ]
+
+
+def test_recriar_do_zero_funciona_mesmo_se_chip_ja_nao_existia(monkeypatch):
+    """DELETE pode dar 404 (ex.: chip já tinha sido removido); ainda assim recria."""
+    chamadas = []
+
+    def fake(m, caminho, body=None):
+        if m == 'DELETE':
+            raise wpp_web_gateway.ErroGatewayWppWeb('não cadastrado', status=404)
+        chamadas.append((m, caminho, body))
+        return {}
+
+    monkeypatch.setattr(wpp_web_gateway, '_chamar', fake)
+    wpp_web_gateway.recriar_do_zero('web-1', '556100000000')
+    assert chamadas == [('POST', '/admin/chips', {'phone': '556100000000', 'pairing': 'qr'})]
