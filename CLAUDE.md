@@ -31,7 +31,7 @@ WhatsApp tem dois provedores por número: API oficial da Meta e o gateway WhatsA
 - **Ambiente local é DEV isolado** (banco e credenciais próprios), mesmo com `.env` citando domínios reais.
 - **Dev nunca chama a API oficial da Meta** — `AMBIENTE=desenvolvimento` no `.env` local faz `app/config.py` forçar um endereço morto em `WHATSAPP_API_URL` (ausente = `producao`). Dev só envia pelo gateway (`WPP_WEB_API_URL`). Código novo que fale com a Meta deve usar `config.WHATSAPP_API_URL` (nunca URL fixa) ou checar `config.EH_PRODUCAO`.
 - Não alternar `disponivel_web` de produtos como efeito colateral de teste.
-- Novo domínio + webhook WhatsApp: além do nginx, atualizar `app/whatsapp_seguranca.py` e as variáveis de secret nos 4 serviços do `docker-compose.yml` (senão a Meta recebe 401).
+- Novo domínio + webhook WhatsApp: use a skill `novo-dominio` (além do nginx, exige `app/whatsapp_seguranca.py` e as variáveis nos 4 serviços do `docker-compose.yml`, senão a Meta recebe 401).
 - Scripts em `scripts/` rodam fora do Docker em produção (venv próprio).
 - Código, comentários, commits e mensagens ao usuário em **português**.
 
