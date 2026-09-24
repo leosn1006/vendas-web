@@ -86,6 +86,7 @@ services:
       # Gateway WhatsApp Web (api-wpp-web): números com provedor='wpp_web' em telefones_produto
       - GATEWAY_TOKEN_WPP=${GATEWAY_TOKEN_WPP:-}
       - WPP_WEB_WEBHOOK_URL=${WPP_WEB_WEBHOOK_URL:-}
+      - AMBIENTE=${AMBIENTE:-producao}
       - WHATSAPP_API_URL=${WHATSAPP_API_URL:-}
       - WPP_WEB_API_URL=${WPP_WEB_API_URL:-}
       - WHATSAPP_ACCESS_TOKEN_LC=${WHATSAPP_ACCESS_TOKEN_LC:-}
@@ -195,6 +196,7 @@ services:
       - WHATSAPP_ACCESS_TOKEN_RC=${WHATSAPP_ACCESS_TOKEN_RC:-}
       # Gateway WhatsApp Web (api-wpp-web): números com provedor='wpp_web' em telefones_produto
       - GATEWAY_TOKEN_WPP=${GATEWAY_TOKEN_WPP:-}
+      - AMBIENTE=${AMBIENTE:-producao}
       - WHATSAPP_API_URL=${WHATSAPP_API_URL:-}
       - WPP_WEB_API_URL=${WPP_WEB_API_URL:-}
       - WHATSAPP_ACCESS_TOKEN_LC=${WHATSAPP_ACCESS_TOKEN_LC:-}
@@ -288,6 +290,7 @@ services:
       - WHATSAPP_ACCESS_TOKEN_RC=${WHATSAPP_ACCESS_TOKEN_RC:-}
       # Gateway WhatsApp Web (api-wpp-web): números com provedor='wpp_web' em telefones_produto
       - GATEWAY_TOKEN_WPP=${GATEWAY_TOKEN_WPP:-}
+      - AMBIENTE=${AMBIENTE:-producao}
       - WHATSAPP_API_URL=${WHATSAPP_API_URL:-}
       - WPP_WEB_API_URL=${WPP_WEB_API_URL:-}
       - WHATSAPP_ACCESS_TOKEN_LC=${WHATSAPP_ACCESS_TOKEN_LC:-}
@@ -384,6 +387,7 @@ services:
       - WHATSAPP_ACCESS_TOKEN_RC=${WHATSAPP_ACCESS_TOKEN_RC:-}
       # Gateway WhatsApp Web (api-wpp-web): números com provedor='wpp_web' em telefones_produto
       - GATEWAY_TOKEN_WPP=${GATEWAY_TOKEN_WPP:-}
+      - AMBIENTE=${AMBIENTE:-producao}
       - WHATSAPP_API_URL=${WHATSAPP_API_URL:-}
       - WPP_WEB_API_URL=${WPP_WEB_API_URL:-}
       - WHATSAPP_ACCESS_TOKEN_LC=${WHATSAPP_ACCESS_TOKEN_LC:-}

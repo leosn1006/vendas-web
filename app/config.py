@@ -1,9 +1,21 @@
 import os
+import logging
+# Ambiente de execução: 'producao' (padrão quando ausente, pra não afetar o servidor) ou 'desenvolvimento'.
+# Qualquer valor diferente de 'producao' é tratado como dev — na dúvida, bloqueia a Meta.
+AMBIENTE = (os.getenv('AMBIENTE') or 'producao').strip().lower()
+EH_PRODUCAO = AMBIENTE in ('producao', 'produção')
+# Endereço morto: conexão recusada na hora, nenhuma requisição sai da máquina.
+URL_API_META_BLOQUEADA = 'http://127.0.0.1:9/'
 # url do Whatsapp Business API
-# Override por env só para ambientes de teste/dev: apontar para um endereço morto (ex.: http://127.0.0.1:9/) impede que
-# qualquer código deste processo alcance a API oficial da Meta. Vazio/ausente = Graph API, como sempre foi.
+# Fora de produção a API oficial da Meta fica SEMPRE bloqueada, ignorando WHATSAPP_API_URL — dev nunca envia pela Meta
+# (só pelo gateway WPP_WEB_API_URL). Em produção, WHATSAPP_API_URL vazio/ausente = Graph API, como sempre foi.
 # Barra final garantida: os chamadores concatenam f"{WHATSAPP_API_URL}{id}/messages".
-WHATSAPP_API_URL = (os.getenv('WHATSAPP_API_URL') or 'https://graph.facebook.com/v24.0').rstrip('/') + '/'
+if EH_PRODUCAO:
+    WHATSAPP_API_URL = (os.getenv('WHATSAPP_API_URL') or 'https://graph.facebook.com/v24.0').rstrip('/') + '/'
+else:
+    WHATSAPP_API_URL = URL_API_META_BLOQUEADA
+    logging.getLogger(__name__).warning(
+        f"[AMBIENTE] AMBIENTE={AMBIENTE!r}: API oficial da Meta BLOQUEADA (WHATSAPP_API_URL={WHATSAPP_API_URL})")
 # Gateway WhatsApp Web (api-wpp-web): imita a Cloud API; usado por números com provedor='wpp_web'
 # em telefones_produto. Vazio = nenhum número wpp_web pode enviar (falha explícita).
 WPP_WEB_API_URL = os.getenv('WPP_WEB_API_URL', '')

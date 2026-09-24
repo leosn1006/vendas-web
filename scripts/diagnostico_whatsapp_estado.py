@@ -24,6 +24,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Dev nunca chama a API oficial da Meta (ver AMBIENTE em app/config.py)
+if (os.getenv("AMBIENTE") or "producao").strip().lower() not in ("producao", "produção"):
+    sys.exit("AMBIENTE != producao: diagnóstico bloqueado — este script chama a API oficial da Meta.")
+
 API_VERSION = "v24.0"
 BASE_URL = f"https://graph.facebook.com/{API_VERSION}"
 
