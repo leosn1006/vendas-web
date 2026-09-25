@@ -212,25 +212,6 @@ MEDIA_BASE_URL=https://apiwppweb.site
 - `marcar_como_lida` não tinha timeout.
 - Não foi necessário coluna `api_base_url`: um único gateway, configurado por `WPP_WEB_API_URL`.
 
-## 15. Pareamento travado: sessão do Chromium corrompida (achado em produção, 22/09/2026)
-
-Um segundo chip do produto 11, em produção, ficou preso em `INIT_FAILED` com o erro
-`Cannot read properties of null (reading 'Socket')` (lido dentro da página pelo `whatsapp-web.js`, em
-`window.require('WAWebSocketModel').Socket` — código do próprio WhatsApp Web, não do gateway). **Nem restart do
-container, nem "Reiniciar pareamento" (que só reinicia o processo), nem trocar o IP de saída por um proxy
-resolveram** — todos repetiam o mesmo erro, porque nenhum deles apaga a pasta de sessão do chip
-(`/data/sessions/session-<id>`). Ela ficou com um perfil de Chromium corrompido desde a primeira tentativa
-falha, e cada tentativa nova reaproveitava a mesma pasta.
-
-**Diagnóstico que isolou a causa:** o mesmo `Client` do `whatsapp-web.js`, no mesmo servidor, com `NoAuth`
-(sessão descartável, sem gravar nada em disco) gerou o QR de primeira. A única diferença para o gateway de
-verdade é o `LocalAuth` (sessão persistente em disco) — confirmando que a pasta em si era o problema, não rede,
-não IP, não versão do Chromium/Puppeteer (checados e descartados nessa ordem antes de chegar aqui).
-
-**Conserto:** `DELETE /admin/chips/:id` (apaga a sessão inteira) seguido de `POST /admin/chips` (recria vazio).
-Isso agora é um botão só, **"Recriar do zero"**, na tela de pareamento do admin (`wpp_web_gateway.recriar_do_zero`),
-ao lado de "Reiniciar pareamento". Use-o quando o restart simples não resolver um chip travado.
-
 ## 13. Como validar (resumo do que foi feito com chip real, em dev)
 
 Entrada de texto, áudio e imagem; saída de texto, áudio, imagem e PDF (até 25 MB); `boas_vindas`, `pedido` e
@@ -257,6 +238,25 @@ vendas-web: `app/wpp_web_gateway.py` (cliente do admin do gateway) · `app/whats
 `_timeout_envio`) · `app/database.py` (`get_provedor_numero`, `get_whatsapp_api_url`, `selecionar_telefone_produto`) ·
 `app/tasks.py` (`verificar_status_wpp_web`, dedupe) · `app/fluxos/_executor_acao.py` · `app/admin/views.py` (seção
 "Números WhatsApp") · `migrations/076_telefones_produto_provedor.sql` · `tests/whatsapp/`.
+
+## 15. Pareamento travado: sessão do Chromium corrompida (achado em produção, 22/09/2026)
+
+Um segundo chip do produto 11, em produção, ficou preso em `INIT_FAILED` com o erro
+`Cannot read properties of null (reading 'Socket')` (lido dentro da página pelo `whatsapp-web.js`, em
+`window.require('WAWebSocketModel').Socket` — código do próprio WhatsApp Web, não do gateway). **Nem restart do
+container, nem "Reiniciar pareamento" (que só reinicia o processo), nem trocar o IP de saída por um proxy
+resolveram** — todos repetiam o mesmo erro, porque nenhum deles apaga a pasta de sessão do chip
+(`/data/sessions/session-<id>`). Ela ficou com um perfil de Chromium corrompido desde a primeira tentativa
+falha, e cada tentativa nova reaproveitava a mesma pasta.
+
+**Diagnóstico que isolou a causa:** o mesmo `Client` do `whatsapp-web.js`, no mesmo servidor, com `NoAuth`
+(sessão descartável, sem gravar nada em disco) gerou o QR de primeira. A única diferença para o gateway de
+verdade é o `LocalAuth` (sessão persistente em disco) — confirmando que a pasta em si era o problema, não rede,
+não IP, não versão do Chromium/Puppeteer (checados e descartados nessa ordem antes de chegar aqui).
+
+**Conserto:** `DELETE /admin/chips/:id` (apaga a sessão inteira) seguido de `POST /admin/chips` (recria vazio).
+Isso agora é um botão só, **"Recriar do zero"**, na tela de pareamento do admin (`wpp_web_gateway.recriar_do_zero`),
+ao lado de "Reiniciar pareamento". Use-o quando o restart simples não resolver um chip travado.
 
 ## 16. LOGOUT forçado ao chegar contato novo (achado 21-23/09/2026, mitigado 24/09/2026)
 
