@@ -1,6 +1,6 @@
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from database import (
     listar_acoes_fluxo, salvar_mensagem_pedido,
     atualizar_pedido_com_comprovante, atualizar_pedido_com_pagamento,
@@ -41,12 +41,35 @@ def _to_float(valor, default=0.0):
         return default
 
 
-def _resolver_data_pagamento(data_pagamento_raw, data_contato_site):
+# Relógio do servidor vs. horário do comprovante: aceita uma pequena adiantada sem tratar como "futuro".
+_TOLERANCIA_RELOGIO = timedelta(minutes=10)
+
+
+def _trocar_dia_e_mes(dt: datetime):
+    """2026-11-05 -> 2026-05-11. None se não dá (dia > 12 não pode virar mês)."""
+    if dt.day > 12:
+        return None
+    try:
+        return dt.replace(month=dt.day, day=dt.month)
+    except ValueError:
+        return None
+
+
+def _resolver_data_pagamento(data_pagamento_raw, data_contato_site, agora=None):
     """
-    Garante que data_pagamento seja posterior a data_contato_site (exigência do Google Ads).
-    Fallback para datetime.now() se a data extraída for inválida ou anterior ao contato.
+    Devolve a data de pagamento a gravar, garantindo que ela seja posterior a data_contato_site (exigência do
+    Google Ads) E que não esteja no futuro.
+
+    A IA lê comprovantes brasileiros (dd/mm) e devolve AAAA-MM-DD; quando o dia é <= 12 ela às vezes inverte
+    dia e mês (11/05 vira 2026-11-05). Antes só se conferia "posterior ao contato", então essa data futura
+    passava (51 pedidos em produção, ex.: contato 11/05 às 02:03, "pago" em 05/11 às 02:10). Agora, data no
+    futuro tenta a troca de dia e mês; se a trocada for plausível (depois do contato e não futura), usa ela;
+    senão usa o momento atual (ex.: PIX agendado, ou dia > 12 que não é troca).
+
+    Fallback para o momento atual também se a data extraída for inválida ou anterior ao contato.
+    `agora` é opcional só para os testes.
     """
-    agora = datetime.now()
+    agora = agora or datetime.now()
 
     if not data_pagamento_raw:
         return agora
@@ -66,18 +89,30 @@ def _resolver_data_pagamento(data_pagamento_raw, data_contato_site):
     except Exception:
         return agora
 
+    dc = None
     try:
         if isinstance(data_contato_site, datetime):
             dc = data_contato_site
         elif data_contato_site:
             dc = datetime.fromisoformat(str(data_contato_site))
-        else:
-            return dp  # sem referência, usa o que a IA extraiu
     except Exception:
+        dc = None  # sem referência confiável: só o limite superior vale
+
+    limite = agora + _TOLERANCIA_RELOGIO
+
+    def plausivel(d):
+        return d <= limite and (dc is None or d > dc)
+
+    if plausivel(dp):
         return dp
 
-    if dp > dc:
-        return dp
+    if dp > limite:
+        trocada = _trocar_dia_e_mes(dp)
+        if trocada and plausivel(trocada):
+            logger.info(f"[{_TAG}] ⚠️ data_pagamento no futuro ({dp}) — dia e mês invertidos pela IA, usando {trocada}")
+            return trocada
+        logger.info(f"[{_TAG}] ⚠️ data_pagamento no futuro ({dp}) e sem troca plausível — usando datetime.now()")
+        return agora
 
     logger.info(f"[{_TAG}] ⚠️ data_pagamento ({dp}) <= data_contato_site ({dc}) — usando datetime.now()")
     return agora
