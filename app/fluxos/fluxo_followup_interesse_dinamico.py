@@ -5,6 +5,7 @@ from database import (
     listar_acoes_fluxo, marcar_followup_interesse_1, marcar_followup_interesse_2,
 )
 from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, selecionar_variantes
+from whatsapp import ChipForaDoArWhatsApp
 
 logger = logging.getLogger(__name__)
 
@@ -36,13 +37,30 @@ def _executar_rodada(pedidos, nome_fluxo, marcar_fn):
 
             # message_id_original=None: não há mensagem recebida neste fluxo.
             # Não configure ações marcar_lida/digitando no admin para estes fluxos.
+            enviadas = 0
             for acao in acoes:
                 logger.debug(f"[{_TAG}] ▶ #{acao['ordem']} [{acao['acao']}]")
-                executar_acao(acao, pedido, message_id_original=None, pedido_id=pedido_id, tag=_TAG)
+                try:
+                    executar_acao(acao, pedido, message_id_original=None, pedido_id=pedido_id, tag=_TAG)
+                except ChipForaDoArWhatsApp:
+                    if enviadas == 0:
+                        raise  # nada saiu: adia o pedido (tratado abaixo), segue elegível
+                    # Repetir depois reenviaria as ações que já saíram (spam, risco de ban): dá como concluído.
+                    logger.error(
+                        f"[{_TAG}] ⚠️ Chip caiu após {enviadas}/{len(acoes)} ação(ões) do {nome_fluxo} do pedido "
+                        f"#{pedido_id}; as restantes foram descartadas para não duplicar o que já foi enviado."
+                    )
+                    break
+                enviadas += 1
 
             marcar_fn(pedido_id)
             logger.debug(f"[{_TAG}] ✅ {nome_fluxo} concluído para pedido #{pedido_id}.")
 
+        except ChipForaDoArWhatsApp as e:
+            # Situação esperada (chip caído): aviso curto, sem traceback. O pedido sai da fila sozinho
+            # quando passa da janela de 24h (JANELA_FOLLOWUP_HORAS nas buscas).
+            logger.warning(f"[{_TAG}] ⏸️ {e}")
+            continue
         except Exception as e:
             logger.error(f"[{_TAG}] ❌ Erro no pedido #{pedido['id']}: {e}", exc_info=True)
             continue

@@ -777,16 +777,24 @@ def atualizar_pedido_com_data_envio_pedido(pedido_id):
     db.execute_query(query, (pedido_id,))
     return pedido_id
 
+# O WhatsApp só permite mensagem livre até 24h depois da última mensagem do cliente (fora disso a Meta
+# recusa e, no gateway, a mensagem sai e arrisca ban). Os followups usam uma data do lado do cliente
+# como aproximação (nunca posterior à última mensagem dele) com folga de 2h. No fluxo normal eles saem
+# bem antes disso; o limite só pega pedido que ficou parado, ex.: atrás de um chip fora do ar por dias.
+JANELA_FOLLOWUP_HORAS = 22
+
+
 def buscar_pedidos_followup( horas_sem_atualizacao: int) -> list:
     query = """
         SELECT *
         FROM pedidos
         WHERE estado_id = 3 -- estado 'produto enviado, aguardando pagamento'
         AND data_envio_pedido < NOW() - INTERVAL %s HOUR
+        AND data_envio_pedido >= NOW() - INTERVAL %s HOUR -- enviado logo após o "sim" do cliente
         AND contact_to IS NOT NULL
         AND interesse_produto = 1
     """
-    return db.execute_query(query, (horas_sem_atualizacao,), fetch_all=True)
+    return db.execute_query(query, (horas_sem_atualizacao, JANELA_FOLLOWUP_HORAS), fetch_all=True)
 
 def buscar_pedidos_followup_pagamento_web(minutos_sem_atualizacao: int = 60) -> list:
     query = """
@@ -813,9 +821,10 @@ def buscar_pedidos_followup_interesse_1() -> list:
         WHERE estado_id = 2
           AND data_followup_interesse_1 IS NULL
           AND data_ultima_atualizacao <= NOW() - INTERVAL 15 MINUTE
+          AND data_pedido >= NOW() - INTERVAL %s HOUR -- 1ª mensagem do cliente (ver JANELA_FOLLOWUP_HORAS)
           AND contact_to IS NOT NULL
     """
-    return db.execute_query(query, fetch_all=True)
+    return db.execute_query(query, (JANELA_FOLLOWUP_HORAS,), fetch_all=True)
 
 def buscar_pedidos_followup_interesse_2() -> list:
     query = """
@@ -825,9 +834,10 @@ def buscar_pedidos_followup_interesse_2() -> list:
           AND data_followup_interesse_1 IS NOT NULL
           AND data_followup_interesse_2 IS NULL
           AND data_followup_interesse_1 <= NOW() - INTERVAL 90 MINUTE
+          AND data_pedido >= NOW() - INTERVAL %s HOUR -- 1ª mensagem do cliente (ver JANELA_FOLLOWUP_HORAS)
           AND contact_to IS NOT NULL
     """
-    return db.execute_query(query, fetch_all=True)
+    return db.execute_query(query, (JANELA_FOLLOWUP_HORAS,), fetch_all=True)
 
 def marcar_followup_interesse_1(pedido_id):
     query = "UPDATE pedidos SET data_followup_interesse_1 = NOW() WHERE id = %s"

@@ -10,6 +10,7 @@ import database
 import whatsapp
 import wpp_web_gateway
 from fluxos import fluxo_followup_dinamico as followup
+from fluxos import fluxo_followup_interesse_dinamico as followup_int
 from whatsapp import ChipForaDoArWhatsApp
 
 
@@ -252,6 +253,63 @@ def test_followup_nao_sobrescreve_pagamento_feito_durante_as_acoes(monkeypatch, 
     assert enviadas == [1, 2]    # a ação 3 (mais cobrança) não sai para quem já pagou
     assert banco['estado_id'] == 0
     assert ('estado', 4) not in followup_env
+
+
+# ─── followup de interesse: chip cai ─────────────────────────────────────────
+
+@pytest.fixture
+def followup_int_env(monkeypatch):
+    pedido = {'id': 7, 'produto_id': 1, 'phone_number_id': 'web-1'}
+    acoes = [{'ordem': i, 'acao': 'enviar_mensagem', 'condicao': 'sempre'} for i in (1, 2, 3)]
+    marcados = []
+    monkeypatch.setattr(followup_int, 'listar_acoes_fluxo', lambda *a, **k: acoes)
+    monkeypatch.setattr(followup_int, 'filtrar_e_ordenar', lambda a, c: a)
+    monkeypatch.setattr(followup_int, 'selecionar_variantes', lambda a: a)
+    rodar = lambda: followup_int._executar_rodada([pedido], 'followup_interesse_1', marcados.append)
+    return rodar, marcados
+
+
+def test_followup_interesse_chip_fora_antes_de_enviar_adia_sem_traceback(monkeypatch, followup_int_env, caplog):
+    rodar, marcados = followup_int_env
+    monkeypatch.setattr(followup_int, 'executar_acao',
+                        lambda *a, **k: (_ for _ in ()).throw(ChipForaDoArWhatsApp('fora')))
+    rodar()
+    assert marcados == []   # segue elegível (até sair da janela de 24h)
+    assert not [r for r in caplog.records if r.exc_info]  # situação esperada: sem traceback no log
+
+
+def test_followup_interesse_chip_cai_no_meio_conclui_para_nao_duplicar(monkeypatch, followup_int_env):
+    """Antes: exceção genérica → continue sem marcar → a ação 1 saía de novo na rodada seguinte."""
+    rodar, marcados = followup_int_env
+    enviadas = []
+
+    def executa(acao, *a, **k):
+        if acao['ordem'] == 2:
+            raise ChipForaDoArWhatsApp('caiu')
+        enviadas.append(acao['ordem'])
+
+    monkeypatch.setattr(followup_int, 'executar_acao', executa)
+    rodar()
+    assert enviadas == [1]
+    assert marcados == [7]
+
+
+# ─── followups: janela de 24h do WhatsApp ────────────────────────────────────
+
+@pytest.mark.parametrize('busca, coluna', [
+    (lambda: database.buscar_pedidos_followup(2), 'data_envio_pedido >='),
+    (database.buscar_pedidos_followup_interesse_1, 'data_pedido >='),
+    (database.buscar_pedidos_followup_interesse_2, 'data_pedido >='),
+])
+def test_buscas_de_followup_nao_pegam_pedido_fora_da_janela(monkeypatch, busca, coluna):
+    """Pedidos presos atrás de chip fora do ar (21 a 25/09) seriam cobrados dias depois quando o chip voltasse."""
+    chamadas = []
+    monkeypatch.setattr(database.db, 'execute_query', lambda q, p=None, **k: chamadas.append((q, p)) or [])
+    busca()
+    query, params = chamadas[0]
+    assert coluna in query
+    assert database.JANELA_FOLLOWUP_HORAS in params
+    assert database.JANELA_FOLLOWUP_HORAS < 24
 
 
 # ─── recursos que só existem na Meta ─────────────────────────────────────────
