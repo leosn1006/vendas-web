@@ -4,7 +4,7 @@ from datetime import datetime
 from database import (
     listar_acoes_fluxo, salvar_mensagem_pedido,
     atualizar_pedido_com_comprovante, atualizar_pedido_com_pagamento,
-    get_produto_by_id,
+    atualizar_estado_pedido, get_produto_by_id,
 )
 from whatsapp_upload import receber_comprovante
 from whatsapp import criar_notificacao_admin
@@ -14,6 +14,24 @@ from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, selecionar_v
 logger = logging.getLogger(__name__)
 
 _TAG = "FLUXO-COMPROVANTE-DIN"
+
+
+_ESTADO_COMPROVANTE_EM_ANALISE = 13
+
+
+def _devolver_estado_anterior(pedido: dict):
+    """O orquestrador trava o pedido no estado 13 ("Comprovante em análise") ANTES de enfileirar este fluxo.
+    Quando o fluxo sai sem concluir (comprovante repetido de um pedido que já estava pago), o pedido precisa
+    voltar ao estado em que estava: sem isso ele fica em 13 para sempre — pago, mas fora da contagem de
+    estado 0 e da exportação de conversões ao Google Ads (que só pega estados 0 e 1000).
+
+    `pedido` é o dict que o orquestrador leu ANTES de travar, então `estado_id` é o estado anterior. Um pedido
+    nunca é travado a partir do 13; se por algum motivo vier vazio ou 13, usa 0 (pago no fluxo do WhatsApp)."""
+    estado_anterior = pedido.get('estado_id')
+    if estado_anterior in (None, _ESTADO_COMPROVANTE_EM_ANALISE):
+        estado_anterior = 0
+    atualizar_estado_pedido(pedido['id'], estado_anterior)
+    logger.info(f"[{_TAG}] 🔓 Pedido #{pedido['id']} devolvido ao estado {estado_anterior} (fluxo encerrado sem novo pagamento)")
 
 
 def _to_float(valor, default=0.0):
@@ -87,6 +105,7 @@ def executar(pedido, mensagem_whatsapp):
             filename = dados_msg['document'].get('filename') or 'documento_comprovante'
         else:
             logger.warning(f"[{_TAG}] ⚠️ pedido #{pedido_id} — tipo de mídia não suportado: {tipo}")
+            _devolver_estado_anterior(pedido)
             return
 
         path_comprovante = receber_comprovante(tipo, url, mime, filename, pedido_id, phone_number_id=pedido.get('phone_number_id'))
@@ -110,6 +129,7 @@ def executar(pedido, mensagem_whatsapp):
             # Pedido já confirmado: comprovante salvo acima para auditoria, mas não
             # reexecutamos o fluxo para evitar reenviar arquivo e mensagens de confirmação.
             logger.info(f"[{_TAG}] ⚠️ pedido #{pedido_id} — já possui pagamento registrado, encerrando")
+            _devolver_estado_anterior(pedido)
             return
         else:
             logger.debug(f"[{_TAG}] 🤖 Validando comprovante com IA...")
