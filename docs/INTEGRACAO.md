@@ -257,3 +257,145 @@ vendas-web: `app/wpp_web_gateway.py` (cliente do admin do gateway) · `app/whats
 `_timeout_envio`) · `app/database.py` (`get_provedor_numero`, `get_whatsapp_api_url`, `selecionar_telefone_produto`) ·
 `app/tasks.py` (`verificar_status_wpp_web`, dedupe) · `app/fluxos/_executor_acao.py` · `app/admin/views.py` (seção
 "Números WhatsApp") · `migrations/076_telefones_produto_provedor.sql` · `tests/whatsapp/`.
+
+## 16. LOGOUT forçado ao chegar contato novo (achado 21-23/09/2026, mitigado 24/09/2026)
+
+**Status: mitigado — acompanhando calibração.** A hipótese original desta seção (colisão do handshake de contato
+novo com uma resincronização do socket) não foi a causa que se confirmou — ver "Atualização (24/09/2026)" no fim da
+seção, que tem a causa real, a correção já implantada e o fechamento do caso. O texto original abaixo fica como
+registro do raciocínio da investigação (inclusive o que descartamos), não como o estado atual.
+
+### O que aconteceu
+
+Dois números caíram com `LOGOUT` forçado pelo WhatsApp (não foi queda de rede/proxy nosso — ver seção seguinte):
+- `web-5561982402450`: dois LOGOUTs no mesmo dia (21/09, 11:38 e 19:11) e foi **banido pela Meta** logo depois.
+- `web-5561982397693`: um LOGOUT em 22/09 às 10:40. Número não bloqueado; ficou intencionalmente sem reparear até essa
+  investigação.
+
+### Causa provável (achada no código, ainda não confirmada como causa do LOGOUT em si)
+
+Em `node_modules/whatsapp-web.js/src/Client.js` (versão 1.34.7, fixada no gateway), o handler que reage à sincronização
+do app (`onAppStateHasSyncedEvent`, ligado a `WAWebSocketModel.Socket.on('change:hasSynced', ...)`) reemite
+`AUTHENTICATED`/`READY` **toda vez** que essa propriedade interna do WhatsApp Web oscila — não só no login — e não tem
+nenhuma proteção contra reemissão. Isso produz, no log do gateway, `sessão autenticada`/`conectado como` em dobro (às
+vezes triplo ou mais) sem que exista de fato uma segunda sessão concorrente.
+
+**Evidência que liga isso ao LOGOUT:** nos 3 incidentes conhecidos (os dois LOGOUTs de `.402450` e o de `.397693`), os
+três tiveram a reemissão em dobro nos 7-33 s **antes** do LOGOUT, e os três tiveram, nesse mesmo intervalo, a chegada
+da primeira mensagem de um contato `@lid` **nunca visto antes** por aquele chip (sequência `e2e_notification` →
+`notification_template` → "aguardando descriptografia" → `chat`).
+
+**Mas contato novo sozinho não basta**: em ~48h de logs de produção, tivemos 14 e 42 eventos de contato novo nos dois
+chips — só 1 e 2, respectivamente, viraram LOGOUT (~5-7%). Ou seja, contato novo parece ser **condição necessária, mas
+não suficiente**. A hipótese de trabalho é que o LOGOUT só acontece quando esse handshake de contato novo **coincide**
+com uma resincronização do socket que já ia acontecer de qualquer forma (o WhatsApp Web faz isso sozinho, de tempos em
+tempos, normalmente sem problema nenhum — confirmamos reemissões duplas/triplas/até 5x que **não** viraram LOGOUT,
+sempre quando não havia contato novo por perto no mesmo instante).
+
+**Não confirmado ainda**: se essa colisão é o gatilho de verdade, ou se ela é só uma coincidência de tempo e o
+verdadeiro gatilho é outra coisa que também tende a acontecer perto de contato novo. Não sabemos, também, se a
+resincronização em si é normal do WhatsApp Web ou sintoma de alguma instabilidade nossa (proxy, rede) nesses momentos
+específicos.
+
+### O que já foi testado e descartado
+
+- **Não é container duplicado nem restart/start nosso**: confirmado nos 3 incidentes (só um container rodando, sem
+  restart/health-check nosso nos minutos antes).
+- **Não é volume/velocidade de envio**: um dos LOGOUTs (19:11 de 21/09) aconteceu sem nenhum envio nosso no meio — só
+  recebendo a mensagem do contato novo.
+- **Apagar o `pedido` no vendas-web não recria o handshake `e2e_notification`** (testado em sandbox local): resetar o
+  "novo cliente" do lado do vendas-web não mexe na sessão de criptografia já estabelecida entre as duas contas do
+  WhatsApp. Ou seja, não dá pra "reciclar" um número de teste já usado só apagando o pedido — precisa de uma
+  identidade WhatsApp genuinamente nova (número novo, ou reinstalação completa do app do outro lado).
+- **Teste em sandbox local não reproduziu o LOGOUT**: gateway + vendas-web rodando localmente (branch atual,
+  `docker network connect` com alias `lsnlivros.com.br`, `WHATSAPP_API_URL` apontando pro vazio pra não vazar pra
+  Meta), chip de teste descartável, 4 contatos novos únicos + 1 rajada simultânea + reaproveitamento (que não conta,
+  ver item acima) — 0 reproduções. Não é surpresa dado o ~5-7% de taxa observada em produção; a amostra local foi
+  pequena demais pra concluir algo.
+
+### Instrumentação ativa (só log, sem mudar comportamento)
+
+Adicionamos uma linha `console.log('[hasSynced] <timestamp ISO/UTC> chip=<id>')` bem no início do handler
+`onAppStateHasSyncedEvent` do `Client.js`, direto no container rodando (via `docker exec` + `node --check` +
+`docker compose restart gateway`). **De propósito não entrou no git nem em `patches/`** do gateway — o
+`scripts/apply-patches.sh` aplica tudo que estiver lá em qualquer build, dev ou produção, e essa linha é só um
+instrumento temporário de investigação. Ela vive só na camada gravável do container atual: um rebuild da imagem a
+apaga silenciosamente, sem precisar lembrar de remover nada.
+
+Ativa em produção desde 23/09/2026 ~01:28 (chip `web-5521984072653`, o número de teste do sandbox, reaproveitado
+como novo número de produção) e ~01:32 (chip `web-5561982397693`, reconectado depois do LOGOUT do dia 22/09).
+**Atenção ao fuso**: o `[hasSynced]` usa `toISOString()` (UTC); o resto do log do gateway usa hora local
+(America/Sao_Paulo, UTC-3) — subtrair 3h do `[hasSynced]` pra comparar.
+
+**Regra combinada enquanto isso roda**: se um chip cair com LOGOUT durante essa janela de observação, **não reparear
+manualmente** — preservar o estado e os logs pra análise antes de qualquer ação. Reparear repetido no mesmo dia foi
+provavelmente parte do que levou ao banimento do `.402450`.
+
+### Por que ainda não subimos uma correção de comportamento
+
+Sabemos **onde** o sintoma (reemissão dupla) acontece no código com bastante confiança. Não sabemos se **corrigir**
+esse ponto (ex.: ignorar reemissões depois da primeira) evitaria o LOGOUT — a reemissão no Node é uma reação a uma
+resincronização real que já está acontecendo dentro da página do WhatsApp Web (fora do nosso controle); suprimir só o
+`emit()` do lado do Node não necessariamente impede o servidor da Meta de perceber o mesmo estado e agir do mesmo
+jeito. Sem nenhuma reprodução controlada (nem local nem em produção até agora) pra comparar antes/depois, subir uma
+mudança de comportamento seria arriscar quebrar algo que hoje funciona na maioria das vezes, sem garantia de resolver
+o problema de verdade.
+
+Relacionado (não confirmado como a mesma causa, mas mesma área do código, upstream): PRs abertos e sem revisão no
+repositório `wwebjs/whatsapp-web.js` — [#201925](https://github.com/wwebjs/whatsapp-web.js/pull/201925) (bug conhecido
+no tratamento de `@lid` em `MsgKey`) e [#201893](https://github.com/wwebjs/whatsapp-web.js/pull/201893) (condição de
+corrida durante autenticação/navegação). Nenhum dos dois descreve o sintoma exato (`sessão autenticada` em dobro →
+LOGOUT), mas confirmam que essa área da lib tem bugs de concorrência conhecidos e não corrigidos na versão 1.34.7
+(último release: abril/2026).
+
+### Próximo passo (histórico — superado pela atualização abaixo)
+
+Revisar os logs acumulados de produção no fim do dia 23/09/2026 (`docker compose logs gateway | grep -Ei
+"hasSynced|e2e_notification|desconectado: LOGOUT"`, convertendo fuso) com bem mais volume de contato novo real (tráfego
+de campanha das 6h-22h) do que deu pra reunir no sandbox. Decidir a partir daí: (a) se o padrão de colisão se confirma
+com mais casos, desenhar uma correção com dado real pra comparar antes/depois; (b) se não, procurar outro fator comum
+entre os poucos LOGOUTs que já aconteceram.
+
+### Atualização (24/09/2026): a causa real era memória, não a colisão com contato novo — corrigido e implantado
+
+Revisando o dia inteiro de 23/09 (dois chips em paralelo, tráfego real de campanha), a hipótese da colisão não se
+sustentou: o `web-5561982397693` recebeu **56 contatos novos** no dia (contra 12 do outro chip) e teve **zero
+LOGOUT** — se fosse sobre contato novo colidir com resincronização, esse chip deveria ter caído mais, não menos.
+
+**Causa real, com evidência direta**: o produto "Fatia" manda sempre os mesmos 3 documentos (até 57 MB) pra cada
+cliente novo, em poucos segundos. Isso faz a memória do Chromium do chip **dobrar e não voltar ao normal**
+(medido: 747→1508 MB, preso lá por 9 minutos) até a página do WhatsApp Web quebrar — e é essa quebra (não a colisão
+com contato novo) que gera a reemissão dupla/múltipla de `AUTHENTICATED`/`READY` que a seção original descreveu, e
+o LOGOUT em seguida.
+
+**Linha do tempo completa do `web-5521984072653` em 23/09** (achada revisando o dia inteiro, não só o momento da
+queda): o chip ficou saudável por **11h08** depois de conectar às 01:28. A partir do meio-dia entrou num padrão de
+piora progressiva — 3 ciclos de "health check trava → reinicia" com o tempo de recuperação encolhendo a cada vez
+(2h48 → 10 min → 15 min) — até a rajada de PDF das 15:51-15:53 e o colapso às 16:00:52. Ou seja, o chip já vinha
+degradando havia horas antes do evento fatal; não foi um evento isolado do nada.
+
+**Confirmado banido pela Meta** (visto no aparelho físico em 24/09/2026) — o gateway não tem como distinguir um
+banimento de um logout comum (os dois aparecem como `LOGOUT`, sem mais nenhuma atividade depois), então essa
+confirmação só veio de conferir o celular.
+
+**Correção implantada** (commit `9517536`, produção desde 24/09/2026 ~08h): cache de mídia de saída (por nome do
+arquivo, não pelo link — sobrevive a link de rastreio de campanha mudando), espaçamento mínimo anti-spam entre
+mensagens, e o principal — a fila de um chip pausa quando a memória dele passa de um teto (1300 MB) e escala pra
+reiniciar o chip sozinho se piorar ainda mais (1600 MB) ou 1x por dia de madrugada (restart preventivo), tudo só com
+o chip ocioso. Passou por 6 rodadas de code review antes de ir pro ar (achou e corrigiu, entre outras coisas, uma
+falha em que o próprio restart proativo por memória nunca conseguia disparar no cenário em que mais fazia falta).
+Detalhe de implementação em `~/Desenv/JS/api-wpp-web/README.md`, seção "Comportamento de envio (proteção contra ban)".
+
+**Métricas do dia 23/09 inteiro** (2 chips em paralelo, tráfego real): pico de 1508 MB no chip que caiu, container
+inteiro chegou a 3570 MB de pico — num servidor de ~3,9 GB de RAM, 2 núcleos, sem swap (adicionamos 2 GB de swap
+como rede de segurança extra no deploy). Estimativa de capacidade: **~4 chips em 8 GB**, ~9 em 16 GB — ainda uma
+extrapolação linear, vale recalibrar depois de rodar com mais chips de verdade.
+
+**Pendências**:
+- Calibrar os tetos de memória (1300/1600 MB) com mais dias de dado real (`./wpp metrics` em produção) — são
+  estimativas iniciais, baseadas só neste incidente.
+- Remover `web-5561982402450` e `web-5521984072653` do cadastro (botão "Remover" no admin — ver seção 8): não
+  reconhecem mais o número, e a checagem de status a cada 2 min (`tasks.verificar_status_wpp_web`) continua
+  consultando o gateway por eles indefinidamente enquanto a linha existir.
+- O log de diagnóstico `[hasSynced]` mencionado acima era temporário (vivia só na camada gravável do container) e
+  se perdeu no rebuild do deploy — não é mais necessário, já que a correção real não dependia dele.
