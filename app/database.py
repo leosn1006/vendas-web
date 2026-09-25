@@ -401,6 +401,18 @@ def atualizar_estado_pedido(pedido_id, novo_estado_id):
     return pedido_id
 
 
+def atualizar_estado_pedido_se(pedido_id, estado_esperado, novo_estado_id) -> bool:
+    """Muda o estado só se o pedido ainda estiver em estado_esperado (UPDATE atômico).
+    Evita sobrescrever uma mudança feita por outro fluxo no meio do caminho (ex.: pagamento).
+    Retorna True se mudou."""
+    with db.get_cursor() as cursor:
+        cursor.execute(
+            "UPDATE pedidos SET estado_id = %s WHERE id = %s AND estado_id = %s",
+            (novo_estado_id, pedido_id, estado_esperado),
+        )
+        return cursor.rowcount > 0
+
+
 def tentar_travar_fluxo(pedido_id, estado_atual, estado_travado):
     """Atomicamente move pedido de estado_atual → estado_travado.
     Retorna True se adquiriu o lock, False se já estava travado (0 rows afetadas)."""

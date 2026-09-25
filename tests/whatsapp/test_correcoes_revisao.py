@@ -173,7 +173,13 @@ def test_id_do_chip_vai_escapado_no_path(monkeypatch):
 # ─── followup: chip cai no meio da sequência ─────────────────────────────────
 
 @pytest.fixture
-def followup_env(monkeypatch):
+def banco():
+    """Estado "real" do pedido no banco, que outro fluxo (comprovante) pode mudar durante o lote."""
+    return {'estado_id': 3}
+
+
+@pytest.fixture
+def followup_env(monkeypatch, banco):
     pedido = {'id': 9, 'produto_id': 1, 'interesse_produto': 1, 'phone_number_id': 'web-1'}
     acoes = [{'ordem': i, 'acao': 'enviar_mensagem', 'condicao': 'sempre'} for i in (1, 2, 3)]
     avancos = []
@@ -181,7 +187,16 @@ def followup_env(monkeypatch):
     monkeypatch.setattr(followup, 'listar_acoes_fluxo', lambda *a, **k: acoes)
     monkeypatch.setattr(followup, 'filtrar_e_ordenar', lambda a, c: a)
     monkeypatch.setattr(followup, 'selecionar_variantes', lambda a: a)
-    monkeypatch.setattr(followup, 'atualizar_estado_pedido', lambda pid, est: avancos.append(('estado', est)))
+    monkeypatch.setattr(followup, 'get_pedido', lambda pid: {**pedido, 'estado_id': banco['estado_id']})
+
+    def muda_se(pid, esperado, novo):
+        if banco['estado_id'] != esperado:
+            return False
+        banco['estado_id'] = novo
+        avancos.append(('estado', novo))
+        return True
+
+    monkeypatch.setattr(followup, 'atualizar_estado_pedido_se', muda_se)
     monkeypatch.setattr(followup, 'atualizar_pedido_com_data_followup', lambda pid: avancos.append(('data', pid)))
     return avancos
 
@@ -208,6 +223,35 @@ def test_followup_chip_cai_no_meio_conclui_para_nao_duplicar(monkeypatch, follow
     followup.executar()
     assert enviadas == [1]
     assert ('estado', 4) in followup_env  # dado como concluído: não reenvia a ação 1
+
+
+# ─── followup: cliente paga enquanto o lote roda ─────────────────────────────
+
+def test_followup_pula_pedido_que_pagou_antes_da_sua_vez(monkeypatch, followup_env, banco):
+    """Lista lida no início do lote; o comprovante chegou enquanto outros pedidos eram processados."""
+    enviadas = []
+    banco['estado_id'] = 0
+    monkeypatch.setattr(followup, 'executar_acao', lambda acao, *a, **k: enviadas.append(acao['ordem']))
+    followup.executar()
+    assert enviadas == []        # não cobra quem já pagou
+    assert followup_env == []    # e não mexe no estado
+    assert banco['estado_id'] == 0
+
+
+def test_followup_nao_sobrescreve_pagamento_feito_durante_as_acoes(monkeypatch, followup_env, banco):
+    """Produção (16 a 24/09): 42 pagos presos no 4, com o 4 gravado 0 a 3 min depois do comprovante."""
+    enviadas = []
+
+    def executa(acao, *a, **k):
+        enviadas.append(acao['ordem'])
+        if acao['ordem'] == 2:
+            banco['estado_id'] = 0   # comprovante processado durante o delay da ação 2
+
+    monkeypatch.setattr(followup, 'executar_acao', executa)
+    followup.executar()
+    assert enviadas == [1, 2]    # a ação 3 (mais cobrança) não sai para quem já pagou
+    assert banco['estado_id'] == 0
+    assert ('estado', 4) not in followup_env
 
 
 # ─── recursos que só existem na Meta ─────────────────────────────────────────
