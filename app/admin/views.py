@@ -4011,3 +4011,157 @@ def visualizar_comprovante_arquivo(pedido_id):
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro ao entregar comprovante do pedido #{pedido_id}: {e}")
         return jsonify({'ok': False, 'msg': 'Erro ao entregar comprovante'}), 500
+
+
+# ============================================================
+# Atendimento por e-mail — fila global (sem filtro de produto: parte dos e-mails chega sem
+# pedido identificado). Ver fluxos/fluxo_email_conversas.py.
+# ============================================================
+
+_ROTULOS_ESTADO_ATENDIMENTO = {
+    'a_responder': 'A responder', 'aguardando_aprovacao': 'Aguardando aprovação',
+    'aguardando_cliente': 'Aguardando cliente', 'respondido': 'Respondido', 'sem_acao': 'Sem ação',
+}
+_ROTULOS_CATEGORIA_ATENDIMENTO = {
+    'chave_pix': 'E-mail p/ chave PIX', 'acesso_estante': 'Não abre / não recebeu',
+    'pagou_e_cobrado': 'Já pagou', 'pagamento': 'Dúvida de pagamento', 'reclamacao': 'Reclamação',
+    'quer_comprar': 'Quer comprar', 'duvida_uso': 'Dúvida de uso', 'agradecimento': 'Agradecimento',
+    'administrativo': 'Administrativo', 'ruido': 'Ruído', 'outros': 'Outros',
+}
+_ROTULOS_RESPOSTA_ATENDIMENTO = {
+    'estante_pago': 'Link da Estante', 'estante_nao_pago_wpp': 'Estante + como pagar (WhatsApp)',
+    'pagina_vendas_nao_pago': 'Link para finalizar a compra', 'chave_pix': 'Explica a chave PIX',
+    'pedir_dados': 'Pede dados para achar o pedido', 'ia': 'Sugestão da IA',
+}
+
+
+@admin_bp.route('/atendimento-email')
+@requer_login
+def atendimento_email():
+    from database import listar_emails_atendimento
+    filtros = {k: (request.args.get(k) or None) for k in ('estado', 'tipo', 'categoria', 'produto')}
+    atendimentos = listar_emails_atendimento(**filtros)
+    produtos = db.execute_query("SELECT id, nome FROM produtos WHERE ativo = TRUE ORDER BY nome", fetch_all=True) or []
+    return render_template('admin/atendimento_email.html', atendimentos=atendimentos, filtros=filtros,
+                           produtos=produtos, rotulos_estado=_ROTULOS_ESTADO_ATENDIMENTO,
+                           rotulos_categoria=_ROTULOS_CATEGORIA_ATENDIMENTO,
+                           rotulos_resposta=_ROTULOS_RESPOSTA_ATENDIMENTO,
+                           agora=datetime.datetime.now())
+
+
+@admin_bp.route('/atendimento-email/<int:atendimento_id>')
+@requer_login
+def atendimento_email_detalhe(atendimento_id):
+    from database import get_email_atendimento
+    from fluxos.fluxo_email_conversas import ler_thread
+    atendimento = get_email_atendimento(atendimento_id)
+    if not atendimento:
+        flash('Atendimento não encontrado.', 'danger')
+        return redirect(url_for('admin.atendimento_email'))
+    try:
+        mensagens = ler_thread(atendimento['gmail_thread_id'])
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao ler o thread do atendimento #{atendimento_id} no Gmail: {e}")
+        mensagens = []
+        flash('Não foi possível ler o e-mail no Gmail agora. Tente recarregar.', 'danger')
+    for msg in mensagens:
+        msg['html'] = _sanitizar_html_email(msg['html']) if msg.get('html') else ''
+    return render_template('admin/atendimento_email_detalhe.html', atendimento=atendimento, mensagens=mensagens,
+                           rotulos_estado=_ROTULOS_ESTADO_ATENDIMENTO,
+                           rotulos_categoria=_ROTULOS_CATEGORIA_ATENDIMENTO,
+                           rotulos_resposta=_ROTULOS_RESPOSTA_ATENDIMENTO)
+
+
+@admin_bp.route('/atendimento-email/<int:atendimento_id>/anexo/<message_id>/<int:indice>')
+@requer_login
+def atendimento_email_anexo(atendimento_id, message_id, indice):
+    import io
+    from database import get_email_atendimento
+    from fluxos.fluxo_email_conversas import baixar_anexo
+    atendimento = get_email_atendimento(atendimento_id)
+    arquivo = baixar_anexo(atendimento['gmail_thread_id'], message_id, indice) if atendimento else None
+    if not arquivo:
+        flash('Anexo não encontrado.', 'danger')
+        return redirect(url_for('admin.atendimento_email_detalhe', atendimento_id=atendimento_id))
+    conteudo, nome, mime = arquivo
+    extensao = (nome.rsplit('.', 1)[-1] if '.' in nome else '').lower()
+    return send_file(io.BytesIO(conteudo), mimetype=mime, download_name=secure_filename(nome) or 'anexo',
+                     as_attachment=extensao not in _EXTENSOES_PREVIEW_SEGURO_EMAIL)
+
+
+@admin_bp.route('/atendimento-email/<int:atendimento_id>/enviar', methods=['POST'])
+@requer_login
+def atendimento_email_enviar(atendimento_id):
+    from database import get_email_atendimento
+    from fluxos.fluxo_resposta_atendimento import enviar
+    from agente_resposta_email_produto import _garantir_html as _garantir_html_email
+    atendimento = get_email_atendimento(atendimento_id)
+    if not atendimento:
+        flash('Atendimento não encontrado.', 'danger')
+        return redirect(url_for('admin.atendimento_email'))
+    corpo = (request.form.get('corpo_html') or '').strip()
+    if not corpo:
+        flash('A resposta não pode ser vazia.', 'danger')
+        return redirect(url_for('admin.atendimento_email_detalhe', atendimento_id=atendimento_id))
+    # Aprovada sem edição: sai o modelo original (botão e cores da marca). Editada: passa pelo
+    # sanitizador (sem 'style' na allowlist — o link continua, só o botão perde o estilo).
+    if corpo.replace('\r\n', '\n') != (atendimento.get('resposta_html') or '').strip().replace('\r\n', '\n'):
+        corpo = _sanitizar_html_email(_garantir_html_email(corpo))
+    try:
+        enviar(atendimento_id, corpo, por=current_user.email)
+        flash('Resposta enviada!', 'success')
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao enviar resposta do atendimento #{atendimento_id}: {e}")
+        flash(f'Erro ao enviar: {e}', 'danger')
+        return redirect(url_for('admin.atendimento_email_detalhe', atendimento_id=atendimento_id))
+    return redirect(url_for('admin.atendimento_email'))
+
+
+@admin_bp.route('/atendimento-email/<int:atendimento_id>/vincular', methods=['POST'])
+@requer_login
+def atendimento_email_vincular(atendimento_id):
+    """Humano escolheu o pedido (entre os candidatos ou pela busca): gera de novo a resposta pronta."""
+    from database import get_email_atendimento, get_produto_by_id
+    from fluxos.email_vinculo import Vinculo
+    from fluxos.email_respostas import CATEGORIAS_ESTANTE, decidir, montar_resposta, primeiro_nome
+    atendimento = get_email_atendimento(atendimento_id)
+    pedido = get_pedido(request.form.get('pedido_id', type=int) or 0)
+    if not atendimento or not pedido:
+        flash('Pedido não encontrado.', 'danger')
+        return redirect(url_for('admin.atendimento_email_detalhe', atendimento_id=atendimento_id))
+    produto = get_produto_by_id(pedido['produto_id'])
+    # Vincular à mão é pedir a resposta com a Estante: categoria fora do grupo da Estante vira acesso_estante
+    categoria = atendimento['categoria'] if atendimento['categoria'] in CATEGORIAS_ESTANTE else 'acesso_estante'
+    decisao = decidir('vendas', categoria, Vinculo(pedido=pedido, metodo='humano'), produto, False)
+    resposta_html = None
+    if decisao.resposta_tipo and decisao.resposta_tipo != 'ia':
+        try:
+            resposta_html = montar_resposta(decisao.resposta_tipo, pedido, produto,
+                                            primeiro_nome(atendimento.get('remetente_nome'), pedido.get('contact_name')))
+        except ValueError as e:
+            flash(f'Resposta pronta não montada: {e}', 'warning')
+    from fluxos.fluxo_resposta_atendimento import mudar_estado
+    mudar_estado(atendimento_id, 'aguardando_aprovacao' if resposta_html else 'a_responder', por=current_user.email,
+                 pedido_id=pedido['id'], produto_id=pedido['produto_id'], metodo_vinculo='humano', tipo='vendas',
+                 resposta_tipo=decisao.resposta_tipo if resposta_html else None, resposta_html=resposta_html)
+    flash(f"Vinculado ao pedido #{pedido['id']}.", 'success')
+    return redirect(url_for('admin.atendimento_email_detalhe', atendimento_id=atendimento_id))
+
+
+@admin_bp.route('/atendimento-email/<int:atendimento_id>/estado', methods=['POST'])
+@requer_login
+def atendimento_email_estado(atendimento_id):
+    from fluxos.fluxo_resposta_atendimento import mudar_estado
+    acao = request.form.get('acao')
+    if acao == 'respondido':
+        mudar_estado(atendimento_id, 'respondido', por=current_user.email)
+    elif acao == 'sem_acao':
+        mudar_estado(atendimento_id, 'sem_acao', por=current_user.email)
+    elif acao == 'administrativo':
+        mudar_estado(atendimento_id, 'a_responder', por=current_user.email, tipo='administrativo',
+                     categoria='administrativo', resposta_tipo=None, resposta_html=None)
+    else:
+        flash('Ação inválida.', 'danger')
+        return redirect(url_for('admin.atendimento_email_detalhe', atendimento_id=atendimento_id))
+    flash('Atualizado.', 'success')
+    return redirect(url_for('admin.atendimento_email'))

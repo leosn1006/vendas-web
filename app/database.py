@@ -3172,6 +3172,286 @@ def buscar_pedido_web_por_email(termo: str, produto_id: int):
     )
 
 
+# ============================================================
+# Atendimento por e-mail (fila global — ver fluxos/fluxo_email_conversas.py)
+# ============================================================
+
+# Pedidos dos últimos 12 meses: janela da busca de vínculo (e-mail/telefone/CPF/nome). Os campos
+# são os que a cascata (fluxos/email_vinculo.py) e as respostas (fluxos/email_respostas.py) usam.
+_SELECT_PEDIDO_VINCULO = """
+    SELECT p.id, p.guid, p.estado_id, p.produto_id, p.email, p.contact_phone, p.contact_name,
+           p.nome_pagador, p.data_pedido, p.dns_origem, p.data_envio_pedido, p.interesse_produto
+    FROM pedidos p
+"""
+_JANELA_VINCULO = "p.data_pedido >= NOW() - INTERVAL 12 MONTH"
+
+
+def buscar_produto_por_chave_pix(enderecos: list) -> int | None:
+    """Produto dono de uma chave PIX em formato de e-mail (pudim@, tempero@…). Cliente do
+    WhatsApp vê a chave, acha que é e-mail e escreve pra ela — o alias de destino é a melhor
+    pista de produto que esses e-mails têm. Só chaves_pix_produto (produtos.chave_pix está
+    desatualizado: vários produtos apontam pra mesma chave)."""
+    enderecos = [e.lower() for e in enderecos if e and '@' in e]
+    if not enderecos:
+        return None
+    marcadores = ','.join(['%s'] * len(enderecos))
+    linha = db.execute_query(
+        f"SELECT produto_id FROM chaves_pix_produto WHERE ativo = 1 AND chave_pix IN ({marcadores}) LIMIT 1",
+        tuple(enderecos), fetch_one=True,
+    )
+    return linha['produto_id'] if linha else None
+
+
+def buscar_pedidos_vinculo_por_email(emails: list) -> list:
+    emails = [e for e in {(e or '').strip().lower() for e in emails} if e]
+    if not emails:
+        return []
+    marcadores = ','.join(['%s'] * len(emails))
+    return db.execute_query(
+        f"{_SELECT_PEDIDO_VINCULO} WHERE p.email IN ({marcadores}) AND {_JANELA_VINCULO}"
+        " ORDER BY p.data_pedido DESC LIMIT 50",
+        tuple(emails), fetch_all=True,
+    ) or []
+
+
+def _variantes_telefone(telefone: str) -> set:
+    """contact_phone é gravado só com dígitos e com DDI, mas há pedidos com o 9 do celular
+    (5561999998888, 13 dígitos) e sem ele (556199998888, 12). A cliente escreve de qualquer jeito
+    — com ou sem DDI, com ou sem o 9 —, então gera as duas formas com DDI."""
+    digitos = ''.join(c for c in (telefone or '') if c.isdigit())
+    if len(digitos) in (10, 11):
+        digitos = '55' + digitos
+    if len(digitos) == 13 and digitos[4] == '9':
+        return {digitos, digitos[:4] + digitos[5:]}
+    if len(digitos) == 12:
+        return {digitos, digitos[:4] + '9' + digitos[4:]}
+    return {digitos} if len(digitos) == 13 else set()
+
+
+def buscar_pedidos_vinculo_por_telefone(telefones: list) -> list:
+    variantes = set()
+    for t in telefones:
+        variantes |= _variantes_telefone(t)
+    if not variantes:
+        return []
+    marcadores = ','.join(['%s'] * len(variantes))
+    return db.execute_query(
+        f"{_SELECT_PEDIDO_VINCULO} WHERE p.contact_phone IN ({marcadores}) AND {_JANELA_VINCULO}"
+        " ORDER BY p.data_pedido DESC LIMIT 50",
+        tuple(sorted(variantes)), fetch_all=True,
+    ) or []
+
+
+def buscar_pedidos_vinculo_por_cpf(cpf_digitos: str) -> list:
+    """CPF/CNPJ de quem pagou: pedidos.cpf_cnpj_pagador (gravado formatado pelo checkout) e
+    pagamento_pix.cpf_cnpj (só dígitos, vindo do BB) ligado ao pedido."""
+    if not cpf_digitos:
+        return []
+    return db.execute_query(
+        f"""{_SELECT_PEDIDO_VINCULO}
+            WHERE {_JANELA_VINCULO} AND (
+                REPLACE(REPLACE(REPLACE(p.cpf_cnpj_pagador, '.', ''), '-', ''), '/', '') = %s
+                OR p.id IN (SELECT pp.pedido_id FROM pagamento_pix pp
+                            WHERE pp.cpf_cnpj = %s AND pp.pedido_id IS NOT NULL))
+            ORDER BY p.data_pedido DESC LIMIT 50""",
+        (cpf_digitos, cpf_digitos), fetch_all=True,
+    ) or []
+
+
+def buscar_pedidos_vinculo_por_nome(nome_completo: str, primeiro: str = '', ultimo: str = '') -> dict:
+    """Nome do remetente (ou do pagador lido no comprovante) contra contact_name e nome_pagador —
+    a busca que um humano fazia com LIKE. Collation unicode_ci: sem diferença de acento/caixa.
+    Validada na medição de 27/09/2026: quando aponta 1 pessoa só, acertou 10/10 contra o gabarito
+    das respostas humanas; nomes comuns trazem dezenas de pessoas (quem decide é o chamador, pela
+    contagem de pessoas distintas). Retorna as duas estratégias separadas:
+    {'completo': [...], 'primeiro_ultimo': [...]} — o chamador tenta a primeira antes."""
+    resultado = {'completo': [], 'primeiro_ultimo': []}
+    if nome_completo:
+        resultado['completo'] = db.execute_query(
+            f"""{_SELECT_PEDIDO_VINCULO}
+                WHERE (p.contact_name LIKE %s OR p.nome_pagador LIKE %s) AND {_JANELA_VINCULO}
+                ORDER BY p.data_pedido DESC LIMIT 200""",
+            (f'%{nome_completo}%',) * 2, fetch_all=True,
+        ) or []
+    if primeiro and ultimo and primeiro != ultimo:
+        resultado['primeiro_ultimo'] = db.execute_query(
+            f"""{_SELECT_PEDIDO_VINCULO}
+                WHERE ((p.contact_name LIKE %s AND p.contact_name LIKE %s)
+                       OR (p.nome_pagador LIKE %s AND p.nome_pagador LIKE %s)) AND {_JANELA_VINCULO}
+                ORDER BY p.data_pedido DESC LIMIT 200""",
+            (f'%{primeiro}%', f'%{ultimo}%') * 2, fetch_all=True,
+        ) or []
+    return resultado
+
+
+def inserir_email_atendimento(dados: dict) -> int | None:
+    """Registra um e-mail recebido na fila. None se gmail_message_id já existe (o leitor pode
+    revisitar a mesma mensagem — idempotência pelo UNIQUE)."""
+    import json as _json
+    campos = ['gmail_message_id', 'gmail_thread_id', 'rfc_message_id', 'remetente_email', 'remetente_nome',
+              'destinatario', 'assunto', 'recebido_em', 'tipo', 'categoria', 'motivo_triagem', 'pedido_id',
+              'produto_id', 'metodo_vinculo', 'candidatos', 'estado', 'resposta_tipo', 'resposta_html']
+    valores = [dados.get(c) for c in campos]
+    i_candidatos = campos.index('candidatos')
+    if valores[i_candidatos] is not None:
+        valores[i_candidatos] = _json.dumps(valores[i_candidatos], ensure_ascii=False, default=str)
+    try:
+        return db.execute_query(
+            f"INSERT INTO emails_atendimento ({', '.join(campos)}) VALUES ({', '.join(['%s'] * len(campos))})",
+            tuple(valores),
+        )
+    except IntegrityError as e:
+        if e.errno == 1062:
+            return None
+        raise
+
+
+_CAMPOS_EDITAVEIS_ATENDIMENTO = {
+    'tipo', 'categoria', 'pedido_id', 'produto_id', 'metodo_vinculo', 'candidatos', 'estado',
+    'resposta_tipo', 'resposta_html', 'resposta_automatica', 'respondido_em', 'respondido_por',
+}
+
+
+def get_email_atendimento_por_mensagem(gmail_message_id: str):
+    linha = db.execute_query("SELECT id FROM emails_atendimento WHERE gmail_message_id = %s",
+                             (gmail_message_id,), fetch_one=True)
+    return get_email_atendimento(linha['id']) if linha else None
+
+
+def atualizar_email_atendimento(atendimento_id: int, **campos) -> None:
+    import json as _json
+    invalidos = set(campos) - _CAMPOS_EDITAVEIS_ATENDIMENTO
+    if invalidos:
+        raise ValueError(f'Campos não editáveis em emails_atendimento: {invalidos}')
+    if not campos:
+        return
+    if campos.get('candidatos') is not None:
+        campos['candidatos'] = _json.dumps(campos['candidatos'], ensure_ascii=False, default=str)
+    atribuicoes = ', '.join(f'{c} = %s' for c in campos)
+    db.execute_query(f"UPDATE emails_atendimento SET {atribuicoes} WHERE id = %s",
+                     (*campos.values(), atendimento_id))
+
+
+def get_email_atendimento(atendimento_id: int):
+    import json as _json
+    linha = db.execute_query(
+        """SELECT a.*, pr.nome AS produto_nome, pe.guid AS pedido_guid, pe.estado_id AS pedido_estado_id
+           FROM emails_atendimento a
+           LEFT JOIN produtos pr ON pr.id = a.produto_id
+           LEFT JOIN pedidos  pe ON pe.id = a.pedido_id
+           WHERE a.id = %s""",
+        (atendimento_id,), fetch_one=True,
+    )
+    if linha and isinstance(linha.get('candidatos'), (str, bytes)):
+        linha['candidatos'] = _json.loads(linha['candidatos'])
+    return linha
+
+
+def listar_emails_atendimento(estado: str = None, tipo: str = None, categoria: str = None,
+                              produto: str = None, limite: int = 300) -> list:
+    """Fila global do admin. produto: None = todos, 'sem' = sem produto, '<id>' = um produto.
+    Pendentes: mais antigos primeiro (fila); histórico (respondidos, ruído…): mais recentes primeiro."""
+    condicoes, params = ['1=1'], []
+    pendentes = not estado and tipo != 'ruido'  # ruído nunca fica pendente: filtro 'Ruído' mostra tudo
+    if estado:
+        condicoes.append('a.estado = %s'); params.append(estado)
+    elif pendentes:
+        condicoes.append("a.estado IN ('a_responder', 'aguardando_aprovacao')")
+    if tipo:
+        condicoes.append('a.tipo = %s'); params.append(tipo)
+    else:
+        condicoes.append("a.tipo <> 'ruido'")
+    if categoria:
+        condicoes.append('a.categoria = %s'); params.append(categoria)
+    if produto == 'sem':
+        condicoes.append('a.produto_id IS NULL')
+    elif produto and str(produto).isdigit():
+        condicoes.append('a.produto_id = %s'); params.append(int(produto))
+    return db.execute_query(
+        f"""SELECT a.id, a.remetente_email, a.remetente_nome, a.assunto, a.recebido_em, a.tipo,
+                   a.categoria, a.estado, a.pedido_id, a.metodo_vinculo, a.resposta_tipo,
+                   a.produto_id, pr.nome AS produto_nome
+            FROM emails_atendimento a
+            LEFT JOIN produtos pr ON pr.id = a.produto_id
+            WHERE {' AND '.join(condicoes)}
+            ORDER BY a.recebido_em {'ASC' if pendentes else 'DESC'} LIMIT %s""",
+        (*params, limite), fetch_all=True,
+    ) or []
+
+
+def reservar_envio_atendimento(atendimento_id: int, por: str) -> bool:
+    """Reserva o envio (UPDATE condicional = atômico): só um clique/processo ganha. Duplo clique
+    ou reenvio do formulário perdem aqui, antes de mandar o e-mail de novo."""
+    return db.execute_query(
+        """UPDATE emails_atendimento SET respondido_por = %s, respondido_em = NOW()
+           WHERE id = %s AND estado IN ('a_responder', 'aguardando_aprovacao') AND respondido_em IS NULL""",
+        (por, atendimento_id), return_rowcount=True,
+    ) == 1
+
+
+def liberar_envio_atendimento(atendimento_id: int) -> None:
+    """Desfaz a reserva quando o envio falhou (o atendimento volta a poder ser enviado)."""
+    db.execute_query(
+        """UPDATE emails_atendimento SET respondido_por = NULL, respondido_em = NULL
+           WHERE id = %s AND estado IN ('a_responder', 'aguardando_aprovacao')""",
+        (atendimento_id,),
+    )
+
+
+def contar_emails_atendimento_pendentes() -> int:
+    linha = db.execute_query(
+        "SELECT COUNT(*) AS n FROM emails_atendimento WHERE estado IN ('a_responder', 'aguardando_aprovacao')",
+        fetch_one=True,
+    )
+    return linha['n'] if linha else 0
+
+
+def listar_emails_atendimento_pendentes_por_thread() -> list:
+    """Pendentes de humano — o leitor confere no Gmail se alguém já respondeu direto por lá."""
+    return db.execute_query(
+        """SELECT id, gmail_thread_id, recebido_em FROM emails_atendimento
+           WHERE estado IN ('a_responder', 'aguardando_aprovacao')""",
+        fetch_all=True,
+    ) or []
+
+
+def fechar_atendimentos_anteriores_do_thread(thread_id: str, exceto_id: int) -> list:
+    """Nova mensagem num thread que já tinha pendência: a antiga sai da fila (o humano vê o thread
+    inteiro na mais nova). Retorna os ids fechados, pra atualizar os marcadores."""
+    ids = [l['id'] for l in (db.execute_query(
+        """SELECT id FROM emails_atendimento
+           WHERE gmail_thread_id = %s AND id <> %s AND estado IN ('a_responder', 'aguardando_aprovacao')""",
+        (thread_id, exceto_id), fetch_all=True) or [])]
+    if ids:
+        marcadores = ','.join(['%s'] * len(ids))
+        db.execute_query(
+            f"""UPDATE emails_atendimento SET estado = 'sem_acao', respondido_por = 'substituido',
+                       respondido_em = NOW() WHERE id IN ({marcadores})""",
+            tuple(ids),
+        )
+    return ids
+
+
+def thread_email_ja_respondido(thread_id: str) -> bool:
+    """Já respondemos algo neste thread (anti-loop: a resposta seguinte nunca é automática)."""
+    return db.execute_query(
+        """SELECT 1 FROM emails_atendimento
+           WHERE gmail_thread_id = %s AND estado IN ('respondido', 'aguardando_cliente')
+             AND resposta_html IS NOT NULL LIMIT 1""",
+        (thread_id,), fetch_one=True,
+    ) is not None
+
+
+def contar_respostas_automaticas_recentes(remetente_email: str, horas: int = 24) -> int:
+    linha = db.execute_query(
+        """SELECT COUNT(*) AS n FROM emails_atendimento
+           WHERE remetente_email = %s AND resposta_automatica = 1
+             AND respondido_em >= NOW() - INTERVAL %s HOUR""",
+        (remetente_email, horas), fetch_one=True,
+    )
+    return linha['n'] if linha else 0
+
+
 # ─── NF-e ────────────────────────────────────────────────────────────────────
 
 def buscar_nfe_configuracao_ativa() -> dict | None:

@@ -12,6 +12,7 @@ import logging
 from datetime import datetime
 
 from fluxos._email_gmail import enviar as _enviar_gmail, wrapper_html as _wrapper_html
+from fluxos._gmail_labels import rotular_enviado
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ def enviar_resposta(pedido_id: int, corpo_html: str, notificacao_id: int = None)
         thread_id=pedido.get('gmail_thread_id') or None,
         in_reply_to=in_reply_to,
     ) or {}
+    rotular_enviado(resultado.get('id'), nome_produto)
 
     thread_id = resultado.get('threadId') or pedido.get('gmail_thread_id') or ''
     if resultado.get('threadId') and not pedido.get('gmail_thread_id'):

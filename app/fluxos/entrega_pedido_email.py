@@ -18,6 +18,7 @@ import logging
 from datetime import datetime
 
 from fluxos._email_gmail import enviar as _enviar_gmail, wrapper_html as _wrapper_html
+from fluxos._gmail_labels import rotular_enviado
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,7 @@ def executar(pedido_id: int) -> None:
         html=html_entrega,
     ) or {}
     db.marcar_ebook_enviado(pedido_id)
+    rotular_enviado(resultado.get('id'), nome_produto)
 
     thread_id = resultado.get('threadId')
     if thread_id:

@@ -21,7 +21,8 @@ _GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 def enviar(destinatario: str, remetente: str, nome_remetente: str,
           subject: str, html: str, imagens_inline: list = None,
-          thread_id: str = None, in_reply_to: str = None) -> dict:
+          thread_id: str = None, in_reply_to: str = None,
+          conta: str = 'admin@lsnlivros.com.br') -> dict:
     """
     imagens_inline: lista opcional de {'cid': str, 'dados': bytes, 'subtype': str}.
     Referencie no HTML via <img src="cid:{cid}">. Anexo MIME inline (Content-ID),
@@ -37,6 +38,9 @@ def enviar(destinatario: str, remetente: str, nome_remetente: str,
     Retorna o resultado bruto da API (dict com 'id'/'threadId') mais 'rfcMessageId' — o
     Message-ID que este envio gerou, pra ser guardado e usado como in_reply_to na próxima
     resposta dessa mesma conversa.
+
+    conta: caixa do Workspace que envia (impersonada pela Service Account). O atendimento por
+    e-mail passa a caixa de teste no dev (fluxos/_gmail_labels.caixa_atendimento).
     """
     # Usa sempre a SA do produto 6 (conta empresarial com Google Workspace)
     # TODO: migrar produto 1 para Workspace e usar GOOGLE_SA_JSON_P{produto_id}
@@ -47,7 +51,7 @@ def enviar(destinatario: str, remetente: str, nome_remetente: str,
     creds = Credentials.from_service_account_info(
         _json.loads(sa_json),
         scopes=_GMAIL_SCOPES,
-        subject='admin@lsnlivros.com.br',  # TODO: usar remetente quando produto 1 migrar para Workspace
+        subject=conta,  # TODO: usar remetente quando produto 1 migrar para Workspace
         # subject=remetente,
     )
     service = build('gmail', 'v1', credentials=creds)

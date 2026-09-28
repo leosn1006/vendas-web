@@ -521,6 +521,14 @@
             <span class="icon">📁</span> Arquivos
         </a>
         {% endif %}
+        <a href="{{ url_for('admin.atendimento_email') }}"
+           class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.atendimento_email') %}active{% endif %}"
+           style="display:flex;align-items:center;justify-content:space-between">
+            <span><span class="icon">📧</span> Atendimento e-mail</span>
+            {% if (badge_atendimento_email|default(0)) > 0 %}
+            <span class="badge badge-red">{{ badge_atendimento_email }}</span>
+            {% endif %}
+        </a>
         <a href="{{ url_for('admin.listar_pedidos_telefone', usuario_id=current_user.id) }}"
            class="nav-link {% if request.endpoint in ['admin.listar_pedidos_telefone', 'admin.selecionar_usuario_pedidos_telefone'] %}active{% endif %}">
             <span class="icon">🗑️</span> Limpar Pedidos

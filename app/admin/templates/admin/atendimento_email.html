@@ -1,0 +1,113 @@
+{% extends 'admin/base.html' %}
+{% block title %}Atendimento por e-mail{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filtros { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px; }
+    .filtros label { font-size:11px; font-family:var(--mono); text-transform:uppercase; color:var(--muted); display:block; margin-bottom:4px; }
+    .filtros select { padding:6px 8px; font-size:13px; }
+    .atend-table { width:100%; border-collapse:collapse; font-size:14px; }
+    .atend-table th { text-align:left; padding:10px 12px; font-size:11px; font-family:var(--mono);
+                      text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); }
+    .atend-table td { padding:12px; border-bottom:1px solid var(--border); vertical-align:top; }
+    .atend-table tr:hover td { background:var(--surface); cursor:pointer; }
+    .muted { color:var(--muted); font-size:13px; }
+    .tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; background:var(--surface);
+           border:1px solid var(--border); white-space:nowrap; }
+    .tag-aprovar { background:#fff3cd; border-color:#f0c36d; }
+    .tag-humano  { background:#fde2e1; border-color:#f1a9a5; }
+    .empty-state { text-align:center; color:var(--muted); font-size:14px; padding:56px 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">📧 Atendimento por e-mail
+            {% if atendimentos %}<span class="badge badge-red" style="margin-left:8px;font-size:13px">{{ atendimentos|length }}</span>{% endif %}
+        </div>
+        <div class="page-subtitle">Todos os produtos — e-mails que chegaram na caixa de atendimento. Mais antigos primeiro.</div>
+    </div>
+</div>
+
+<div class="card">
+    <form method="GET" class="filtros">
+        <div>
+            <label>Situação</label>
+            <select name="estado" onchange="this.form.submit()">
+                <option value="">Pendentes (a responder + aprovar)</option>
+                {% for valor, rotulo in rotulos_estado.items() %}
+                <option value="{{ valor }}" {% if filtros.estado == valor %}selected{% endif %}>{{ rotulo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>Tipo</label>
+            <select name="tipo" onchange="this.form.submit()">
+                <option value="">Vendas + administrativo</option>
+                <option value="vendas" {% if filtros.tipo == 'vendas' %}selected{% endif %}>Vendas</option>
+                <option value="administrativo" {% if filtros.tipo == 'administrativo' %}selected{% endif %}>Administrativo</option>
+                <option value="ruido" {% if filtros.tipo == 'ruido' %}selected{% endif %}>Ruído</option>
+            </select>
+        </div>
+        <div>
+            <label>Motivo</label>
+            <select name="categoria" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for valor, rotulo in rotulos_categoria.items() %}
+                <option value="{{ valor }}" {% if filtros.categoria == valor %}selected{% endif %}>{{ rotulo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>Produto</label>
+            <select name="produto" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                <option value="sem" {% if filtros.produto == 'sem' %}selected{% endif %}>Sem produto</option>
+                {% for p in produtos %}
+                <option value="{{ p.id }}" {% if filtros.produto == p.id|string %}selected{% endif %}>{{ p.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    {% if atendimentos %}
+    <table class="atend-table">
+        <thead>
+            <tr><th>Chegou</th><th>Cliente</th><th>Motivo</th><th>Produto</th><th>Pedido</th><th>Situação</th></tr>
+        </thead>
+        <tbody>
+        {% for a in atendimentos %}
+            {% set horas = ((agora - a.recebido_em).total_seconds() / 3600)|int %}
+            <tr onclick="location.href='{{ url_for('admin.atendimento_email_detalhe', atendimento_id=a.id) }}'">
+                <td style="white-space:nowrap">
+                    {{ a.recebido_em.strftime('%d/%m %H:%M') }}<br>
+                    <span class="muted">{% if horas < 24 %}há {{ horas }}h{% else %}há {{ (horas / 24)|int }} dia(s){% endif %}</span>
+                </td>
+                <td>
+                    <strong>{{ a.remetente_nome or a.remetente_email }}</strong><br>
+                    <span class="muted">{{ a.assunto or '(sem assunto)' }}</span>
+                </td>
+                <td><span class="tag">{{ rotulos_categoria.get(a.categoria, a.categoria) }}</span></td>
+                <td>{{ a.produto_nome or '—' }}</td>
+                <td>
+                    {% if a.pedido_id %}#{{ a.pedido_id }}<br><span class="muted">por {{ a.metodo_vinculo }}</span>{% else %}<span class="muted">não achado</span>{% endif %}
+                </td>
+                <td>
+                    {% if a.estado == 'aguardando_aprovacao' %}
+                        <span class="tag tag-aprovar">✋ Aprovar: {{ rotulos_resposta.get(a.resposta_tipo, a.resposta_tipo) }}</span>
+                    {% elif a.estado == 'a_responder' %}
+                        <span class="tag tag-humano">👤 Responder</span>
+                    {% else %}
+                        <span class="tag">{{ rotulos_estado.get(a.estado, a.estado) }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">Nenhum e-mail nesta situação. 🎉</div>
+    {% endif %}
+</div>
+{% endblock %}

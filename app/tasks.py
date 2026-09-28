@@ -309,8 +309,8 @@ def fluxo_followup_pagamento_web(self):
 
 @shared_task(name="tasks.verificar_emails_clientes", bind=True, max_retries=0)
 def verificar_emails_clientes(self):
-    """Polling da caixa admin@lsnlivros.com.br — lê respostas de clientes a e-mails de pedidos
-    web e aciona o agente de e-mail dedicado. Roda a cada 10min (ver celery_app.py)."""
+    """Leitor da caixa de atendimento (admin@lsnlivros.com.br): triagem, vínculo com o pedido e
+    resposta pronta na fila /admin/atendimento-email. Roda a cada 10min (ver celery_app.py)."""
     _TAG = "TASK-EMAIL-CONVERSAS"
     lock_key = "lock:email_conversas"
     if not _redis.set(lock_key, 1, nx=True, ex=590):  # TTL 9m50s — evita sobreposição entre rodadas de 10min

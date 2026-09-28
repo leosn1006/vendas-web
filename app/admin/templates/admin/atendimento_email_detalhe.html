@@ -1,0 +1,162 @@
+{% extends 'admin/base.html' %}
+{% block title %}Atendimento #{{ atendimento.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info { display:flex; gap:24px; flex-wrap:wrap; font-size:14px; margin-bottom:16px; }
+    .info span { display:flex; flex-direction:column; gap:2px; }
+    .info .label { font-size:11px; font-family:var(--mono); text-transform:uppercase; color:var(--muted); }
+    .toolbar { display:flex; justify-content:flex-end; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+    .chat-container { display:flex; flex-direction:column; gap:8px; max-height:480px; overflow-y:auto; padding:4px 0 16px; }
+    .bubble-wrap { display:flex; flex-direction:column; }
+    .bubble-wrap.left { align-items:flex-start; } .bubble-wrap.right { align-items:flex-end; }
+    .bubble-label { font-size:11px; color:var(--muted); margin-bottom:3px; font-family:var(--mono); }
+    .bubble { max-width:75%; padding:10px 14px; border-radius:12px; font-size:14px; line-height:1.5;
+              white-space:pre-wrap; word-break:break-word; }
+    .bubble.left { background:#f0e8dc; border-bottom-left-radius:3px; }
+    .bubble.right { background:var(--accent); color:#fff; border-bottom-right-radius:3px; }
+    .bubble.right a { color:#fff; }
+    .anexo-link { font-size:12px; color:var(--accent); text-decoration:none; margin-top:4px; }
+    .secao { margin-top:20px; border-top:1px solid var(--border); padding-top:16px; }
+    .secao h3 { font-size:15px; margin:0 0 10px; }
+    .cand-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .cand-table td, .cand-table th { padding:6px 8px; border-bottom:1px solid var(--border); text-align:left; }
+    textarea.resposta { width:100%; min-height:180px; font-family:var(--mono); font-size:13px; resize:vertical; }
+    iframe.preview { width:100%; height:520px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    .aviso { background:#fff3cd; border:1px solid #f0c36d; border-radius:8px; padding:10px 14px; font-size:14px; margin-bottom:12px; }
+    .muted { color:var(--muted); font-size:13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">📧 {{ atendimento.remetente_nome or atendimento.remetente_email }}</div>
+        <div class="page-subtitle">{{ atendimento.assunto or '(sem assunto)' }}</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="info">
+        <span><span class="label">E-mail</span>{{ atendimento.remetente_email }}</span>
+        <span><span class="label">Escreveu para</span>{{ atendimento.destinatario or '—' }}</span>
+        <span><span class="label">Chegou</span>{{ atendimento.recebido_em.strftime('%d/%m/%Y %H:%M') }}</span>
+        <span><span class="label">Motivo</span>{{ rotulos_categoria.get(atendimento.categoria, atendimento.categoria) }}</span>
+        <span><span class="label">Produto</span>{{ atendimento.produto_nome or 'Sem produto' }}</span>
+        <span><span class="label">Pedido</span>
+            {% if atendimento.pedido_id %}#{{ atendimento.pedido_id }}
+                ({{ 'pago' if atendimento.pedido_estado_id in (0, 1000) else 'não pago' }}, achado por {{ atendimento.metodo_vinculo }})
+            {% else %}não achado{% endif %}
+        </span>
+        <span><span class="label">Situação</span>{{ rotulos_estado.get(atendimento.estado, atendimento.estado) }}</span>
+    </div>
+    {% if atendimento.motivo_triagem %}<p class="muted">Triagem: {{ atendimento.motivo_triagem }}</p>{% endif %}
+
+    <div class="toolbar">
+        <a href="{{ url_for('admin.atendimento_email') }}" class="btn btn-ghost btn-sm">← Fila</a>
+        {% if atendimento.estado in ('a_responder', 'aguardando_aprovacao') %}
+        <form method="POST" action="{{ url_for('admin.atendimento_email_estado', atendimento_id=atendimento.id) }}" style="display:inline">
+            <input type="hidden" name="acao" value="respondido">
+            <button class="btn btn-sm btn-primary" onclick="return confirm('Marcar como respondido sem enviar nada daqui?')">✓ Respondido por fora</button>
+        </form>
+        <form method="POST" action="{{ url_for('admin.atendimento_email_estado', atendimento_id=atendimento.id) }}" style="display:inline">
+            <input type="hidden" name="acao" value="sem_acao">
+            <button class="btn btn-sm btn-ghost" onclick="return confirm('Tirar da fila sem responder?')">Sem ação</button>
+        </form>
+        {% if atendimento.tipo != 'administrativo' %}
+        <form method="POST" action="{{ url_for('admin.atendimento_email_estado', atendimento_id=atendimento.id) }}" style="display:inline">
+            <input type="hidden" name="acao" value="administrativo">
+            <button class="btn btn-sm btn-ghost">Mover p/ Administrativo</button>
+        </form>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    <div class="chat-container">
+        {% for msg in mensagens %}
+            {% set lado = 'right' if msg.enviada else 'left' %}
+            <div class="bubble-wrap {{ lado }}">
+                <span class="bubble-label">{{ msg.de }} — {{ msg.data.strftime('%d/%m/%Y %H:%M') }}</span>
+                <div class="bubble {{ lado }}">{% if msg.html %}{{ msg.html|safe }}{% else %}{{ msg.texto or '(vazio)' }}{% endif %}</div>
+                {% for anexo in msg.anexos %}
+                <a class="anexo-link" target="_blank" rel="noopener noreferrer"
+                   href="{{ url_for('admin.atendimento_email_anexo', atendimento_id=atendimento.id, message_id=msg.id, indice=anexo.indice) }}">
+                    📎 {{ anexo.filename }} ({{ ((anexo.size or 0) / 1024)|round(1) }} KB)
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="muted">Não foi possível carregar o e-mail do Gmail.</div>
+        {% endfor %}
+    </div>
+
+    {% if atendimento.estado in ('a_responder', 'aguardando_aprovacao') and atendimento.tipo == 'vendas' %}
+    <div class="secao">
+        <h3>🔎 Vincular a um pedido</h3>
+        {% if atendimento.candidatos %}
+        <p class="muted">Mais de uma pessoa com esse nome pagou. Escolha a certa:</p>
+        <table class="cand-table">
+            <tr><th>Pedido</th><th>Nome (contato / pagador)</th><th>E-mail / telefone</th><th>Data</th><th></th></tr>
+            {% for c in atendimento.candidatos %}
+            <tr>
+                <td>#{{ c.id }}</td>
+                <td>{{ c.contact_name or '—' }} / {{ c.nome_pagador or '—' }}</td>
+                <td>{{ c.email or c.contact_phone or '—' }}</td>
+                <td>{{ (c.data_pedido or '')[:10] }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('admin.atendimento_email_vincular', atendimento_id=atendimento.id) }}">
+                        <input type="hidden" name="pedido_id" value="{{ c.id }}">
+                        <button class="btn btn-sm btn-ghost">É este</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+        <form method="POST" action="{{ url_for('admin.atendimento_email_vincular', atendimento_id=atendimento.id) }}"
+              style="display:flex;gap:8px;margin-top:10px;align-items:center">
+            <input type="number" name="pedido_id" placeholder="Nº do pedido" required style="max-width:180px">
+            <button class="btn btn-sm btn-ghost">Vincular e gerar resposta</button>
+            <span class="muted">Ache o nº em Conversas / busca por nome, e-mail ou telefone.</span>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if atendimento.estado in ('a_responder', 'aguardando_aprovacao') %}
+    <div class="secao">
+        <h3>✉️ Resposta</h3>
+        {% if atendimento.estado == 'aguardando_aprovacao' %}
+        <div class="aviso">✋ Resposta pronta ({{ rotulos_resposta.get(atendimento.resposta_tipo, atendimento.resposta_tipo) }}).
+            Confira a prévia e aprove — ou edite antes de enviar.</div>
+        {% endif %}
+        <form method="POST" action="{{ url_for('admin.atendimento_email_enviar', atendimento_id=atendimento.id) }}">
+            <iframe class="preview" id="preview" sandbox title="Prévia da resposta" srcdoc="{{ atendimento.resposta_html or '' }}"></iframe>
+            <details style="margin:10px 0" {% if not atendimento.resposta_html %}open{% endif %}>
+                <summary class="muted" style="cursor:pointer">Editar o texto (HTML simples)</summary>
+                <textarea class="resposta" name="corpo_html" id="corpo">{{ atendimento.resposta_html or '' }}</textarea>
+            </details>
+            <button type="submit" class="btn btn-primary"
+                    onclick="return confirm('Enviar esta resposta para a cliente?')">
+                {% if atendimento.estado == 'aguardando_aprovacao' %}✓ Aprovar e enviar{% else %}Enviar{% endif %}
+            </button>
+        </form>
+    </div>
+    {% elif atendimento.resposta_html %}
+    <div class="secao">
+        <h3>✉️ Resposta enviada {% if atendimento.respondido_por %}<span class="muted">por {{ atendimento.respondido_por }}</span>{% endif %}</h3>
+        <iframe class="preview" sandbox title="Resposta enviada" srcdoc="{{ atendimento.resposta_html }}"></iframe>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const chat = document.querySelector('.chat-container');
+    if (chat) chat.scrollTop = chat.scrollHeight;
+    // Prévia ao vivo do texto editado (iframe com sandbox: sem scripts)
+    const corpo = document.getElementById('corpo');
+    const preview = document.getElementById('preview');
+    if (corpo && preview) corpo.addEventListener('input', () => { preview.srcdoc = corpo.value; });
+</script>
+{% endblock %}

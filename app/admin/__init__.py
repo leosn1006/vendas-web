@@ -43,6 +43,12 @@ def inject_produto_ativo():
 
         badge_notificacoes = 0
         badge_notificacoes_web = 0
+        badge_atendimento_email = 0
+        try:  # isolado: tabela nova (migração 077) não pode derrubar o resto da navegação
+            from database import contar_emails_atendimento_pendentes
+            badge_atendimento_email = contar_emails_atendimento_pendentes()
+        except Exception:
+            pass
         badge_qualidade_cor = None   # None | 'green' | 'yellow' | 'red'
         badge_qualidade_qtd = 0
         if produto_ativo:
@@ -71,9 +77,11 @@ def inject_produto_ativo():
             has_produto_acesso    = has_produto_acesso,
             badge_notificacoes    = badge_notificacoes,
             badge_notificacoes_web = badge_notificacoes_web,
+            badge_atendimento_email = badge_atendimento_email,
             badge_qualidade_cor   = badge_qualidade_cor,
             badge_qualidade_qtd   = badge_qualidade_qtd,
         )
     except Exception:
         return dict(produtos_lista=[], produto_ativo=None, has_produto_acesso=False, badge_notificacoes=0,
-                     badge_notificacoes_web=0, badge_qualidade_cor=None, badge_qualidade_qtd=0)
+                     badge_notificacoes_web=0, badge_atendimento_email=0, badge_qualidade_cor=None,
+                     badge_qualidade_qtd=0)

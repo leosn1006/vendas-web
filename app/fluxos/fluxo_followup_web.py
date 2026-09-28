@@ -18,6 +18,7 @@ import os
 
 import database as db
 from fluxos._email_gmail import enviar as _enviar_gmail, lighten_hex as _lighten_hex
+from fluxos._gmail_labels import rotular_enviado
 from web.checkout import _gerar_qrcode_base64
 
 _QR_CID = 'qrcode-pix-followup'
@@ -84,7 +85,7 @@ def _enviar_followup(pedido: dict) -> None:
 
     subject = f'🎁 {nome_cliente}, seu {nome_produto} ainda está te esperando!'
 
-    _enviar_gmail(
+    resultado = _enviar_gmail(
         destinatario=destinatario,
         remetente=remetente,
         nome_remetente=f'{nome_remetente_email} — {nome_produto}',
@@ -93,7 +94,8 @@ def _enviar_followup(pedido: dict) -> None:
                         pedido.get('qr_code_pix') or '', link_pagamento,
                         nome_remetente_email, cor_primaria, cor_secundaria),
         imagens_inline=[{'cid': _QR_CID, 'dados': qrcode_bytes, 'subtype': 'png'}] if qrcode_bytes else None,
-    )
+    ) or {}
+    rotular_enviado(resultado.get('id'), nome_produto)
 
 
 def _corpo_html(nome: str, nome_produto: str, itens_extras: list, tem_qrcode: bool,
