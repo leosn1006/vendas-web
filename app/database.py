@@ -797,14 +797,36 @@ def buscar_pedidos_followup( horas_sem_atualizacao: int) -> list:
     return db.execute_query(query, (horas_sem_atualizacao, JANELA_FOLLOWUP_HORAS), fetch_all=True)
 
 def buscar_pedidos_followup_pagamento_web(minutos_sem_atualizacao: int = 60) -> list:
+    """Pedidos web com PIX gerado e não pago, elegíveis ao e-mail de cobrança.
+
+    A cliente que não consegue pagar tenta de novo, e cada tentativa no checkout vira um pedido
+    novo. Sem as três travas abaixo, os pedidos abandonados de quem acabou pagando recebiam
+    "ainda está te esperando", e quem tentou 5 vezes recebia 4 cobranças. A análise da caixa de
+    e-mail (set/2026) mostrou 15 de 94 clientes cobrados depois de já terem pago. As travas
+    comparam sempre o mesmo e-mail e o mesmo produto (collation unicode_ci: sem diferença de
+    maiúsculas; usa idx_pedidos_email_estado)."""
     query = """
-        SELECT *
-        FROM pedidos
-        WHERE estado_id = 1002 -- estado 'Aguardando pagamento BB Pay'
-        AND email IS NOT NULL AND email != ''
-        AND data_followup_pagamento_web IS NULL
-        AND data_ultima_atualizacao <= NOW() - INTERVAL %s MINUTE
-        AND (expiracao_solicitacao_bb IS NULL OR expiracao_solicitacao_bb > NOW())
+        SELECT p.*
+        FROM pedidos p
+        WHERE p.estado_id = 1002 -- estado 'Aguardando pagamento BB Pay'
+        AND p.email IS NOT NULL AND p.email != ''
+        AND p.data_followup_pagamento_web IS NULL
+        AND p.data_ultima_atualizacao <= NOW() - INTERVAL %s MINUTE
+        AND (p.expiracao_solicitacao_bb IS NULL OR p.expiracao_solicitacao_bb > NOW())
+        -- Já pagou esse produto por outro pedido (site ou WhatsApp): não cobra
+        AND NOT EXISTS (
+            SELECT 1 FROM pedidos pg
+            WHERE pg.email = p.email AND pg.produto_id = p.produto_id AND pg.estado_id IN (0, 1000))
+        -- Uma cobrança por cliente e produto a cada 7 dias, mesmo com várias tentativas
+        AND NOT EXISTS (
+            SELECT 1 FROM pedidos pf
+            WHERE pf.email = p.email AND pf.produto_id = p.produto_id AND pf.id <> p.id
+              AND pf.data_followup_pagamento_web >= NOW() - INTERVAL 7 DAY)
+        -- Entre as tentativas abertas, só a mais recente (é a que tem o QR válido por mais tempo)
+        AND NOT EXISTS (
+            SELECT 1 FROM pedidos pn
+            WHERE pn.email = p.email AND pn.produto_id = p.produto_id
+              AND pn.estado_id = 1002 AND pn.id > p.id)
     """
     return db.execute_query(query, (minutos_sem_atualizacao,), fetch_all=True)
 
