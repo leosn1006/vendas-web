@@ -14,6 +14,8 @@ uma caixa de teste explícita (EMAIL_ATENDIMENTO_CAIXA), nunca a de produção.
 import os
 import json as _json
 import logging
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -27,6 +29,9 @@ CAIXA_PRODUCAO = 'admin@lsnlivros.com.br'
 _ESCOPOS = ['https://www.googleapis.com/auth/gmail.modify']
 
 PROCESSADO = 'Sistema/Processado'
+# Não pode ser "Enviados": o Gmail recusa ("Invalid label name") por ser o nome da pasta do sistema
+ENVIOS = 'Envios'
+PREFIXO_PRODUTO = 'Produto/'
 RUIDO = 'Ruído'
 SEM_PRODUTO = 'Produto/Sem produto'
 # E-mails antigos (anteriores à fila) em que a cliente falou por último: ficam para revisão no
@@ -50,6 +55,25 @@ _TODOS_STATUS = sorted(set(_STATUS_VENDAS.values()) | set(_STATUS_ADMINISTRATIVO
 
 _cache_ids: dict[str, str] = {}
 
+# O banco grava as datas no horário de São Paulo, sem fuso (pedidos.data_pedido etc.). Converter
+# explicitamente — e não confiar no TZ do processo — deixa as comparações certas também fora do
+# container (o script de scripts/ roda no host, que pode estar em UTC).
+FUSO_SP = ZoneInfo('America/Sao_Paulo')
+
+
+def data_do_gmail(internal_date) -> datetime:
+    """internalDate do Gmail (ms desde 1970, UTC) → horário de São Paulo, sem fuso (como no banco)."""
+    return datetime.fromtimestamp(int(internal_date) / 1000, tz=FUSO_SP).replace(tzinfo=None)
+
+
+def agora_sp() -> datetime:
+    return datetime.now(FUSO_SP).replace(tzinfo=None)
+
+
+def epoch_de_data_sp(data: datetime) -> float:
+    """Inverso de data_do_gmail: data sem fuso (horário de São Paulo) → segundos desde 1970."""
+    return data.replace(tzinfo=FUSO_SP).timestamp()
+
 
 def caixa_atendimento() -> str | None:
     """Caixa lida/usada pelo atendimento. None = não mexer em caixa nenhuma (dev sem caixa de teste)."""
@@ -70,7 +94,11 @@ def servico(caixa: str):
 
 
 def nome_label_produto(produto_nome: str | None) -> str:
-    return f'Produto/{produto_nome.strip()}' if produto_nome else SEM_PRODUTO
+    return f'{PREFIXO_PRODUTO}{produto_nome.strip()}' if produto_nome else SEM_PRODUTO
+
+
+def nome_label_envio(produto_nome: str | None) -> str:
+    return f"{ENVIOS}/{(produto_nome or 'Sem produto').strip()}"
 
 
 def rotulos_do_estado(tipo: str, estado: str) -> tuple[list, list]:
@@ -113,12 +141,16 @@ def _recarregar_cache(service) -> None:
         _cache_ids[label['name']] = label['id']
 
 
-def aplicar(service, message_id: str, adicionar: list = (), remover: list = (), arquivar: bool = False) -> None:
+def aplicar(service, message_id: str, adicionar: list = (), remover: list = (), arquivar: bool = False,
+            remover_prefixos: tuple = ()) -> None:
+    """remover_prefixos: tira os marcadores que começam com o prefixo e não estão em `adicionar`
+    (ex: o Produto/<antigo> quando o humano vincula o e-mail a um pedido de outro produto)."""
     add_ids = [garantir_label(service, n) for n in adicionar]
     # Remover só o que já existe (não cria marcador só pra tirá-lo)
     if not _cache_ids:
         garantir_label(service, PROCESSADO)
-    rem_ids = [_cache_ids[n] for n in remover if n in _cache_ids and n not in adicionar]
+    remover = list(remover) + [n for n in _cache_ids if n.startswith(tuple(remover_prefixos))]
+    rem_ids = [_cache_ids[n] for n in dict.fromkeys(remover) if n in _cache_ids and n not in adicionar]
     if arquivar:
         rem_ids.append('INBOX')
     if add_ids or rem_ids:
@@ -127,12 +159,12 @@ def aplicar(service, message_id: str, adicionar: list = (), remover: list = (), 
 
 
 def rotular_enviado(message_id: str, produto_nome: str | None) -> None:
-    """Marca um e-mail enviado pelo sistema (entrega, follow-up, resposta) com Enviados/<produto>.
+    """Marca um e-mail enviado pelo sistema (entrega, follow-up, resposta) com Envios/<produto>.
     Nunca levanta exceção: o e-mail já saiu, o marcador é só organização."""
     caixa = caixa_atendimento()
     if not caixa or not message_id:
         return
     try:
-        aplicar(servico(caixa), message_id, adicionar=[f"Enviados/{(produto_nome or 'Sem produto').strip()}"])
+        aplicar(servico(caixa), message_id, adicionar=[nome_label_envio(produto_nome)])
     except Exception as exc:
         logger.warning(f'[GMAIL-LABELS] ⚠️ Não marcou o enviado {message_id}: {exc}')

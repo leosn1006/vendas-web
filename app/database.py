@@ -3186,20 +3186,34 @@ _SELECT_PEDIDO_VINCULO = """
 _JANELA_VINCULO = "p.data_pedido >= NOW() - INTERVAL 12 MONTH"
 
 
-def buscar_produto_por_chave_pix(enderecos: list) -> int | None:
-    """Produto dono de uma chave PIX em formato de e-mail (pudim@, tempero@…). Cliente do
-    WhatsApp vê a chave, acha que é e-mail e escreve pra ela — o alias de destino é a melhor
-    pista de produto que esses e-mails têm. Só chaves_pix_produto (produtos.chave_pix está
-    desatualizado: vários produtos apontam pra mesma chave)."""
+def buscar_chave_pix_do_email(enderecos: list) -> dict | None:
+    """A chave PIX em formato de e-mail (pudim@, tempero@…) para onde a cliente escreveu, se houver:
+    {'produto_id', 'aponta_produto'}. Cliente do WhatsApp vê a chave, acha que é e-mail e escreve
+    pra ela — o alias é a melhor pista de produto que esses e-mails têm.
+
+    aponta_produto=False quando o produto dono da chave está inativo: é o caso do pascoa@ (Páscoa,
+    aposentado), que até set/2026 foi a chave do QR de TODOS os produtos do site (Temperos, Fatia,
+    Pudim…) — quem escreve para ela pode ser cliente de qualquer produto. Só chaves_pix_produto
+    (produtos.chave_pix está desatualizado)."""
     enderecos = [e.lower() for e in enderecos if e and '@' in e]
     if not enderecos:
         return None
     marcadores = ','.join(['%s'] * len(enderecos))
     linha = db.execute_query(
-        f"SELECT produto_id FROM chaves_pix_produto WHERE ativo = 1 AND chave_pix IN ({marcadores}) LIMIT 1",
+        f"""SELECT c.produto_id, pr.ativo FROM chaves_pix_produto c
+            JOIN produtos pr ON pr.id = c.produto_id
+            WHERE c.ativo = 1 AND c.chave_pix IN ({marcadores})
+            ORDER BY pr.ativo DESC LIMIT 1""",
         tuple(enderecos), fetch_one=True,
     )
-    return linha['produto_id'] if linha else None
+    return {'produto_id': linha['produto_id'], 'aponta_produto': bool(linha['ativo'])} if linha else None
+
+
+def buscar_produto_por_chave_pix(enderecos: list) -> int | None:
+    """Produto dono da chave PIX para onde a cliente escreveu — None se não é chave ou se a chave
+    não aponta um produto (ver buscar_chave_pix_do_email)."""
+    chave = buscar_chave_pix_do_email(enderecos)
+    return chave['produto_id'] if chave and chave['aponta_produto'] else None
 
 
 def buscar_pedidos_vinculo_por_email(emails: list) -> list:
@@ -3282,6 +3296,27 @@ def buscar_pedidos_vinculo_por_nome(nome_completo: str, primeiro: str = '', ulti
             (f'%{primeiro}%', f'%{ultimo}%') * 2, fetch_all=True,
         ) or []
     return resultado
+
+
+def buscar_pedidos_vinculo_por_produto_e_nome(produto_id: int, inicio, fim, palavras: list) -> list:
+    """Busca focada para quem escreveu para o alias de um produto (quase sempre a chave PIX, logo
+    depois de recebê-la no WhatsApp): só pedidos desse produto criados entre `inicio` e `fim` (o
+    horário do e-mail — nunca depois dele), pagos ou não, com QUALQUER palavra do nome no contato
+    ou no pagador. O chamador pontua quantas palavras batem. Datas no horário de São Paulo, sem
+    fuso, como data_pedido. Usa idx_pedidos_data_estado (janela curta)."""
+    palavras = [p for p in palavras if p]
+    if not produto_id or not palavras:
+        return []
+    por_palavra = ['(p.contact_name LIKE %s OR p.nome_pagador LIKE %s)'] * len(palavras)
+    params = [x for p in palavras for x in (f'%{p}%', f'%{p}%')]
+    # Ordena por quantas palavras batem antes do LIMIT: numa semana movimentada, uma palavra comum
+    # ('maria') enche as 100 linhas — quem bate mais palavras (a cliente) não pode ficar de fora.
+    return db.execute_query(
+        f"""{_SELECT_PEDIDO_VINCULO}
+            WHERE p.data_pedido BETWEEN %s AND %s AND p.produto_id = %s AND ({' OR '.join(por_palavra)})
+            ORDER BY ({' + '.join(por_palavra)}) DESC, p.data_pedido DESC LIMIT 100""",
+        (inicio, fim, produto_id, *params, *params), fetch_all=True,
+    ) or []
 
 
 def inserir_email_atendimento(dados: dict) -> int | None:

@@ -10,7 +10,6 @@ mensagens_email_pedido (tela de conversa do produto e histórico do agente de IA
 
 import os
 import logging
-from datetime import datetime
 
 import database as db
 from fluxos import _gmail_labels as labels
@@ -29,7 +28,7 @@ def aplicar_rotulos(service, atendimento: dict) -> None:
     if atendimento['tipo'] == 'vendas':
         adicionar.append(labels.nome_label_produto(atendimento.get('produto_nome')))
     labels.aplicar(service, atendimento['gmail_message_id'], adicionar, remover,
-                   arquivar=atendimento['tipo'] == 'ruido')
+                   arquivar=atendimento['tipo'] == 'ruido', remover_prefixos=(labels.PREFIXO_PRODUTO,))
 
 
 REMETENTE_SEM_PRODUTO = 'suporte@lsnlivros.com.br'
@@ -93,7 +92,7 @@ def enviar(atendimento_id: int, corpo_html: str, por: str, automatica: bool = Fa
         raise
 
     estado = 'aguardando_cliente' if atendimento.get('resposta_tipo') in TIPOS_AGUARDAM_CLIENTE else 'respondido'
-    agora = datetime.now()
+    agora = labels.agora_sp()
     db.atualizar_email_atendimento(atendimento_id, estado=estado, resposta_html=corpo_html,
                                    respondido_em=agora, respondido_por=por,
                                    resposta_automatica=1 if automatica else 0)
@@ -105,7 +104,7 @@ def enviar(atendimento_id: int, corpo_html: str, por: str, automatica: bool = Fa
         service = labels.servico(caixa)
         aplicar_rotulos(service, {**atendimento, 'estado': estado})
         if resultado.get('id'):
-            labels.aplicar(service, resultado['id'], [f"Enviados/{nome_produto or 'Sem produto'}"])
+            labels.aplicar(service, resultado['id'], [labels.nome_label_envio(nome_produto)])
     except Exception as exc:
         logger.warning(f"[{_TAG}] ⚠️ Marcadores não aplicados no atendimento #{atendimento_id}: {exc}")
 
@@ -123,7 +122,7 @@ def enviar(atendimento_id: int, corpo_html: str, por: str, automatica: bool = Fa
 def mudar_estado(atendimento_id: int, estado: str, por: str, **campos) -> None:
     """Mudança manual pelo admin (respondido sem enviar, mover p/ administrativo…) + marcadores."""
     db.atualizar_email_atendimento(atendimento_id, estado=estado, **campos,
-                                   **({'respondido_em': datetime.now(), 'respondido_por': por}
+                                   **({'respondido_em': labels.agora_sp(), 'respondido_por': por}
                                       if estado in ('respondido', 'sem_acao') else {}))
     caixa = labels.caixa_atendimento()
     if not caixa:

@@ -29,6 +29,8 @@ from email.utils import parseaddr
 
 from werkzeug.utils import secure_filename
 
+from fluxos import _gmail_labels as _labels
+
 logger = logging.getLogger(__name__)
 
 _PREFIXOS_BOUNCE = ('mailer-daemon@', 'postmaster@', 'noreply@', 'no-reply@', 'donotreply@')
@@ -308,7 +310,7 @@ def _gravar_no_pedido(service, db, pedido: dict, full: dict, headers: dict, text
         gmail_thread_id=full.get('threadId', ''), rfc_message_id=headers.get('message-id'),
         assunto=headers.get('subject', ''), remetente=headers.get('from', ''),
         destinatario=headers.get('to', ''), corpo_texto=texto, corpo_html=html,
-        data_mensagem=datetime.fromtimestamp(int(full['internalDate']) / 1000),
+        data_mensagem=_labels.data_do_gmail(full['internalDate']),
     )
     if mensagem_id is None:
         return
@@ -344,7 +346,7 @@ def _processar_mensagem(service, db, message_id: str, envio_automatico: bool = T
         'gmail_message_id': full['id'], 'gmail_thread_id': thread_id,
         'rfc_message_id': headers.get('message-id'), 'remetente_email': remetente_email or '(sem remetente)',
         'remetente_nome': (remetente_nome or '')[:150], 'destinatario': ', '.join(destinatarios)[:255],
-        'assunto': assunto[:255], 'recebido_em': datetime.fromtimestamp(int(full['internalDate']) / 1000),
+        'assunto': assunto[:255], 'recebido_em': _labels.data_do_gmail(full['internalDate']),
         'pedido_id': None, 'resposta_tipo': None, 'resposta_html': None,
     }
 
@@ -360,7 +362,7 @@ def _processar_mensagem(service, db, message_id: str, envio_automatico: bool = T
         for pendente in db.listar_emails_atendimento_pendentes_por_thread():
             if pendente['gmail_thread_id'] == thread_id:
                 db.atualizar_email_atendimento(pendente['id'], estado='respondido', respondido_por=remetente_email,
-                                               respondido_em=datetime.now())
+                                               respondido_em=_labels.agora_sp())
                 aplicar_rotulos(service, db.get_email_atendimento(pendente['id']))
         labels.aplicar(service, message_id, [labels.PROCESSADO])
         return
@@ -430,21 +432,26 @@ def _analisar(service, db, full: dict, message_id: str, registro: dict, remetent
     assunto = next((h['value'] for h in full.get('payload', {}).get('headers', [])
                     if h['name'].lower() == 'subject'), '')
     texto, html, anexos = _extrair_conteudo(full.get('payload', {}))
-    produto_da_chave = db.buscar_produto_por_chave_pix(destinatarios)
-    triagem = _triar(texto, assunto, registro['destinatario'], anexos, produto_da_chave is not None)
+    chave_pix = db.buscar_chave_pix_do_email(destinatarios)
+    escreveu_para_chave_pix = chave_pix is not None
+    # Pista de produto só de chave de produto ativo (pascoa@ foi a chave de todos os produtos do site)
+    produto_da_chave = chave_pix['produto_id'] if chave_pix and chave_pix['aponta_produto'] else None
+    triagem = _triar(texto, assunto, registro['destinatario'], anexos, escreveu_para_chave_pix)
     registro.update(tipo=triagem.tipo, categoria=triagem.categoria, motivo_triagem=triagem.motivo[:255])
 
     if triagem.tipo == 'vendas' and triagem.categoria not in _CATEGORIAS_SEM_VINCULO:
         vinculo = vincular(remetente_email, remetente_nome, assunto, texto, thread_id,
                            produto_id=produto_da_chave, enderecos_ignorados=destinatarios,
-                           ler_comprovantes=lambda: _ler_comprovantes(service, message_id, anexos))
+                           ler_comprovantes=lambda: _ler_comprovantes(service, message_id, anexos),
+                           recebido_em=registro['recebido_em'])
     else:
         vinculo = Vinculo()
     pedido = vinculo.pedido
     produto_id = (pedido or {}).get('produto_id') or produto_da_chave
     produto = db.get_produto_by_id(produto_id) if produto_id else None
 
-    decisao = decidir(triagem.tipo, triagem.categoria, vinculo, produto, produto_da_chave is not None)
+    tem_comprovante = any(a['mime_type'] in _EXTENSOES_COMPROVANTE for a in anexos)
+    decisao = decidir(triagem.tipo, triagem.categoria, vinculo, produto, escreveu_para_chave_pix, tem_comprovante)
     resposta_html = None
     if decisao.resposta_tipo == 'ia':
         resposta_html = _resposta_ia(db, pedido, texto)
@@ -480,11 +487,11 @@ def _conferir_respondidos_no_gmail(service, db) -> None:
             logger.warning(f"[EMAIL-CONVERSAS] ⚠️ Thread {thread_id} não lido: {exc}")
             continue
         enviados = [int(m['internalDate']) / 1000 for m in thread.get('messages', [])
-                    if 'SENT' in m.get('labelIds', [])]
+                    if 'SENT' in m.get('labelIds', [])]  # segundos desde 1970 (UTC)
         for pendente in (p for p in pendentes if p['gmail_thread_id'] == thread_id):
-            if any(e > pendente['recebido_em'].timestamp() for e in enviados):
+            if any(e > _labels.epoch_de_data_sp(pendente['recebido_em']) for e in enviados):
                 db.atualizar_email_atendimento(pendente['id'], estado='respondido', respondido_por='gmail',
-                                               respondido_em=datetime.now())
+                                               respondido_em=_labels.agora_sp())
                 aplicar_rotulos(service, db.get_email_atendimento(pendente['id']))
 
 
@@ -549,7 +556,7 @@ def ler_thread(thread_id: str) -> list:
         mensagens.append({
             'id': m['id'],
             'de': headers.get('from', ''),
-            'data': datetime.fromtimestamp(int(m['internalDate']) / 1000),
+            'data': _labels.data_do_gmail(m['internalDate']),
             'enviada': 'SENT' in m.get('labelIds', []),
             'texto': texto,
             'html': html,

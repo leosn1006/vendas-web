@@ -4066,7 +4066,9 @@ def atendimento_email_detalhe(atendimento_id):
         flash('Não foi possível ler o e-mail no Gmail agora. Tente recarregar.', 'danger')
     for msg in mensagens:
         msg['html'] = _sanitizar_html_email(msg['html']) if msg.get('html') else ''
+    nomes_produtos = {p['id']: p['nome'] for p in (db.execute_query("SELECT id, nome FROM produtos", fetch_all=True) or [])}
     return render_template('admin/atendimento_email_detalhe.html', atendimento=atendimento, mensagens=mensagens,
+                           nomes_produtos=nomes_produtos,
                            rotulos_estado=_ROTULOS_ESTADO_ATENDIMENTO,
                            rotulos_categoria=_ROTULOS_CATEGORIA_ATENDIMENTO,
                            rotulos_resposta=_ROTULOS_RESPOSTA_ATENDIMENTO)

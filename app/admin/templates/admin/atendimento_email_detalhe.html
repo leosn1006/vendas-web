@@ -25,6 +25,8 @@
     iframe.preview { width:100%; height:520px; border:1px solid var(--border); border-radius:8px; background:#fff; }
     .aviso { background:#fff3cd; border:1px solid #f0c36d; border-radius:8px; padding:10px 14px; font-size:14px; margin-bottom:12px; }
     .muted { color:var(--muted); font-size:13px; }
+    .ajuda { color:var(--muted); font-size:12.5px; margin:4px 0 10px; line-height:1.5; }
+    .ajuda strong { color:var(--text); font-weight:600; }
 </style>
 {% endblock %}
 
@@ -53,25 +55,29 @@
     {% if atendimento.motivo_triagem %}<p class="muted">Triagem: {{ atendimento.motivo_triagem }}</p>{% endif %}
 
     <div class="toolbar">
-        <a href="{{ url_for('admin.atendimento_email') }}" class="btn btn-ghost btn-sm">← Fila</a>
+        <a href="{{ url_for('admin.atendimento_email') }}" class="btn btn-ghost btn-sm" title="Volta para a lista, sem mudar nada">← Fila</a>
         {% if atendimento.estado in ('a_responder', 'aguardando_aprovacao') %}
         <form method="POST" action="{{ url_for('admin.atendimento_email_estado', atendimento_id=atendimento.id) }}" style="display:inline">
             <input type="hidden" name="acao" value="respondido">
-            <button class="btn btn-sm btn-primary" onclick="return confirm('Marcar como respondido sem enviar nada daqui?')">✓ Respondido por fora</button>
+            <button class="btn btn-sm btn-primary" title="Você já resolveu por outro canal (WhatsApp, Gmail, telefone). Sai da fila como respondido. Não envia nada." onclick="return confirm('Marcar como respondido sem enviar nada daqui?')">✓ Respondido por fora</button>
         </form>
         <form method="POST" action="{{ url_for('admin.atendimento_email_estado', atendimento_id=atendimento.id) }}" style="display:inline">
             <input type="hidden" name="acao" value="sem_acao">
-            <button class="btn btn-sm btn-ghost" onclick="return confirm('Tirar da fila sem responder?')">Sem ação</button>
+            <button class="btn btn-sm btn-ghost" title="Não precisa de resposta (um ok, spam, mensagem repetida). Sai da fila. Não envia nada." onclick="return confirm('Tirar da fila sem responder?')">Sem ação</button>
         </form>
         {% if atendimento.tipo != 'administrativo' %}
         <form method="POST" action="{{ url_for('admin.atendimento_email_estado', atendimento_id=atendimento.id) }}" style="display:inline">
             <input type="hidden" name="acao" value="administrativo">
-            <button class="btn btn-sm btn-ghost">Mover p/ Administrativo</button>
+            <button class="btn btn-sm btn-ghost" title="Não é assunto de cliente (fornecedor, banco, parceria). Descarta a resposta pronta; responda pelo admin@. Aparece no filtro Tipo → Administrativo.">Mover p/ Administrativo</button>
         </form>
         {% endif %}
         {% endif %}
     </div>
 
+    {% if atendimento.estado in ('a_responder', 'aguardando_aprovacao') %}
+    <p class="ajuda">Nada é enviado sem o botão <strong>Aprovar e enviar</strong>. Se já resolveu por outro
+        canal, use <strong>Respondido por fora</strong>; se não precisa de resposta, <strong>Sem ação</strong>.</p>
+    {% endif %}
     <div class="chat-container">
         {% for msg in mensagens %}
             {% set lado = 'right' if msg.enviada else 'left' %}
@@ -93,20 +99,26 @@
     {% if atendimento.estado in ('a_responder', 'aguardando_aprovacao') and atendimento.tipo == 'vendas' %}
     <div class="secao">
         <h3>🔎 Vincular a um pedido</h3>
+        <p class="ajuda">O pedido está errado ou não foi achado? Informe o nº do pedido certo: a resposta pronta
+            é refeita para ele (pago → link da Estante; WhatsApp não pago → Estante + como pagar; site não pago →
+            página de vendas) e continua esperando a sua aprovação.</p>
         {% if atendimento.candidatos %}
-        <p class="muted">Mais de uma pessoa com esse nome pagou. Escolha a certa:</p>
+        <p class="muted">Encontramos pedidos possíveis, mas não dá para ter certeza de qual é o dela. Escolha o certo
+            (ou informe outro número abaixo):</p>
         <table class="cand-table">
-            <tr><th>Pedido</th><th>Nome (contato / pagador)</th><th>E-mail / telefone</th><th>Data</th><th></th></tr>
+            <tr><th>Pedido</th><th>Produto</th><th>Situação</th><th>Nome (contato / pagador)</th><th>E-mail / telefone</th><th>Data</th><th></th></tr>
             {% for c in atendimento.candidatos %}
             <tr>
                 <td>#{{ c.id }}</td>
+                <td>{{ nomes_produtos.get(c.produto_id, '—') }}</td>
+                <td>{{ 'pago' if c.estado_id in (0, 1000) else 'não pago' }}</td>
                 <td>{{ c.contact_name or '—' }} / {{ c.nome_pagador or '—' }}</td>
                 <td>{{ c.email or c.contact_phone or '—' }}</td>
                 <td>{{ (c.data_pedido or '')[:10] }}</td>
                 <td>
                     <form method="POST" action="{{ url_for('admin.atendimento_email_vincular', atendimento_id=atendimento.id) }}">
                         <input type="hidden" name="pedido_id" value="{{ c.id }}">
-                        <button class="btn btn-sm btn-ghost">É este</button>
+                        <button class="btn btn-sm btn-ghost" title="Vincula a este pedido e refaz a resposta pronta. Não envia nada.">É este</button>
                     </form>
                 </td>
             </tr>
@@ -116,7 +128,7 @@
         <form method="POST" action="{{ url_for('admin.atendimento_email_vincular', atendimento_id=atendimento.id) }}"
               style="display:flex;gap:8px;margin-top:10px;align-items:center">
             <input type="number" name="pedido_id" placeholder="Nº do pedido" required style="max-width:180px">
-            <button class="btn btn-sm btn-ghost">Vincular e gerar resposta</button>
+            <button class="btn btn-sm btn-ghost" title="Refaz a resposta pronta para este pedido. Não envia nada.">Vincular e gerar resposta</button>
             <span class="muted">Ache o nº em Conversas / busca por nome, e-mail ou telefone.</span>
         </form>
     </div>
@@ -125,6 +137,9 @@
     {% if atendimento.estado in ('a_responder', 'aguardando_aprovacao') %}
     <div class="secao">
         <h3>✉️ Resposta</h3>
+        <p class="ajuda">A prévia abaixo é exatamente o que a cliente vai receber, no mesmo e-mail em que ela escreveu,
+            pelo endereço e com o nome do produto. Se editar o texto, o link continua, mas o botão colorido vira
+            um link simples.</p>
         {% if atendimento.estado == 'aguardando_aprovacao' %}
         <div class="aviso">✋ Resposta pronta ({{ rotulos_resposta.get(atendimento.resposta_tipo, atendimento.resposta_tipo) }}).
             Confira a prévia e aprove — ou edite antes de enviar.</div>
@@ -135,7 +150,7 @@
                 <summary class="muted" style="cursor:pointer">Editar o texto (HTML simples)</summary>
                 <textarea class="resposta" name="corpo_html" id="corpo">{{ atendimento.resposta_html or '' }}</textarea>
             </details>
-            <button type="submit" class="btn btn-primary"
+            <button type="submit" class="btn btn-primary" title="Envia a resposta agora para a cliente (pede confirmação)."
                     onclick="return confirm('Enviar esta resposta para a cliente?')">
                 {% if atendimento.estado == 'aguardando_aprovacao' %}✓ Aprovar e enviar{% else %}Enviar{% endif %}
             </button>

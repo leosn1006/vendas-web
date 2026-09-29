@@ -122,8 +122,8 @@ def test_marcador_criado_por_outro_processo_recarrega_o_cache(monkeypatch):
     import httplib2
     from googleapiclient.errors import HttpError
     from fluxos import _gmail_labels as labels
-    monkeypatch.setattr(labels, '_cache_ids', {'Sistema/Processado': 'L1', 'Enviados': 'L2'})
-    no_gmail = {'Sistema/Processado': 'L1', 'Enviados': 'L2', 'Enviados/Pudim': 'L9'}  # outro worker criou
+    monkeypatch.setattr(labels, '_cache_ids', {'Sistema/Processado': 'L1', 'Envios': 'L2'})
+    no_gmail = {'Sistema/Processado': 'L1', 'Envios': 'L2', 'Envios/Pudim': 'L9'}  # outro worker criou
 
     class Labels:
         def list(self, userId):
@@ -135,7 +135,7 @@ def test_marcador_criado_por_outro_processo_recarrega_o_cache(monkeypatch):
             return SimpleNamespace(execute=conflito)
 
     service = SimpleNamespace(users=lambda: SimpleNamespace(labels=lambda: Labels()))
-    assert labels.garantir_label(service, 'Enviados/Pudim') == 'L9'
+    assert labels.garantir_label(service, 'Envios/Pudim') == 'L9'
 
 
 def test_leitor_processa_do_mais_antigo_ao_mais_novo_e_carga_nao_envia_sozinha(monkeypatch):

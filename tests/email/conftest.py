@@ -25,7 +25,7 @@ def banco(monkeypatch):
     as chamadas (pra checar que etapas caras não rodam à toa)."""
     import database
     dados = {'thread': None, 'pedidos': {}, 'email': [], 'telefone': [], 'cpf': [],
-             'nome': {'completo': [], 'primeiro_ultimo': []}, 'chamadas': []}
+             'nome': {'completo': [], 'primeiro_ultimo': []}, 'produto_nome': [], 'chamadas': []}
 
     def registrar(nome, retorno):
         def f(*args, **kwargs):
@@ -39,4 +39,9 @@ def banco(monkeypatch):
     monkeypatch.setattr(database, 'buscar_pedidos_vinculo_por_telefone', registrar('telefone', lambda: dados['telefone']))
     monkeypatch.setattr(database, 'buscar_pedidos_vinculo_por_cpf', registrar('cpf', lambda: dados['cpf']))
     monkeypatch.setattr(database, 'buscar_pedidos_vinculo_por_nome', registrar('nome', lambda: dados['nome']))
+
+    def por_produto(produto_id, inicio, fim, palavras):
+        dados['chamadas'].append(('produto_nome', produto_id, inicio, fim, tuple(palavras)))
+        return dados['produto_nome']
+    monkeypatch.setattr(database, 'buscar_pedidos_vinculo_por_produto_e_nome', por_produto)
     return dados

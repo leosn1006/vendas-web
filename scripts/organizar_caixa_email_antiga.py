@@ -12,7 +12,7 @@ A organização não usa IA, não responde ninguém e não grava no banco — s�
     marcador e, com --aplicar, o leitor roda uma vez com janela de 30 dias (triagem, vínculo e
     resposta pronta, que começa com "Desculpe a demora"; tudo com aprovação no admin)
   - resposta da própria equipe ........................... (só Processado)
-  - e-mails que o sistema enviou (entrega, follow-up) .... Enviados/<produto>
+  - e-mails que o sistema enviou (entrega, follow-up) .... Envios/<produto>
 Todos recebem Sistema/Processado, para o leitor nunca pegá-los. Clientes ganham também
 Produto/<nome> quando dá para saber sem IA (nº do pedido no assunto ou alias da chave PIX).
 
@@ -29,7 +29,7 @@ import collections
 import os
 import re
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta  # noqa: F401 (anotações)
 
 from dotenv import load_dotenv
 
@@ -107,7 +107,7 @@ def _ultima_do_thread(service, thread_id: str, cache: dict) -> tuple[bool, datet
         ultima = max(thread.get('messages', []), key=lambda m: int(m['internalDate']))
         de = next((h['value'] for h in ultima.get('payload', {}).get('headers', []) if h['name'] == 'From'), '')
         nossa = 'SENT' in ultima.get('labelIds', []) or _e_da_equipe(parseaddr(de)[1].lower())
-        cache[thread_id] = (nossa, datetime.fromtimestamp(int(ultima['internalDate']) / 1000))
+        cache[thread_id] = (nossa, labels.data_do_gmail(ultima['internalDate']))
     return cache[thread_id]
 
 
@@ -120,7 +120,7 @@ def main():
                         help='Conversas em que a cliente falou por último há até N dias vão para a fila '
                              'do admin (0 = nenhuma). Padrão: 30')
     args = parser.parse_args()
-    limite_fila = datetime.now() - timedelta(days=args.fila_dias)
+    limite_fila = labels.agora_sp() - timedelta(days=args.fila_dias)
     para_a_fila = []
 
     caixa = labels.caixa_atendimento()
@@ -146,7 +146,7 @@ def main():
         else:
             nossa, data_ultima = _ultima_do_thread(service, msg['threadId'], threads)
             if not nossa and data_ultima >= limite_fila:
-                if datetime.fromtimestamp(int(msg['internalDate']) / 1000) >= limite_fila:
+                if labels.data_do_gmail(msg['internalDate']) >= limite_fila:
                     para_a_fila.append(f"{remetente} | {headers.get('subject', '')[:60]}")
                     continue  # sem marcador: o leitor pega (janela de --fila-dias)
                 # Mensagem mais velha que a janela num thread que vai para a fila: a mais nova
@@ -166,7 +166,7 @@ def main():
     for i, message_id in enumerate(enviados, 1):
         _, headers = _cabecalhos(service, message_id)
         produto = produtos.do_email(headers)
-        chave = ((f"Enviados/{produto or 'Sem produto'}", labels.PROCESSADO), False)
+        chave = ((labels.nome_label_envio(produto), labels.PROCESSADO), False)
         grupos[chave].append(message_id)
         if len(exemplos[chave]) < 3:
             exemplos[chave].append(headers.get('subject', '')[:70])

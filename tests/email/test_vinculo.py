@@ -5,7 +5,7 @@ Por que importa: com o vínculo certo a resposta é só o link da Estante; com o
 Estante de outra pessoa. A regra validada na medição de 27/09/2026 é "só vale se os pedidos pagos
 encontrados forem de UMA pessoa" — nome comum vira lista de candidatos para o humano.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from tests.email.conftest import pedido
 from fluxos.email_vinculo import extrair_identificadores, normalizar_nome, vincular
@@ -117,3 +117,62 @@ def test_prefere_o_produto_do_alias_da_chave_pix(banco):
                       pedido(2, 1000, 'cliente@gmail.com', produto_id=8, data=datetime(2026, 9, 1))]
     assert _vincular(produto_id=8).pedido['id'] == 2
     assert _vincular().pedido['id'] == 1
+
+
+# ─── busca focada no produto do alias (caso Bernadete, 28/09/2026) ─────────────
+
+EMAIL_12H04 = datetime(2026, 9, 28, 12, 4)
+
+
+def test_chave_pix_acha_o_pedido_nao_pago_do_produto_por_uma_palavra_do_nome(banco):
+    # Escreveu "Bernadete Lopes" para semacucar@ (produto 10); no WhatsApp ela é "Maria Bernadete"
+    banco['produto_nome'] = [pedido(364631, 4, phone='5511940795879', produto_id=10, nome='Maria Bernadete',
+                                    data=datetime(2026, 9, 28, 11, 51))]
+    banco['nome']['completo'] = [pedido(239801, 1000, 'b@x.com', produto_id=8, nome='Bernadete Lopes')]
+    v = _vincular(remetente_nome='Bernadete Lopes', produto_id=10, recebido_em=EMAIL_12H04)
+    assert v.pedido['id'] == 364631 and v.metodo == 'nome' and not v.pago
+    busca = next(c for c in banco['chamadas'] if isinstance(c, tuple))
+    # Janela: 7 dias antes do e-mail ATÉ o horário do e-mail (nunca pedido posterior)
+    assert busca[1] == 10 and busca[2] == EMAIL_12H04 - timedelta(days=7) and busca[3] == EMAIL_12H04
+    assert busca[4] == ('bernadete', 'lopes')
+
+
+def test_nome_geral_nao_escolhe_pedido_de_outro_produto_que_nao_o_do_alias(banco):
+    # Sem nada na busca focada, o nome geral acha um Pudim pago: vira candidato, não vínculo
+    banco['nome']['completo'] = [pedido(239801, 1000, 'b@x.com', produto_id=8, nome='Bernadete Lopes')]
+    v = _vincular(remetente_nome='Bernadete Lopes', produto_id=10, recebido_em=EMAIL_12H04)
+    assert v.pedido is None and [c['id'] for c in v.candidatos] == [239801]
+
+
+def test_busca_focada_desempata_pelo_numero_de_palavras_e_empate_vira_candidatos(banco):
+    banco['produto_nome'] = [pedido(1, 4, phone='551', produto_id=10, nome='Maria Rosana Silva'),
+                             pedido(2, 4, phone='552', produto_id=10, nome='Maria Aparecida')]
+    assert _vincular(remetente_nome='Maria Rosana', produto_id=10, recebido_em=EMAIL_12H04).pedido['id'] == 1
+    v = _vincular(remetente_nome='Maria', produto_id=10, recebido_em=EMAIL_12H04)
+    assert v.pedido is None and {c['id'] for c in v.candidatos} == {1, 2}
+
+
+def test_busca_focada_compara_palavra_inteira(banco):
+    banco['produto_nome'] = [pedido(1, 4, phone='551', produto_id=10, nome='Mariana Souza')]
+    v = _vincular(remetente_nome='Ana', produto_id=10, recebido_em=EMAIL_12H04)
+    assert v.pedido is None  # 'ana' não conta dentro de 'mariana'
+
+
+def test_palavras_do_nome():
+    from fluxos.email_vinculo import palavras_do_nome
+    assert palavras_do_nome('Maria da Silva') == ['maria', 'silva']
+    assert palavras_do_nome('Dora') == ['dora']
+    assert palavras_do_nome('G3neci Urbano') == ['urbano']
+    assert palavras_do_nome('x@y.com') == []
+    assert palavras_do_nome('maria.souza') == ['maria', 'souza']
+    assert palavras_do_nome('Ana-Paula Lima') == ['ana', 'paula', 'lima']
+
+
+def test_uma_palavra_comum_sozinha_nao_vincula_mas_uma_rara_sim(banco):
+    # "Maria Aparecida Souza" não pode ser ligada a "Maria Lima" só pelo "maria"
+    banco['produto_nome'] = [pedido(1, 4, phone='551', produto_id=8, nome='Maria Lima')]
+    v = _vincular(remetente_nome='Maria Aparecida Souza', produto_id=8, recebido_em=EMAIL_12H04)
+    assert v.pedido is None and [c['id'] for c in v.candidatos] == [1]
+    # Nome raro sozinho continua valendo (caso Bernadete)
+    banco['produto_nome'] = [pedido(2, 4, phone='552', produto_id=10, nome='Maria Bernadete')]
+    assert _vincular(remetente_nome='Bernadete Lopes', produto_id=10, recebido_em=EMAIL_12H04).pedido['id'] == 2

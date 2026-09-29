@@ -229,3 +229,12 @@ def test_remetente_da_resposta(monkeypatch):
     assert escolher_remetente(producao, None) == 'ajuda@lsnlivros.com.br'
     # Dev: sempre a caixa de teste
     assert escolher_remetente('teste@lsnlivros.com.br', {'email_remetente': 'tempero@lsnlivros.com.br'}) == 'teste@lsnlivros.com.br'
+
+
+def test_pedido_nao_pago_com_comprovante_anexado_vai_para_o_humano():
+    v = Vinculo(pedido(1, 4, phone='5561'), 'nome')
+    d = decidir('vendas', 'chave_pix', v, PRODUTO, True, tem_comprovante=True)
+    assert (d.estado, d.resposta_tipo) == ('a_responder', None)
+    # Pago continua recebendo a Estante mesmo com anexo
+    d = decidir('vendas', 'pagou_e_cobrado', Vinculo(pedido(2, 1000, 'a@x.com'), 'email'), PRODUTO, False, True)
+    assert d.resposta_tipo == 'estante_pago'

@@ -18,7 +18,7 @@ Tipos de resposta:
 import html
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import database as db
 from fluxos.email_vinculo import Vinculo
@@ -44,7 +44,10 @@ class Decisao:
 
 
 def decidir(tipo: str, categoria: str, vinculo: Vinculo, produto: dict | None,
-            escreveu_para_chave_pix: bool) -> Decisao:
+            escreveu_para_chave_pix: bool, tem_comprovante: bool = False) -> Decisao:
+    """tem_comprovante: o e-mail trouxe imagem/PDF anexado. Com pedido não pago, é quase sempre
+    o comprovante — responder "faça o Pix e mande o comprovante" seria errado; vai para o humano
+    conferir o pagamento."""
     if tipo == 'ruido' or categoria in ('ruido', 'agradecimento'):
         return Decisao('sem_acao')
     if tipo == 'administrativo' or categoria in CATEGORIAS_HUMANO:
@@ -60,6 +63,8 @@ def decidir(tipo: str, categoria: str, vinculo: Vinculo, produto: dict | None,
             return Decisao('aguardando_aprovacao', 'pedir_dados')
         if vinculo.pago:
             return Decisao('aguardando_aprovacao', 'estante_pago')
+        if tem_comprovante:
+            return Decisao('a_responder')
         if pedido['estado_id'] < 1000:
             if _entregue_whatsapp(pedido):
                 return Decisao('aguardando_aprovacao', 'estante_nao_pago_wpp')
@@ -141,7 +146,8 @@ DIAS_PARA_DESCULPAS = 3
 
 
 def e_atrasada(recebido_em) -> bool:
-    return bool(recebido_em) and datetime.now() - recebido_em > timedelta(days=DIAS_PARA_DESCULPAS)
+    from fluxos._gmail_labels import agora_sp
+    return bool(recebido_em) and agora_sp() - recebido_em > timedelta(days=DIAS_PARA_DESCULPAS)
 
 
 def montar_resposta(resposta_tipo: str, pedido: dict | None, produto: dict | None,
