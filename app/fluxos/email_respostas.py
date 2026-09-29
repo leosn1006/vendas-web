@@ -18,6 +18,7 @@ Tipos de resposta:
 import html
 import os
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 import database as db
 from fluxos.email_vinculo import Vinculo
@@ -135,11 +136,21 @@ _PEDIR_DADOS = (
 )
 
 
+# A partir daqui a resposta começa pedindo desculpas pela demora
+DIAS_PARA_DESCULPAS = 3
+
+
+def e_atrasada(recebido_em) -> bool:
+    return bool(recebido_em) and datetime.now() - recebido_em > timedelta(days=DIAS_PARA_DESCULPAS)
+
+
 def montar_resposta(resposta_tipo: str, pedido: dict | None, produto: dict | None,
-                    nome_cliente: str, destinatario: str = '') -> str:
+                    nome_cliente: str, destinatario: str = '', atrasada: bool = False) -> str:
     """Corpo interno (HTML) da resposta — a moldura da marca é aplicada no envio."""
     nome = html.escape(nome_cliente)
     ola = f'<p>Olá{", " + nome if nome else ""}! Tudo bem?</p>'
+    if atrasada:
+        ola += '<p>Desculpe a demora para responder.</p>'
     fim = f'<p>Com carinho,<br>{html.escape(assinatura(produto))}</p>'
     nome_produto = html.escape((produto or {}).get('nome') or 'seu livro')
     num = f"#{pedido['id']:04d}" if pedido else ''

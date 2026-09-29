@@ -29,6 +29,9 @@ _ESCOPOS = ['https://www.googleapis.com/auth/gmail.modify']
 PROCESSADO = 'Sistema/Processado'
 RUIDO = 'Ruído'
 SEM_PRODUTO = 'Produto/Sem produto'
+# E-mails antigos (anteriores à fila) em que a cliente falou por último: ficam para revisão no
+# Gmail, fora da fila do admin (scripts/organizar_caixa_email_antiga.py)
+EM_ANALISE = 'Atendimento/Em análise'
 
 # (tipo, estado) → marcador de status. tipo 'ruido' é tratado à parte (Ruído + arquivar).
 _STATUS_VENDAS = {
@@ -43,7 +46,7 @@ _STATUS_ADMINISTRATIVO = {
     'respondido':  'Administrativo/Respondido',
     'sem_acao':    'Administrativo/Respondido',
 }
-_TODOS_STATUS = sorted(set(_STATUS_VENDAS.values()) | set(_STATUS_ADMINISTRATIVO.values()))
+_TODOS_STATUS = sorted(set(_STATUS_VENDAS.values()) | set(_STATUS_ADMINISTRATIVO.values()) | {EM_ANALISE})
 
 _cache_ids: dict[str, str] = {}
 

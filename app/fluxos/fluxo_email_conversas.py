@@ -329,7 +329,7 @@ def _resposta_ia(db, pedido: dict, texto: str) -> str | None:
     return responder_cliente_email_com_historico_produto(texto, historico, produto, pedido)
 
 
-def _processar_mensagem(service, db, message_id: str) -> None:
+def _processar_mensagem(service, db, message_id: str, envio_automatico: bool = True) -> None:
     from fluxos import _gmail_labels as labels
     from fluxos.fluxo_resposta_atendimento import aplicar_rotulos, enviar as enviar_resposta
 
@@ -413,8 +413,8 @@ def _processar_mensagem(service, db, message_id: str) -> None:
                 f"pedido {registro['pedido_id'] or '-'} ({vinculo.metodo or 'sem vínculo'}), "
                 f"{registro['estado']} {registro['resposta_tipo'] or ''}")
 
-    if registro['resposta_tipo'] and _pode_enviar_sozinho(registro['resposta_tipo'], vinculo.metodo,
-                                                          thread_id, remetente_email):
+    if envio_automatico and registro['resposta_tipo'] and _pode_enviar_sozinho(
+            registro['resposta_tipo'], vinculo.metodo, thread_id, remetente_email):
         tentar('envio automático', lambda: enviar_resposta(atendimento_id, registro['resposta_html'],
                                                            por='sistema', automatica=True))
 
@@ -424,7 +424,7 @@ def _analisar(service, db, full: dict, message_id: str, registro: dict, remetent
     """Triagem + vínculo + decisão + resposta pronta. Preenche `registro` e devolve o que o resto
     do processamento usa."""
     from fluxos.email_vinculo import Vinculo, vincular
-    from fluxos.email_respostas import decidir, montar_resposta, primeiro_nome
+    from fluxos.email_respostas import decidir, e_atrasada, montar_resposta, primeiro_nome
 
     remetente_email, thread_id = registro['remetente_email'], registro['gmail_thread_id']
     assunto = next((h['value'] for h in full.get('payload', {}).get('headers', [])
@@ -452,7 +452,8 @@ def _analisar(service, db, full: dict, message_id: str, registro: dict, remetent
         try:
             resposta_html = montar_resposta(decisao.resposta_tipo, pedido, produto,
                                             primeiro_nome(remetente_nome, (pedido or {}).get('contact_name')),
-                                            destinatario=_endereco_da_chave(destinatarios))
+                                            destinatario=_endereco_da_chave(destinatarios),
+                                            atrasada=e_atrasada(registro['recebido_em']))
         except ValueError as exc:
             logger.warning(f"[EMAIL-CONVERSAS] ⚠️ Resposta pronta não montada ({exc}) — vai pro humano")
     if decisao.resposta_tipo and not resposta_html:
@@ -487,7 +488,15 @@ def _conferir_respondidos_no_gmail(service, db) -> None:
                 aplicar_rotulos(service, db.get_email_atendimento(pendente['id']))
 
 
-def executar() -> None:
+def executar(janela_dias: int = 3, maximo: int = 50, envio_automatico: bool = True) -> int:
+    """Processa os e-mails novos da caixa. Devolve quantos processou.
+
+    janela_dias — só e-mails dos últimos N dias: a caixa tem meses de mensagens antigas sem o
+    marcador Processado, que não devem virar respostas atrasadas nem centenas de triagens. O
+    Celery usa o padrão (3); a janela maior é para a carga única da fila
+    (scripts/organizar_caixa_email_antiga.py --aplicar), que desliga o envio automático: e-mail
+    antigo sempre passa pela aprovação no admin.
+    """
     import database as db
     from fluxos import _gmail_labels as labels
 
@@ -495,21 +504,31 @@ def executar() -> None:
     if not caixa:
         logger.info("[EMAIL-CONVERSAS] ⏭ Fora de produção sem EMAIL_ATENDIMENTO_CAIXA (caixa de teste) — "
                     "não lê a caixa real")
-        return
+        return 0
     service = labels.servico(caixa)
 
     _conferir_respondidos_no_gmail(service, db)
 
-    # newer_than:3d — só e-mails recentes: na primeira execução a caixa tem meses de mensagens
-    # sem o marcador Processado, que não devem virar respostas atrasadas nem centenas de triagens.
-    consulta = f"in:inbox -in:sent newer_than:3d -label:{labels.PROCESSADO.lower().replace('/', '-')}"
-    mensagens = service.users().messages().list(userId='me', q=consulta, maxResults=50).execute().get('messages', [])
-    logger.info(f"[EMAIL-CONVERSAS] 📬 {len(mensagens)} mensagem(ns) nova(s) em {caixa}")
-    for msg in mensagens:
+    consulta = (f"in:inbox -in:sent newer_than:{janela_dias}d "
+                f"-label:{labels.PROCESSADO.lower().replace('/', '-')}")
+    ids, pagina = [], None
+    while len(ids) < maximo:
+        resp = service.users().messages().list(userId='me', q=consulta, pageToken=pagina,
+                                               maxResults=min(500, maximo - len(ids))).execute()
+        ids += [m['id'] for m in resp.get('messages', [])]
+        pagina = resp.get('nextPageToken')
+        if not pagina:
+            break
+    logger.info(f"[EMAIL-CONVERSAS] 📬 {len(ids)} mensagem(ns) nova(s) em {caixa} (últimos {janela_dias} dias)")
+    # O Gmail lista do mais novo para o mais antigo; processar na ordem em que chegaram faz a
+    # mensagem mais nova de um thread ser a última gravada — é ela que fica na fila (a gravação
+    # de uma pendência fecha as anteriores do mesmo thread).
+    for message_id in reversed(ids):
         try:
-            _processar_mensagem(service, db, msg['id'])
+            _processar_mensagem(service, db, message_id, envio_automatico=envio_automatico)
         except Exception as exc:
-            logger.error(f"[EMAIL-CONVERSAS] ❌ Erro ao processar mensagem {msg['id']}: {exc}")
+            logger.error(f"[EMAIL-CONVERSAS] ❌ Erro ao processar mensagem {message_id}: {exc}")
+    return len(ids)
 
 
 # ─── Leitura sob demanda para a tela do admin (o corpo não é copiado para o banco) ───

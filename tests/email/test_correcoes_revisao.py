@@ -136,3 +136,23 @@ def test_marcador_criado_por_outro_processo_recarrega_o_cache(monkeypatch):
 
     service = SimpleNamespace(users=lambda: SimpleNamespace(labels=lambda: Labels()))
     assert labels.garantir_label(service, 'Enviados/Pudim') == 'L9'
+
+
+def test_leitor_processa_do_mais_antigo_ao_mais_novo_e_carga_nao_envia_sozinha(monkeypatch):
+    from fluxos import fluxo_email_conversas as mod
+    from fluxos import _gmail_labels as labels
+    chamadas = []
+
+    class Msgs:
+        def list(self, **kw):
+            # O Gmail devolve do mais novo para o mais antigo
+            return SimpleNamespace(execute=lambda: {'messages': [{'id': 'novo'}, {'id': 'meio'}, {'id': 'velho'}]})
+
+    service = SimpleNamespace(users=lambda: SimpleNamespace(messages=lambda: Msgs()))
+    monkeypatch.setattr(labels, 'caixa_atendimento', lambda: 'teste@lsnlivros.com.br')
+    monkeypatch.setattr(labels, 'servico', lambda caixa: service)
+    monkeypatch.setattr(mod, '_conferir_respondidos_no_gmail', lambda s, db: None)
+    monkeypatch.setattr(mod, '_processar_mensagem',
+                        lambda s, db, mid, envio_automatico=True: chamadas.append((mid, envio_automatico)))
+    assert mod.executar(janela_dias=30, maximo=1000, envio_automatico=False) == 3
+    assert chamadas == [('velho', False), ('meio', False), ('novo', False)]

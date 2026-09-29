@@ -203,3 +203,13 @@ def test_resposta_da_equipe_nao_vira_pendencia(monkeypatch):
     assert _e_da_equipe('lneditoraadm@gmail.com')
     assert _e_da_equipe('pudim@lsnlivros.com.br')
     assert not _e_da_equipe('cliente@gmail.com')
+
+
+def test_resposta_de_email_antigo_pede_desculpas_pela_demora(links):
+    from datetime import datetime, timedelta
+    from fluxos.email_respostas import e_atrasada
+    assert e_atrasada(datetime.now() - timedelta(days=4))
+    assert not e_atrasada(datetime.now() - timedelta(hours=5))
+    ped = pedido(5, 1000, 'a@x.com')
+    assert 'Desculpe a demora' in montar_resposta('estante_pago', ped, PRODUTO, 'Ana', atrasada=True)
+    assert 'Desculpe a demora' not in montar_resposta('estante_pago', ped, PRODUTO, 'Ana')

@@ -4123,7 +4123,7 @@ def atendimento_email_vincular(atendimento_id):
     """Humano escolheu o pedido (entre os candidatos ou pela busca): gera de novo a resposta pronta."""
     from database import get_email_atendimento, get_produto_by_id
     from fluxos.email_vinculo import Vinculo
-    from fluxos.email_respostas import CATEGORIAS_ESTANTE, decidir, montar_resposta, primeiro_nome
+    from fluxos.email_respostas import CATEGORIAS_ESTANTE, decidir, e_atrasada, montar_resposta, primeiro_nome
     atendimento = get_email_atendimento(atendimento_id)
     pedido = get_pedido(request.form.get('pedido_id', type=int) or 0)
     if not atendimento or not pedido:
@@ -4137,7 +4137,8 @@ def atendimento_email_vincular(atendimento_id):
     if decisao.resposta_tipo and decisao.resposta_tipo != 'ia':
         try:
             resposta_html = montar_resposta(decisao.resposta_tipo, pedido, produto,
-                                            primeiro_nome(atendimento.get('remetente_nome'), pedido.get('contact_name')))
+                                            primeiro_nome(atendimento.get('remetente_nome'), pedido.get('contact_name')),
+                                            atrasada=e_atrasada(atendimento.get('recebido_em')))
         except ValueError as e:
             flash(f'Resposta pronta não montada: {e}', 'warning')
     from fluxos.fluxo_resposta_atendimento import mudar_estado
