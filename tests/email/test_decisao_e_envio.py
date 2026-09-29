@@ -238,3 +238,12 @@ def test_pedido_nao_pago_com_comprovante_anexado_vai_para_o_humano():
     # Pago continua recebendo a Estante mesmo com anexo
     d = decidir('vendas', 'pagou_e_cobrado', Vinculo(pedido(2, 1000, 'a@x.com'), 'email'), PRODUTO, False, True)
     assert d.resposta_tipo == 'estante_pago'
+
+
+def test_remetente_automatico_em_portugues_e_ruido():
+    from fluxos.fluxo_email_conversas import _e_bounce_ou_autoresponder
+    for remetente in ('nao-responder-serem@joaopessoa.pb.gov.br', 'Prefeitura <naoresponda@gov.br>',
+                      'no_reply.notas@empresa.com', 'noreply@google.com', 'do-not-reply@x.com'):
+        assert _e_bounce_ou_autoresponder(remetente, {}), remetente
+    for cliente in ('maria.naoresponde@gmail.com', 'cliente@gmail.com', 'Noreli Souza <noreli@gmail.com>'):
+        assert not _e_bounce_ou_autoresponder(cliente, {}), cliente

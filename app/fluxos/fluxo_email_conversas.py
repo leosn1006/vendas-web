@@ -34,6 +34,10 @@ from fluxos import _gmail_labels as _labels
 logger = logging.getLogger(__name__)
 
 _PREFIXOS_BOUNCE = ('mailer-daemon@', 'postmaster@', 'noreply@', 'no-reply@', 'donotreply@')
+# Remetentes automáticos: o endereço COMEÇA com a marca, em inglês ou português (ex:
+# nao-responder-serem@ da prefeitura, no_reply.notas@…) — no meio pode ser nome de cliente
+_REGEX_NAO_RESPONDA = re.compile(
+    r'(?:^|[<\s"\'])(?:no[-_.]?reply|do[-_.]?not[-_.]?reply|n[aã]o[-_.]?respond)[^@\s]*@', re.IGNORECASE)
 _TAMANHO_MAX_MB = 25
 # Base = /app (raiz do volume montado em ./storage:/app/storage — mesma pasta persistente que
 # whatsapp_upload.py usa pra comprovantes). Diferente de Path(__file__).parent, que seria
@@ -56,7 +60,7 @@ def resolver_caminho_anexo(caminho_relativo: str) -> Path | None:
 
 def _e_bounce_ou_autoresponder(remetente_header: str, headers: dict) -> bool:
     remetente_lower = (remetente_header or '').lower()
-    if any(prefixo in remetente_lower for prefixo in _PREFIXOS_BOUNCE):
+    if any(prefixo in remetente_lower for prefixo in _PREFIXOS_BOUNCE) or _REGEX_NAO_RESPONDA.search(remetente_lower):
         return True
     auto_submitted = (headers.get('auto-submitted') or 'no').lower()
     return auto_submitted != 'no'
@@ -527,15 +531,25 @@ def executar(janela_dias: int = 3, maximo: int = 50, envio_automatico: bool = Tr
         if not pagina:
             break
     logger.info(f"[EMAIL-CONVERSAS] 📬 {len(ids)} mensagem(ns) nova(s) em {caixa} (últimos {janela_dias} dias)")
-    # O Gmail lista do mais novo para o mais antigo; processar na ordem em que chegaram faz a
-    # mensagem mais nova de um thread ser a última gravada — é ela que fica na fila (a gravação
-    # de uma pendência fecha as anteriores do mesmo thread).
-    for message_id in reversed(ids):
+    # O Gmail lista do mais novo para o mais antigo: invertida, a lista fica na ordem de chegada
+    processar_mensagens(service, list(reversed(ids)), envio_automatico=envio_automatico)
+    return len(ids)
+
+
+def processar_mensagens(service, ids_em_ordem_de_chegada: list, envio_automatico: bool = True) -> list:
+    """Processa as mensagens na ordem em que chegaram: a mais nova de um thread é a última
+    gravada — é ela que fica na fila (a gravação de uma pendência fecha as anteriores do thread).
+    Usada pelo leitor e pela carga única do script da caixa antiga (que passa os ids exatos).
+    Devolve os ids que falharam (ficam sem Processado; a próxima rodada tenta de novo)."""
+    import database as db
+    falhas = []
+    for message_id in ids_em_ordem_de_chegada:
         try:
             _processar_mensagem(service, db, message_id, envio_automatico=envio_automatico)
         except Exception as exc:
+            falhas.append(message_id)
             logger.error(f"[EMAIL-CONVERSAS] ❌ Erro ao processar mensagem {message_id}: {exc}")
-    return len(ids)
+    return falhas
 
 
 # ─── Leitura sob demanda para a tela do admin (o corpo não é copiado para o banco) ───
