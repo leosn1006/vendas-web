@@ -13,6 +13,8 @@
 
 Conversões voltam pro Google Ads via Google Sheets (GCLID) — mexer em atribuição/GCLID afeta o ROI das campanhas.
 
+**Atendimento por e-mail:** a caixa `admin@lsnlivros.com.br` é lida a cada 10 min (`app/fluxos/fluxo_email_conversas.py`); cada e-mail é ligado ao pedido e ganha resposta pronta na fila `/admin/atendimento-email`, que um humano aprova. Detalhes em `docs/ATENDIMENTO_EMAIL.md`.
+
 ## Stack
 
 Flask + Gunicorn, Celery (filas `worker-urgente`/`worker-normal`/`worker-baixa` + `beat`) com Redis, MySQL, Nginx, tudo em `docker-compose.yml`. Pagamentos: BB Pay/PIX BB (`app/bb_pix.py`). NF-e em `app/fiscal/`. Admin em `app/admin/`.
@@ -31,6 +33,7 @@ WhatsApp tem dois provedores por número: API oficial da Meta e o gateway WhatsA
 - **Ambiente local é DEV isolado** (banco e credenciais próprios), mesmo com `.env` citando domínios reais.
 - **Dev nunca chama a API oficial da Meta** — `AMBIENTE=desenvolvimento` no `.env` local faz `app/config.py` forçar um endereço morto em `WHATSAPP_API_URL` (ausente = `producao`). Dev só envia pelo gateway (`WPP_WEB_API_URL`). Código novo que fale com a Meta deve usar `config.WHATSAPP_API_URL` (nunca URL fixa) ou checar `config.EH_PRODUCAO`.
 - Não alternar `disponivel_web` de produtos como efeito colateral de teste.
+- **E-mail remetente novo de produto** (`produtos.email_remetente`) precisa estar em "Enviar e-mail como" do Gmail do `admin@`, senão o Gmail troca o remetente pelo `admin@`. No dev, o atendimento por e-mail só abre uma caixa de teste (`EMAIL_ATENDIMENTO_CAIXA`), nunca a real.
 - Novo domínio + webhook WhatsApp: use a skill `novo-dominio` (além do nginx, exige `app/whatsapp_seguranca.py` e as variáveis nos 4 serviços do `docker-compose.yml`, senão a Meta recebe 401).
 - Scripts em `scripts/` rodam fora do Docker em produção (venv próprio).
 - Código, comentários, commits e mensagens ao usuário em **português**.
@@ -39,4 +42,4 @@ Hooks em `.claude/hooks/` automatizam duas dessas regras: bloqueiam comandos par
 
 ## Documentação
 
-`docs/` — `FLUXO_MENSAGENS.md`, `WEBHOOK_WHATSAPP.md`, `PLAYBOOK_SITE_VENDA_WEB.md`, `INTEGRACAO.md` (gateway WhatsApp Web), `SEGURANCA*.md`. SSL/certbot: `infra/certbot/README.md`.
+`docs/` — `FLUXO_MENSAGENS.md`, `WEBHOOK_WHATSAPP.md`, `PLAYBOOK_SITE_VENDA_WEB.md`, `INTEGRACAO.md` (gateway WhatsApp Web), `ATENDIMENTO_EMAIL.md` (fila de e-mail, Gmail, DKIM/DMARC), `SEGURANCA*.md`. SSL/certbot: `infra/certbot/README.md`.
