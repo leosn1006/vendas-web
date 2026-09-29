@@ -32,6 +32,24 @@ def aplicar_rotulos(service, atendimento: dict) -> None:
                    arquivar=atendimento['tipo'] == 'ruido')
 
 
+REMETENTE_SEM_PRODUTO = 'suporte@lsnlivros.com.br'
+
+
+def escolher_remetente(caixa: str, produto: dict | None) -> str:
+    """Por qual endereço a resposta sai. Com produto (do pedido ou do alias da chave PIX para onde
+    a cliente escreveu): o alias do produto, o mesmo da entrega e das cobranças — a cliente
+    continua falando com a mesma persona. Sem produto: o suporte (EMAIL_ATENDIMENTO_REMETENTE),
+    nunca o admin@, que fica para assuntos administrativos. No dev, sempre a caixa de teste.
+
+    Todo endereço usado aqui precisa estar em "Enviar e-mail como" da caixa, senão o Gmail troca
+    o remetente pelo endereço principal com o nome padrão da conta."""
+    if caixa != labels.CAIXA_PRODUCAO:
+        return caixa
+    return ((produto or {}).get('email_remetente')
+            or (os.getenv('EMAIL_ATENDIMENTO_REMETENTE') or '').strip()
+            or REMETENTE_SEM_PRODUTO)
+
+
 def enviar(atendimento_id: int, corpo_html: str, por: str, automatica: bool = False) -> None:
     atendimento = db.get_email_atendimento(atendimento_id)
     if not atendimento:
@@ -44,11 +62,7 @@ def enviar(atendimento_id: int, corpo_html: str, por: str, automatica: bool = Fa
     produto = db.get_produto_by_id(atendimento['produto_id']) if atendimento.get('produto_id') else None
     nome_persona = assinatura(produto)
     nome_produto = (produto or {}).get('nome')
-    # Remetente: alias do produto em produção (como a entrega); no dev, a própria caixa de teste
-    if caixa == labels.CAIXA_PRODUCAO:
-        remetente = (produto or {}).get('email_remetente') or os.getenv('EMAIL_FROM', '') or caixa
-    else:
-        remetente = caixa
+    remetente = escolher_remetente(caixa, produto)
 
     assunto = (atendimento.get('assunto') or '').strip() or 'Sua mensagem'
     assunto = assunto if assunto.lower().startswith('re:') else f'Re: {assunto}'
@@ -59,7 +73,7 @@ def enviar(atendimento_id: int, corpo_html: str, por: str, automatica: bool = Fa
         nome_remetente=nome_persona,
         cor_primaria=(produto or {}).get('email_cor_primaria') or '#2d6a1f',
         cor_secundaria=(produto or {}).get('email_cor_secundaria') or '#b45309',
-        rodape='Você recebeu este e-mail em resposta à sua mensagem para a LSN Livros.',
+        rodape='Você recebeu este e-mail em resposta à sua mensagem para a LBE Livros.',
     )
     if not db.reservar_envio_atendimento(atendimento_id, por):
         raise ValueError(f'Atendimento #{atendimento_id} já foi respondido (ou está sendo enviado agora)')

@@ -99,7 +99,7 @@ def link_pagina_vendas(pedido: dict, produto: dict) -> str:
 # ─── Textos ──────────────────────────────────────────────────────────────────
 
 def assinatura(produto: dict | None) -> str:
-    return (produto or {}).get('email_nome_remetente') or 'Equipe LSN Livros'
+    return (produto or {}).get('email_nome_remetente') or 'Equipe LBE Livros'
 
 
 def primeiro_nome(*nomes: str) -> str:

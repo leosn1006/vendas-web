@@ -102,7 +102,7 @@ def test_pagina_de_vendas_relativa_vira_link_absoluto(links):
 def test_chave_pix_explica_o_endereco_e_pede_dados_sem_produto(links):
     html = montar_resposta('chave_pix', None, None, 'Selma', destinatario='pudim@lsnlivros.com.br')
     assert 'pudim@lsnlivros.com.br' in html and 'comprovante' in html
-    assert 'Equipe LSN Livros' in html  # sem produto: assinatura neutra
+    assert 'Equipe LBE Livros' in html  # sem produto: assinatura neutra
 
 
 def test_primeiro_nome_ignora_email_e_digitos():
@@ -213,3 +213,19 @@ def test_resposta_de_email_antigo_pede_desculpas_pela_demora(links):
     ped = pedido(5, 1000, 'a@x.com')
     assert 'Desculpe a demora' in montar_resposta('estante_pago', ped, PRODUTO, 'Ana', atrasada=True)
     assert 'Desculpe a demora' not in montar_resposta('estante_pago', ped, PRODUTO, 'Ana')
+
+
+def test_remetente_da_resposta(monkeypatch):
+    from fluxos import _gmail_labels as labels
+    from fluxos.fluxo_resposta_atendimento import escolher_remetente
+    producao = labels.CAIXA_PRODUCAO
+    monkeypatch.delenv('EMAIL_ATENDIMENTO_REMETENTE', raising=False)
+    # Com produto: o alias do produto (mesma persona da entrega e das cobranças)
+    assert escolher_remetente(producao, {'email_remetente': 'tempero@lsnlivros.com.br'}) == 'tempero@lsnlivros.com.br'
+    # Sem produto: suporte, nunca o admin@
+    assert escolher_remetente(producao, None) == 'suporte@lsnlivros.com.br'
+    assert escolher_remetente(producao, {'email_remetente': None}) == 'suporte@lsnlivros.com.br'
+    monkeypatch.setenv('EMAIL_ATENDIMENTO_REMETENTE', 'ajuda@lsnlivros.com.br')
+    assert escolher_remetente(producao, None) == 'ajuda@lsnlivros.com.br'
+    # Dev: sempre a caixa de teste
+    assert escolher_remetente('teste@lsnlivros.com.br', {'email_remetente': 'tempero@lsnlivros.com.br'}) == 'teste@lsnlivros.com.br'
