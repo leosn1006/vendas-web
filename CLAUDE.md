@@ -9,7 +9,7 @@
 ### Dois canais de venda
 
 1. **WhatsApp — entrega primeiro, cobra depois.** O cliente recebe o e-book *antes* de pagar e paga (PIX) se gostar. Isso é proposital: `static/arquivos/` é público de propósito — nunca restringir/mover. Fluxos em `app/fluxos/`, orquestrados por `app/whatsapp_orquestrador.py`; follow-ups de cobrança via Celery beat. Uma IA (`agente_resposta_produto.py`) responde dúvidas.
-2. **Site — paga antes de receber.** Landing + checkout PIX/cartão (`app/web/`, estilo Hotmart com bônus e order bump). Depois do pagamento o cliente acessa a **Estante** (`/pedido/<guid>`), onde baixa/lê os e-books. A Estante tem um **piloto de cross-sell** (v2: `/pedido2/<guid>` → `/pay2/<id>`) que oferece produtos que o cliente ainda não tem.
+2. **Site — paga antes de receber.** Landing + checkout PIX/cartão (`app/web/`, estilo Hotmart com bônus e order bump). Depois do pagamento o cliente acessa a **Estante 2** (`/pedido2/<guid>`, para onde o checkout redireciona e o e-mail de entrega aponta), onde baixa/lê os e-books e vê o **cross-sell** (`/pay2/<id>`) dos produtos que ainda não tem. A Estante 1 (`/pedido/<guid>`, sem cross-sell) continua no ar para links antigos e fluxos do WhatsApp sem `url='v2'`.
 
 Conversões voltam pro Google Ads via Google Sheets (GCLID) — mexer em atribuição/GCLID afeta o ROI das campanhas.
 

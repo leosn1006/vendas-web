@@ -6,7 +6,7 @@ Fluxo:
   2. Busca produto (email_remetente, descricao, cores) — tabela produtos, só para personalização
   3. Busca os itens realmente comprados em `pedido_itens` (principal + bônus + bumps aceitos),
      só para o resumo em texto do que foi comprado
-  4. Monta e-mail com um único link para a "Sua Estante" (/pedido/<guid>) — a página onde o
+  4. Monta e-mail com um único link para a "Sua Estante" (Estante 2, /pedido2/<guid>) — a página onde o
      cliente lê/salva todos os produtos que já comprou, não mais um botão de download por item
   5. Envia via Gmail API (Service Account + Domain-Wide Delegation)
   6. Marca data_envio_ebook no pedido
@@ -56,7 +56,8 @@ def executar(pedido_id: int) -> None:
         {'nome': item['nome'], 'tipo': item['tipo']}
         for item in db.listar_itens_pedido(pedido_id)
     ]
-    link_estante = f"{base_url}/pedido/{db.garantir_guid_pedido(pedido_id)}"
+    # Estante 2 (com cross-sell) — mesma estante para onde o checkout redireciona após o pagamento.
+    link_estante = f"{base_url}/pedido2/{db.garantir_guid_pedido(pedido_id)}"
 
     html_entrega = _corpo_html(nome_cliente, nome_produto, itens, link_estante,
                                nome_remetente_email, cor_primaria, cor_secundaria)
@@ -113,7 +114,7 @@ def _corpo_html(nome: str, nome_produto: str,
         nome_produto: Descrição do produto
         itens: lista de dicts {nome, tipo} — um por item de `pedido_itens`, usada só para
                o resumo em texto do que foi comprado (bônus x order bump)
-        link_estante: URL de /pedido/<guid> — página onde o cliente lê/salva tudo que já
+        link_estante: URL de /pedido2/<guid> (Estante 2) — página onde o cliente lê/salva tudo que já
                       comprou. É o único link enviado no e-mail (botão + texto de apoio)
         nome_remetente: Nome usado no corpo e assinatura (ex: 'Luiza', 'Luiza Carolina')
         cor_primaria: Cor do header em hex (ex: '#2d6a1f')

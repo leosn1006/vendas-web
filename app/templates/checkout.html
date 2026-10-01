@@ -1166,13 +1166,14 @@
     }
 
     // ── Pagamento confirmado — mostra a mensagem de sucesso por um instante e redireciona
-    // pra /pedido/<guid>, que já mostra os produtos (capa, leitor, salvar) muito melhor do
-    // que a lista de download que existia aqui antes. location.replace (não .href) pra não
-    // deixar o checkout já finalizado no histórico do navegador.
+    // pra Estante 2 (/pedido2/<guid>: produtos com capa, leitor, salvar + cross-sell do que o
+    // cliente ainda não tem) — padrão do site desde 10/2026; o e-mail de entrega aponta pra
+    // mesma estante. location.replace (não .href) pra não deixar o checkout já finalizado no
+    // histórico do navegador.
     function pagamentoConfirmado(guid) {
         mostrarEstado('sucesso');
         setTimeout(() => {
-            window.location.replace('/pedido/' + guid);
+            window.location.replace('/pedido2/' + guid);
         }, 1500);
     }
 
