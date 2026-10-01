@@ -1973,6 +1973,21 @@ def registrar_visualizacao_estante(pedido_id: int, variante: str) -> None:
     )
 
 
+def registrar_progresso_quiz(pedido_id: int, pagina: str, etapa: int, etapa_nome: str) -> None:
+    """Guarda a etapa mais avançada que a visita alcançou no quiz (tabela quiz_progresso).
+    Nunca regride: voltar uma pergunta (botão Voltar) ou um beacon atrasado não apaga o avanço.
+    etapa_nome é atualizado ANTES de etapa no ON DUPLICATE KEY — o MySQL avalia as atribuições
+    da esquerda pra direita, então a comparação usa o valor antigo de etapa."""
+    db.execute_query(
+        """INSERT INTO quiz_progresso (pedido_id, pagina, etapa, etapa_nome)
+           VALUES (%s, %s, %s, %s)
+           ON DUPLICATE KEY UPDATE
+             etapa_nome = IF(VALUES(etapa) >= etapa, VALUES(etapa_nome), etapa_nome),
+             etapa      = GREATEST(etapa, VALUES(etapa))""",
+        (pedido_id, pagina, etapa, etapa_nome)
+    )
+
+
 def marcar_variante_pedido(pedido_id: int, variante: str) -> None:
     """Marca em qual variante do checkout (v1/v2) um pedido nasceu — só a v2 (/pay2/<produto_id>)
     chama isso hoje; pedidos do fluxo v1 mantêm o default 'v1' da coluna sem precisar de UPDATE."""

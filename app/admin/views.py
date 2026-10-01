@@ -2125,6 +2125,76 @@ _SQL_FUNIL_WEB = """
 # adicionar colunas de timestamp por marco (ex: data_chegou_landing) em vez de inferir pelo
 # estado atual.
 
+_SQL_QUIZ_WEB = """
+    SELECT
+        q.pagina,
+        q.etapa,
+        MAX(q.etapa_nome)          AS etapa_nome,
+        COUNT(*)                   AS pararam,
+        SUM(p.estado_id = 1000)    AS pagos
+    FROM quiz_progresso q
+    JOIN pedidos p ON p.id = q.pedido_id
+    WHERE p.produto_id = %s
+      AND p.data_contato_site BETWEEN %s AND %s
+    GROUP BY q.pagina, q.etapa
+    ORDER BY q.pagina, q.etapa
+"""
+# quiz_progresso guarda só a etapa mais avançada de cada visita (pararam = quantas pararam ali).
+# "Chegaram" em cada etapa é o acumulado de quem parou nela ou depois — calculado em
+# _montar_etapas_quiz. Só tem linha para quem abriu uma landing de quiz (hoje fatia2-e).
+
+
+# Nomes das etapas de cada quiz, na ordem (os mesmos que o JS da página envia) — permitem
+# listar TODAS as etapas no admin, inclusive as que ninguém abandonou. Quiz sem entrada aqui
+# usa os nomes gravados no banco.
+_ETAPAS_QUIZ = {
+    'fatia2-e': [
+        'Abriu a página', 'Sua situação', 'Seu sonho', 'Dias por semana',
+        'O que você já tentou', 'O que te trava', 'Sua experiência', 'Uma possibilidade',
+        'Escolha da fatia', 'Primeiro teste', 'Onde vender', 'Movimento do local', 'Preço',
+        'Sua simulação', 'O que falta?', 'Viu o resultado', 'Viu a oferta', 'Clicou em comprar',
+    ],
+}
+
+
+def _montar_etapas_quiz(linhas):
+    """Monta, por página de quiz, a lista completa de etapas (0 até a última) com:
+    chegaram (acumulado de trás pra frente: quem parou nela ou depois), pct sobre quem abriu,
+    pararam (última etapa vista), desistencia (% de quem chegou na etapa e parou nela) e pagos.
+    A maior desistência (fora a última etapa, onde "parar" = ir pro checkout) vem marcada."""
+    paginas = {}
+    for row in linhas or []:
+        paginas.setdefault(row['pagina'], {})[int(row['etapa'])] = row
+    resultado = []
+    for pagina, por_etapa in paginas.items():
+        nomes = _ETAPAS_QUIZ.get(pagina, [])
+        ultima = max(len(nomes) - 1, max(por_etapa))
+        total = sum(int(r['pararam']) for r in por_etapa.values())
+        etapas = []
+        acumulado = 0
+        for n in range(ultima, -1, -1):
+            row = por_etapa.get(n) or {}
+            pararam = int(row.get('pararam') or 0)
+            acumulado += pararam
+            etapas.append({
+                'etapa': n,
+                'etapa_nome': nomes[n] if n < len(nomes) else (row.get('etapa_nome') or '—'),
+                'chegaram': acumulado,
+                'pct': round(100 * acumulado / total, 1) if total else 0.0,
+                'pararam': pararam,
+                'desistencia': round(100 * pararam / acumulado, 1) if acumulado else 0.0,
+                'pagos': int(row.get('pagos') or 0),
+                'ultima': n == ultima,
+                'maior_queda': False,
+            })
+        etapas.reverse()
+        candidatas = [e for e in etapas if not e['ultima'] and e['pararam'] > 0]
+        if candidatas:
+            max(candidatas, key=lambda e: e['pararam'])['maior_queda'] = True
+        resultado.append({'pagina': pagina, 'total': total, 'etapas': etapas})
+    return resultado
+
+
 _SQL_RECEITA_WEB = """
     SELECT
         COUNT(*)                     AS total_pagamentos,
@@ -2664,6 +2734,15 @@ def analytics_web_produto(produto_id):
         funil = receita = investimento = None
         campanhas = []
 
+    # Separado do bloco acima: se a tabela do quiz falhar (ex: migration 078 ainda não aplicada),
+    # o resto do analytics continua aparecendo.
+    try:
+        quizzes = _montar_etapas_quiz(
+            db.execute_query(_SQL_QUIZ_WEB, (produto_id, data_ini, data_fim), fetch_all=True))
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro no quiz do analytics web produto #{produto_id}: {e}")
+        quizzes = []
+
     conv_pedidos_pagos = 0.0
     conv_landing_checkout = 0.0
     conv_checkout_pedido = 0.0
@@ -2687,6 +2766,7 @@ def analytics_web_produto(produto_id):
         funil                 = funil,
         receita               = receita,
         campanhas             = campanhas,
+        quizzes               = quizzes,
         cliques_google_ads    = cliques_google_ads,
         conv_landing_checkout = conv_landing_checkout,
         conv_checkout_pedido  = conv_checkout_pedido,

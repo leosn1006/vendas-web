@@ -449,7 +449,7 @@ def fatia_e():
     from web.checkout import rastrear_visita_funil, COOKIE_MAX_AGE_FUNIL
     produto_id = 12
     pedido_id = rastrear_visita_funil(request, produto_id, estado_novo=1004)
-    resp = make_response(render_template('fatia-e.html'))
+    resp = make_response(render_template('fatia2-e.html'))
     resp.set_cookie(f'pedido_web_{produto_id}', str(pedido_id), max_age=COOKIE_MAX_AGE_FUNIL)
     return resp
 

@@ -151,6 +151,38 @@ def checkout_v2(produto_id):
     return resp
 
 
+@web_bp.post('/api/v1/quiz/progresso')
+def quiz_progresso():
+    """Recebe (via navigator.sendBeacon) a etapa que a visita alcançou num quiz de página de
+    vendas. O pedido vem do cookie pedido_web_<produto_id> gravado pela própria landing — nunca
+    do corpo — e só conta enquanto o pedido ainda é rascunho (1004/1003) daquele produto. Falha
+    aqui nunca pode atrapalhar a venda: qualquer erro só é logado e a resposta é sempre 204."""
+    import re
+    import logging
+    from database import get_pedido_nao_finalizado, registrar_progresso_quiz
+
+    body = request.get_json(force=True, silent=True)
+    if not isinstance(body, dict):
+        return '', 204
+    try:
+        produto_id = int(body.get('produto_id'))
+        etapa = int(body.get('etapa'))
+    except (TypeError, ValueError):
+        return '', 204
+    pagina = str(body.get('pagina') or '')
+    etapa_nome = str(body.get('nome') or '')[:60]
+    pedido_id_cookie = request.cookies.get(f'pedido_web_{produto_id}', '')
+    if not (0 <= etapa <= 99 and re.fullmatch(r'[a-z0-9-]{1,40}', pagina) and pedido_id_cookie.isdigit()):
+        return '', 204
+
+    try:
+        if get_pedido_nao_finalizado(int(pedido_id_cookie), produto_id):
+            registrar_progresso_quiz(int(pedido_id_cookie), pagina, etapa, etapa_nome)
+    except Exception as e:
+        logging.getLogger(__name__).error(f"[QUIZ] Erro ao registrar progresso do pedido #{pedido_id_cookie}: {e}")
+    return '', 204
+
+
 @web_bp.post('/api/v1/pix/gerar')
 def pix_gerar():
     from web.checkout import gerar_pix

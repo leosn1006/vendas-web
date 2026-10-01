@@ -249,6 +249,52 @@
 
 </div>
 
+<!-- ── Quiz: até onde as visitas chegaram ─────────────────── -->
+{% for quiz in quizzes %}
+<div class="section-title">Quiz da página de vendas ({{ quiz.pagina }}) — funil por pergunta</div>
+<div class="section-subtitle" style="margin-top:-8px; margin-bottom:16px; color:#888; font-size:13px; line-height:1.6;">
+    {{ quiz.total }} visita{{ 's' if quiz.total != 1 else '' }} abri{{ 'ram' if quiz.total != 1 else 'u' }} a página no período. Leia de cima para baixo: a barra mostra quantas pessoas ainda estavam no quiz em cada etapa.
+    <strong>Desistiram aqui</strong> = viram esta etapa e não foram adiante; a linha em destaque é onde mais gente desiste.
+</div>
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Etapa</th>
+                    <th style="min-width:180px;">Ainda no quiz</th>
+                    <th style="text-align:right;">Desistiram aqui</th>
+                    <th style="text-align:right;">% que desistiu nesta etapa</th>
+                    <th style="text-align:right;">Destes, pagaram</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in quiz.etapas %}
+                <tr{% if e.maior_queda %} style="background:#fdecea;"{% endif %}>
+                    <td>{{ e.etapa }} · {{ e.etapa_nome }}{% if e.maior_queda %} <strong style="color:#c0392b;">← maior desistência</strong>{% endif %}</td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="flex:1; height:10px; background:var(--border); border-radius:6px; overflow:hidden;">
+                                <div style="height:100%; width:{{ e.pct }}%; background:var(--accent2);"></div>
+                            </div>
+                            <span style="font-family:var(--mono); font-size:12px; white-space:nowrap;">{{ e.chegaram }} ({{ e.pct }}%)</span>
+                        </div>
+                    </td>
+                    {% if e.ultima %}
+                    <td colspan="2" style="text-align:right; font-family:var(--mono); color:var(--accent2); font-weight:600;">{{ e.pararam }} foram para o checkout</td>
+                    {% else %}
+                    <td style="text-align:right; font-family:var(--mono); font-weight:600;">{{ e.pararam if e.pararam else '·' }}</td>
+                    <td style="text-align:right; font-family:var(--mono); color:var(--muted);">{% if e.pararam %}{{ e.desistencia }}%{% else %}·{% endif %}</td>
+                    {% endif %}
+                    <td style="text-align:right; color:var(--muted); font-family:var(--mono);">{{ e.pagos if e.pagos else '·' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endfor %}
+
 <!-- ── Receita ─────────────────────────────────── -->
 {% if receita %}
 <div class="section-title">Receita — por data_pagamento (estado Pago via web)</div>
