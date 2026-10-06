@@ -207,36 +207,6 @@ def cartao_gerar():
     ))
 
 
-@web_bp.post('/api/v1/pix/gerar2')
-def pix_gerar_v2():
-    """Igual a /api/v1/pix/gerar, mas cobra VALOR_TESTE_CHECKOUT_V2 de verdade no Pix — usada
-    só pelo checkout-2.html, pro piloto de demo com stakeholders. Ver checkout.py."""
-    from web.checkout import gerar_pix, VALOR_TESTE_CHECKOUT_V2
-    url_base = request.url_root.rstrip('/')
-    dns_origem = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
-    return jsonify(gerar_pix(
-        request.get_json(force=True, silent=True) or {},
-        url_base=url_base,
-        dns_origem=dns_origem,
-        valor_fixo_teste=VALOR_TESTE_CHECKOUT_V2,
-    ))
-
-
-@web_bp.post('/api/v1/cartao/gerar2')
-def cartao_gerar_v2():
-    """Igual a /api/v1/cartao/gerar, mas cobra VALOR_TESTE_CHECKOUT_V2 de verdade na Cielo —
-    usada só pelo checkout-2.html, pro piloto de demo com stakeholders. Ver checkout.py."""
-    from web.checkout import gerar_cartao, VALOR_TESTE_CHECKOUT_V2
-    url_base = request.url_root.rstrip('/')
-    dns_origem = (request.headers.get('X-Forwarded-Host') or request.host or '').split(':')[0].lower()
-    return jsonify(gerar_cartao(
-        request.get_json(force=True, silent=True) or {},
-        url_base=url_base,
-        dns_origem=dns_origem,
-        valor_fixo_teste=VALOR_TESTE_CHECKOUT_V2,
-    ))
-
-
 @web_bp.get('/api/v1/cartao/parcelas/<int:produto_id>')
 def cartao_parcelas(produto_id):
     from database import get_config_cartao_produto

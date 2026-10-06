@@ -1283,9 +1283,7 @@
         const itensAntesDoEnvio = itensSelecionados();
         recalcularTotal();
 
-        // gerar2 (não gerar): checkout v2 cobra VALOR_TESTE_CHECKOUT_V2 de verdade, pro piloto
-        // de demo com stakeholders — ver app/web/checkout.py.
-        const endpoint = (metodoAtual === 'cartao') ? '/api/v1/cartao/gerar2' : '/api/v1/pix/gerar2';
+        const endpoint = (metodoAtual === 'cartao') ? '/api/v1/cartao/gerar' : '/api/v1/pix/gerar';
         const payload = { produto_id: PRODUTO_ID, pedido_id: PEDIDO_ID_INICIAL, bump_ids: bumpIds, ...dados, ...utmData };
         if (dadosCartao) Object.assign(payload, dadosCartao);
 

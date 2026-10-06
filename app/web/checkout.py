@@ -17,17 +17,6 @@ logger = logging.getLogger(__name__)
 
 COOKIE_MAX_AGE_FUNIL = 86400  # 24h — alinhado à validade do PIX do BB Pay (gerar_pix: expiracao = now + 24h)
 
-# HARDCODED a pedido do usuário, pro piloto de demo com stakeholders antes do lançamento
-# público da v2 (ver conversa/plano peaceful-seeking-pizza.md): cobra R$1 de verdade no
-# Pix/cartão da v2, seja qual for o produto/bump. A apresentação e a soma mostradas ANTES de
-# finalizar continuam com os preços reais cadastrados — só o valor efetivamente cobrado no
-# Pix/Cielo muda, e só quando valor_fixo_teste é passado explicitamente pra gerar_pix/
-# gerar_cartao (rotas /api/v1/pix/gerar2 e /api/v1/cartao/gerar2, usadas só pelo
-# checkout-2.html). Não reaproveita CHECKOUT_VALOR_TESTE_PRODUTO_<id> (.env) de propósito —
-# aquela variável já afeta o checkout v1, que está em produção; misturar os dois arriscaria
-# testes acidentais em produção. REVISAR/REMOVER antes de abrir a v2 pro público geral.
-VALOR_TESTE_CHECKOUT_V2 = 1.00
-
 
 def rastrear_visita_funil(request_obj, produto_id: int, estado_novo: int, cookie_prefixo: str = 'pedido_web') -> int:
     """
@@ -133,13 +122,9 @@ def _erro_validacao_email(body: dict):
     return None
 
 
-def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '', valor_fixo_teste: float = None) -> dict:
+def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     """
     Cria um pedido em `pedidos` (estado 1001) e gera uma solicitação PIX no BB Pay.
-
-    `valor_fixo_teste`: quando informado, sobrescreve o valor efetivamente cobrado no Pix (o
-    total real dos itens continua sendo calculado e gravado no snapshot de `pedido_itens`) —
-    ver VALOR_TESTE_CHECKOUT_V2.
 
     Retorna dict pronto para jsonify com:
       txid, qrcode_texto, qrcode_base64, url_bbpay, valor, pedido_id
@@ -169,10 +154,6 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '', valor_fixo_t
     # Bumps: nunca confiar em preço vindo do cliente — releitura pelos ids escolhidos.
     bump_rows = listar_bumps_validos(produto_id, body.get('bump_ids'))
     valor = valor_principal + sum(float(b['preco_promocional']) for b in bump_rows)
-    if valor_fixo_teste is not None:
-        # Sobrescreve só o valor efetivamente cobrado no Pix — pedido_itens abaixo continua
-        # gravando os preços reais do catálogo (ver VALOR_TESTE_CHECKOUT_V2).
-        valor = valor_fixo_teste
     phone_number_id = get_phone_number_id_produto(produto_id) or os.getenv('WHATSAPP_PHONE_NUMBER_ID', '')
 
     # Normaliza telefone para formato WhatsApp: DDI vem do frontend, fallback 55
@@ -454,12 +435,8 @@ def categorizar_erro_cielo(status, return_code, return_message) -> tuple:
     return 'recusa_generica', 'Seu banco não autorizou a compra agora. Tente outro cartão ou pague com Pix.'
 
 
-def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '', valor_fixo_teste: float = None) -> dict:
+def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     """
-    `valor_fixo_teste`: quando informado, sobrescreve o valor efetivamente cobrado na Cielo
-    (após o cálculo de parcelamento/juros) — o total original e o snapshot de `pedido_itens`
-    continuam com os preços reais do catálogo. Ver VALOR_TESTE_CHECKOUT_V2.
-
     Cria/reaproveita um pedido (estado 1001, mesmas funções do Pix), avança pra 1005
     (aguardando autorização Cielo) ANTES de chamar a Cielo, autoriza com Capture=True e
     Interest=ByMerchant, e confirma o pagamento reaproveitando confirmar_pagamento_web — mesmo
@@ -506,10 +483,6 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '', valor_fix
     parcelas = max(1, min(int(body.get('parcelas', 1) or 1), max_efetivo))  # nunca confiar no client
     valor_total = calcular_total(valor_original, parcelas, config_cartao['parcelas_sem_juros'],
                                  float(config_cartao['taxa_juros_mensal']))
-    if valor_fixo_teste is not None:
-        # Sobrescreve só o valor efetivamente cobrado na Cielo — valor_original (auditoria) e
-        # pedido_itens continuam com os preços reais do catálogo (ver VALOR_TESTE_CHECKOUT_V2).
-        valor_total = valor_fixo_teste
     valor_centavos = round(valor_total * 100)
 
     # Cria/reaproveita pedido — mesma ideia do Pix, mas também aceita 1006 (negado numa
