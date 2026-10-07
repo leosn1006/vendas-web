@@ -11,6 +11,7 @@ import whatsapp
 import wpp_web_gateway
 from fluxos import fluxo_followup_dinamico as followup
 from fluxos import fluxo_followup_interesse_dinamico as followup_int
+from fluxos import _ritmo_wpp_web as ritmo_wpp_web
 from whatsapp import ChipForaDoArWhatsApp
 
 
@@ -185,6 +186,7 @@ def followup_env(monkeypatch, banco):
     acoes = [{'ordem': i, 'acao': 'enviar_mensagem', 'condicao': 'sempre'} for i in (1, 2, 3)]
     avancos = []
     monkeypatch.setattr(followup, 'buscar_pedidos_followup', lambda *a, **k: [pedido])
+    monkeypatch.setattr(ritmo_wpp_web, 'get_provedor_numero', lambda _p: 'meta')  # ritmo: test_ritmo_wpp_web
     monkeypatch.setattr(followup, 'listar_acoes_fluxo', lambda *a, **k: acoes)
     monkeypatch.setattr(followup, 'filtrar_e_ordenar', lambda a, c: a)
     monkeypatch.setattr(followup, 'selecionar_variantes', lambda a: a)
@@ -262,6 +264,7 @@ def followup_int_env(monkeypatch):
     pedido = {'id': 7, 'produto_id': 1, 'phone_number_id': 'web-1'}
     acoes = [{'ordem': i, 'acao': 'enviar_mensagem', 'condicao': 'sempre'} for i in (1, 2, 3)]
     marcados = []
+    monkeypatch.setattr(ritmo_wpp_web, 'get_provedor_numero', lambda _p: 'meta')  # ritmo: test_ritmo_wpp_web
     monkeypatch.setattr(followup_int, 'listar_acoes_fluxo', lambda *a, **k: acoes)
     monkeypatch.setattr(followup_int, 'filtrar_e_ordenar', lambda a, c: a)
     monkeypatch.setattr(followup_int, 'selecionar_variantes', lambda a: a)

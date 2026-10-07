@@ -5,6 +5,7 @@ from database import (
     atualizar_estado_pedido_se, atualizar_pedido_com_data_followup,
 )
 from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, selecionar_variantes
+from fluxos._ritmo_wpp_web import RitmoWppWeb, LIMITE_FOLLOWUP_PAGAMENTO
 from whatsapp import ChipForaDoArWhatsApp
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,10 @@ def executar():
 
     logger.info(f"[{_TAG}] 📋 {len(pedidos)} pedido(s) para followup.")
 
-    for pedido in pedidos:
+    ritmo = RitmoWppWeb(LIMITE_FOLLOWUP_PAGAMENTO, _TAG)
+    for pedido in ritmo.ordenar(pedidos):
+        if not ritmo.pode_enviar(pedido):
+            continue
         try:
             pedido_id  = pedido['id']
             produto_id = pedido['produto_id']
@@ -79,6 +83,8 @@ def executar():
                     )
                     break
                 enviadas += 1
+                if enviadas == 1:
+                    ritmo.registrar_envio(pedido)  # conta já no 1º envio, mesmo que uma ação seguinte falhe
 
             atualizar_pedido_com_data_followup(pedido_id)
             # Só avança se ainda estiver em 3: se pagou durante as ações, o 0 (ou o 13) não pode virar 4.
@@ -96,5 +102,6 @@ def executar():
             logger.error(f"[{_TAG}] ❌ Erro no pedido #{pedido['id']}: {e}")
             raise
 
+    ritmo.resumir()
     logger.info(f"[{_TAG}] ✅ Rotina de followup concluída.")
     logger.info("=" * 120)

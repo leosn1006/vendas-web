@@ -5,6 +5,7 @@ from database import (
     listar_acoes_fluxo, marcar_followup_interesse_1, marcar_followup_interesse_2,
 )
 from fluxos._executor_acao import executar_acao, filtrar_e_ordenar, selecionar_variantes
+from fluxos._ritmo_wpp_web import RitmoWppWeb, LIMITE_FOLLOWUP_INTERESSE
 from whatsapp import ChipForaDoArWhatsApp
 
 logger = logging.getLogger(__name__)
@@ -19,8 +20,11 @@ def _executar_rodada(pedidos, nome_fluxo, marcar_fn):
 
     logger.info(f"[{_TAG}] 📋 {len(pedidos)} pedido(s) para {nome_fluxo}.")
 
-    for pedido in pedidos:
+    ritmo = RitmoWppWeb(LIMITE_FOLLOWUP_INTERESSE, _TAG)
+    for pedido in ritmo.ordenar(pedidos):
         try:
+            if not ritmo.pode_enviar(pedido):
+                continue
             pedido_id  = pedido['id']
             produto_id = pedido['produto_id']
 
@@ -52,6 +56,8 @@ def _executar_rodada(pedidos, nome_fluxo, marcar_fn):
                     )
                     break
                 enviadas += 1
+                if enviadas == 1:
+                    ritmo.registrar_envio(pedido)  # conta já no 1º envio, mesmo que uma ação seguinte falhe
 
             marcar_fn(pedido_id)
             logger.debug(f"[{_TAG}] ✅ {nome_fluxo} concluído para pedido #{pedido_id}.")
@@ -64,6 +70,7 @@ def _executar_rodada(pedidos, nome_fluxo, marcar_fn):
         except Exception as e:
             logger.error(f"[{_TAG}] ❌ Erro no pedido #{pedido['id']}: {e}", exc_info=True)
             continue
+    ritmo.resumir()
 
 
 def executar():
