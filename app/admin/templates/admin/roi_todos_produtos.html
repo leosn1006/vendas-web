@@ -99,6 +99,8 @@
                     <th style="text-align:right;">Recebido (PIX)</th>
                     <th style="text-align:right;">Recebido (Web)</th>
                     <th style="text-align:right;">Recebido (Cartão)</th>
+                    <th style="text-align:right;">Custo WPP (US$)</th>
+                    <th style="text-align:right;">Custo WPP (R$)</th>
                     <th style="text-align:right;">Imposto ({{ '%.1f'|format(taxa_imposto) }}%)</th>
                     <th style="text-align:right;">ROI</th>
                     <th style="text-align:right;">Lucro Líquido</th>
@@ -149,6 +151,14 @@
                     </td>
 
                     <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        US$ {{ '%.2f'|format(r.custo_wpp_usd) }}
+                    </td>
+
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        R$ {{ '%.2f'|format(r.custo_wpp_brl) }}
+                    </td>
+
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
                         {% if imposto > 0.005 %}
                             R$ {{ '%.2f'|format(imposto) }}
                         {% else %}
@@ -187,7 +197,10 @@
             {% set tot_web       = rows | sum(attribute='total_web')       | float %}
             {% set tot_cartao    = rows | sum(attribute='total_cartao')    | float %}
             {% set tot_imposto   = rows | sum(attribute='imposto_valor')   | float %}
-            {% set tot_lucro     = tot_pix + tot_web + tot_cartao - tot_investido - tot_imposto %}
+            {% set tot_wpp_usd   = rows | sum(attribute='custo_wpp_usd')   | float %}
+            {% set tot_wpp_brl   = rows | sum(attribute='custo_wpp_brl')   | float %}
+            {% set tot_wpp_reais = rows | sum(attribute='custo_wpp_reais') | float %}
+            {% set tot_lucro     = tot_pix + tot_web + tot_cartao - tot_investido - tot_imposto - tot_wpp_reais %}
             <tfoot>
                 <tr>
                     <td>Total</td>
@@ -204,6 +217,12 @@
                         R$ {{ '%.2f'|format(tot_cartao) }}
                     </td>
                     <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        US$ {{ '%.2f'|format(tot_wpp_usd) }}
+                    </td>
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
+                        R$ {{ '%.2f'|format(tot_wpp_brl) }}
+                    </td>
+                    <td style="text-align:right; font-family:var(--mono); font-size:13px;">
                         {% if tot_imposto > 0.005 %}
                             R$ {{ '%.2f'|format(tot_imposto) }}
                         {% else %}
@@ -212,7 +231,7 @@
                     </td>
                     <td style="text-align:right; font-family:var(--mono); font-size:13px;">
                         {% if tot_investido > 0 %}
-                            {% set roi_tot = (tot_pix + tot_web + tot_cartao - tot_imposto) / tot_investido %}
+                            {% set roi_tot = (tot_pix + tot_web + tot_cartao - tot_imposto - tot_wpp_reais) / tot_investido %}
                             {% if roi_tot < 1 %}
                                 <span class="roi-red">{{ '%.2f'|format(roi_tot) }}×</span>
                             {% elif roi_tot <= 1.005 %}
@@ -237,6 +256,13 @@
             </tfoot>
         </table>
     </div>
+    {% if cotacao_wpp %}
+    <div class="imposto-label" style="padding:10px 4px 0; white-space:normal;">
+        ROI e Lucro Líquido já descontam o custo do WhatsApp; US$ convertido a R$ {{ '%.4f'|format(cotacao_wpp.ptax) }}
+        {% if cotacao_wpp.ptax_fallback %}(cotação padrão, PTAX indisponível){% else %}(PTAX {{ cotacao_wpp.ptax_data.strftime('%d/%m') }}){% endif %}
+        + IOF {{ '%.1f'|format(cotacao_wpp.iof) }}%.
+    </div>
+    {% endif %}
 </div>
 {% else %}
 <div class="card">

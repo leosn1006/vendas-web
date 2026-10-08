@@ -3009,6 +3009,19 @@ def _parse_taxa_imposto(default: float = 7.3) -> float:
         return default
 
 
+def _custo_wpp_periodo(data_ini_date, data_fim_date, produto_id=None):
+    """Custo das mensagens da Meta no período (whatsapp_custo_diario), por produto, já com o total
+    convertido para Real (PTAX + IOF, só para exibir). Em erro devolve {} — o ROI continua sem o custo."""
+    from database import somar_custo_whatsapp_por_produto
+    from cotacao import custo_wpp_para_tela
+    try:
+        somas = somar_custo_whatsapp_por_produto(data_ini_date, data_fim_date, produto_id)
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao somar custo do WhatsApp: {e}")
+        return {}
+    return {pid: custo_wpp_para_tela(v['usd'], v['brl']) for pid, v in somas.items()}
+
+
 @admin_bp.route('/roi-produtos')
 @requer_admin
 def roi_todos_produtos():
@@ -3040,6 +3053,7 @@ def roi_todos_produtos():
         rows = []
 
     taxa = _parse_taxa_imposto()
+    custos_wpp = _custo_wpp_periodo(data_ini_date, data_fim_date)
 
     for r in rows:
         investido = float(r['total_investido'])
@@ -3048,12 +3062,19 @@ def roi_todos_produtos():
         cartao = float(r['total_cartao'])
         total_recebido = pix + web + cartao
         imposto_valor = total_recebido * taxa / 100
+        custo_wpp = custos_wpp.get(r['id']) or {'usd': 0.0, 'brl': 0.0, 'convertido': 0.0}
+        custo_wpp_reais = custo_wpp['convertido']
+        r['custo_wpp_usd'] = custo_wpp['usd']
+        r['custo_wpp_brl'] = custo_wpp['brl']
+        r['custo_wpp_reais'] = custo_wpp_reais
         r['imposto_valor'] = imposto_valor
-        r['roi_multiplier'] = ((total_recebido - imposto_valor) / investido) if investido > 0 else None
-        r['lucro_liquido'] = total_recebido - investido - imposto_valor
+        r['roi_multiplier'] = ((total_recebido - imposto_valor - custo_wpp_reais) / investido) if investido > 0 else None
+        r['lucro_liquido'] = total_recebido - investido - imposto_valor - custo_wpp_reais
 
+    cotacao_wpp = next((c for c in custos_wpp.values() if c['usd']), None)
     return render_template('admin/roi_todos_produtos.html',
-        rows=rows, data_ini=data_ini_str, data_fim=data_fim_str, taxa_imposto=taxa)
+        rows=rows, data_ini=data_ini_str, data_fim=data_fim_str, taxa_imposto=taxa,
+        cotacao_wpp=cotacao_wpp)
 
 
 @admin_bp.route('/produto/<int:produto_id>/orcamento')
@@ -3195,6 +3216,7 @@ def roi_produto(produto_id):
         logger.error(f"[ADMIN] ❌ Erro ao calcular ROI real web do produto #{produto_id}: {e}")
 
     taxa_imposto = _parse_taxa_imposto()
+    custo_wpp = _custo_wpp_periodo(data_ini_date, data_fim_date, produto_id).get(produto_id)
 
     try:
         rows = db.execute_query(
@@ -3215,7 +3237,75 @@ def roi_produto(produto_id):
         produto=produto, rows=rows,
         roi_real=roi_real, roi_real_erro=roi_real_erro,
         roi_real_web=roi_real_web, roi_real_web_erro=roi_real_web_erro,
-        taxa_imposto=taxa_imposto,
+        taxa_imposto=taxa_imposto, custo_wpp=custo_wpp,
+        data_ini=data_ini_str, data_fim=data_fim_str)
+
+
+@admin_bp.route('/produto/<int:produto_id>/custo-whatsapp')
+@requer_acesso_produto
+def custo_whatsapp_produto(produto_id):
+    """Custo das mensagens da API oficial da Meta (whatsapp_custo_diario) por dia e por número, com o
+    custo por venda (vendas = PIX sem pedido vinculado, mesmo critério do card ROI Real (PIX))."""
+    from database import custo_whatsapp_por_dia, custo_whatsapp_por_numero
+    from cotacao import custo_wpp_para_tela
+    session['produto_ativo_id'] = produto_id
+    produto = _get_produto_or_redirect(produto_id)
+    if not produto:
+        return redirect(url_for('admin.dashboard'))
+
+    hoje = _hoje_sao_paulo()
+    data_ini_str = request.args.get('data_ini', (hoje - datetime.timedelta(days=6)).isoformat())
+    data_fim_str = request.args.get('data_fim', hoje.isoformat())
+    try:
+        data_ini = datetime.date.fromisoformat(data_ini_str)
+        data_fim = datetime.date.fromisoformat(data_fim_str)
+    except ValueError:
+        data_ini, data_fim = hoje - datetime.timedelta(days=6), hoje
+        data_ini_str, data_fim_str = data_ini.isoformat(), data_fim.isoformat()
+
+    try:
+        dias = custo_whatsapp_por_dia(produto_id, data_ini, data_fim)
+        numeros = custo_whatsapp_por_numero(produto_id, data_ini, data_fim)
+        vendas = db.execute_query(
+            """SELECT COUNT(*) AS qtd, COALESCE(SUM(valor), 0) AS total
+               FROM pagamento_pix
+               WHERE produto_id = %s AND pedido_id IS NULL AND horario BETWEEN %s AND %s""",
+            (produto_id, datetime.datetime.combine(data_ini, datetime.time.min),
+             datetime.datetime.combine(data_fim, datetime.time.max)),
+            fetch_one=True
+        ) or {'qtd': 0, 'total': 0}
+        erro = False
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro ao carregar custo do WhatsApp do produto #{produto_id}: {e}")
+        dias, numeros, vendas, erro = [], [], {'qtd': 0, 'total': 0}, True
+
+    for r in dias + numeros:
+        for k in ('usd', 'brl'):
+            r[k] = float(r[k] or 0)
+        for k in ('msgs_cobradas', 'msgs_gratis'):
+            r[k] = int(r[k] or 0)
+
+    total = custo_wpp_para_tela(sum(r['usd'] for r in dias), sum(r['brl'] for r in dias))
+    fator_usd = total['ptax'] * (1 + total['iof'] / 100)
+    for r in dias + numeros:
+        r['convertido'] = r['brl'] + r['usd'] * fator_usd
+    numeros.sort(key=lambda r: r['convertido'], reverse=True)
+    for r in numeros:
+        r['pct'] = (r['convertido'] / total['convertido'] * 100) if total['convertido'] else 0
+
+    msgs_cobradas = sum(r['msgs_cobradas'] for r in dias)
+    resumo = {
+        'msgs_cobradas': msgs_cobradas,
+        'msgs_gratis': sum(r['msgs_gratis'] for r in dias),
+        'vendas_qtd': int(vendas['qtd'] or 0),
+        'vendas_total': float(vendas['total'] or 0),
+        'custo_por_venda': (total['convertido'] / int(vendas['qtd'])) if vendas['qtd'] else None,
+        'custo_por_msg': (total['convertido'] / msgs_cobradas) if msgs_cobradas else None,
+    }
+    resumo['pct_receita'] = (total['convertido'] / resumo['vendas_total'] * 100) if resumo['vendas_total'] else None
+
+    return render_template('admin/custo_whatsapp_produto.html',
+        produto=produto, dias=dias, numeros=numeros, total=total, resumo=resumo, erro=erro,
         data_ini=data_ini_str, data_fim=data_fim_str)
 
 

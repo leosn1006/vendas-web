@@ -87,6 +87,9 @@ services:
       - GATEWAY_TOKEN_WPP=${GATEWAY_TOKEN_WPP:-}
       - WPP_WEB_WEBHOOK_URL=${WPP_WEB_WEBHOOK_URL:-}
       - AMBIENTE=${AMBIENTE:-producao}
+      # Custo do WhatsApp em US$ convertido para R$ só na tela de ROI (app/cotacao.py)
+      - IOF_CARTAO_INTERNACIONAL=${IOF_CARTAO_INTERNACIONAL:-3.5}
+      - COTACAO_USD_FALLBACK=${COTACAO_USD_FALLBACK:-5.50}
       - WHATSAPP_API_URL=${WHATSAPP_API_URL:-}
       - WPP_WEB_API_URL=${WPP_WEB_API_URL:-}
       - WHATSAPP_ACCESS_TOKEN_LC=${WHATSAPP_ACCESS_TOKEN_LC:-}

@@ -535,6 +535,51 @@ def verificar_qualidade_whatsapp(self):
         _redis.delete(lock_key)
 
 
+@shared_task(name="tasks.coletar_custo_whatsapp", bind=True, max_retries=1)
+def coletar_custo_whatsapp(self, data=None, fonte='intradia'):
+    """Lê o custo das mensagens da Meta (pricing_analytics) e grava em whatsapp_custo_diario.
+    Agendada a cada 30 min (:25/:55, 6h–23h) para o dia D e às 05h55 para o fechamento do D-1.
+    data='AAAA-MM-DD' força um dia específico (backfill); sem data: hoje, ou ontem se fonte='fechamento'.
+    Fora de produção não chama a Meta (ver whatsapp_custo.coletar_dia)."""
+    import datetime
+    from zoneinfo import ZoneInfo
+    from whatsapp_custo import coletar_dia
+    _TAG = "TASK-CUSTO-WPP"
+    reagendar = False
+    if not _redis.set("lock:custo_whatsapp", 1, nx=True, ex=900):
+        logger.info(f"[{_TAG}] ⏭ Outra instância já em execução — ignorando")
+        return
+    try:
+        if data:
+            dia = datetime.date.fromisoformat(data)
+        else:
+            dia = datetime.datetime.now(ZoneInfo('America/Sao_Paulo')).date()
+            if fonte == 'fechamento':
+                dia -= datetime.timedelta(days=1)
+        r = coletar_dia(dia, fonte)
+        if r['wabas'] and r['falhas'] == r['wabas']:
+            notificar_admin_erro_sistema(f"{_TAG} | todas as {r['wabas']} WABAs falharam ({dia})")
+        elif fonte == 'fechamento' and r['falhas_conectados']:
+            # Sem o fechamento o dia fica "parcial" para sempre (falta o trecho 23h55–24h): tenta de novo em
+            # 20 min (06h15, antes da intradia das 06h25 disputar o lock) e, se ainda falhar, avisa. A intradia não precisa — a próxima rodada já é daqui a 30 min.
+            if self.request.retries < self.max_retries:
+                reagendar = True
+            else:
+                notificar_admin_erro_sistema(
+                    f"{_TAG} | fechamento de {dia} falhou em {len(r['falhas_conectados'])} WABA(s) de número "
+                    f"CONNECTED: {', '.join(r['falhas_conectados'])}")
+    except Exception as exc:
+        logger.error(f"[{_TAG}] ❌ Erro geral: {exc}")
+        import traceback
+        traceback.print_exc()
+        notificar_admin_erro_sistema(f"{_TAG} | erro geral: {type(exc).__name__}")
+    finally:
+        _redis.delete("lock:custo_whatsapp")
+    if reagendar:
+        # Data fixa: se a nova tentativa cair depois da meia-noite, ainda relê o mesmo dia
+        raise self.retry(kwargs={'data': dia.isoformat(), 'fonte': fonte}, countdown=1200)
+
+
 @shared_task(name="tasks.verificar_status_wpp_web", bind=True, max_retries=0)
 def verificar_status_wpp_web(self):
     """Checagem rápida (a cada 2 min) só dos chips do gateway WhatsApp Web.

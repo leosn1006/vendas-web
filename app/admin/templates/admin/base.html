@@ -593,6 +593,10 @@
            class="nav-link {% if request.endpoint == 'admin.roi_produto' %}active{% endif %}">
             <span class="icon">📈</span> ROI
         </a>
+        <a href="{{ url_for('admin.custo_whatsapp_produto', produto_id=produto_ativo.id) }}"
+           class="nav-link {% if request.endpoint == 'admin.custo_whatsapp_produto' %}active{% endif %}">
+            <span class="icon">📨</span> Custo WhatsApp
+        </a>
         <a href="{{ url_for('admin.orcamento_produto', produto_id=produto_ativo.id) }}"
            class="nav-link {% if request.endpoint in ['admin.orcamento_produto','admin.salvar_orcamento','admin.remover_orcamento'] %}active{% endif %}">
             <span class="icon">💰</span> Orçamento

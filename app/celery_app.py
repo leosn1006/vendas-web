@@ -116,6 +116,19 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute='*/10'),  # a cada 10 minutos
         'options': {'queue': 'baixa'},
     },
+    # Custo das mensagens da Meta (pricing_analytics). :25/:55 são minutos livres na fila baixa
+    # (não batem com */10, */15, */30, :05/:35, :15, :20 nem com o */2, que só pega minutos pares).
+    'custo-whatsapp-intradia': {
+        'task': 'tasks.coletar_custo_whatsapp',
+        'schedule': crontab(minute='25,55', hour='6-23'),  # dia D, parcial
+        'options': {'queue': 'baixa'},
+    },
+    'custo-whatsapp-fechamento': {
+        'task': 'tasks.coletar_custo_whatsapp',
+        'schedule': crontab(minute=55, hour=5),  # 05h55 — relê o D-1 inteiro (valor final)
+        'kwargs': {'fonte': 'fechamento'},
+        'options': {'queue': 'baixa'},
+    },
 }
 
 from celery.signals import worker_process_init
@@ -174,6 +187,7 @@ celery_app.conf.update(
         "tasks.verificar_status_wpp_web":                {"queue": "baixa"},
         "tasks.verificar_qualidade_whatsapp_produto":     {"queue": "normal"},
         "tasks.verificar_emails_clientes":               {"queue": "baixa"},
+        "tasks.coletar_custo_whatsapp":                  {"queue": "baixa"},
         # NF-e — tudo na fila 'normal' (orquestrador, emissão individual e relatório)
         "tasks.emitir_nfe":                              {"queue": "normal"},
         "tasks.emitir_nfe_cartao":                       {"queue": "normal"},

@@ -1182,6 +1182,88 @@ def atualizar_qualidade_telefone(telefone_id, quality_rating, status_api=None, n
     )
 
 
+def upsert_custo_whatsapp_dia(data, telefone, pricing_category, produto_id, waba_id, moeda,
+                              custo, msgs_cobradas, msgs_gratis, fonte):
+    """Grava o custo do dia de um número/categoria (tabela whatsapp_custo_diario). Cada coleta traz o
+    total acumulado do dia e substitui o anterior. produto_id NÃO entra no UPDATE: fica o dono do
+    número na 1ª coleta do dia, para a troca de produto não contar o mesmo dia duas vezes."""
+    db.execute_query(
+        """INSERT INTO whatsapp_custo_diario
+               (data, telefone, pricing_category, produto_id, waba_id, moeda,
+                custo, msgs_cobradas, msgs_gratis, fonte)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+           ON DUPLICATE KEY UPDATE
+               waba_id       = VALUES(waba_id),
+               moeda         = VALUES(moeda),
+               custo         = VALUES(custo),
+               msgs_cobradas = VALUES(msgs_cobradas),
+               msgs_gratis   = VALUES(msgs_gratis),
+               fonte         = VALUES(fonte)""",
+        (data, telefone, pricing_category, produto_id, waba_id, moeda,
+         custo, msgs_cobradas, msgs_gratis, fonte)
+    )
+
+
+def somar_custo_whatsapp_por_produto(data_ini, data_fim, produto_id=None):
+    """Custo do WhatsApp (Meta) no período, separado por moeda, para as telas de ROI.
+
+    Returns:
+        {produto_id: {'usd': float, 'brl': float, 'msgs_cobradas': int}}
+    """
+    query = """
+        SELECT produto_id,
+               SUM(CASE WHEN moeda = 'USD' THEN custo ELSE 0 END) AS usd,
+               SUM(CASE WHEN moeda = 'BRL' THEN custo ELSE 0 END) AS brl,
+               SUM(msgs_cobradas) AS msgs_cobradas
+        FROM whatsapp_custo_diario
+        WHERE data BETWEEN %s AND %s
+    """
+    params = [data_ini, data_fim]
+    if produto_id is not None:
+        query += " AND produto_id = %s"
+        params.append(produto_id)
+    query += " GROUP BY produto_id"
+    rows = db.execute_query(query, tuple(params), fetch_all=True) or []
+    return {r['produto_id']: {'usd': float(r['usd'] or 0), 'brl': float(r['brl'] or 0),
+                              'msgs_cobradas': int(r['msgs_cobradas'] or 0)} for r in rows}
+
+
+_SQL_CUSTO_WPP_COLUNAS = """
+    SUM(CASE WHEN c.moeda = 'USD' THEN c.custo ELSE 0 END) AS usd,
+    SUM(CASE WHEN c.moeda = 'BRL' THEN c.custo ELSE 0 END) AS brl,
+    SUM(c.msgs_cobradas) AS msgs_cobradas,
+    SUM(c.msgs_gratis)   AS msgs_gratis
+"""
+
+
+def custo_whatsapp_por_dia(produto_id, data_ini, data_fim):
+    """Custo do WhatsApp (Meta) do produto, um registro por dia. 'fechado' = todas as linhas do dia
+    já passaram pela releitura do D-1 (fonte='fechamento'); senão o dia ainda é parcial."""
+    return db.execute_query(
+        f"""SELECT c.data, {_SQL_CUSTO_WPP_COLUNAS},
+                   MIN(c.fonte = 'fechamento') AS fechado
+            FROM whatsapp_custo_diario c
+            WHERE c.produto_id = %s AND c.data BETWEEN %s AND %s
+            GROUP BY c.data
+            ORDER BY c.data DESC""",
+        (produto_id, data_ini, data_fim), fetch_all=True
+    ) or []
+
+
+def custo_whatsapp_por_numero(produto_id, data_ini, data_fim):
+    """Custo do WhatsApp (Meta) do produto por número e categoria no período, com o status atual do número."""
+    return db.execute_query(
+        f"""SELECT c.telefone, c.pricing_category, {_SQL_CUSTO_WPP_COLUNAS},
+                   MAX(tp.status_api) AS status_api
+            FROM whatsapp_custo_diario c
+            LEFT JOIN telefones_produto tp ON tp.telefone = c.telefone
+            WHERE c.produto_id = %s AND c.data BETWEEN %s AND %s
+            GROUP BY c.telefone, c.pricing_category
+            ORDER BY usd + brl DESC""",
+        (produto_id, data_ini, data_fim), fetch_all=True
+    ) or []
+
+
 def atualizar_status_api_numero(api_phone_number_id, status_api):
     """Grava só o status_api do número (ex.: após parear o chip do gateway, ou quando o gateway confirma
     que o chip voltou), sem esperar a checagem horária — que é o único outro lugar que o atualiza."""
