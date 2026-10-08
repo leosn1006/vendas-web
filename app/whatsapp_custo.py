@@ -100,13 +100,25 @@ def coletar_dia(data: datetime.date, fonte: str) -> dict:
     falhas = linhas = 0
     falhas_conectados = []
     for waba_id, telefones in wabas.items():
-        algum = next(iter(telefones.values()))
+        conectado = any(t.get('status_api') == 'CONNECTED' for t in telefones.values())
+        # O token é por número (token_env_key): usa o de um número CONNECTED com token no .env, para um
+        # número banido/sem token na mesma WABA não derrubar a coleta dos outros.
+        candidatos = sorted(telefones.values(), key=lambda t: t.get('status_api') != 'CONNECTED')
+        algum, token = candidatos[0], None
+        for t in candidatos:
+            try:
+                token = get_whatsapp_token(t['api_phone_number_id'])
+                algum = t
+                break
+            except ValueError as e:
+                erro_token = e
         try:
-            token = get_whatsapp_token(algum['api_phone_number_id'])
+            if token is None:
+                raise erro_token
             resposta = consultar_waba(waba_id, token, data)
         except (ValueError, requests.RequestException) as e:
             falhas += 1
-            if any(t.get('status_api') == 'CONNECTED' for t in telefones.values()):
+            if conectado:
                 falhas_conectados.append(waba_id)
             detalhe = e.response.text[:200] if getattr(e, 'response', None) is not None else str(e)[:200]
             logger.warning(f"[{_TAG}] ⚠️ WABA {waba_id} ({algum['telefone']}): {detalhe}")

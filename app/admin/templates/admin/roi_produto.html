@@ -173,8 +173,8 @@
         {% if custo_wpp and custo_wpp.usd %}
         <div class="roi-summary-nota">
             Custo WhatsApp descontado do resultado: R$ {{ '%.2f'|format(wpp_reais) }}
-            (US$ convertido a R$ {{ '%.4f'|format(custo_wpp.ptax) }}
-            {% if custo_wpp.ptax_fallback %}— cotação padrão, PTAX indisponível{% else %}— PTAX {{ custo_wpp.ptax_data.strftime('%d/%m') }}{% endif %}
+            (US$ × {{ '%.4f'|format(custo_wpp.fator) }} = PTAX R$ {{ '%.4f'|format(custo_wpp.ptax) }}
+            {% if custo_wpp.ptax_fallback %}— cotação padrão, PTAX indisponível{% else %}de {{ custo_wpp.ptax_data.strftime('%d/%m') }}{% endif %}
             + IOF {{ '%.1f'|format(custo_wpp.iof) }}%)
         </div>
         {% endif %}

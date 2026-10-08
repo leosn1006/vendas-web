@@ -65,6 +65,7 @@ def custo_wpp_para_tela(usd: float, brl: float) -> dict:
     (USD × PTAX × (1 + IOF) + BRL), mais a cotação usada para mostrar na legenda."""
     ptax = obter_ptax_usd() if usd else {'valor': 0.0, 'data': None, 'fallback': False}
     iof = _iof_percentual()
-    convertido = brl + usd * ptax['valor'] * (1 + iof / 100)
-    return {'usd': usd, 'brl': brl, 'convertido': convertido,
+    fator = ptax['valor'] * (1 + iof / 100)  # R$ por US$ já com IOF — o que a tela mostra para conferir a conta
+    convertido = brl + usd * fator
+    return {'usd': usd, 'brl': brl, 'convertido': convertido, 'fator': fator,
             'ptax': ptax['valor'], 'ptax_data': ptax['data'], 'ptax_fallback': ptax['fallback'], 'iof': iof}

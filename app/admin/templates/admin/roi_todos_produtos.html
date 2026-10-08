@@ -99,7 +99,7 @@
                     <th style="text-align:right;">Recebido (PIX)</th>
                     <th style="text-align:right;">Recebido (Web)</th>
                     <th style="text-align:right;">Recebido (Cartão)</th>
-                    <th style="text-align:right;">Custo WPP (US$)</th>
+                    <th style="text-align:right;">Custo WPP (US$){% if cotacao_wpp %}<div style="font-size:11px; font-weight:400; color:var(--muted); text-transform:none; letter-spacing:0;">× {{ '%.4f'|format(cotacao_wpp.fator) }} em R$ (PTAX + IOF)</div>{% endif %}</th>
                     <th style="text-align:right;">Custo WPP (R$)</th>
                     <th style="text-align:right;">Imposto ({{ '%.1f'|format(taxa_imposto) }}%)</th>
                     <th style="text-align:right;">ROI</th>
@@ -258,8 +258,8 @@
     </div>
     {% if cotacao_wpp %}
     <div class="imposto-label" style="padding:10px 4px 0; white-space:normal;">
-        ROI e Lucro Líquido já descontam o custo do WhatsApp; US$ convertido a R$ {{ '%.4f'|format(cotacao_wpp.ptax) }}
-        {% if cotacao_wpp.ptax_fallback %}(cotação padrão, PTAX indisponível){% else %}(PTAX {{ cotacao_wpp.ptax_data.strftime('%d/%m') }}){% endif %}
+        ROI e Lucro Líquido já descontam o custo do WhatsApp; US$ × {{ '%.4f'|format(cotacao_wpp.fator) }} = PTAX R$ {{ '%.4f'|format(cotacao_wpp.ptax) }}
+        {% if cotacao_wpp.ptax_fallback %}(cotação padrão, PTAX indisponível){% else %}de {{ cotacao_wpp.ptax_data.strftime('%d/%m') }}{% endif %}
         + IOF {{ '%.1f'|format(cotacao_wpp.iof) }}%.
     </div>
     {% endif %}

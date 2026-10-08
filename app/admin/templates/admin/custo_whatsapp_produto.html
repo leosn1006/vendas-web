@@ -25,6 +25,7 @@
     .cw-hint  { font-size: 12px; color: var(--muted); margin-top: 4px; }
     .cw-nota  { font-size: 12px; color: var(--muted); margin: -4px 0 16px; }
     .cw-titulo { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+    .cw-th-nota { font-size: 11px; font-weight: 400; color: var(--muted); text-transform: none; letter-spacing: 0; }
 
     @media (max-width: 900px) {
         .cw-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -87,11 +88,11 @@
         </div>
     </div>
     <div class="cw-item">
-        <div class="cw-label">Cotação usada</div>
-        <div class="cw-value">{% if total.usd %}R$ {{ '%.4f'|format(total.ptax) }}{% else %}<span class="cw-muted">—</span>{% endif %}</div>
+        <div class="cw-label">Cotação usada (US$ → R$)</div>
+        <div class="cw-value">{% if total.usd %}× {{ '%.4f'|format(total.fator) }}{% else %}<span class="cw-muted">—</span>{% endif %}</div>
         {% if total.usd %}
         <div class="cw-hint">
-            {% if total.ptax_fallback %}cotação padrão (PTAX indisponível){% else %}PTAX {{ total.ptax_data.strftime('%d/%m') }}{% endif %}
+            {% if total.ptax_fallback %}cotação padrão R$ {{ '%.4f'|format(total.ptax) }} (PTAX indisponível){% else %}PTAX R$ {{ '%.4f'|format(total.ptax) }} de {{ total.ptax_data.strftime('%d/%m') }}{% endif %}
             + IOF {{ '%.1f'|format(total.iof) }}%
         </div>
         {% endif %}
@@ -100,6 +101,7 @@
 <p class="cw-nota">
     Vendas = pagamentos PIX sem pedido vinculado (mesmo critério do card ROI Real (PIX)). Só números da API oficial da Meta;
     os do WhatsApp Web não têm custo. Os dados da Meta são aproximados; o dia de hoje é parcial (atualiza às :25 e :55).
+    Todos os dias são convertidos pela PTAX mais recente, não pela do dia da cobrança — o total em reais pode diferir um pouco da fatura.
 </p>
 
 {% if dias %}
@@ -114,7 +116,7 @@
                     <th style="text-align:right;">Msgs grátis</th>
                     <th style="text-align:right;">Custo (US$)</th>
                     <th style="text-align:right;">Custo (R$)</th>
-                    <th style="text-align:right;">Total em reais</th>
+                    <th style="text-align:right;">Total em reais{% if total.usd %}<div class="cw-th-nota">US$ × {{ '%.4f'|format(total.fator) }} (PTAX + IOF)</div>{% endif %}</th>
                     <th>Situação</th>
                 </tr>
             </thead>
@@ -162,7 +164,7 @@
                     <th style="text-align:right;">Msgs grátis</th>
                     <th style="text-align:right;">Custo (US$)</th>
                     <th style="text-align:right;">Custo (R$)</th>
-                    <th style="text-align:right;">Total em reais</th>
+                    <th style="text-align:right;">Total em reais{% if total.usd %}<div class="cw-th-nota">US$ × {{ '%.4f'|format(total.fator) }} (PTAX + IOF)</div>{% endif %}</th>
                     <th style="text-align:right;">% do produto</th>
                 </tr>
             </thead>

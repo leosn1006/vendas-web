@@ -545,36 +545,47 @@ def coletar_custo_whatsapp(self, data=None, fonte='intradia'):
     from zoneinfo import ZoneInfo
     from whatsapp_custo import coletar_dia
     _TAG = "TASK-CUSTO-WPP"
-    reagendar = False
+    if data:
+        dia = datetime.date.fromisoformat(data)
+    else:
+        dia = datetime.datetime.now(ZoneInfo('America/Sao_Paulo')).date()
+        if fonte == 'fechamento':
+            dia -= datetime.timedelta(days=1)
     if not _redis.set("lock:custo_whatsapp", 1, nx=True, ex=900):
         logger.info(f"[{_TAG}] ⏭ Outra instância já em execução — ignorando")
+        if fonte == 'fechamento' and self.request.retries < self.max_retries:
+            # Fechamento não pode ser pulado (o dia ficaria parcial): tenta de novo quando o lock liberar
+            raise self.retry(kwargs={'data': dia.isoformat(), 'fonte': fonte}, countdown=1200)
+        if fonte == 'fechamento':
+            logger.error(f"[{_TAG}] ❌ Fechamento de {dia} pulado: lock ocupado também na nova tentativa")
         return
+    problema = None  # descrição da falha que merece alerta (só WABAs de número CONNECTED ou erro geral)
     try:
-        if data:
-            dia = datetime.date.fromisoformat(data)
-        else:
-            dia = datetime.datetime.now(ZoneInfo('America/Sao_Paulo')).date()
-            if fonte == 'fechamento':
-                dia -= datetime.timedelta(days=1)
         r = coletar_dia(dia, fonte)
-        if r['wabas'] and r['falhas'] == r['wabas']:
-            notificar_admin_erro_sistema(f"{_TAG} | todas as {r['wabas']} WABAs falharam ({dia})")
-        elif fonte == 'fechamento' and r['falhas_conectados']:
-            # Sem o fechamento o dia fica "parcial" para sempre (falta o trecho 23h55–24h): tenta de novo em
-            # 20 min (06h15, antes da intradia das 06h25 disputar o lock) e, se ainda falhar, avisa. A intradia não precisa — a próxima rodada já é daqui a 30 min.
-            if self.request.retries < self.max_retries:
-                reagendar = True
-            else:
-                notificar_admin_erro_sistema(
-                    f"{_TAG} | fechamento de {dia} falhou em {len(r['falhas_conectados'])} WABA(s) de número "
-                    f"CONNECTED: {', '.join(r['falhas_conectados'])}")
+        if r['falhas_conectados']:
+            problema = (f"{len(r['falhas_conectados'])} WABA(s) de número CONNECTED falharam em {dia} ({fonte}): "
+                        f"{', '.join(r['falhas_conectados'])}")
     except Exception as exc:
-        logger.error(f"[{_TAG}] ❌ Erro geral: {exc}")
         import traceback
         traceback.print_exc()
-        notificar_admin_erro_sistema(f"{_TAG} | erro geral: {type(exc).__name__}")
+        problema = f"erro geral em {dia} ({fonte}): {type(exc).__name__}: {exc}"
     finally:
         _redis.delete("lock:custo_whatsapp")
+    if not problema:
+        return
+    if fonte != 'fechamento':
+        # A intradia não reagenda nem alerta (seria a cada 30 min): a próxima rodada já tenta de novo e o
+        # fechamento das 05h55 é quem garante o dia completo.
+        logger.warning(f"[{_TAG}] ⚠️ {problema}")
+        return
+    # Sem o fechamento o dia fica "parcial" para sempre (falta o trecho 23h55–24h): tenta de novo em 20 min
+    # (06h15, antes da intradia das 06h25 disputar o lock); se ainda falhar, registra erro e alerta.
+    reagendar = self.request.retries < self.max_retries
+    if reagendar:
+        logger.warning(f"[{_TAG}] ⚠️ {problema} — nova tentativa em 20 min")
+    else:
+        logger.error(f"[{_TAG}] ❌ {problema}")
+        notificar_admin_erro_sistema(f"{_TAG} | {problema}"[:200])
     if reagendar:
         # Data fixa: se a nova tentativa cair depois da meia-noite, ainda relê o mesmo dia
         raise self.retry(kwargs={'data': dia.isoformat(), 'fonte': fonte}, countdown=1200)

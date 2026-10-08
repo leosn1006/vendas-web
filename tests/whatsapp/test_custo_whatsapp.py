@@ -104,3 +104,84 @@ def test_conversao_soma_usd_com_ptax_e_iof_mais_brl(monkeypatch):
     c = cotacao.custo_wpp_para_tela(10.0, 2.0)
     assert c['convertido'] == pytest.approx(2.0 + 10.0 * 5.0 * 1.035)
     assert (c['usd'], c['brl']) == (10.0, 2.0)
+
+
+def test_token_vem_de_numero_conectado_com_token(monkeypatch):
+    """Número banido sem token na mesma WABA não pode derrubar a coleta do número CONNECTED."""
+    monkeypatch.setattr(config, 'EH_PRODUCAO', True)
+    monkeypatch.setattr(database, 'listar_telefones_com_token', lambda: [
+        {'telefone': '556199999999', 'produto_id': 8, 'api_phone_number_id': 'banido', 'provedor': 'meta',
+         'waba_id': 'W1', 'status_api': 'BANNED'},
+        {'telefone': '556182487487', 'produto_id': 8, 'api_phone_number_id': 'ok', 'provedor': 'meta',
+         'waba_id': 'W1', 'status_api': 'CONNECTED'},
+    ])
+
+    def token(pid):
+        if pid != 'ok':
+            raise ValueError('sem token')
+        return 'tok-ok'
+    monkeypatch.setattr(database, 'get_whatsapp_token', token)
+    usados = []
+    monkeypatch.setattr(whatsapp_custo, 'consultar_waba', lambda w, t, d: usados.append(t) or _RESPOSTA)
+    monkeypatch.setattr(database, 'upsert_custo_whatsapp_dia', lambda *a: None)
+
+    r = whatsapp_custo.coletar_dia(datetime.date(2026, 10, 7), 'fechamento')
+    assert usados == ['tok-ok']
+    assert r['falhas'] == 0
+
+
+class _Retry(Exception):
+    pass
+
+
+def _rodar_task(monkeypatch, fonte, resultado=None, erro=None, retries=0, lock_livre=True):
+    """Roda tasks.coletar_custo_whatsapp com coletar_dia simulado; devolve (reagendou, alertas)."""
+    import tasks
+    monkeypatch.setattr(tasks._redis, 'set', lambda *a, **k: lock_livre)
+    monkeypatch.setattr(tasks._redis, 'delete', lambda *a: None)
+
+    def coletar(dia, f):
+        if erro:
+            raise erro
+        return resultado
+    monkeypatch.setattr(whatsapp_custo, 'coletar_dia', coletar)
+    alertas = []
+    monkeypatch.setattr(tasks, 'notificar_admin_erro_sistema', lambda msg: alertas.append(msg))
+    task = tasks.coletar_custo_whatsapp
+    monkeypatch.setattr(task, 'retry', lambda **k: _Retry(k))
+    task.push_request(retries=retries)
+    try:
+        task.run(data='2026-10-07', fonte=fonte)
+        return False, alertas
+    except _Retry:
+        return True, alertas
+    finally:
+        task.pop_request()
+
+
+_FALHOU = {'wabas': 2, 'falhas': 2, 'falhas_conectados': ['W1'], 'linhas': 0}
+
+
+def test_fechamento_com_falha_reagenda_antes_de_alertar(monkeypatch):
+    assert _rodar_task(monkeypatch, 'fechamento', _FALHOU) == (True, [])
+
+
+def test_fechamento_alerta_depois_da_nova_tentativa(monkeypatch):
+    reagendou, alertas = _rodar_task(monkeypatch, 'fechamento', _FALHOU, retries=1)
+    assert not reagendou and len(alertas) == 1
+
+
+def test_fechamento_com_erro_geral_tambem_reagenda(monkeypatch):
+    assert _rodar_task(monkeypatch, 'fechamento', erro=RuntimeError('mysql fora'))[0] is True
+
+
+def test_intradia_e_numero_banido_nao_alertam(monkeypatch):
+    assert _rodar_task(monkeypatch, 'intradia', _FALHOU) == (False, [])
+    so_banido = {'wabas': 1, 'falhas': 1, 'falhas_conectados': [], 'linhas': 0}
+    assert _rodar_task(monkeypatch, 'fechamento', so_banido, retries=1) == (False, [])
+
+
+def test_fechamento_com_lock_ocupado_reagenda(monkeypatch):
+    """Ex.: backfill manual rodando às 05h55 — o fechamento não pode ser pulado em silêncio."""
+    assert _rodar_task(monkeypatch, 'fechamento', lock_livre=False)[0] is True
+    assert _rodar_task(monkeypatch, 'intradia', lock_livre=False) == (False, [])

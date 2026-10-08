@@ -3286,9 +3286,8 @@ def custo_whatsapp_produto(produto_id):
             r[k] = int(r[k] or 0)
 
     total = custo_wpp_para_tela(sum(r['usd'] for r in dias), sum(r['brl'] for r in dias))
-    fator_usd = total['ptax'] * (1 + total['iof'] / 100)
     for r in dias + numeros:
-        r['convertido'] = r['brl'] + r['usd'] * fator_usd
+        r['convertido'] = r['brl'] + r['usd'] * total['fator']
     numeros.sort(key=lambda r: r['convertido'], reverse=True)
     for r in numeros:
         r['pct'] = (r['convertido'] / total['convertido'] * 100) if total['convertido'] else 0
