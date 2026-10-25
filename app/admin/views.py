@@ -1937,24 +1937,27 @@ _SQL_QUIZ_WEB = """
 """
 # quiz_progresso guarda só a etapa mais avançada de cada visita (pararam = quantas pararam ali).
 # "Chegaram" em cada etapa é o acumulado de quem parou nela ou depois — calculado em
-# _montar_etapas_quiz. Só tem linha para quem abriu uma landing de quiz (hoje fatia2-e).
+# _montar_etapas_quiz. Só tem linha para quem abriu uma página que mede o funil (fatia2-e, fatia1-e, musica-v2...).
 
 
 # Nomes das etapas de cada quiz, na ordem (os mesmos que o JS da página envia) — permitem
 # listar TODAS as etapas no admin, inclusive as que ninguém abandonou. Quiz sem entrada aqui
 # usa os nomes gravados no banco. Lista = etapas 0, 1, 2... seguidas; dict = numeração com saltos
 # (a Música: quiz 1–9, letra 20, prévia 30, compra 40–43): só as etapas do dict e as gravadas aparecem.
-# Nome None = o gravado pela página (no quiz da Música, a pergunta: "pessoas", "lembrancas"...).
+# Nome None = o gravado pela página.
+# Quiz da Música: desde 25/10/2026 a etapa é a posição FIXA da pergunta (ordem de PERGUNTAS em musica/dominio/
+# quiz.py), mesmo quando uma tela é pulada (?ocasiao= ou ?para_quem= da landing). Antes era a posição na tela.
 _ETAPAS_MUSICA = {
-    **{n: None for n in range(1, 10)},
+    1: 'Quiz: pra quem é', 2: 'Quiz: nome', 3: 'Quiz: ocasião', 4: 'Quiz: lembranças', 5: 'Quiz: frase que não pode faltar',
+    6: 'Quiz: tom', 7: 'Quiz: estilo', 8: 'Quiz: voz', 9: 'Quiz: contato',
     20: 'Viu a letra', 30: 'Ouviu a prévia', 40: 'Foi ao checkout',
     41: 'Viu o popup do videoclipe (saiu sem escolher)', 42: 'Recusou o popup e foi só com a música',
-    43: 'Aceitou o videoclipe com desconto',
+    43: 'Aceitou o videoclipe com desconto', 44: 'Foi ao checkout depois de fechar o popup',
 }
 _ETAPAS_QUIZ = {
     'musica-v2': _ETAPAS_MUSICA,
-    'musica': {**{n: None for n in range(1, 13)}, 20: 'Viu a letra', 30: 'Ouviu a prévia',
-               40: 'Foi ao checkout'},   # quiz antigo, de 12 telas (até 22/10/2026)
+    # Quiz antigo, de 12 telas (até 22/10/2026): telas pelo nome gravado; letra, prévia e checkout iguais.
+    'musica': {**{n: None for n in range(1, 13)}, **{n: _ETAPAS_MUSICA[n] for n in (20, 30, 40)}},
     'fatia2-e': [
         'Abriu a página', 'Sua situação', 'Seu sonho', 'Dias por semana',
         'O que você já tentou', 'O que te trava', 'Sua experiência', 'Uma possibilidade',
@@ -1973,9 +1976,12 @@ _ETAPAS_QUIZ = {
 # O quiz guarda só a etapa MAIS AVANÇADA: 17 = clicou em comprar sem popup (Guiado, ou Básico sem
 # oferta); 18 = viu o popup e saiu (abandono real); 19 = recusou e foi ao Básico; 20 = aceitou;
 # 21 = fechou o popup e depois foi ao checkout (Guiado ou Básico). No site anterior (fatia1-e): 2, 4, 5, 6.
-# Música: 40 = checkout direto; 42 = recusou o popup e foi; 43 = aceitou (41 = viu o popup e saiu: abandono).
+# Música: 40 = checkout direto; 42 = recusou o popup e foi; 43 = aceitou; 44 = fechou o popup e depois foi
+# (41 = viu o popup e saiu: abandono).
 _ETAPAS_CHECKOUT_QUIZ = {'fatia2-e': {17, 19, 20, 21}, 'fatia1-e': {2, 4, 5, 6},
-                         'musica-v2': {40, 42, 43}, 'musica': {40}}
+                         'musica-v2': {40, 42, 43, 44}, 'musica': {40}}
+# Páginas que saíram do ar: o funil delas ainda aparece no período, mas não entram no teste A/B.
+_PAGINAS_ENCERRADAS = {'musica'}
 
 # Teste A/B das landings: por página, visitas, quem foi ao checkout, pagos e receita, com os pagos
 # separados por plano (pedido sem plano = de antes dos planos = plano padrão).
@@ -2053,7 +2059,7 @@ def _montar_etapas_quiz(linhas):
             acumulado += pararam
             etapas.append({
                 'etapa': n,
-                'etapa_nome': nomes.get(n) or row.get('etapa_nome') or (f'Tela {n}' if n in nomes else '—'),
+                'etapa_nome': nomes.get(n) or row.get('etapa_nome') or f'Etapa {n}',
                 'chegaram': acumulado,
                 'pct': round(100 * acumulado / total, 1) if total else 0.0,
                 'pararam': pararam,
@@ -2067,7 +2073,8 @@ def _montar_etapas_quiz(linhas):
         candidatas = [e for e in etapas if not e['compra'] and e['pararam'] > 0]
         if candidatas:
             max(candidatas, key=lambda e: e['pararam'])['maior_queda'] = True
-        resultado.append({'pagina': pagina, 'total': total, 'etapas': etapas})
+        # Etapa 0 = abriu a página (Fatia); a Música só começa a medir na 1ª tela do quiz.
+        resultado.append({'pagina': pagina, 'total': total, 'etapas': etapas, 'abriu_pagina': numeros[0] == 0})
     return resultado
 
 
@@ -2622,11 +2629,13 @@ def analytics_web_produto(produto_id):
     # Teste A/B das landings (separado: um erro aqui não pode apagar os funis acima).
     ab_landings, ab_desde = [], None
     try:
-        inicios = db.execute_query(_SQL_AB_INICIO, (produto_id, data_ini, data_fim), fetch_all=True) or []
+        inicios = [r for r in db.execute_query(_SQL_AB_INICIO, (produto_id, data_ini, data_fim), fetch_all=True) or []
+                   if r['pagina'] not in _PAGINAS_ENCERRADAS]
         if len(inicios) > 1:
             ab_desde = max(r['primeira'] for r in inicios)
             ab_landings = _montar_ab_landings(
-                db.execute_query(_SQL_AB_LANDINGS, (produto_id, produto_id, ab_desde, data_fim), fetch_all=True))
+                [r for r in db.execute_query(_SQL_AB_LANDINGS, (produto_id, produto_id, ab_desde, data_fim),
+                                             fetch_all=True) or [] if r['pagina'] not in _PAGINAS_ENCERRADAS])
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro no teste A/B das landings produto #{produto_id}: {e}")
         ab_landings, ab_desde = [], None

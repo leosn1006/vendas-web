@@ -187,7 +187,8 @@ function desenhar(p){
         ultimaChance(p.oferta, a.href, a);
         return;
       }
-      etapaFunil(40, "comprar");
+      if (ultimaChanceVista()) etapaFunil(44, "depois_popup");   // fechou o popup e voltou para comprar
+      else etapaFunil(40, "comprar");
     }));
     if (el("outra")) el("outra").onclick = e => { if (!confirm("Criar outra versão da música? As duas atuais serão substituídas.")) return; e.target.disabled = true; inicioGeracao = Date.now(); acao("/outra-versao"); };
 
@@ -208,7 +209,7 @@ function desenhar(p){
 
 // Popup "última chance": ao escolher só a música, oferece uma vez o plano mais caro com o desconto de oferta.
 // Funil (guarda a etapa mais avançada): comprar 40 (foi direto), popup 41 (viu e saiu), recusou 42 (foi ao checkout
-// só com a música), aceitou 43.
+// só com a música), aceitou 43, foi ao checkout depois de fechar o popup 44.
 const CHAVE_ULTIMA = "musica_ultima_chance_" + BASE;
 function ultimaChanceVista(){ try { return sessionStorage.getItem(CHAVE_ULTIMA) === "1"; } catch (e) { return false; } }
 function ultimaChance(o, linkSoMusica, origem){

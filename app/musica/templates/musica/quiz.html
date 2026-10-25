@@ -231,7 +231,8 @@ function desenhar(){
   pararSom();
   const p = pergunta(atual), lista = visiveis();
   const posicao = lista.indexOf(p) + 1;
-  if (ultimaEtapa !== p.chave) { etapaFunil(Math.min(15, posicao), p.chave); ultimaEtapa = p.chave; }   // 1 vez por tela
+  // Funil: a etapa é a posição FIXA da pergunta (pular a ocasião ou "pra quem" não muda o número das outras)
+  if (ultimaEtapa !== p.chave) { etapaFunil(PERGUNTAS.indexOf(p) + 1, p.chave); ultimaEtapa = p.chave; }   // 1 vez por tela
   el("barra").style.width = ((posicao - 1) / lista.length * 100) + "%";
   // Em vez de "1 de 9" (assusta), uma frase leve: começo, meio e reta final.
   el("contador").textContent = posicao <= 2 ? "Leva só 2 minutos ⏱" : posicao >= lista.length - 2 ? "Falta pouco! 💛" : "Você está indo bem ✨";

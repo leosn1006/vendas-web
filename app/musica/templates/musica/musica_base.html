@@ -72,7 +72,8 @@ audio{width:100%;margin:8px 0}
 <script>
 // Até onde a visita chegou (admin → Analytics Web, página "musica-v2" = quiz de 9 telas de 22/10/2026; o antigo, de
 // 12 telas, ficou como "musica"): quiz 1–9, letra 20, prévia 30, comprar 40; popup "última chance" (pedido.html):
-// viu 41, recusou e foi ao checkout 42, aceitou 43.
+// viu 41, recusou e foi ao checkout 42, aceitou 43, fechou e depois foi ao checkout 44. No quiz, a etapa é a posição
+// fixa da pergunta (desde 25/10/2026).
 // sendBeacon sobrevive à troca de página; falha aqui nunca atrapalha o funil.
 function etapaFunil(n, nome){
   try {

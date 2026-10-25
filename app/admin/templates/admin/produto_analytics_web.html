@@ -298,7 +298,7 @@
 {% for quiz in quizzes %}
 <div class="section-title">Página de vendas ({{ quiz.pagina }}) — até onde as visitas chegaram</div>
 <div class="section-subtitle" style="margin-top:-8px; margin-bottom:16px; color:#888; font-size:13px; line-height:1.6;">
-    {{ quiz.total }} visita{{ 's' if quiz.total != 1 else '' }} abri{{ 'ram' if quiz.total != 1 else 'u' }} a página no período. Leia de cima para baixo: a barra mostra quantas pessoas ainda estavam no quiz em cada etapa.
+    {% if quiz.abriu_pagina %}{{ quiz.total }} visita{{ 's' if quiz.total != 1 else '' }} abri{{ 'ram' if quiz.total != 1 else 'u' }} a página no período.{% else %}{{ quiz.total }} visita{{ 's' if quiz.total != 1 else '' }} começa{{ 'ram' if quiz.total != 1 else 'u' }} o quiz no período (quem só olhou a página e saiu não entra aqui).{% endif %} Leia de cima para baixo: a barra mostra quantas pessoas ainda estavam no quiz em cada etapa.
     <strong>Desistiram aqui</strong> = viram esta etapa e não foram adiante; a linha em destaque é onde mais gente desiste.
 </div>
 <div class="card">
