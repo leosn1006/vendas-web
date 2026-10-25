@@ -43,6 +43,36 @@ def test_toda_ocasiao_e_tom_aparecem_para_alguem():
         assert any(t['valor'] in quiz.tons_para(r, 'Aniversário') for r in relacoes), t['valor']
 
 
+def test_botoes_do_topo_da_landing_sao_relacoes_do_quiz():
+    """Os botões "Pra quem é a música?" do topo levam ?para_quem=...; valor fora do quiz abriria a 1ª tela."""
+    relacoes = {r['valor'] for r in quiz.RELACOES}
+    for lista in re.findall(r'"quem": \[([^\]]+)\]', LANDING) + re.findall(r'pg\.quem or \[([^\]]+)\]', LANDING):
+        for quem in re.findall(r'"([^"]+)"', lista):
+            assert quem in relacoes, quem
+
+
+def test_botoes_de_cada_pagina_combinam_com_a_ocasiao_dela():
+    """Na página do Dia das Mães, o botão "Pai" levaria a uma combinação que o quiz recusa."""
+    for quiz_ocasiao, lista in re.findall(r'"quiz": "([^"]*)", "quem": \[([^\]]+)\]', LANDING):
+        for quem in re.findall(r'"([^"]+)"', lista):
+            assert not quiz_ocasiao or quiz_ocasiao in quiz.ocasioes_para(quem), (quiz_ocasiao, quem)
+
+
+def test_toda_pagina_de_ocasiao_tem_botoes():
+    """A página de uma ocasião usa relacoes_por_ocasiao()[ocasião] (sem ela, o topo da página ficaria vazio)."""
+    por_ocasiao = quiz.relacoes_por_ocasiao()
+    for usada in set(re.findall(r'"quiz": "([^"]+)"', LANDING)):
+        assert por_ocasiao.get(usada), usada
+    assert 'Pai' not in por_ocasiao['Dia das Mães'] and 'Minha ex' in por_ocasiao['Dia dos Namorados']
+
+
+def test_ex_tem_tom_romantico_e_perguntas_proprias():
+    assert 'romantica' in quiz.tons_para('Minha ex', 'Dia dos Namorados')
+    cfg = quiz.config_do_navegador()
+    assert cfg['guia_lembrancas']['Meu ex'] == 'ex' and cfg['rotulo']['Minha ex'] == 'ex'
+    assert cfg['rotulo']['Mãe'] == 'mãe'
+
+
 def test_ocasioes_das_paginas_da_landing_existem():
     valores = {o['valor'] for o in quiz.OCASIOES}
     for usada in set(re.findall(r'"quiz": "([^"]+)"', LANDING)) | set(re.findall(r'"slug": "([^"]+)"', LANDING)):
@@ -58,6 +88,11 @@ def test_ocasioes_das_paginas_da_landing_existem():
     ('Namorado', ['Pedido de casamento', 'Dia dos Namorados'], ['Dia das Mães']),
     ('Para mim', ['Celebrar a minha história', 'Celebrar uma conquista'], ['Pedido de desculpas', 'Homenagem a quem já partiu']),
     ('Mais de uma pessoa', ['Dia das Mães', 'Aniversário de casamento ou namoro'], ['Pedido de casamento']),
+    ('Minha ex', ['Pedido de desculpas', 'Matar a saudade', 'Dia dos Namorados', 'Só porque eu amo'],
+     ['Casamento', 'Chá revelação', 'Dia das Mães', 'Aniversário de casamento ou namoro', 'Pedido de casamento',
+      'Formatura', 'Aposentadoria']),
+    ('Meu ex', ['Pedido de desculpas', 'Matar a saudade', 'Dia dos Namorados'],
+     ['Casamento', 'Chá revelação', 'Dia dos Pais', 'Aniversário de casamento ou namoro', 'Aposentadoria']),
 ])
 def test_ocasioes_pela_relacao(relacao, aparece, nao_aparece):
     ocasioes = quiz.ocasioes_para(relacao)

@@ -48,6 +48,7 @@ Um JSON com as respostas do quiz:
 8b. Natal: família reunida, gratidão e esperança, sem depender de símbolos religiosos se não foram citados.
 8c. Agradecer, dar força, celebrar conquista, matar a saudade, aposentadoria, batizado, aniversário de casamento: o tema da ocasião guia o refrão. "Outra ocasião": use `ocasiao_outra`.
 9. Pedido de desculpas: assumir o erro sem desculpas esfarrapadas, sem culpar a outra pessoa, sem prometer coisas exageradas. Nada que soe como pressão.
+9b. **"Minha ex" / "Meu ex":** quem encomenda quer reconquistar ou fazer as pazes com alguém com quem já teve um relacionamento. Chame a pessoa pelo nome ou apelido, **nunca** de "minha ex"/"meu ex" na letra. Não finja que o casal está junto: fale do que viveram, da saudade e do que aprendeu, com carinho e esperança. Nada de pressão, cobrança, ciúme ou promessa exagerada (como na regra 9).
 10. Homenagem póstuma: saudade e gratidão, com delicadeza. Sem descrever morte, doença ou sofrimento.
 11. Infantil: frases curtas, palavras fáceis, repetição, onomatopeias, brincadeira. Nada de tristeza.
 12. Engraçado: humor carinhoso, nunca humilhante. Nada sobre peso, aparência, idade como defeito ou bebida em excesso.

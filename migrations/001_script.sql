@@ -107,7 +107,7 @@ INSERT IGNORE INTO estado_pedidos (id, descricao) VALUES
 (1, 'Cliente acessou a página de vendas e clicou para enviar mensagem'),
 (2, 'Enviado mensagem de introdução'),
 (3, 'Produto enviado'),
-(4, 'Follow-up enviado')
+(4, 'Follow-up enviado');
 
 
 -- Tabela de pedidos

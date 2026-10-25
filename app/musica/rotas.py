@@ -16,7 +16,8 @@ from musica import casos_de_uso as uc
 from musica import config
 from musica.casos_de_uso import Recusa
 from musica.dominio import regras
-from musica.dominio.quiz import CHAVES_VALIDAS, MAX_PESSOAS, PERGUNTAS, combinacao_invalida, config_do_navegador
+from musica.dominio.quiz import (CHAVES_VALIDAS, MAX_PESSOAS, PERGUNTAS, combinacao_invalida, config_do_navegador,
+                                 relacoes_por_ocasiao)
 from musica.dominio.recursos import ENTREGA_EMAIL, QRCODE, VIDEOCLIPE
 from musica.fabrica import servicos
 
@@ -140,7 +141,7 @@ def _oferta_ultima_chance(planos, token):
 @bp.context_processor
 def _variaveis_das_paginas():
     produto = _produto()
-    marca = (produto or {}).get('email_nome_remetente') or (produto or {}).get('nome') or 'Música de Presente'
+    marca = (produto or {}).get('email_nome_remetente') or (produto or {}).get('nome') or 'Canção de Presente'
     return {'marca': marca, 'turnstile_site_key': config.TURNSTILE_SITE_KEY, 'dominio_cfg': _empresa(),
             'produto_id': _pid()}
 
@@ -173,6 +174,13 @@ def _rascunho_do_funil():
         return None
 
 
+def _quem_da_landing():
+    """Os botões "Pra quem é a música?" do topo da landing: as mesmas opções da 1ª pergunta do quiz e, por ocasião,
+    as relações que combinam com ela (a página de uma ocasião só mostra quem combina)."""
+    return {'opcoes_quem': next(p['opcoes'] for p in PERGUNTAS if p['chave'] == 'para_quem'),
+            'relacoes_por_ocasiao': relacoes_por_ocasiao()}
+
+
 # =================================================================== páginas
 
 @bp.get('/')
@@ -183,7 +191,7 @@ def inicio():
     planos = _planos_a_venda()
     preco_texto = reais(planos[0]['preco']) if planos else ''
     resposta = make_response(render_template('musica/inicio.html', ocasiao=request.args.get('ocasiao', ''),
-                                             preco_texto=preco_texto))
+                                             preco_texto=preco_texto, **_quem_da_landing()))
     return _com_cookie_do_funil(resposta, pedido_id)
 
 

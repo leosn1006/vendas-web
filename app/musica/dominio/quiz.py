@@ -22,6 +22,7 @@ MAX_PESSOAS = 4
 TODOS = '*'
 
 # Relação → gênero (f/m/g = grupo/x = indefinido) e marcadores usados para filtrar ocasiões e tons.
+# "rotulo": como a relação entra em "da sua ___" / "sua ___ Ju" (padrão: o valor em minúsculas).
 RELACOES = [
     {'valor': 'Mãe', 'genero': 'f', 'marcas': ['mae', 'familia']},
     {'valor': 'Pai', 'genero': 'm', 'marcas': ['pai', 'familia']},
@@ -41,6 +42,9 @@ RELACOES = [
     {'valor': 'Sogro', 'genero': 'm', 'marcas': ['pai', 'familia']},
     {'valor': 'Amiga', 'genero': 'f', 'marcas': ['amigos']},
     {'valor': 'Amigo', 'genero': 'm', 'marcas': ['amigos']},
+    # Ex: reconquista ou fazer as pazes. Não é "casal": não vê bodas, casamento, chá revelação nem aposentadoria.
+    {'valor': 'Minha ex', 'genero': 'f', 'marcas': ['ex'], 'rotulo': 'ex'},
+    {'valor': 'Meu ex', 'genero': 'm', 'marcas': ['ex'], 'rotulo': 'ex'},
     {'valor': MAIS_DE_UMA, 'genero': 'g', 'marcas': ['grupo', 'familia', 'mae', 'pai', 'casal_pais']},
     {'valor': PARA_MIM, 'genero': 'x', 'marcas': ['eu']},
     {'valor': 'Outra pessoa', 'genero': 'x', 'marcas': ['outra']},
@@ -52,8 +56,8 @@ OCASIOES = [
     {'valor': 'Aniversário', 'para': TODOS},
     {'valor': 'Dia das Mães', 'para': ['mae']},
     {'valor': 'Dia dos Pais', 'para': ['pai']},
-    {'valor': 'Dia dos Namorados', 'para': ['casal']},
-    {'valor': 'Casamento', 'para': TODOS},
+    {'valor': 'Dia dos Namorados', 'para': ['casal', 'ex']},
+    {'valor': 'Casamento', 'para': TODOS, 'exceto': ['ex']},
     {'valor': 'Pedido de desculpas', 'para': TODOS, 'exceto': ['eu']},
     {'valor': 'Formatura', 'para': ['filhos', 'irmaos', 'amigos', 'casal', 'eu', 'grupo', 'outra']},
     {'valor': 'Só porque eu amo', 'para': TODOS, 'exceto': ['eu']},
@@ -65,7 +69,7 @@ OCASIOES = [
     {'valor': 'Celebrar uma conquista', 'para': TODOS},
     {'valor': 'Matar a saudade', 'para': TODOS, 'exceto': ['eu']},
     {'valor': 'Homenagem a quem já partiu', 'para': TODOS, 'exceto': ['eu']},
-    {'valor': 'Chá revelação', 'para': ['casal', 'filhos', 'grupo', 'eu', 'outra']},
+    {'valor': 'Chá revelação', 'para': ['casal', 'filhos', 'grupo', 'eu', 'outra'], 'exceto': ['ex']},
     {'valor': 'Batizado', 'para': ['filhos', 'grupo', 'outra']},
     {'valor': 'Aposentadoria', 'para': ['mae', 'pai', 'casal', 'irmaos', 'amigos', 'eu', 'grupo', 'outra']},
     {'valor': 'Celebrar a minha história', 'para': ['eu']},
@@ -74,7 +78,7 @@ OCASIOES = [
 
 # Tons: o valor é a chave do "clima" em conteudo/estilos.json. "exceto_ocasioes": não aparece nessas ocasiões.
 TONS = [
-    {'valor': 'romantica', 'texto': 'Romântica 💕', 'para': ['casal']},
+    {'valor': 'romantica', 'texto': 'Romântica 💕', 'para': ['casal', 'ex']},
     {'valor': 'emocionante', 'texto': 'Emocionante 🥹', 'para': TODOS},
     {'valor': 'animada', 'texto': 'Animada 🎉', 'para': TODOS, 'exceto_ocasioes': ['Homenagem a quem já partiu']},
     {'valor': 'inspiradora', 'texto': 'Inspiradora ✨', 'para': TODOS},
@@ -108,6 +112,11 @@ LEMBRANCAS = {
         {'pergunta': 'Como vocês se conheceram ou um momento que marcou vocês', 'exemplo': 'Ex.: A gente se conheceu num baile em 1998 e dançamos a noite toda.'},
         {'pergunta': 'Um jeito ou mania {dela} que você ama', 'exemplo': 'Ex.: Canta alto no carro e erra todas as letras.'},
         {'pergunta': 'O que você quer que {ela} sinta ouvindo a música', 'exemplo': 'Ex.: Que depois de 25 anos eu escolheria tudo de novo.'},
+    ],
+    'ex': [
+        {'pergunta': 'Um momento de vocês que você nunca esqueceu', 'exemplo': 'Ex.: A viagem pra praia em que choveu os três dias e a gente riu de tudo.'},
+        {'pergunta': 'Um jeito {dela} de que você sente falta', 'exemplo': 'Ex.: O jeito que cantava alto no carro, errando a letra.'},
+        {'pergunta': 'O que você quer que {ela} saiba hoje', 'exemplo': 'Ex.: Que eu errei, aprendi, e que ainda penso em você.'},
     ],
     'grupo': [
         {'pergunta': 'Uma lembrança de vocês', 'exemplo': 'Ex.: As férias na casa da vó, todo mundo dormindo na sala.'},
@@ -192,6 +201,12 @@ FEMININO = {r['valor'] for r in RELACOES if r['genero'] == 'f'}
 MASCULINO = {r['valor'] for r in RELACOES if r['genero'] == 'm'}
 
 
+def rotulo(para_quem: str) -> str:
+    """Como a relação entra no texto: "mãe" ("da sua mãe"), "ex" ("da sua ex", não "da sua minha ex")."""
+    r = next((r for r in RELACOES if r['valor'] == para_quem), None)
+    return (r.get('rotulo') or r['valor'].lower()) if r else ''
+
+
 def marcas_da_relacao(para_quem: str) -> set:
     return next((set(r['marcas']) for r in RELACOES if r['valor'] == para_quem), {'outra'})
 
@@ -200,6 +215,12 @@ def ocasioes_para(para_quem: str) -> list[str]:
     marcas = marcas_da_relacao(para_quem)
     return [o['valor'] for o in OCASIOES
             if (o['para'] == TODOS or marcas & set(o['para'])) and not marcas & set(o.get('exceto', []))]
+
+
+def relacoes_por_ocasiao() -> dict[str, list[str]]:
+    """Ocasião → relações que a veem (os botões "Pra quem é a música?" da página de cada ocasião na landing)."""
+    relacoes = [r['valor'] for r in RELACOES]
+    return {o['valor']: [r for r in relacoes if o['valor'] in ocasioes_para(r)] for o in OCASIOES}
 
 
 def tons_para(para_quem: str, ocasiao: str) -> list[str]:
@@ -237,9 +258,10 @@ def config_do_navegador() -> dict:
 
     def guia(relacao):
         marcas = marcas_da_relacao(relacao)
-        return next((g for g in ('eu', 'grupo', 'casal') if g in marcas), 'padrao')
+        return next((g for g in ('eu', 'grupo', 'casal', 'ex') if g in marcas), 'padrao')
     return {
         'genero': {r['valor']: r['genero'] for r in RELACOES},
+        'rotulo': {r: rotulo(r) for r in relacoes},
         'ocasioes_por_relacao': {r: ocasioes_para(r) for r in relacoes},
         'tons_por_relacao': {r: {o: tons_para(r, o) for o in ocasioes} for r in relacoes},
         'vozes_por_estilo': {e: vozes_para(e) for e, _ in ESTILOS},

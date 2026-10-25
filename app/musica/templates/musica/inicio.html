@@ -1,17 +1,17 @@
 {% extends "musica/musica_base.html" %}
-{# Páginas por ocasião para os anúncios: /musica/?ocasiao=mae (título e foto da abertura mudam) #}
+{# Páginas por ocasião para os anúncios: /musica/?ocasiao=mae (título, texto e foto da abertura mudam) #}
 {% set paginas = {
-  "mae": {"titulo": "Uma música feita só para a sua mãe", "img": "mae-filha.jpg", "alt": "Mãe e filha abraçadas na praia", "quiz": "Dia das Mães"},
-  "pai": {"titulo": "Uma música feita só para o seu pai", "img": "pai-filha.jpg", "alt": "Pai sorrindo com a filha no colo", "quiz": "Dia dos Pais"},
-  "namorados": {"titulo": "A história de vocês virou música", "img": "casal.jpg", "alt": "Casal sorrindo juntos", "quiz": "Dia dos Namorados"},
-  "casamento": {"titulo": "A música do casamento de vocês", "img": "casamento.jpg", "alt": "Noivos sorrindo no casamento", "quiz": "Casamento"},
-  "desculpas": {"titulo": "Às vezes, uma música diz o que a gente não consegue", "img": "casal.jpg", "alt": "Casal abraçado", "quiz": "Pedido de desculpas"},
-  "aniversario": {"titulo": "Um parabéns que ninguém vai esquecer", "img": "avo-aniversario.jpg", "alt": "Senhor sorrindo diante do bolo de aniversário", "quiz": "Aniversário"},
-  "formatura": {"titulo": "Uma música para celebrar essa conquista", "img": "formatura.jpg", "alt": "Formanda abraçada com a mãe", "quiz": "Formatura"},
-  "15anos": {"titulo": "Uma música para os 15 anos dela", "img": "quinze-anos.jpg", "alt": "Debutante no vestido de festa", "quiz": "Aniversário"},
-  "filho": {"titulo": "Uma música feita só para o seu filho ou filha", "img": "familia-final.jpg", "alt": "Pais beijando a filha", "quiz": ""},
+  "mae": {"titulo": "A história da sua mãe virou música", "sub": "O cheiro do café, o colo, as broncas que hoje dão saudade. Tudo numa música com o nome dela.", "img": "mae-filha.jpg", "alt": "Mãe e filha abraçadas na praia", "quiz": "Dia das Mães", "quem": ["Mãe", "Avó", "Esposa", "Sogra"]},
+  "pai": {"titulo": "A história do seu pai virou música", "sub": "Aquele homem que fala pouco e sente muito vai ouvir o próprio nome numa música feita só pra ele.", "img": "pai-filha.jpg", "alt": "Pai sorrindo com a filha no colo", "quiz": "Dia dos Pais", "quem": ["Pai", "Avô", "Marido", "Sogro"]},
+  "namorados": {"titulo": "A história de vocês virou música", "sub": "Do primeiro encontro até hoje, numa música com o nome de quem você ama.", "img": "casal.jpg", "alt": "Casal sorrindo juntos", "quiz": "Dia dos Namorados", "quem": ["Namorada", "Namorado", "Esposa", "Marido", "Minha ex", "Meu ex"]},
+  "casamento": {"titulo": "A música do casamento de vocês", "sub": "Para a entrada, a festa ou as bodas: a história de vocês cantada do jeito que aconteceu.", "img": "casamento.jpg", "alt": "Noivos sorrindo no casamento", "quiz": "Casamento", "quem": ["Esposa", "Marido", "Namorada", "Namorado"]},
+  "desculpas": {"titulo": "Às vezes, uma música diz o que a gente não consegue", "sub": "Quando as palavras não chegam, a música chega. Conte o que vocês viveram e diga o que está no seu coração.", "img": "casal.jpg", "alt": "Casal abraçado", "quiz": "Pedido de desculpas", "quem": ["Minha ex", "Meu ex", "Esposa", "Marido", "Namorada", "Namorado"]},
+  "aniversario": {"titulo": "Um parabéns que ninguém vai esquecer", "sub": "Em vez de mais um presente que vai pra gaveta, uma música com o nome e a história de quem faz aniversário.", "img": "avo-aniversario.jpg", "alt": "Senhor sorrindo diante do bolo de aniversário", "quiz": "Aniversário"},
+  "formatura": {"titulo": "Uma música para celebrar essa conquista", "sub": "Cada noite de estudo e cada sacrifício até aqui, numa música com o nome de quem se formou.", "img": "formatura.jpg", "alt": "Formanda abraçada com a mãe", "quiz": "Formatura", "quem": ["Filha", "Filho", "Neta", "Neto", "Irmã", "Irmão", "Amiga", "Amigo"]},
+  "15anos": {"titulo": "Uma música para os 15 anos dela", "sub": "A menina que cresceu rápido demais vai ouvir a própria história numa música feita só pra ela.", "img": "quinze-anos.jpg", "alt": "Debutante no vestido de festa", "quiz": "Aniversário", "quem": ["Filha", "Neta", "Irmã", "Amiga"]},
+  "filho": {"titulo": "Uma música para o seu filho guardar pra sempre", "sub": "Tudo o que você sente desde o primeiro dia, numa música com o nome de quem você mais ama.", "img": "familia-final.jpg", "alt": "Pais beijando a filha", "quiz": "", "quem": ["Filho", "Filha"]},
 } %}
-{% set pg = paginas.get(ocasiao, {"titulo": "Uma música feita só para quem você ama", "img": "capa-fone.jpg", "alt": "Mãe e filha dividindo o fone de ouvido e sorrindo", "quiz": ""}) %}
+{% set pg = paginas.get(ocasiao, {"titulo": "Uma música feita só para quem você ama", "sub": "Com o nome, as lembranças e aquele jeitinho que só essa pessoa tem. Um presente que ela vai ouvir de novo e de novo.", "img": "capa-fone.jpg", "alt": "Mãe e filha dividindo o fone de ouvido e sorrindo", "quiz": ""}) %}
 {% set ocasioes = [
   {"nome": "Dia das Mães", "slug": "Dia das Mães", "img": "mae-filha.jpg", "audio": "mae-rosa.mp3", "musica": "Dona Rosa, Meu Abraço"},
   {"nome": "Casamento", "slug": "Casamento", "img": "casamento.jpg", "audio": "casal-mi.mp3", "musica": "Mi, Meu Sim É Seu"},
@@ -34,11 +34,26 @@
 .nav nav a.botao,.nav nav a.botao:hover{color:var(--sobre-cor)}
 .nav .botao{width:auto;min-height:44px;padding:10px 22px;font-size:1rem;white-space:nowrap}
 .nav .marca{white-space:nowrap}
-.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:56px;align-items:center;padding:56px 0 72px}
+.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:56px;align-items:start;padding:56px 0 72px}   /* foto presa no alto: "Mais opções" abre sem empurrar a foto */
 .hero h1{margin-bottom:18px}
 .hero p.sub{font-size:1.2rem;color:var(--suave);max-width:30ch;margin:0 0 32px}
 .acoes{display:flex;gap:12px;flex-wrap:wrap}
 .acoes .botao{width:auto}
+.comecar{background:var(--cartao);border:1px solid var(--linha);border-radius:var(--raio);padding:18px 16px 14px;margin:4px 0 14px}
+.comecar-titulo{font-family:var(--titulo);font-weight:800;font-size:1.35rem;margin:0 0 12px;letter-spacing:-.01em}
+.comecar-opcoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.comecar-opcao{display:flex;align-items:center;justify-content:center;gap:6px;min-height:56px;padding:12px;border-radius:14px;
+  background:var(--cor);color:var(--sobre-cor);font-weight:700;font-size:1.05rem;text-decoration:none;text-align:center;transition:transform .15s}
+.comecar-opcao:active{transform:scale(.97)}
+.comecar-opcao.secundaria{background:transparent;color:var(--texto);border:1.5px solid var(--linha)}
+.mais-opcoes{margin-top:10px}
+.mais-opcoes summary{list-style:none;display:flex;align-items:center;justify-content:center;gap:6px;min-height:52px;border-radius:14px;
+  border:1.5px solid var(--linha);font-weight:700;cursor:pointer}
+.mais-opcoes summary::-webkit-details-marker{display:none}
+.mais-opcoes[open] summary{margin-bottom:10px}
+.mais-opcoes[open] summary i{transform:rotate(180deg)}
+.comecar-nota{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--suave);font-size:.92rem;margin:12px 0 0}
+.link-exemplos{display:inline-flex;align-items:center;gap:6px;color:var(--suave);font-weight:600;text-decoration:none}
 .foto-hero{position:relative;border-radius:var(--raio);overflow:hidden;aspect-ratio:4/5;box-shadow:var(--sombra)}
 .foto-hero img{width:100%;height:100%;object-fit:cover}
 .garantias{display:flex;gap:36px;flex-wrap:wrap;padding:26px 0;border-top:1px solid var(--linha);border-bottom:1px solid var(--linha)}
@@ -99,7 +114,8 @@ footer .largura{display:flex;justify-content:space-between;gap:16px;flex-wrap:wr
   .nav nav{display:none}
   .hero{grid-template-columns:minmax(0,1fr);gap:28px;padding:20px 0 48px}
   .hero p.sub{max-width:none}
-  .foto-hero{aspect-ratio:5/4;order:-1}
+  .foto-hero{aspect-ratio:2/1;order:-1}
+  .hero p.sub{font-size:1.02rem;margin-bottom:16px}
   .acoes .botao{width:100%}
   .garantias{gap:14px;flex-direction:column}
   section.bloco{padding:64px 0}
@@ -130,21 +146,44 @@ footer .largura{display:flex;justify-content:space-between;gap:16px;flex-wrap:wr
 <main>
   <div class="largura">
     <section class="hero">
-      <div class="surgir">
+      <div>
         <h1>{{ pg.titulo }}</h1>
-        <p class="sub">Conte a história de vocês. A gente transforma em música, com o nome e as lembranças de quem vai receber.</p>
-        <div class="acoes">
-          <a class="botao" href="{{ url_for('musica.criar', ocasiao=pg.quiz) if pg.quiz else url_for('musica.criar') }}">Criar minha música <i class="ti ti-arrow-right" aria-hidden="true"></i></a>
-          <a class="botao secundario" href="#exemplos"><i class="ti ti-player-play" aria-hidden="true"></i> Ouvir exemplos</a>
+        <p class="sub">{{ pg.sub }}</p>
+        {# A 1ª pergunta do quiz já aqui no topo: um toque e a pessoa está dentro, sem clique extra. #}
+        <div class="comecar">
+          <p class="comecar-titulo">Pra quem é a música?</p>
+          <div class="comecar-opcoes">
+            {% set principais = pg.quem or ["Mãe", "Pai", "Esposa", "Marido", "Filho", "Filha", "Namorada", "Namorado"] %}
+            {# Página de uma ocasião: só quem combina com ela (no quiz, "Pai" + "Dia das Mães" não existe) #}
+            {% set combinam = relacoes_por_ocasiao.get(pg.quiz, []) if pg.quiz else opcoes_quem %}
+            {% set principais = principais | select("in", combinam) | list %}
+            {% set mais = combinam | reject("in", principais) | list %}
+            {% for quem in principais %}
+            <a class="comecar-opcao" href="{{ url_for('musica.criar', para_quem=quem, ocasiao=pg.quiz or None) }}">{{ quem }}</a>
+            {% endfor %}
+          </div>
+          {# O resto da lista abre aqui mesmo, sem sair da página (some quando todas já estão no topo). #}
+          {% if mais %}
+          <details class="mais-opcoes">
+            <summary>Mais opções <i class="ti ti-chevron-down" aria-hidden="true"></i></summary>
+            <div class="comecar-opcoes">
+              {% for quem in mais %}
+              <a class="comecar-opcao secundaria" href="{{ url_for('musica.criar', para_quem=quem, ocasiao=pg.quiz or None) }}">{{ quem }}</a>
+              {% endfor %}
+            </div>
+          </details>
+          {% endif %}
+          <p class="comecar-nota"><i class="ti ti-clock" aria-hidden="true"></i> Leva só 2 minutos · você ouve antes e só paga se gostar</p>
         </div>
+        <a class="link-exemplos" href="#exemplos"><i class="ti ti-player-play" aria-hidden="true"></i> Ouvir exemplos antes</a>
       </div>
-      <div class="foto-hero surgir">
+      <div class="foto-hero">
         <img src="{{ url_for('musica.static', filename='img/' ~ pg.img) }}" alt="{{ pg.alt }}" fetchpriority="high" width="900" height="1100">
       </div>
     </section>
 
     <div class="garantias surgir">
-      <div><i class="ti ti-headphones" aria-hidden="true"></i>Você ouve antes de pagar</div>
+      <div><i class="ti ti-headphones" aria-hidden="true"></i>Você ouve antes e só paga se gostar</div>
       <div><i class="ti ti-clock" aria-hidden="true"></i>Pronta em poucos minutos</div>
       <div><i class="ti ti-mail" aria-hidden="true"></i>Chega na hora, no seu e-mail</div>
     </div>

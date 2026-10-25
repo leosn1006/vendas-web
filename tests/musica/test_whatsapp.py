@@ -69,6 +69,8 @@ def test_mesmo_telefone_com_e_sem_o_nove():
     ({'para_quem': 'Mais de uma pessoa', 'nome': 'Ana, Bia e Carla'}, 'Ana, Bia e Carla'),
     ({'para_quem': 'Para mim', 'nome': 'Patrícia'}, 'você'),
     ({'para_quem': 'Outra pessoa', 'nome': 'Zé'}, 'Zé'),
+    ({'para_quem': 'Minha ex', 'nome': 'Juliana', 'apelido': 'Ju'}, 'sua ex Ju'),
+    ({'para_quem': 'Meu ex', 'nome': 'Rafael'}, 'seu ex Rafael'),
 ])
 def test_para_quem_com_relacao(respostas, texto):
     assert regras.para_quem_com_relacao(respostas) == texto
