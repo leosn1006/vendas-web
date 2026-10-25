@@ -39,6 +39,19 @@ def test_funil_do_site_anterior_tem_nome_em_todas_as_etapas_e_as_de_compra_marca
     assert {e['etapa'] for e in quiz['etapas'] if e['compra']} == {2, 4, 5, 6}   # 6 = depois do popup
 
 
+def test_funil_da_musica_so_tem_as_etapas_que_existem():
+    """A Música numera com saltos (quiz 1–9, letra 20, prévia 30, compra 40–43): nada de linhas vazias 10–19..."""
+    quiz, = views._montar_etapas_quiz([
+        {'pagina': 'musica-v2', 'etapa': 2, 'pararam': 5, 'pagos': 0, 'etapa_nome': 'pessoas'},
+        {'pagina': 'musica-v2', 'etapa': 30, 'pararam': 4, 'pagos': 0, 'etapa_nome': 'previa'},
+        {'pagina': 'musica-v2', 'etapa': 43, 'pararam': 1, 'pagos': 1, 'etapa_nome': 'ultima_aceitou'}])
+    assert [e['etapa'] for e in quiz['etapas']] == [*range(1, 10), 20, 30, 40, 41, 42, 43]
+    nomes = {e['etapa']: e['etapa_nome'] for e in quiz['etapas']}
+    assert nomes[2] == 'pessoas' and nomes[3] == 'Tela 3' and nomes[30] == 'Ouviu a prévia'
+    assert {e['etapa'] for e in quiz['etapas'] if e['compra']} == {40, 42, 43}
+    assert quiz['etapas'][0]['chegaram'] == 10 and next(e for e in quiz['etapas'] if e['etapa'] == 30)['chegaram'] == 5
+
+
 class Requisicao:
     def __init__(self, args, cookie='77'):
         self.args, self.cookies, self.headers, self.host = args, {'pedido_web_12': cookie}, {}, 'localhost'

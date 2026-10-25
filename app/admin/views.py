@@ -1942,8 +1942,19 @@ _SQL_QUIZ_WEB = """
 
 # Nomes das etapas de cada quiz, na ordem (os mesmos que o JS da página envia) — permitem
 # listar TODAS as etapas no admin, inclusive as que ninguém abandonou. Quiz sem entrada aqui
-# usa os nomes gravados no banco.
+# usa os nomes gravados no banco. Lista = etapas 0, 1, 2... seguidas; dict = numeração com saltos
+# (a Música: quiz 1–9, letra 20, prévia 30, compra 40–43): só as etapas do dict e as gravadas aparecem.
+# Nome None = o gravado pela página (no quiz da Música, a pergunta: "pessoas", "lembrancas"...).
+_ETAPAS_MUSICA = {
+    **{n: None for n in range(1, 10)},
+    20: 'Viu a letra', 30: 'Ouviu a prévia', 40: 'Foi ao checkout',
+    41: 'Viu o popup do videoclipe (saiu sem escolher)', 42: 'Recusou o popup e foi só com a música',
+    43: 'Aceitou o videoclipe com desconto',
+}
 _ETAPAS_QUIZ = {
+    'musica-v2': _ETAPAS_MUSICA,
+    'musica': {**{n: None for n in range(1, 13)}, 20: 'Viu a letra', 30: 'Ouviu a prévia',
+               40: 'Foi ao checkout'},   # quiz antigo, de 12 telas (até 22/10/2026)
     'fatia2-e': [
         'Abriu a página', 'Sua situação', 'Seu sonho', 'Dias por semana',
         'O que você já tentou', 'O que te trava', 'Sua experiência', 'Uma possibilidade',
@@ -1962,7 +1973,9 @@ _ETAPAS_QUIZ = {
 # O quiz guarda só a etapa MAIS AVANÇADA: 17 = clicou em comprar sem popup (Guiado, ou Básico sem
 # oferta); 18 = viu o popup e saiu (abandono real); 19 = recusou e foi ao Básico; 20 = aceitou;
 # 21 = fechou o popup e depois foi ao checkout (Guiado ou Básico). No site anterior (fatia1-e): 2, 4, 5, 6.
-_ETAPAS_CHECKOUT_QUIZ = {'fatia2-e': {17, 19, 20, 21}, 'fatia1-e': {2, 4, 5, 6}}
+# Música: 40 = checkout direto; 42 = recusou o popup e foi; 43 = aceitou (41 = viu o popup e saiu: abandono).
+_ETAPAS_CHECKOUT_QUIZ = {'fatia2-e': {17, 19, 20, 21}, 'fatia1-e': {2, 4, 5, 6},
+                         'musica-v2': {40, 42, 43}, 'musica': {40}}
 
 # Teste A/B das landings: por página, visitas, quem foi ao checkout, pagos e receita, com os pagos
 # separados por plano (pedido sem plano = de antes dos planos = plano padrão).
@@ -2014,7 +2027,8 @@ def _montar_ab_landings(linhas):
 
 
 def _montar_etapas_quiz(linhas):
-    """Monta, por página de quiz, a lista completa de etapas (0 até a última) com:
+    """Monta, por página de quiz, a lista completa de etapas (0 até a última; ou, com numeração com saltos,
+    só as conhecidas e as gravadas) com:
     chegaram (acumulado de trás pra frente: quem parou nela ou depois), pct sobre quem abriu,
     pararam (última etapa vista), desistencia (% de quem chegou na etapa e parou nela) e pagos.
     A maior desistência (fora a última etapa, onde "parar" = ir pro checkout) vem marcada."""
@@ -2024,17 +2038,22 @@ def _montar_etapas_quiz(linhas):
     resultado = []
     for pagina, por_etapa in paginas.items():
         nomes = _ETAPAS_QUIZ.get(pagina, [])
-        ultima = max(len(nomes) - 1, max(por_etapa))
+        if isinstance(nomes, dict):
+            numeros = sorted(set(nomes) | set(por_etapa))
+        else:
+            nomes = dict(enumerate(nomes))
+            numeros = list(range(max(len(nomes) - 1, max(por_etapa)) + 1))
+        ultima = numeros[-1]
         total = sum(int(r['pararam']) for r in por_etapa.values())
         etapas = []
         acumulado = 0
-        for n in range(ultima, -1, -1):
+        for n in reversed(numeros):
             row = por_etapa.get(n) or {}
             pararam = int(row.get('pararam') or 0)
             acumulado += pararam
             etapas.append({
                 'etapa': n,
-                'etapa_nome': nomes[n] if n < len(nomes) else (row.get('etapa_nome') or '—'),
+                'etapa_nome': nomes.get(n) or row.get('etapa_nome') or (f'Tela {n}' if n in nomes else '—'),
                 'chegaram': acumulado,
                 'pct': round(100 * acumulado / total, 1) if total else 0.0,
                 'pararam': pararam,
