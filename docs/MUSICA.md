@@ -52,9 +52,9 @@ O admin recusa recurso no papel errado e item de música no plano padrão de pro
 
 ## Testes na landing (`inicio.html`)
 
-- **Preço fora da landing (desde 26/10/2026):** o cartão "Um presente que ninguém esquece" mostra "Você ouve antes e
+- **Preço fora da landing (desde o deploy do commit 728c172 — use a data e hora do deploy como corte):** o cartão "Um presente que ninguém esquece" mostra "Você ouve antes e
   só paga se gostar" no lugar do valor; a prévia, o checkout e os e-mails continuam com o preço. Hipótese do Leo:
-  quem ouve a própria música paga. Para voltar, descomente o bloco marcado "TESTE desde 26/10/2026" em
+  quem ouve a própria música paga. Para voltar, descomente o bloco marcado "TESTE" em
   `inicio.html`. Medir em Analytics Web: visitas → "começaram o quiz" e prévia → checkout, antes × depois.
 - **Marca no site e nos e-mails:** vem de `produtos.email_nome_remetente` ("Canção de Presente", migration 092); o
   nome interno do produto continua "Música de Presente".

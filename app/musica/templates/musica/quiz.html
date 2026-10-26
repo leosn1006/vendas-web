@@ -286,11 +286,11 @@ function ligar(p, passo){
     pessoas[+i.closest("[data-i]").dataset.i][i.dataset.campo] = i.value; guardar();
   }));
   if (el("mostrarApelido")) el("mostrarApelido").onclick = e => {
-    comApelido = true; passo.querySelectorAll(".apelido").forEach(d => d.style.display = "block"); e.target.remove();
-    const campo = passo.querySelector(".apelido input"); campo && campo.focus();
+    comApelido = true; passo.querySelectorAll(".apelido").forEach(d => d.style.display = "block"); e.target.parentElement.remove();
+    if (!ehGrupo()) el("apelido0").focus();   // em grupo, cada pessoa preenche o seu: não pula para a primeira
   };
   if (el("mostrarPronuncia")) el("mostrarPronuncia").onclick = e => {
-    comPronuncia = true; passo.querySelectorAll(".pronuncia").forEach(d => d.style.display = "block"); e.target.remove();
+    comPronuncia = true; passo.querySelectorAll(".pronuncia").forEach(d => d.style.display = "block"); e.target.parentElement.remove();
   };
   if (el("adicionar")) el("adicionar").onclick = () => { pessoas.push({nome: "", apelido: "", pronuncia: ""}); desenhar(); el("nome" + (pessoas.length - 1)).focus(); };
   passo.querySelectorAll("[data-remover]").forEach(b => b.onclick = () => { pessoas.splice(+b.dataset.remover, 1); desenhar(); });
@@ -303,7 +303,14 @@ function ligar(p, passo){
   if (primeiro && matchMedia("(min-width: 700px)").matches) primeiro.focus();
   const avancar = el("avancar");
   if (avancar) avancar.onclick = () => avancarDe(p);
-  passo.querySelectorAll("input.campo").forEach(i => i.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); avancar && avancar.click(); } }));
+  // Enter ("Avançar" no teclado do celular): vai para o próximo campo visível da tela; no último, avança a tela.
+  const campos = () => [...passo.querySelectorAll("input.campo")].filter(c => c.offsetParent !== null);
+  passo.querySelectorAll("input.campo").forEach(i => i.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const lista = campos(), seguinte = lista[lista.indexOf(i) + 1];
+    if (seguinte) seguinte.focus(); else if (avancar) avancar.click();
+  }));
 }
 
 function avancarDe(p){

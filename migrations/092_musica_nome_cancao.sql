@@ -5,6 +5,7 @@
 SET NAMES utf8mb4;
 
 UPDATE produtos SET email_nome_remetente = 'Canção de Presente'
-WHERE nome = 'Música de Presente' AND (email_nome_remetente IS NULL OR email_nome_remetente = 'Música de Presente');
+WHERE nome = 'Música de Presente' AND NOT (email_nome_remetente <=> 'Canção de Presente');
 
+-- Conferência: tem que sair 1 linha com "Canção de Presente". Nenhuma linha = o produto foi renomeado no admin.
 SELECT id, nome, email_nome_remetente FROM produtos WHERE nome = 'Música de Presente';
