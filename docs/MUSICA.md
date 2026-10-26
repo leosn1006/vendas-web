@@ -50,6 +50,15 @@ O admin recusa recurso no papel errado e item de música no plano padrão de pro
 - **NF-e:** produto com `nfe_automatica = 0` (admin → dados básicos, só admin) fica fora da emissão diária, por PIX
   e cartão. **A Música precisa ficar assim** até a decisão fiscal (música não é livro).
 
+## Testes na landing (`inicio.html`)
+
+- **Preço fora da landing (desde 26/10/2026):** o cartão "Um presente que ninguém esquece" mostra "Você ouve antes e
+  só paga se gostar" no lugar do valor; a prévia, o checkout e os e-mails continuam com o preço. Hipótese do Leo:
+  quem ouve a própria música paga. Para voltar, descomente o bloco marcado "TESTE desde 26/10/2026" em
+  `inicio.html`. Medir em Analytics Web: visitas → "começaram o quiz" e prévia → checkout, antes × depois.
+- **Marca no site e nos e-mails:** vem de `produtos.email_nome_remetente` ("Canção de Presente", migration 092); o
+  nome interno do produto continua "Música de Presente".
+
 ## WhatsApp (número "Canção de Presente", só avisos)
 
 - **Número:** +55 61 8269-6770, WABA `1060756910314417`, ID do número `1376511528883172`, token

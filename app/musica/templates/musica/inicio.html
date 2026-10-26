@@ -228,9 +228,13 @@ footer .largura{display:flex;justify-content:space-between;gap:16px;flex-wrap:wr
     <section class="bloco oferta" id="preco">
       <h2 class="surgir">Um presente que ninguém esquece</h2>
       <div class="cartao surgir">
+        {# TESTE desde 26/10/2026: preço fora da landing (ela vê o valor na prévia, depois de ouvir). Para voltar,
+           descomente as 3 linhas abaixo e apague o parágrafo "Você ouve antes...". Ver docs/MUSICA.md.
         <p class="suave" style="margin:0">Música completa</p>
         <p class="preco">{{ preco_texto }}</p>
         <p class="suave" style="margin:0">Pagamento único, no PIX ou no cartão</p>
+        #}
+        <p class="sub-oferta" style="margin:0;font-weight:700;font-size:1.25rem">Você ouve antes e só paga se gostar</p>
         <ul class="inclui">
           <li><i class="ti ti-check" aria-hidden="true"></i>Duas versões completas da música para você escolher</li>
           <li><i class="ti ti-check" aria-hidden="true"></i>Letra escrita a partir da história de vocês</li>
