@@ -1957,8 +1957,19 @@ _ETAPAS_MUSICA = {
     1: 'Quiz: pra quem é', 2: 'Quiz: nome', 3: 'Quiz: ocasião', 4: 'Quiz: lembranças', 5: 'Quiz: frase que não pode faltar',
     6: 'Quiz: tom', 7: 'Quiz: estilo', 8: 'Quiz: voz', 9: 'Quiz: contato',
     20: 'Viu a letra', 30: 'Ouviu a prévia', 40: 'Foi ao checkout',
-    41: 'Viu o popup do videoclipe (saiu sem escolher)', 42: 'Recusou o popup e foi só com a música',
-    43: 'Aceitou o videoclipe com desconto', 44: 'Foi ao checkout depois de fechar o popup',
+    41: 'Viu o popup da oferta (saiu sem escolher)', 42: 'Recusou o popup e foi só com a música',
+    43: 'Aceitou a oferta com desconto', 44: 'Foi ao checkout depois de fechar o popup',
+}
+# Música: depois da prévia (30) as etapas 40–44 não são uma fila, são CAMINHOS até o checkout (ou para fora
+# dele). O funil em sequência termina na prévia e os caminhos viram um quadro à parte (_montar_depois_da_previa).
+_DEPOIS_DA_PREVIA = {
+    'musica-v2': {
+        'previa': 30, 'direto': 40,
+        # o popup oferece o plano mais caro com desconto (hoje, o com videoclipe); 41 = único caminho que não vai
+        # ao checkout (fica fora de _ETAPAS_CHECKOUT_QUIZ)
+        'popup': [(43, 'aceitou a oferta com desconto'), (42, 'recusou e foi só com a música'),
+                  (44, 'fechou e depois foi ao checkout'), (41, 'saiu sem escolher')],
+    },
 }
 _ETAPAS_QUIZ = {
     'musica-v2': _ETAPAS_MUSICA,
@@ -2041,7 +2052,8 @@ def _montar_etapas_quiz(linhas):
     só as conhecidas e as gravadas) com:
     chegaram (acumulado de trás pra frente: quem parou nela ou depois), pct sobre quem abriu,
     pararam (última etapa vista), desistencia (% de quem chegou na etapa e parou nela) e pagos.
-    A maior desistência (fora a última etapa, onde "parar" = ir pro checkout) vem marcada."""
+    A maior desistência (fora as etapas de checkout) vem marcada. Página com _DEPOIS_DA_PREVIA: a lista termina na
+    prévia e os caminhos até o checkout vêm em 'depois_da_previa'."""
     paginas = {}
     for row in linhas or []:
         paginas.setdefault(row['pagina'], {})[int(row['etapa'])] = row
@@ -2074,12 +2086,48 @@ def _montar_etapas_quiz(linhas):
                 'maior_queda': False,
             })
         etapas.reverse()
+        cfg = _DEPOIS_DA_PREVIA.get(pagina)
+        depois = _montar_depois_da_previa(cfg, etapas, por_etapa, _ETAPAS_CHECKOUT_QUIZ[pagina]) if cfg else None
+        if cfg:
+            etapas = [e for e in etapas if e['etapa'] <= cfg['previa']]   # a fila termina na prévia
         candidatas = [e for e in etapas if not e['compra'] and e['pararam'] > 0]
         if candidatas:
             max(candidatas, key=lambda e: e['pararam'])['maior_queda'] = True
         # Etapa 0 = abriu a página (Fatia); a Música só começa a medir na 1ª tela do quiz.
-        resultado.append({'pagina': pagina, 'total': total, 'etapas': etapas, 'abriu_pagina': numeros[0] == 0})
+        resultado.append({'pagina': pagina, 'total': total, 'etapas': etapas, 'abriu_pagina': numeros[0] == 0,
+                          'depois_da_previa': depois})
     return resultado
+
+
+def _montar_depois_da_previa(cfg, etapas, por_etapa, etapas_checkout):
+    """O quadro "Depois da prévia: como foram ao checkout": quem ouviu a prévia e, por caminho, quantas pessoas
+    e quantas pagaram (sem acumulado: cada caminho conta só as suas pessoas). "Outros caminhos" = etapas depois
+    da prévia que este quadro não conhece (para a soma sempre fechar com quem ouviu)."""
+    def conta(n):
+        row = por_etapa.get(n) or {}
+        return int(row.get('pararam') or 0), int(row.get('pagos') or 0)
+    previa = next((e for e in etapas if e['etapa'] == cfg['previa']), None)
+    ouviram = previa['chegaram'] if previa else 0
+    parou, parou_pagos = conta(cfg['previa'])
+    direto, direto_pagos = conta(cfg['direto'])
+    popup = []
+    for n, nome in cfg['popup']:
+        pessoas, pagos = conta(n)
+        popup.append({'nome': nome, 'pessoas': pessoas, 'pagos': pagos, 'checkout': n in etapas_checkout})
+    popup_viram = sum(c['pessoas'] for c in popup)
+    popup_pagaram = sum(c['pagos'] for c in popup)
+    checkout = direto + sum(c['pessoas'] for c in popup if c['checkout'])
+    aceitaram = popup[0]['pessoas']
+    return {
+        'ouviram': ouviram, 'checkout': checkout,
+        'pct_checkout': round(100 * checkout / ouviram, 1) if ouviram else 0.0,
+        'pagaram': direto_pagos + popup_pagaram,   # quem foi ao checkout daqui e pagou
+        'parou': parou, 'parou_pagos': parou_pagos, 'direto': direto, 'direto_pagos': direto_pagos,
+        'popup': popup, 'popup_viram': popup_viram, 'popup_pagaram': popup_pagaram,
+        'popup_aceitaram': aceitaram, 'popup_saiu': sum(c['pessoas'] for c in popup if not c['checkout']),
+        'pct_aceitaram': round(100 * aceitaram / popup_viram, 1) if popup_viram else 0.0,
+        'outros': max(ouviram - parou - direto - popup_viram, 0),
+    }
 
 
 _SQL_RECEITA_WEB = """

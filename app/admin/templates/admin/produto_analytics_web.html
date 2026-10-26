@@ -338,6 +338,61 @@
         </table>
     </div>
 </div>
+{% set d = quiz.depois_da_previa %}
+{% if d and d.ouviram %}
+<div class="section-title">Depois da prévia — como foram ao checkout</div>
+<div class="section-subtitle" style="margin-top:-8px; margin-bottom:16px; color:#888; font-size:13px; line-height:1.6;">
+    <strong>{{ d.ouviram }}</strong> ouvi{{ 'ram' if d.ouviram != 1 else 'u' }} a prévia → <strong>{{ d.checkout }}</strong> fo{{ 'ram' if d.checkout != 1 else 'i' }} ao checkout ({{ d.pct_checkout }}%) → <strong>{{ d.pagaram }}</strong> {{ 'pagaram' if d.pagaram != 1 else 'pagou' }}.
+    Cada linha conta só as pessoas daquele caminho (não é uma fila como o quadro acima).
+</div>
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Caminho depois da prévia</th>
+                    <th style="text-align:right;">Pessoas</th>
+                    <th style="text-align:right;">Pagaram</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Não foi ao checkout (parou na prévia)</td>
+                    <td style="text-align:right; font-family:var(--mono); font-weight:600;">{{ d.parou }}</td>
+                    <td style="text-align:right; font-family:var(--mono); color:var(--muted);">{{ d.parou_pagos if d.parou_pagos else '·' }}</td>
+                </tr>
+                <tr>
+                    <td>Foi direto ao checkout</td>
+                    <td style="text-align:right; font-family:var(--mono); font-weight:600;">{{ d.direto }}</td>
+                    <td style="text-align:right; font-family:var(--mono); color:var(--muted);">{{ d.direto_pagos if d.direto_pagos else '·' }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Viu o popup da oferta</strong></td>
+                    <td style="text-align:right; font-family:var(--mono); font-weight:700;">{{ d.popup_viram }}</td>
+                    <td style="text-align:right; font-family:var(--mono); font-weight:700;">{{ d.popup_pagaram if d.popup_pagaram else '·' }}</td>
+                </tr>
+                {% for c in d.popup %}
+                <tr>
+                    <td style="padding-left:28px; color:var(--muted);">↳ {{ c.nome }}</td>
+                    <td style="text-align:right; font-family:var(--mono);">{{ c.pessoas }}</td>
+                    <td style="text-align:right; font-family:var(--mono); color:var(--muted);">{{ c.pagos if c.pagos else '·' }}</td>
+                </tr>
+                {% endfor %}
+                {% if d.outros %}
+                <tr>
+                    <td style="color:var(--muted);">Outros caminhos (etapa que este quadro não conhece)</td>
+                    <td style="text-align:right; font-family:var(--mono);">{{ d.outros }}</td>
+                    <td></td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="section-subtitle" style="margin-top:-6px; margin-bottom:24px; font-size:13px;">
+    <strong>Popup da oferta:</strong> {{ d.popup_viram }} {{ 'viram' if d.popup_viram != 1 else 'viu' }} · {{ d.popup_aceitaram }} aceit{{ 'aram' if d.popup_aceitaram != 1 else 'ou' }} o desconto ({{ d.pct_aceitaram }}%) · {{ d.popup_saiu }} desisti{{ 'ram' if d.popup_saiu != 1 else 'u' }} sem escolher
+</div>
+{% endif %}
 {% endfor %}
 
 <!-- ── Receita ─────────────────────────────────── -->
