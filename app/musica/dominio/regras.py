@@ -112,18 +112,23 @@ def validar_presente(nome: str, email: str, quando: datetime | None, agora: date
     return None
 
 
-def telefone_whatsapp(texto: str, ddi: str = '55') -> str:
-    """Número no formato que a Meta aceita (só dígitos, com o DDI). '' se não parecer um celular com DDD.
-    Brasil: 10/11 dígitos ganham o 55. Outro DDI (o checkout manda): entra se o número ainda não começa com ele."""
-    digitos = re.sub(r'\D', '', texto or '')
-    ddi = re.sub(r'\D', '', ddi or '') or '55'
-    if ddi == '55':
-        if len(digitos) in (10, 11):
+def telefone_whatsapp(texto, ddi: str = '55') -> str:
+    """REGRA ÚNICA do número de WhatsApp (quiz, checkout, presente, envio): só dígitos, com o DDI, como a Meta pede.
+    '' = não serve para WhatsApp. Brasil: celular com DDD e o 9 (fixo e número sem o 9 não têm WhatsApp); aceita o
+    número com +55 ou com o 0 da operadora ("(061) 9..."). Outro DDI (seletor do checkout): entra o número dele. Um
+    número já gravado com DDI de fora (12 a 15 dígitos, sem o 55) passa igual."""
+    digitos = re.sub(r'\D', '', str(texto or ''))
+    ddi = re.sub(r'\D', '', str(ddi or '')) or '55'
+    if ddi != '55':
+        if digitos and not digitos.startswith(ddi):
             digitos = ddi + digitos
-        return digitos if 12 <= len(digitos) <= 15 else ''
-    if digitos and not digitos.startswith(ddi):
-        digitos = ddi + digitos
-    return digitos if len(ddi) + 6 <= len(digitos) <= 15 else ''
+        return digitos if len(ddi) + 6 <= len(digitos) <= 15 else ''
+    digitos = digitos.lstrip('0')   # 0 da operadora / 00 internacional
+    if len(digitos) in (12, 13) and digitos.startswith('55'):
+        digitos = digitos[2:]
+    elif 12 <= len(digitos) <= 15:
+        return digitos   # já com o DDI de outro país
+    return '55' + digitos if len(digitos) == 11 and digitos[2] == '9' else ''
 
 
 def primeiro_nome(*nomes: str) -> str:
@@ -136,12 +141,10 @@ def primeiro_nome(*nomes: str) -> str:
 
 
 def celular_br(texto) -> str:
-    """Celular brasileiro (DDD + 9 + 8 dígitos; com ou sem o 55) no formato da Meta: '55' + 11 dígitos. '' se não for
-    um celular (fixo, sem DDD, de fora). Regra única do WhatsApp de quem compra: quiz, servidor e checkout."""
-    digitos = re.sub(r'\D', '', texto or '')
-    if len(digitos) == 13 and digitos.startswith('55'):
-        digitos = digitos[2:]
-    return '55' + digitos if len(digitos) == 11 and digitos[2] == '9' else ''
+    """Só o celular brasileiro de telefone_whatsapp ('55' + DDD + 9 + 8 dígitos): o quiz não tem seletor de país e o
+    campo do checkout abre com o +55. '' para fixo, número de fora ou inválido."""
+    numero = telefone_whatsapp(texto)
+    return numero if len(numero) == 13 and numero.startswith('55') else ''
 
 
 def mesmo_telefone(a: str, b: str) -> bool:

@@ -45,8 +45,14 @@ def _botao(de, payload, tipo='button'):
 
 # ------------------------------------------------------------------ regras
 
-@pytest.mark.parametrize('entrada,saida', [('(61) 98111-2222', '5561981112222'), ('61 8111-2222', '556181112222'),
-                                           ('+55 61 98111-2222', '5561981112222'), ('123', ''), ('', '')])
+@pytest.mark.parametrize('entrada,saida', [
+    ('(61) 98111-2222', '5561981112222'), ('+55 61 98111-2222', '5561981112222'),
+    ('(061) 98111-2222', '5561981112222'), ('0 61 98111-2222', '5561981112222'),   # 0 da operadora
+    ('(55) 99123-4567', '5555991234567'),                                           # DDD 55 (Santa Maria/RS)
+    ('61 8111-2222', ''), ('(61) 3322-4455', ''), ('556133224455', ''),             # sem o 9 / fixo: sem WhatsApp
+    ('351912345678', '351912345678'),                                               # gravado com DDI de fora
+    ('123', ''), ('', ''), (None, ''), (61981112222, '5561981112222'),
+])
 def test_telefone_no_formato_da_meta(entrada, saida):
     assert regras.telefone_whatsapp(entrada) == saida
 
@@ -395,11 +401,29 @@ def test_numero_so_avisos_usa_a_leitura_anterior_se_o_banco_falhar(monkeypatch):
     assert database.numero_so_avisos('1376511528883172')
 
 
-@pytest.mark.parametrize('do_checkout,fica', [('(61) 98222-4444', '5561982224444'), ('', None), (None, '5561981112222')])
-def test_checkout_troca_apaga_ou_mantem_o_whatsapp_do_quiz(s, do_checkout, fica):
+@pytest.mark.parametrize('gravado,do_checkout,ddi,fica', [
+    ('5561981112222', '(61) 98222-4444', '55', '5561982224444'),   # trocou
+    ('5561981112222', '', '55', None),                              # viu preenchido e apagou: não quer mensagens
+    ('5561981112222', None, '55', '5561981112222'),                 # pedido sem o campo
+    ('5561981112222', '(61) 3322-4455', '55', '5561981112222'),     # fixo: não grava nem apaga
+    ('351912345678', '', '55', '351912345678'),                     # de fora: o campo não mostrou, não some
+    (None, '912 345 678', '351', '351912345678'),                   # de fora pelo seletor do checkout
+])
+def test_whatsapp_do_checkout(s, gravado, do_checkout, ddi, fica):
     """O checkout abre com o WhatsApp do quiz; o que ela deixar lá é o que vale (apagar = não quer mensagens)."""
     musica = _com_previa(s)
-    s.repositorio.atualizar(musica['id'], whatsapp='5561981112222')   # o que ela deu no quiz
+    s.repositorio.atualizar(musica['id'], whatsapp=gravado)
     s.repositorio.pedidos[501] = {'id': 501, 'guid': 'g-501', 'email': 'a@b.com', 'estado_id': 1002}
-    uc.vincular_ao_pedido(s, musica['token'], 501, PRODUTO, do_checkout)
+    uc.vincular_ao_pedido(s, musica['token'], 501, PRODUTO, do_checkout, ddi)
     assert s.repositorio.por_id(musica['id'])['whatsapp'] == fica
+
+
+def test_numero_gravado_no_checkout_volta_preenchido_numa_nova_tentativa(s, monkeypatch):
+    """O PIX venceu e ela reabre o checkout: o número que deu na tentativa anterior volta preenchido."""
+    from types import SimpleNamespace
+    from musica import integracao
+    musica = _com_previa(s)
+    s.repositorio.pedidos[501] = {'id': 501, 'guid': 'g-501', 'email': 'a@b.com', 'estado_id': 1002}
+    uc.vincular_ao_pedido(s, musica['token'], 501, PRODUTO, '(061) 98116-3324')
+    monkeypatch.setattr(integracao, 'servicos', lambda: SimpleNamespace(repositorio=s.repositorio))
+    assert integracao.dados_para_checkout(musica['token'])['whatsapp'] == '5561981163324'

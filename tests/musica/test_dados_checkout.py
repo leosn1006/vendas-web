@@ -42,9 +42,10 @@ def test_numero_de_fora_ou_fixo_nao_preenche(monkeypatch):
         assert integracao.dados_para_checkout('t')['whatsapp'] == '', numero
 
 
-def test_so_celular_brasileiro_entra_no_checkout():
-    from musica.dominio import regras
-    assert regras.celular_br('(61) 98116-3324') == '5561981163324'
-    assert regras.celular_br('+55 61 98116-3324') == '5561981163324'
-    for nao in ('(61) 3322-4455', '61 8269-6770', '011912345678', '351912345678', '123', '', None):
-        assert regras.celular_br(nao) == '', nao
+def test_so_celular_brasileiro_abre_preenchido(monkeypatch):
+    """O campo do checkout tem o +55 fixo: número de fora ou fixo gravado não aparece (e por isso não é apagado
+    se ela deixar o campo vazio — ver test_whatsapp.test_whatsapp_do_checkout)."""
+    for gravado, aparece in (('5561981163324', '5561981163324'), ('061981163324', '5561981163324'),
+                             ('351912345678', ''), ('556133224455', ''), ('61 8269-6770', '')):
+        _com(monkeypatch, {'email': 'ana@gmail.com', 'whatsapp': gravado})
+        assert integracao.dados_para_checkout('t')['whatsapp'] == aparece, gravado

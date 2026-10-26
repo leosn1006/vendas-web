@@ -360,7 +360,10 @@ def api_criar():
     respostas = regras.montar_respostas(bruto, CHAVES_VALIDAS, MAX_PESSOAS)
     if combinacao_invalida(respostas):
         return jsonify(erro='Alguma resposta ficou faltando. Volte e confira as escolhas.'), 400
-    whatsapp = regras.celular_br(dados.get('whatsapp'))   # opcional: só celular brasileiro, com o 55
+    digitado = str(dados.get('whatsapp') or '').strip()[:30]
+    whatsapp = regras.celular_br(digitado)   # opcional: só celular brasileiro, com o 55
+    if digitado and not whatsapp:
+        return jsonify(erro='Confira o celular com DDD (ex.: 11 91234-5678) ou deixe em branco.'), 400
     email = (dados.get('email') or '').strip().lower()[:200]
     try:
         musica = uc.criar_musica(servicos(), _pid(), respostas, email, whatsapp, _ip(),
