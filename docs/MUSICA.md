@@ -100,7 +100,7 @@ pronúncia (até 4 pessoas) · 3. Ocasião · 4. Lembranças (3 perguntas guiada
 
 - **As opções dependem das anteriores**, tudo em dados no `quiz.py`: cada relação tem marcadores (`RELACOES`); cada
   ocasião e tom diz para quem aparece (`para`/`exceto`, tons também `exceto_ocasioes`); as vozes dependem do estilo
-  (`VOZES_POR_ESTILO`: dupla só nos sertanejos e arrocha, "com coral" no gospel). Voltar e trocar uma resposta apaga as
+  (`VOZES_POR_ESTILO`: dupla só no sertanejo, "com coral" no gospel). Voltar e trocar uma resposta apaga as
   escolhas seguintes que deixaram de combinar. Página de ocasião da landing (`?ocasiao=`) pula a tela 3 só se a
   ocasião combinar com a relação.
 - **O navegador manda** `pessoas` e `lembrancas_partes`; o servidor monta `nome`/`apelido`/`pronuncia`/`lembrancas`
@@ -189,6 +189,12 @@ e-mail seu. Testes: `pytest tests/musica`.
 6. Uma compra real de ponta a ponta antes dos anúncios.
 
 ## Pendências (Leo e Bruno)
+
+- **Estilos (26/10/2026):** a família sertaneja virou um "Sertanejo" só (romântico + universitário + arrocha; o Modão
+  saiu) e o Piseiro entrou no Forró (`quiz.ESTILOS_ANTIGOS` troca os valores antigos na criação e na leitura). Os
+  textos do gerador de sertanejo, forró, pagode, MPB, balada, funk, rap e bossa tiveram revisão leve (gospel e rock
+  ficaram como revisados com o Bruno). **Falta:** gerar e ouvir as amostras novas de pelo menos Sertanejo e Forró
+  (`musica.ferramentas.gerar_amostras --estilos sertanejo,forro`, ~11 créditos cada) e a revisão detalhada com o Bruno.
 
 NF-e (conversa à parte); Suno direto (existe API oficial?) e direitos de uso comercial; revisão dos termos e da
 privacidade por advogado; preços; WhatsApp (número + modelos aprovados na Meta → `MUSICA_WHATSAPP_ATIVO=1` e

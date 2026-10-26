@@ -3,6 +3,7 @@ import json
 import secrets
 
 from database import db
+from musica.dominio.regras import respostas_atuais
 
 _CAMPOS_JSON = ('respostas', 'faixas')
 _ESTADO_PAGO = 1000   # pedido web pago
@@ -15,6 +16,7 @@ def _musica(linha):
     for campo in _CAMPOS_JSON:
         if isinstance(m.get(campo), (str, bytes)):
             m[campo] = json.loads(m[campo])
+    respostas_atuais(m.get('respostas'))   # estilo que saiu do quiz → o de hoje (letra e música iguais)
     return m
 
 

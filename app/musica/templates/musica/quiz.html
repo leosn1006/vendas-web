@@ -155,6 +155,7 @@ function recuperar(){
     const g = JSON.parse(localStorage.getItem(GUARDAR) || "null");
     if (!g || Date.now() - g.t > GUARDAR_HORAS * 3600e3 || !pergunta(g.atual)) return;
     ({atual, respostas, pessoas, lembrancas} = g); contato.de = (g.contato || {}).de || "";
+    if (REGRAS.estilos_antigos[respostas.estilo]) respostas.estilo = REGRAS.estilos_antigos[respostas.estilo];   // saiu do quiz
   } catch (e) {}
 }
 function esquecer(){ try { localStorage.removeItem(GUARDAR); } catch (e) {} }

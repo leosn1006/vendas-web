@@ -13,13 +13,21 @@ from musica.dominio.recursos import papel_permitido
 from tests.musica.conftest import RESPOSTAS
 
 
+def test_estilo_que_saiu_do_quiz_vira_o_de_hoje_na_criacao_e_na_leitura():
+    from musica.adaptadores.repositorio_mysql import _musica
+    from musica.dominio.quiz import CHAVES_VALIDAS, MAX_PESSOAS
+    for antigo, atual in (('arrocha', 'sertanejo'), ('sertanejo_raiz', 'sertanejo'), ('piseiro', 'forro'), ('rock', 'rock')):
+        assert regras.montar_respostas({'estilo': antigo}, CHAVES_VALIDAS, MAX_PESSOAS)['estilo'] == atual
+        assert _musica({'respostas': f'{{"estilo": "{antigo}"}}'})['respostas']['estilo'] == atual
+
+
 def test_montar_geracao_junta_estilo_clima_e_voz(s):
     pedido = regras.montar_geracao(RESPOSTAS, 'Pra Você, Dona Lena', '[Chorus]\nLena', s.estilos)
     assert pedido.titulo == 'Pra Você, Dona Lena'
     assert pedido.estilo.startswith(s.estilos['estilos']['sertanejo'])
     assert s.estilos['clima']['emocionante'] in pedido.estilo
     assert pedido.genero_vocal == s.estilos['voz']['feminina']['genero_vocal']
-    assert pedido.negativo == s.estilos['negativo']
+    assert pedido.negativo == s.estilos['negativo'] + ', ' + s.estilos['negativo_estilo']['sertanejo']
 
 
 def test_estilo_desconhecido_usa_pop(s):

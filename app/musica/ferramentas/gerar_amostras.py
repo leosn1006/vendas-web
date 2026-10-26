@@ -78,7 +78,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     grupo = parser.add_mutually_exclusive_group(required=True)
     grupo.add_argument('--estilos', help='estilos separados por vírgula (ex.: rock,gospel)')
-    grupo.add_argument('--todos', action='store_true', help='os 20 estilos (~220 créditos)')
+    grupo.add_argument('--todos', action='store_true', help='todos os estilos (~11 créditos cada)')
     args = parser.parse_args()
     validos = [e for e, _ in ESTILOS]
     estilos = validos if args.todos else [e.strip() for e in args.estilos.split(',') if e.strip()]

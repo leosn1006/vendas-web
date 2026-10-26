@@ -3,7 +3,7 @@ import re
 from datetime import datetime, timedelta
 
 from musica.dominio.modelos import PedidoGeracao
-from musica.dominio.quiz import MAIS_DE_UMA, PARA_MIM, RELACOES, rotulo, vozes_para
+from musica.dominio.quiz import MAIS_DE_UMA, PARA_MIM, RELACOES, estilo_atual, rotulo, vozes_para
 
 
 def montar_geracao(respostas: dict, titulo: str, letra_suno: str, tabela_estilos: dict) -> PedidoGeracao:
@@ -59,6 +59,14 @@ def montar_respostas(bruto: dict, chaves_validas: set, max_pessoas: int) -> dict
         respostas['lembrancas'] = '\n'.join(textos)
     if respostas.get('para_quem') == PARA_MIM and not respostas.get('de'):
         respostas['de'] = respostas.get('nome', '')
+    return respostas_atuais(respostas)
+
+
+def respostas_atuais(respostas: dict) -> dict:
+    """Respostas com valores que saíram do quiz trocados pelos de hoje (ex.: estilo "arrocha" → "sertanejo"). Roda
+    na criação (montar_respostas) e na leitura do banco (repositório): letra, música e admin veem o mesmo estilo."""
+    if isinstance(respostas, dict) and respostas.get('estilo'):
+        respostas['estilo'] = estilo_atual(respostas['estilo'])
     return respostas
 
 

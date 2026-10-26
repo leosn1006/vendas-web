@@ -87,22 +87,23 @@ TONS = [
     {'valor': 'reflexiva', 'texto': 'Reflexiva 🌅', 'para': TODOS},
 ]
 
+# Ordem = os mais escolhidos primeiro (produção, até 25/10/2026). A família sertaneja virou um "Sertanejo" só
+# (26/10/2026): o som de hoje, de sofrência e de dupla.
 ESTILOS = [
-    ['sertanejo', 'Sertanejo romântico'], ['sertanejo_universitario', 'Sertanejo universitário'],
-    ['sertanejo_raiz', 'Modão / Sertanejo raiz'], ['gospel', 'Gospel'], ['pagode', 'Pagode'], ['samba', 'Samba'],
-    ['forro', 'Forró'], ['piseiro', 'Piseiro'], ['arrocha', 'Arrocha'], ['mpb', 'MPB'], ['pop', 'Pop'],
-    ['romantica', 'Balada romântica'], ['bossa', 'Bossa nova'], ['rock', 'Rock'], ['axe', 'Axé'], ['funk', 'Funk'],
-    ['reggae', 'Reggae'], ['rap', 'Rap / Hip-hop'], ['valsa', 'Valsa'], ['infantil', 'Infantil'],
+    ['sertanejo', 'Sertanejo'], ['rock', 'Rock'], ['gospel', 'Gospel'], ['mpb', 'MPB'], ['pagode', 'Pagode'],
+    ['rap', 'Rap / Hip-hop'], ['infantil', 'Infantil'], ['romantica', 'Balada romântica'], ['forro', 'Forró'],
+    ['pop', 'Pop'], ['samba', 'Samba'], ['axe', 'Axé'], ['funk', 'Funk'], ['reggae', 'Reggae'],
+    ['bossa', 'Bossa nova'], ['valsa', 'Valsa'],
 ]
+# Estilos que saíram do quiz → o que os substitui (rascunhos abertos, "outra versão" de músicas antigas).
+ESTILOS_ANTIGOS = {'sertanejo_universitario': 'sertanejo', 'sertanejo_raiz': 'sertanejo', 'arrocha': 'sertanejo',
+                   'piseiro': 'forro'}
 
 VOZES = {'feminina': 'Voz feminina', 'masculina': 'Voz masculina', 'dupla': 'Dupla sertaneja',
          'coral': 'Voz feminina com coral'}
 VOZES_PADRAO = ['feminina', 'masculina']
 VOZES_POR_ESTILO = {
     'sertanejo': ['feminina', 'masculina', 'dupla'],
-    'sertanejo_universitario': ['feminina', 'masculina', 'dupla'],
-    'sertanejo_raiz': ['dupla', 'masculina', 'feminina'],
-    'arrocha': ['feminina', 'masculina', 'dupla'],
     'gospel': ['feminina', 'masculina', 'coral'],
 }
 
@@ -229,6 +230,11 @@ def tons_para(para_quem: str, ocasiao: str) -> list[str]:
             if (t['para'] == TODOS or marcas & set(t['para'])) and ocasiao not in t.get('exceto_ocasioes', [])]
 
 
+def estilo_atual(estilo: str) -> str:
+    """O estilo de hoje para um valor gravado (ex.: "arrocha" → "sertanejo"); os atuais passam iguais."""
+    return ESTILOS_ANTIGOS.get(estilo, estilo)
+
+
 def vozes_para(estilo: str) -> list[str]:
     return VOZES_POR_ESTILO.get(estilo, VOZES_PADRAO)
 
@@ -265,6 +271,7 @@ def config_do_navegador() -> dict:
         'ocasioes_por_relacao': {r: ocasioes_para(r) for r in relacoes},
         'tons_por_relacao': {r: {o: tons_para(r, o) for o in ocasioes} for r in relacoes},
         'vozes_por_estilo': {e: vozes_para(e) for e, _ in ESTILOS},
+        'estilos_antigos': ESTILOS_ANTIGOS,
         'guia_lembrancas': {r: guia(r) for r in relacoes},
         'lembrancas': LEMBRANCAS, 'min_letras_lembrancas': MIN_LETRAS_LEMBRANCAS,
         'max_pessoas': MAX_PESSOAS, 'mais_de_uma': MAIS_DE_UMA, 'para_mim': PARA_MIM,

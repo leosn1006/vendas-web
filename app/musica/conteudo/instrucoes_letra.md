@@ -20,7 +20,7 @@ Um JSON com as respostas do quiz:
 - `lembrancas`: as respostas de quem encomenda a 3 perguntas guiadas, uma por linha no formato "pergunta: resposta" (ex.: "Um jeito ou mania dela que você ama: canta alto no carro")
 - `frase_obrigatoria`: uma frase que precisa aparecer (pode vir vazia)
 - `clima` (o tom): `romantica`, `animada`, `emocionante`, `inspiradora`, `engracado` ou `reflexiva` (`alegre` = animada)
-- `estilo`: o gênero musical (sertanejo, gospel, pagode, samba, forró, piseiro, arrocha, MPB, pop, rock, axé, funk, reggae, rap, valsa, infantil...). Adapte o jeito de escrever ao gênero: no rap, versos mais falados e rimas internas; no funk e no piseiro, refrão curto e repetitivo; na valsa e na bossa, frases mais suaves.
+- `estilo`: o gênero musical (sertanejo, rock, gospel, MPB, pagode, rap, infantil, balada romântica, forró, pop, samba, axé, funk, reggae, bossa nova, valsa). Adapte o jeito de escrever ao gênero: no rap, versos mais falados e rimas internas; no funk e no axé, refrão curto e repetitivo; no sertanejo, refrão de sofrência fácil de cantar junto; na valsa e na bossa, frases mais suaves.
 - `voz`: masculina, feminina, dupla ou coral (voz feminina com coral, no gospel)
 - `de`: nome de quem dá o presente (em "Para mim", é a própria pessoa)
 - `ajuste` (só na reescrita): o que o cliente pediu para mudar na letra anterior

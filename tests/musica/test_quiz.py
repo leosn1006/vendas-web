@@ -16,7 +16,6 @@ LANDING = (Path(__file__).resolve().parents[2] / 'app' / 'musica' / 'templates' 
 # --------------------------------------------------------- dados coerentes
 
 def test_todo_estilo_tom_e_voz_existe_no_estilos_json():
-    assert {e for e, _ in quiz.ESTILOS} <= set(TABELA['estilos'])
     assert {t['valor'] for t in quiz.TONS} <= set(TABELA['clima'])
     assert set(quiz.VOZES) <= set(TABELA['voz'])
     for estilo in TABELA['estilos']:
@@ -110,7 +109,7 @@ def test_tons_pela_relacao_e_ocasiao():
 
 def test_vozes_pelo_estilo():
     assert quiz.vozes_para('samba') == ['feminina', 'masculina']
-    assert 'dupla' in quiz.vozes_para('sertanejo_raiz')
+    assert 'dupla' in quiz.vozes_para('sertanejo')
     assert 'coral' in quiz.vozes_para('gospel') and 'dupla' not in quiz.vozes_para('gospel')
 
 
@@ -202,3 +201,15 @@ def test_navegador_recebe_as_listas_prontas_da_mesma_regra():
     assert cfg['guia_lembrancas'] == {**{r['valor']: cfg['guia_lembrancas'][r['valor']] for r in quiz.RELACOES}}
     assert cfg['guia_lembrancas']['Mais de uma pessoa'] == 'grupo' and cfg['guia_lembrancas']['Para mim'] == 'eu'
     assert cfg['guia_lembrancas']['Esposa'] == 'casal' and cfg['guia_lembrancas']['Mãe'] == 'padrao'
+
+
+def test_todo_estilo_do_quiz_tem_texto_no_gerador_e_amostra():
+    import json
+    from pathlib import Path
+    pasta = Path(__file__).resolve().parents[2] / 'app' / 'musica'
+    tabela = json.loads((pasta / 'conteudo' / 'estilos.json').read_text(encoding='utf-8'))
+    estilos = {e for e, _ in quiz.ESTILOS}
+    assert estilos == set(tabela['estilos'])
+    assert estilos == {a.stem for a in (pasta / 'static' / 'estilos').glob('*.mp3')}
+    assert not set(quiz.ESTILOS_ANTIGOS) & estilos and set(quiz.ESTILOS_ANTIGOS.values()) <= estilos
+    assert quiz.estilo_atual('arrocha') == 'sertanejo' and quiz.estilo_atual('rock') == 'rock'
