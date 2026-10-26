@@ -88,7 +88,7 @@ const URL_CRIAR = "{{ url_for('musica.api_criar') }}";
 const GUARDAR = "musica_quiz_v2", GUARDAR_HORAS = 6;   // pouco tempo: o celular pode ser de outra pessoa da família
 
 let respostas = {}, pessoas = [{nome: "", apelido: "", pronuncia: ""}], lembrancas = ["", "", ""];
-let contato = {de: "", email: ""}, atual = PERGUNTAS[0].chave, tokenRobo = "";
+let contato = {de: "", email: "", whatsapp: ""}, atual = PERGUNTAS[0].chave, tokenRobo = "";
 let comPronuncia = false, comApelido = false, ultimaEtapa = "";
 window.turnstileOk = t => tokenRobo = t;
 
@@ -230,7 +230,10 @@ function htmlContato(){
       <input class="campo" id="de" maxlength="80" autocomplete="given-name" placeholder="Ex.: Patrícia" value="${esc(contato.de)}">
       <p class="ajuda" style="font-size:.95rem;margin-top:6px">Vai na dedicatória da música 💛</p>`)
     + `<label for="email">Seu e-mail (é por ele que a música chega)</label>
-      <input class="campo" id="email" type="email" inputmode="email" autocomplete="email" placeholder="seuemail@exemplo.com" value="${esc(contato.email)}">
+      <input class="campo" id="email" type="email" inputmode="email" autocomplete="email" enterkeyhint="next" placeholder="seuemail@exemplo.com" value="${esc(contato.email)}">
+      <label for="whatsapp">Seu WhatsApp <span class="suave" style="font-weight:500">(se quiser)</span></label>
+      <input class="campo" id="whatsapp" type="tel" inputmode="tel" autocomplete="tel-national" enterkeyhint="go" maxlength="20" placeholder="(11) 91234-5678" value="${esc(contato.whatsapp)}">
+      <p class="ajuda" style="font-size:.95rem;margin-top:6px">Já vai preenchido no pagamento. Se você comprar, avisamos por lá quando a música completa for liberada.</p>
       <p class="privacidade"><i class="ti ti-lock" aria-hidden="true"></i><span>Usamos só para entregar a sua música. Nada de spam. Veja a <a href="{{ url_for('musica.privacidade') }}" target="_blank" rel="noopener">política de privacidade</a>.</span></p>
       <div class="acoes"><button class="botao" id="avancar" type="button">Criar a letra da música</button></div>`;
 }
@@ -347,9 +350,12 @@ const proximo = () => irPara(1);
 el("voltar").onclick = () => irPara(-1);
 
 async function enviar(){
-  contato = {de: ehEu() ? "" : (el("de").value || "").trim(), email: el("email").value.trim()};
+  contato = {de: ehEu() ? "" : (el("de").value || "").trim(), email: el("email").value.trim(), whatsapp: el("whatsapp").value.trim()};
   if (!ehEu() && !contato.de) return mostrarErro("Coloque o seu nome.");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contato.email)) return mostrarErro("Confira o e-mail.");
+  const digitosWhats = contato.whatsapp.replace(/\D/g, "").replace(/^55(?=\d{11}$)/, "");
+  // só celular (DDD + 9 + 8 dígitos), a mesma regra do servidor (regras.celular_br)
+  if (contato.whatsapp && !/^\d{2}9\d{8}$/.test(digitosWhats)) return mostrarErro("Confira o celular com DDD (ex.: 11 91234-5678) ou deixe em branco.");
   guardar();
   if (ocasiaoDaUrlVale()) respostas.ocasiao = ocasiaoUrl;
   const guias = guiasLembrancas();
@@ -361,7 +367,7 @@ async function enviar(){
   el("quiz").style.display = "none"; el("enviando").style.display = "block"; window.scrollTo({top: 0});
   try {
     const r = await fetch(URL_CRIAR, {method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({respostas: corpo, email: contato.email, turnstile: tokenRobo})});
+      body: JSON.stringify({respostas: corpo, email: contato.email, whatsapp: contato.whatsapp, turnstile: tokenRobo})});
     const dados = await r.json();
     if (!r.ok) throw new Error(dados.erro || "Algo deu errado.");
     esquecer();

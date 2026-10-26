@@ -230,13 +230,13 @@ def musica_para_checkout(s, token, produto_id):
 
 
 def vincular_ao_pedido(s, token, pedido_id, produto_id, whatsapp=None, ddi='55'):
-    """Grava qual música o pedido compra e o WhatsApp que ela deu no checkout (é para ele que vai o "música
-    pronta"; o quiz não pede mais). Vazio não apaga o de uma tentativa anterior."""
+    """Grava qual música o pedido compra e o WhatsApp do checkout, que é o que vale (é para ele que vai o "música
+    pronta"). O checkout abre com o do quiz; se ela apagar, apaga aqui também: pode não querer mensagens, ou o
+    número ser de outra pessoa. None = o pedido não trouxe o campo: fica o que estava."""
     musica = musica_para_checkout(s, token, produto_id)
     s.repositorio.vincular_pedido(musica['id'], pedido_id)
-    telefone = regras.telefone_whatsapp(whatsapp, ddi)
-    if telefone:
-        s.repositorio.atualizar(musica['id'], whatsapp=telefone)
+    if whatsapp is not None:
+        s.repositorio.atualizar(musica['id'], whatsapp=regras.telefone_whatsapp(whatsapp, ddi) or None)
     return musica
 
 

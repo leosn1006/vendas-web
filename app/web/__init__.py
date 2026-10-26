@@ -146,7 +146,8 @@ def checkout(produto_id):
 
 
 def _prefill_musica(plano):
-    """Produto Música: o e-mail que ela já deu no quiz (a música do link ?musica=), para não digitar de novo.
+    """Produto Música: o e-mail e o WhatsApp que ela já deu no quiz (a música do link ?musica=), para não digitar
+    de novo.
     Outros produtos não são afetados."""
     from musica.dominio.recursos import plano_vende_musica
     token = request.args.get('musica') or ''

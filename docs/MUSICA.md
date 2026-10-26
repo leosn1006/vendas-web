@@ -25,7 +25,7 @@ O admin recusa recurso no papel errado e item de música no plano padrão de pro
 
 ```
 /musica/?ocasiao=mae  (landing; cria o rascunho 1004 com o GCLID)
-  → /musica/criar     (quiz; e-mail obrigatório; o WhatsApp é pedido só no checkout)
+  → /musica/criar     (quiz; e-mail obrigatório; WhatsApp opcional, que já abre preenchido no checkout)
   → /musica/p/<token> (letra → ajustes → "criar a música" → espera → prévia → escolha do plano)
   → /pay/<produto>?plano=...&musica=<token>   (checkout de sempre, com os order bumps)
   → /musica/compra/<guid>   (quem comprou: ouvir/baixar, QR, presente por e-mail, fotos do videoclipe)
@@ -69,7 +69,7 @@ O admin recusa recurso no papel errado e item de música no plano padrão de pro
 - **Templates aprovados** (pt_BR, parâmetros posicionais, rodapé "Canção de Presente"; conferidos em 22/10/2026):
   - `musica_pronta` (Utilidade) — quem comprou, ao confirmar o pagamento (tarefa `musica.whatsapp_comprador`):
     {{1}} primeiro nome de quem pagou, {{2}} para quem ("sua mãe Helena"), {{3}} link da área da compra. Vai para o
-    WhatsApp do **checkout** (o quiz não pede mais).
+    WhatsApp do **checkout** (que já abre com o do quiz, se ela informou lá — desde 26/10/2026).
   - `presente_surpresa` (Marketing) — quem ganha, no mesmo agendamento do e-mail (`musica.manutencao`, 5 em 5 min):
     {{1}} quem ganha, {{2}} quem mandou; botão "Ouvir minha música" com a etiqueta (payload) = token da música.
     Ao tocar, a Música responde com o link da página do presente (texto livre, no máximo 1 vez por hora).

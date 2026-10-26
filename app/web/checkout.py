@@ -170,7 +170,7 @@ def _vincular_musica(plano, body: dict, pedido_id: int, produto_id: int) -> None
         return
     try:
         from musica.integracao import vincular_ao_pedido
-        vincular_ao_pedido(body.get('musica'), pedido_id, produto_id, body.get('whatsapp') or '', body.get('ddi') or '55')
+        vincular_ao_pedido(body.get('musica'), pedido_id, produto_id, body.get('whatsapp'), body.get('ddi') or '55')
     except Exception as e:
         # Já conferido por _erro_musica antes de criar o pedido: só uma corrida (ex.: outra aba comprou).
         # A reconciliação não acharia a música — avisa para o atendimento.

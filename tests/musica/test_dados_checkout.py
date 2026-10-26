@@ -40,3 +40,11 @@ def test_numero_de_fora_ou_fixo_nao_preenche(monkeypatch):
     for numero in ('14155550123', '351912345678', '556133224455'):
         _com(monkeypatch, {'email': 'ana@gmail.com', 'whatsapp': numero})
         assert integracao.dados_para_checkout('t')['whatsapp'] == '', numero
+
+
+def test_so_celular_brasileiro_entra_no_checkout():
+    from musica.dominio import regras
+    assert regras.celular_br('(61) 98116-3324') == '5561981163324'
+    assert regras.celular_br('+55 61 98116-3324') == '5561981163324'
+    for nao in ('(61) 3322-4455', '61 8269-6770', '011912345678', '351912345678', '123', '', None):
+        assert regras.celular_br(nao) == '', nao

@@ -1,9 +1,9 @@
 """O que o resto do sistema (checkout, tasks, e-mail de entrega, Estante 2) usa da Música.
 Fachada fina sobre os casos de uso: quem está fora do módulo não conhece portas nem adaptadores."""
-import re
 
 from musica import casos_de_uso
 from musica.casos_de_uso import Recusa
+from musica.dominio import regras
 from musica.dominio.recursos import plano_vende_musica
 from musica.fabrica import servicos
 
@@ -16,7 +16,7 @@ def conferir_para_checkout(token: str, produto_id: int) -> None:
     casos_de_uso.musica_para_checkout(servicos(), token, produto_id)
 
 
-def vincular_ao_pedido(token: str, pedido_id: int, produto_id: int, whatsapp: str = '', ddi: str = '55') -> None:
+def vincular_ao_pedido(token: str, pedido_id: int, produto_id: int, whatsapp: str | None = None, ddi: str = '55') -> None:
     casos_de_uso.vincular_ao_pedido(servicos(), token, pedido_id, produto_id, whatsapp, ddi)
 
 
@@ -56,16 +56,7 @@ def dados_para_checkout(token: str) -> dict:
     o JS do checkout tira o 55 e põe a máscara). O nome não: o quiz pede só o primeiro nome, e o checkout precisa
     do nome completo de quem paga."""
     musica = servicos().repositorio.por_token(token)
-    return {'email': musica['email'] or '', 'whatsapp': _celular_br(musica.get('whatsapp'))} if musica else {}
-
-
-def _celular_br(numero) -> str:
-    """Só celular brasileiro (55 + DDD + 9 + 8 dígitos; o quiz antigo gravou sem o 55): o campo do checkout tem o
-    +55 fixo, e um número de fora viraria um brasileiro errado. Outro formato = '' (ela digita)."""
-    digitos = re.sub(r'\D', '', numero or '')
-    if len(digitos) == 11:
-        digitos = '55' + digitos
-    return digitos if len(digitos) == 13 and digitos.startswith('55') and digitos[4] == '9' else ''
+    return {'email': musica['email'] or '', 'whatsapp': regras.celular_br(musica.get('whatsapp'))} if musica else {}
 
 
 def webhook_whatsapp(valor: dict) -> None:

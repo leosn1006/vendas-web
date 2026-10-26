@@ -393,3 +393,13 @@ def test_numero_so_avisos_usa_a_leitura_anterior_se_o_banco_falhar(monkeypatch):
     monkeypatch.setitem(database._CACHE_SO_AVISOS, 'ids', frozenset({'1376511528883172'}))
     monkeypatch.setitem(database._CACHE_SO_AVISOS, 'quando', 0)
     assert database.numero_so_avisos('1376511528883172')
+
+
+@pytest.mark.parametrize('do_checkout,fica', [('(61) 98222-4444', '5561982224444'), ('', None), (None, '5561981112222')])
+def test_checkout_troca_apaga_ou_mantem_o_whatsapp_do_quiz(s, do_checkout, fica):
+    """O checkout abre com o WhatsApp do quiz; o que ela deixar lá é o que vale (apagar = não quer mensagens)."""
+    musica = _com_previa(s)
+    s.repositorio.atualizar(musica['id'], whatsapp='5561981112222')   # o que ela deu no quiz
+    s.repositorio.pedidos[501] = {'id': 501, 'guid': 'g-501', 'email': 'a@b.com', 'estado_id': 1002}
+    uc.vincular_ao_pedido(s, musica['token'], 501, PRODUTO, do_checkout)
+    assert s.repositorio.por_id(musica['id'])['whatsapp'] == fica

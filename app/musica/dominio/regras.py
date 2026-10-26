@@ -135,6 +135,15 @@ def primeiro_nome(*nomes: str) -> str:
     return ''
 
 
+def celular_br(texto) -> str:
+    """Celular brasileiro (DDD + 9 + 8 dígitos; com ou sem o 55) no formato da Meta: '55' + 11 dígitos. '' se não for
+    um celular (fixo, sem DDD, de fora). Regra única do WhatsApp de quem compra: quiz, servidor e checkout."""
+    digitos = re.sub(r'\D', '', texto or '')
+    if len(digitos) == 13 and digitos.startswith('55'):
+        digitos = digitos[2:]
+    return '55' + digitos if len(digitos) == 11 and digitos[2] == '9' else ''
+
+
 def mesmo_telefone(a: str, b: str) -> bool:
     """Mesmo celular? A Meta às vezes devolve o número sem o 9 da frente (55 61 8269-6770 x 55 61 98269-6770):
     compara DDI+DDD e os 8 últimos dígitos."""
