@@ -90,9 +90,8 @@ def _empresa():
         empresa = servicos().repositorio.empresa_do_produto(produto)
     except Exception:
         empresa = {}
-    cnpj = re.sub(r'\D', '', empresa.get('cnpj') or '')
-    if len(cnpj) == 14:
-        cnpj = f'{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}'
+    from web.checkout import formatar_cnpj
+    cnpj = formatar_cnpj(empresa.get('cnpj'))
     return {'razao_social': empresa.get('razao_social') or '', 'cnpj': cnpj,
             'email_suporte': (produto or {}).get('email_remetente') or empresa.get('email') or ''}
 

@@ -42,6 +42,12 @@
                 </select></div>
             <div class="form-group span-2"><label>Descrição (opcional)</label>
                 <textarea name="descricao" rows="2" maxlength="2000">{{ plano.descricao or '' }}</textarea></div>
+            <div class="form-group span-2"><label>O que ela recebe, no checkout (opcional)</label>
+                <textarea name="checkout_destaques" rows="4" maxlength="2000" placeholder="🎶 2 versões completas para escolher&#10;📥 MP3 para baixar e guardar">{{ plano.checkout_destaques or '' }}</textarea>
+                <small class="form-text text-muted">Uma linha por item, com o emoji na frente. Aparece logo abaixo do preço no checkout.</small></div>
+            <div class="form-group span-2"><label>Texto do botão de finalizar (opcional)</label>
+                <input type="text" name="checkout_texto_botao" maxlength="60" value="{{ plano.checkout_texto_botao or '' }}" placeholder="FINALIZAR COMPRA">
+                <small class="form-text text-muted">Vazio = FINALIZAR COMPRA. Ex.: Liberar minha música 🎵</small></div>
             <div class="form-group"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="ativo" value="1"{% if plano.ativo %} checked{% endif %}{% if plano.padrao %} disabled{% endif %}> Ativo (à venda)</label>
                 {% if plano.padrao %}<input type="hidden" name="ativo" value="1"><small class="form-text text-muted">O plano padrão está sempre ativo.</small>{% endif %}</div>
             <div class="form-group"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="vitrine" value="1"{% if plano.vitrine %} checked{% endif %}> Mostrar na vitrine</label>

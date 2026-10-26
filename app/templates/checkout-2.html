@@ -410,12 +410,15 @@
             .resumo-hero-img { max-height: 400px; }
         }
     </style>
+    {% import '_checkout_comum.html' as comum %}
+    {{ comum.estilo(tema) }}
 </head>
 <body>
 
 <div class="barra-seguranca">
     🔒 Ambiente <strong>100% seguro</strong>. Seus dados estão protegidos.
 </div>
+{{ comum.topo_marca(tema) }}
 
 <div class="container">
 
@@ -437,24 +440,25 @@
                     <div id="resumoItens" class="resumo-itens">
                         <div class="linha-item linha-item-principal">
                             <span>{{ plano.nome }}</span>
-                            <span>R$ {{ "%.2f"|format(plano.preco_promocional) }}</span>
+                            <span>{{ (plano.preco_promocional)|brl }}</span>
                         </div>
                         {% if desconto %}
                         <div class="linha-item linha-item-desconto">
                             <span>🎁 Desconto especial</span>
-                            <span>− R$ {{ "%.2f"|format(desconto) }}</span>
+                            <span>− {{ (desconto)|brl }}</span>
                         </div>
                         {% endif %}
                     </div>
                     <div class="resumo-total-wrap">
                         <span>Total</span>
-                        <strong id="resumoTotal">R$ {{ "%.2f"|format((plano.preco_promocional|float) - (desconto or 0)) }}</strong>
+                        <strong id="resumoTotal">{{ ((plano.preco_promocional|float) - (desconto or 0))|brl }}</strong>
                     </div>
+                    {{ comum.destaques(plano) }}
                 </div>
             </div>
         </div>
 
-        {% if plano.principais|length > 1 %}
+        {% if plano.principais|length > 1 and not plano.checkout_destaques %}
         <!-- Plano com mais de um item principal (ex.: Completo = app + e-book): o que vem no plano -->
         <div class="bonus-box">
             <div class="bonus-titulo">✅ O que você recebe</div>
@@ -503,14 +507,14 @@
                 <input type="email" id="inputEmail" placeholder="seu@email.com" autocomplete="email" value="{{ prefill.email or '' }}">
                 <span class="dica-campo oculto" id="sugestaoEmail"></span>
             </div>
-            <div class="campo">
+            <div class="campo" id="campoEmailConfirma"{% if email_do_quiz %} hidden{% endif %}>
                 {# inputEmailConfirma fica sempre vazio, mesmo com e-mail pré-preenchido: seu
                    propósito é pegar erro de digitação, o que preencher junto anularia. #}
                 <label for="inputEmailConfirma">Confirme seu e-mail</label>
                 <input type="email" id="inputEmailConfirma" placeholder="digite o e-mail novamente" autocomplete="off">
                 <span class="erro-campo oculto" id="erroEmailConfirma">Os e-mails não são iguais</span>
             </div>
-            <p class="dica-inbox">📩 Dica: se a caixa de entrada desse e-mail estiver cheia, o e-book pode não chegar — vale conferir antes de finalizar.</p>
+            <p class="dica-inbox">📩 Dica: se a caixa de entrada desse e-mail estiver cheia, {{ comum.o_que_chega(plano) }} pode não chegar — vale conferir antes de finalizar.</p>
             <div class="campo">
                 <label for="inputWhatsapp">WhatsApp com DDD <span style="font-weight:400;color:#888;">(opcional)</span></label>
                 <div class="input-com-prefixo" id="wrapperWhatsapp">
@@ -610,8 +614,8 @@
                     <div class="bump-nome">{{ b.nome_venda }}</div>
                     {% if b.descricao %}<div class="bump-desc">{{ b.descricao }}</div>{% endif %}
                     <div class="bump-precos">
-                        <span class="bump-preco-original">R$ {{ "%.2f"|format(b.preco_original) }}</span>
-                        <span class="bump-preco-promo">R$ {{ "%.2f"|format(b.preco_promocional) }}</span>
+                        <span class="bump-preco-original">{{ (b.preco_original)|brl }}</span>
+                        <span class="bump-preco-promo">{{ (b.preco_promocional)|brl }}</span>
                     </div>
                 </div>
             </label>
@@ -627,11 +631,11 @@
 
         <div class="total-linha">
             <span>Total</span>
-            <strong id="totalDisplay">R$ {{ "%.2f"|format((plano.preco_promocional|float) - (desconto or 0)) }}</strong>
+            <strong id="totalDisplay">{{ ((plano.preco_promocional|float) - (desconto or 0))|brl }}</strong>
         </div>
 
-        <button class="btn-finalizar" id="btnFinalizar">FINALIZAR COMPRA</button>
-        <div class="btn-sub-seguro" id="btnSubSeguro">🔒 Pagamento 100% seguro via PIX</div>
+        <button class="btn-finalizar" id="btnFinalizar">{{ texto_botao }}</button>
+        <div class="btn-sub-seguro" id="btnSubSeguro">🔒 Pagamento 100% seguro</div>
 
     </div><!-- /estado-form -->
 
@@ -687,6 +691,7 @@
 
     <div class="rodape">
         Pagamento processado com segurança via BB Pay<br>
+        {{ comum.empresa(empresa) }}
         <a href="/politica-privacidade" style="color:#aaa;">Política de privacidade</a> ·
         <a href="/termos-de-uso" style="color:#aaa;">Termos de uso</a>
     </div>
@@ -701,6 +706,8 @@
     data-desconto="{{ '%.2f'|format(desconto or 0) }}"
     data-oferta="{{ oferta or '' }}"
     data-plano="{{ plano.slug }}"
+    data-texto-botao="{{ texto_botao }}"
+    data-email-do-quiz="{{ '1' if email_do_quiz else '' }}"
     data-tem-cartao="{{ '1' if config_cartao else '' }}"
     id="checkout-config">
 </script>
@@ -717,6 +724,7 @@
     const MUSICA = new URLSearchParams(window.location.search).get('musica') || '';
     const PRODUTO_NOME = _cfg.nome;
     const TEM_CARTAO = !!_cfg.temCartao;
+    const TEXTO_BOTAO = _cfg.textoBotao;
     // Pedido criado ao carregar a página (funil: chegou no checkout) — se o cliente finalizar,
     // esse mesmo registro é atualizado em vez de criar um pedido novo. `let` (não `const`)
     // porque a retomada via ?pedido=<id> (link salvo/reload) reatribui esse valor pra manter a
@@ -793,8 +801,6 @@
         document.getElementById('pagamentoPix').style.display = (metodo === 'pix') ? 'flex' : 'none';
         const cartaoBlock = document.getElementById('pagamentoCartao');
         if (cartaoBlock) cartaoBlock.style.display = (metodo === 'cartao') ? 'block' : 'none';
-        document.getElementById('btnSubSeguro').textContent =
-            (metodo === 'cartao') ? '🔒 Pagamento 100% seguro via cartão de crédito' : '🔒 Pagamento 100% seguro via PIX';
         recalcularTotal(); // já atualiza as parcelas quando metodoAtual === 'cartao'
     }
 
@@ -1051,6 +1057,13 @@
         confirma.addEventListener('input', validar);
         confirma.addEventListener('blur', validar);
         email.addEventListener('blur', validar);
+
+        // E-mail que veio do quiz (Música): a confirmação começa escondida; se ela trocar o e-mail, volta.
+        const campo = document.getElementById('campoEmailConfirma');
+        const doQuiz = email.value.trim().toLowerCase();
+        email.addEventListener('input', function () {
+            if (campo.hidden && email.value.trim().toLowerCase() !== doQuiz) campo.hidden = false;
+        });
     })();
 
     // ── Sugestão de domínio (dica não bloqueante, ex: "gmial.com" → "quis dizer gmail.com?") ──
@@ -1105,7 +1118,7 @@
 
         if (!nome)              erros.push('Nome completo');
         if (!email || !validarEmailForte(email).ok) erros.push('E-mail válido — confira se não ficou nada digitado a mais sem querer');
-        else if (email.toLowerCase() !== emailConf.toLowerCase()) erros.push('Confirmação de e-mail (os dois campos precisam ser iguais)');
+        else if (!document.getElementById('campoEmailConfirma').hidden && email.toLowerCase() !== emailConf.toLowerCase()) erros.push('Confirmação de e-mail (os dois campos precisam ser iguais)');
 
         if (wa.length > 0 && wa.length < 10) {
             erros.push('WhatsApp com DDD');
@@ -1278,7 +1291,7 @@
         // Reseta o botão para o estado inicial
         const btnFinalizar = document.getElementById('btnFinalizar');
         btnFinalizar.disabled = false;
-        btnFinalizar.textContent = 'FINALIZAR COMPRA';
+        btnFinalizar.textContent = TEXTO_BOTAO;
 
         mostrarEstado('form');
     }
@@ -1375,7 +1388,7 @@
                     document.getElementById('msgErro').style.display = 'block';
                 }
                 this.disabled = false;
-                this.textContent = 'FINALIZAR COMPRA';
+                this.textContent = TEXTO_BOTAO;
                 return;
             }
 
@@ -1393,7 +1406,7 @@
                     divErro.innerHTML = `<strong>${data.mensagem || 'Não foi possível processar o pagamento.'}</strong>`;
                     divErro.style.display = 'block';
                     this.disabled = false;
-                    this.textContent = 'FINALIZAR COMPRA';
+                    this.textContent = TEXTO_BOTAO;
                 }
                 return;
             }
@@ -1401,7 +1414,7 @@
             if (data.fallback) {
                 mostrarEstado('fallback');
                 this.disabled = false;
-                this.textContent = 'FINALIZAR COMPRA';
+                this.textContent = TEXTO_BOTAO;
                 return;
             }
 
@@ -1416,7 +1429,7 @@
             console.error('[CHECKOUT]', err);
             mostrarEstado('fallback');
             this.disabled = false;
-            this.textContent = 'FINALIZAR COMPRA';
+            this.textContent = TEXTO_BOTAO;
         }
     });
 </script>

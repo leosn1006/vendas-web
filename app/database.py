@@ -1755,7 +1755,8 @@ def remover_entregavel(entregavel_id):
 # ------------------------------------------------------------ planos e seus itens (admin)
 
 _CAMPOS_PLANO = ('slug', 'nome', 'descricao', 'imagem_grande', 'imagem_pequena', 'preco_original',
-                 'preco_promocional', 'desconto_oferta', 'vitrine', 'renovacao', 'ordem', 'ativo')
+                 'preco_promocional', 'desconto_oferta', 'vitrine', 'renovacao', 'ordem', 'ativo',
+                 'checkout_destaques', 'checkout_texto_botao')
 
 
 def salvar_plano(produto_id, plano_id, dados: dict):
@@ -2175,6 +2176,19 @@ def get_produto_disponivel_web(produto_id: int):
         "SELECT * FROM produtos WHERE id = %s AND disponivel_web = TRUE AND ativo = TRUE",
         (produto_id,), fetch_one=True
     )
+
+
+def get_empresa_produto(produto):
+    """Quem vende o produto (rodapé do checkout, termos da Música): razão social, CNPJ e e-mail da configuração
+    fiscal ligada a ele (nfe_config_id). Sem ela, a 'lsn-livros' — a mesma conta que recebe o PIX desses produtos
+    (buscar_tenant_slug_produto), para o rodapé bater com o recebedor que o app do banco mostra."""
+    if not produto:
+        return {}
+    if produto.get('nfe_config_id'):
+        return db.execute_query("SELECT razao_social, cnpj, email FROM nfe_configuracao WHERE id = %s",
+                                (produto['nfe_config_id'],), fetch_one=True) or {}
+    return db.execute_query("SELECT razao_social, cnpj, email FROM nfe_configuracao WHERE tenant_slug = 'lsn-livros'",
+                            fetch_one=True) or {}
 
 
 def busca_produtos_disponiveis_web():

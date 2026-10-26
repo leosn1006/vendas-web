@@ -126,6 +126,7 @@ def checkout(produto_id):
             return resp
         pedido_id_inicial = rastrear_visita_funil(request, produto_id, estado_novo=1003)
 
+    prefill = _prefill_musica(plano)
     resp = make_response(render_template(
         'checkout.html',
         produto=produto,
@@ -136,7 +137,8 @@ def checkout(produto_id):
         config_cartao=config_cartao,
         oferta=oferta,
         desconto=desconto,
-        prefill=_prefill_musica(plano),
+        prefill=prefill,
+        **_aparencia_checkout(produto, plano, email_do_quiz=prefill.get('email') or ''),
     ))
     if pedido_id_inicial is not None:
         resp.set_cookie(f'pedido_web_{produto_id}', str(pedido_id_inicial), max_age=COOKIE_MAX_AGE_FUNIL)
@@ -157,6 +159,27 @@ def _prefill_musica(plano):
         import logging
         logging.getLogger(__name__).error(f"[WEB-CHECKOUT] Erro ao preencher o checkout da música: {e}")
         return {}
+
+
+def _aparencia_checkout(produto, plano, email_do_quiz=''):
+    """O que muda a cara do checkout por produto/plano (migration 093): o tema (cores da landing), o texto do
+    botão, a empresa do rodapé e se o e-mail veio do quiz da Música (aí sem "Confirme seu e-mail" — ele já foi
+    digitado lá; se ela trocar, a confirmação volta no JS)."""
+    from web.checkout import formatar_cnpj
+    from web.tema_checkout import tema_checkout
+    try:
+        from database import get_empresa_produto
+        empresa = get_empresa_produto(produto)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"[WEB-CHECKOUT] Erro ao buscar a empresa do produto {produto.get('id')}: {e}")
+        empresa = {}
+    return {
+        'tema': tema_checkout(produto),
+        'texto_botao': plano.get('checkout_texto_botao') or 'FINALIZAR COMPRA',
+        'email_do_quiz': bool(email_do_quiz),
+        'empresa': {'razao_social': empresa.get('razao_social') or '', 'cnpj': formatar_cnpj(empresa.get('cnpj'))},
+    }
 
 
 @web_bp.get('/pay2/<int:produto_id>')
@@ -242,6 +265,8 @@ def checkout_v2(produto_id):
                     f"[ESTANTE] Erro ao gravar vínculo pedido {pedido_origem_id}→{pedido_id_inicial}: {e}"
                 )
 
+    prefill_musica = _prefill_musica(plano)
+    prefill = {**prefill_musica, **{k: v for k, v in prefill.items() if v}}
     resp = make_response(render_template(
         'checkout-2.html',
         produto=produto,
@@ -250,9 +275,12 @@ def checkout_v2(produto_id):
         bumps=bumps,
         pedido_id_inicial=pedido_id_inicial,
         config_cartao=config_cartao,
-        prefill={**_prefill_musica(plano), **{k: v for k, v in prefill.items() if v}},
+        prefill=prefill,
         oferta=oferta,
         desconto=desconto,
+        # O e-mail do quiz só dispensa a confirmação se continuou o do formulário (a Estante não o sobrescreveu).
+        **_aparencia_checkout(produto, plano, email_do_quiz=(
+            prefill_musica.get('email') if prefill.get('email') == prefill_musica.get('email') else '')),
     ))
     if pedido_id_inicial is not None:
         resp.set_cookie(f'pedido_web_v2_{produto_id}', str(pedido_id_inicial), max_age=COOKIE_MAX_AGE_FUNIL)

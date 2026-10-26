@@ -241,10 +241,8 @@ class RepositorioMysql:
     def empresa_do_produto(self, produto):
         """A empresa que vende (termos e privacidade): a configuração fiscal ligada ao produto (nfe_config_id;
         a Música é da LBE). Ligar o produto à empresa não emite NF-e: ele está com nfe_automatica = 0."""
-        if not produto or not produto.get('nfe_config_id'):
-            return {}
-        return db.execute_query("SELECT razao_social, cnpj, email FROM nfe_configuracao WHERE id = %s",
-                                (produto['nfe_config_id'],), fetch_one=True) or {}
+        from database import get_empresa_produto
+        return get_empresa_produto(produto)
 
     def remetente_do_produto(self, produto_id):
         return db.execute_query("SELECT id, nome, email_remetente, email_nome_remetente, email_cor_primaria, email_cor_secundaria "

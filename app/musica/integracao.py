@@ -1,5 +1,7 @@
 """O que o resto do sistema (checkout, tasks, e-mail de entrega, Estante 2) usa da Música.
 Fachada fina sobre os casos de uso: quem está fora do módulo não conhece portas nem adaptadores."""
+import re
+
 from musica import casos_de_uso
 from musica.casos_de_uso import Recusa
 from musica.dominio.recursos import plano_vende_musica
@@ -50,10 +52,20 @@ def token_do_pedido(pedido_id: int) -> str | None:
 
 
 def dados_para_checkout(token: str) -> dict:
-    """O e-mail do quiz, para o checkout já abrir preenchido (quem tem o token é quem fez o quiz). O nome não: o
-    quiz pede só o primeiro nome, e o checkout precisa do nome completo de quem paga."""
+    """O e-mail e o WhatsApp do quiz, para o checkout já abrir preenchido (quem tem o token é quem fez o quiz;
+    o JS do checkout tira o 55 e põe a máscara). O nome não: o quiz pede só o primeiro nome, e o checkout precisa
+    do nome completo de quem paga."""
     musica = servicos().repositorio.por_token(token)
-    return {'email': musica['email'] or ''} if musica else {}
+    return {'email': musica['email'] or '', 'whatsapp': _celular_br(musica.get('whatsapp'))} if musica else {}
+
+
+def _celular_br(numero) -> str:
+    """Só celular brasileiro (55 + DDD + 9 + 8 dígitos; o quiz antigo gravou sem o 55): o campo do checkout tem o
+    +55 fixo, e um número de fora viraria um brasileiro errado. Outro formato = '' (ela digita)."""
+    digitos = re.sub(r'\D', '', numero or '')
+    if len(digitos) == 11:
+        digitos = '55' + digitos
+    return digitos if len(digitos) == 13 and digitos.startswith('55') and digitos[4] == '9' else ''
 
 
 def webhook_whatsapp(valor: dict) -> None:

@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import datetime
 import subprocess
 import tempfile
@@ -183,6 +184,14 @@ def agente_vendas_produto(produto_id):
 
     return render_template('admin/produto_agente_vendas.html', produto=produto)
 
+def _cor_hex(valor):
+    """'#RRGGBB' em maiúsculas (aceita sem o # e com espaços); None se vazio; False se inválido."""
+    v = (valor or '').strip().lstrip('#').upper()
+    if not v:
+        return None
+    return f'#{v}' if re.fullmatch(r'[0-9A-F]{6}', v) else False
+
+
 @admin_bp.route('/produtos/<int:produto_id>/dados-basicos', methods=['GET', 'POST'])
 @requer_acesso_produto
 def dados_basicos_produto(produto_id):
@@ -207,6 +216,16 @@ def dados_basicos_produto(produto_id):
                 nfe_config_id_novo = produto['nfe_config_id']
                 nfe_automatica_novo = produto['nfe_automatica']
 
+            # Cores do checkout: o tema só liga com as duas válidas (web/tema_checkout.py); aqui avisa em vez de
+            # gravar algo que o checkout ignoraria calado.
+            cor_fundo = _cor_hex(request.form.get('checkout_cor_fundo'))
+            cor_destaque = _cor_hex(request.form.get('checkout_cor_destaque'))
+            if cor_fundo is False or cor_destaque is False:
+                flash('Cor do checkout inválida: use o formato #RRGGBB (ex.: #0F0E0D). Nada foi salvo.', 'warning')
+                return redirect(url_for('admin.dados_basicos_produto', produto_id=produto_id))
+            if bool(cor_fundo) != bool(cor_destaque):
+                flash('Preencha as duas cores do checkout (fundo e destaque) — com só uma, ele continua claro.', 'warning')
+
             db.execute_query("""
                 UPDATE produtos SET
                     nome                  = %s,
@@ -225,6 +244,9 @@ def dados_basicos_produto(produto_id):
                     email_nome_remetente  = %s,
                     email_cor_primaria    = %s,
                     email_cor_secundaria  = %s,
+                    checkout_cor_fundo    = %s,
+                    checkout_cor_destaque = %s,
+                    checkout_marca        = %s,
                     prompt_vendas_email   = %s
                 WHERE id = %s
             """, (
@@ -244,6 +266,9 @@ def dados_basicos_produto(produto_id):
                 request.form.get('email_nome_remetente') or None,
                 request.form.get('email_cor_primaria') or None,
                 request.form.get('email_cor_secundaria') or None,
+                cor_fundo,
+                cor_destaque,
+                (request.form.get('checkout_marca') or '').strip()[:80] or None,
                 request.form.get('prompt_vendas_email') or None,
                 produto_id
             ))
@@ -610,8 +635,9 @@ def clonar_produto(produto_id):
                 google_sheets_spreadsheet_id, google_sheets_sheet_name,
                 google_ads_conversion_name, numero_convenio_bb, disponivel_web,
                 email_remetente, email_nome_remetente, email_cor_primaria, email_cor_secundaria,
+                checkout_cor_fundo, checkout_cor_destaque, checkout_marca,
                 ativo
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             f"Cópia de {produto['nome']}",  # nome diferente para identificar
             produto['preco'],
@@ -630,6 +656,9 @@ def clonar_produto(produto_id):
             produto['email_nome_remetente'],
             produto['email_cor_primaria'],
             produto['email_cor_secundaria'],
+            produto['checkout_cor_fundo'],
+            produto['checkout_cor_destaque'],
+            produto['checkout_marca'],
             0  # inativo por padrão — força o admin a revisar antes de ativar
         ))
         contador_acoes = 0

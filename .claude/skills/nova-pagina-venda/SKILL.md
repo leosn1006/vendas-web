@@ -43,7 +43,7 @@ Progresso a acompanhar:
 - [ ] Copiar fatia-e.html -> app/templates/<slug>-e.html, adaptar copy/imagens/paleta
 - [ ] Adicionar rota GET /<slug>-e em app/app.py
 - [ ] Ajustar produtos: preco, descricao, disponivel_web=1, email_remetente/nome/cores,
-      url_pagina_vendas
+      url_pagina_vendas, cores do checkout (fundo e destaque da landing + nome da marca)
 - [ ] Admin → Planos e entregáveis: plano padrão (nome, preço, capas) com principal, bônus (grátis) e
       order bumps (pagos) do catálogo; outras ofertas = outros planos (docs/PLANOS.md)
 - [ ] Converter imagens novas pra WebP, descartar original

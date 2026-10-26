@@ -229,6 +229,10 @@ def _dados_plano(form, plano_atual=None):
         'vitrine': 0 if renovacao else (1 if form.get('vitrine') else 0),
         'ordem': max(1, min(ordem, 99)),
         'ativo': 1 if form.get('ativo') else 0,
+        # Checkout (migration 093): o que ela recebe (uma linha por item) e o texto do botão de finalizar.
+        'checkout_destaques': '\n'.join(l.strip() for l in (form.get('checkout_destaques') or '').splitlines()
+                                        if l.strip()) or None,
+        'checkout_texto_botao': (form.get('checkout_texto_botao') or '').strip()[:60] or None,
     }
     if not _SLUG_PLANO.fullmatch(dados['slug']):
         return dados, 'Identificador do plano: só letras minúsculas, números e hífen (ex.: basico, completo).'

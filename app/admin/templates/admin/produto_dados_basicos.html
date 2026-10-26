@@ -247,6 +247,35 @@
                             <p class="field-hint">Cor dos botões de download em hexadecimal. Deixe vazio para padrão marrom</p>
                         </div>
 
+                        <div class="form-group">
+                            <label for="checkout_cor_fundo">Fundo do checkout (hex)</label>
+                            <input type="text" id="checkout_cor_fundo" name="checkout_cor_fundo"
+                                   value="{{ produto.checkout_cor_fundo or '' }}"
+                                   placeholder="Ex: #0F0E0D (o fundo da landing)"
+                                   pattern="^#[0-9A-Fa-f]{6}$"
+                                   maxlength="7">
+                            <p class="field-hint">Mesmo fundo da landing, para o checkout não parecer outro site. Vazio (fundo ou destaque) = checkout claro padrão</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="checkout_cor_destaque">Destaque do checkout (hex)</label>
+                            <input type="text" id="checkout_cor_destaque" name="checkout_cor_destaque"
+                                   value="{{ produto.checkout_cor_destaque or '' }}"
+                                   placeholder="Ex: #FB7185 (o botão da landing)"
+                                   pattern="^#[0-9A-Fa-f]{6}$"
+                                   maxlength="7">
+                            <p class="field-hint">Cor do botão de finalizar e dos destaques; os tons claros e o contraste saem dela</p>
+                        </div>
+
+                        <div class="form-group span-2">
+                            <label for="checkout_marca">Nome da marca no topo do checkout</label>
+                            <input type="text" id="checkout_marca" name="checkout_marca"
+                                   value="{{ produto.checkout_marca or '' }}"
+                                   placeholder="Ex: Canção de Presente, Fatia de Bolo"
+                                   maxlength="80">
+                            <p class="field-hint">Aparece no topo do checkout com tema. Vazio = sem topo</p>
+                        </div>
+
                         <div class="form-group span-2">
                             <label for="prompt_vendas_email">Prompt do agente de e-mail (opcional)</label>
                             <textarea id="prompt_vendas_email" name="prompt_vendas_email" rows="4">{{ produto.prompt_vendas_email or '' }}</textarea>

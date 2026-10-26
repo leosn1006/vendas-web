@@ -121,6 +121,12 @@ def _formatar_documento(numero: str, tipo: int) -> str:
     return d
 
 
+def formatar_cnpj(cnpj) -> str:
+    """CNPJ com pontuação (aceita o alfanumérico); '' se não tiver 14 caracteres (rodapé e termos não mostram)."""
+    d = re.sub(r'[^A-Za-z0-9]', '', str(cnpj or ''))
+    return _formatar_documento(d, 2) if len(d) == 14 else ''
+
+
 def _gerar_qrcode_base64(texto: str) -> str:
     img = qrcode_lib.make(texto)
     buf = io.BytesIO()

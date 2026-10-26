@@ -1,0 +1,91 @@
+{#- Peças comuns aos dois checkouts (checkout.html = /pay, checkout-2.html = /pay2). Uso:
+    {% import '_checkout_comum.html' as comum %} e {{ comum.estilo(tema) }} etc. -#}
+
+{#- CSS das peças daqui e o tema do produto (web/tema_checkout.py, migration 093): moldura escura e destaque da
+    landing; cards brancos. Sem tema, só o CSS das peças — o checkout claro de sempre. -#}
+{% macro estilo(tema) %}
+<style>
+    .destaques-plano { list-style: none; display: flex; flex-direction: column; gap: 8px;
+                       margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--borda); }
+    .destaques-plano li { font-size: 15px; line-height: 1.4; }
+</style>
+{% if tema %}
+<style>
+    :root {
+        --verde:    {{ tema.destaque_texto }};
+        --laranja:  {{ tema.destaque_texto }};
+        --cinza-bg: {{ tema.fundo }};
+    }
+    body { background: {{ tema.fundo }}; }
+
+    .barra-seguranca { background: {{ tema.fundo_2 }}; color: #D6D3D1; border-bottom: 1px solid {{ tema.linha }}; }
+    .barra-seguranca strong { color: #F5F5F4; }
+
+    .topo-marca { max-width: 480px; margin: 0 auto; padding: 18px 16px 0; display: flex; align-items: center; gap: 12px; }
+    .topo-marca-inicial { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+                          background: {{ tema.destaque }}; color: {{ tema.sobre_destaque }};
+                          display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; }
+    .topo-marca-nome { font-size: 20px; font-weight: 900; color: #F5F5F4; line-height: 1.2; }
+    .topo-marca-sub  { font-size: 13px; color: #A8A29E; }
+
+    .card { border-radius: 20px; border: none; box-shadow: 0 18px 50px -24px rgba(0,0,0,.8); }
+    .bonus-box { background: {{ tema.destaque_claro }}; border: 1.5px dashed {{ tema.destaque_borda }}; border-radius: 20px; }
+    .bonus-item + .bonus-item { border-top-color: {{ tema.destaque_claro_2 }}; }
+    .secao-num { background: {{ tema.destaque }}; color: {{ tema.sobre_destaque }}; }
+    .selo-oferta { background: {{ tema.destaque_claro_2 }}; }
+
+    .metodo-btn.ativo { background: {{ tema.destaque_claro }}; }
+    .bump-card { border-color: {{ tema.destaque_borda }}; background: {{ tema.destaque_claro }}; }
+    .bump-card:hover { border-color: {{ tema.destaque }}; }
+    .bump-card.marcado { background: {{ tema.destaque_claro_2 }}; }
+    .input-com-prefixo { background: #fff; }
+    .prefixo-ddi { background: {{ tema.destaque_claro }}; }
+
+    .btn-finalizar { background: {{ tema.destaque }}; color: {{ tema.sobre_destaque }}; border-radius: 999px; min-height: 58px; }
+    .btn-finalizar:hover { background: {{ tema.destaque_hover }}; }
+    .btn-tentar-novamente:hover { background: {{ tema.destaque_claro }}; }
+
+    /* Fora dos cards: texto claro sobre o fundo escuro */
+    .total-linha { color: #A8A29E; }
+    .total-linha strong { color: #F5F5F4; }
+    .btn-sub-seguro { color: #A8A29E; }
+    .rodape, .rodape a { color: #8A837D !important; }
+</style>
+{% endif %}
+{% endmacro %}
+
+{#- Nome da marca no topo (só com tema e marca): "ainda estou no mesmo site". -#}
+{% macro topo_marca(tema) %}
+{% if tema and tema.marca %}
+<div class="topo-marca">
+    <span class="topo-marca-inicial" aria-hidden="true">{{ tema.inicial }}</span>
+    <div>
+        <div class="topo-marca-nome">{{ tema.marca }}</div>
+        <div class="topo-marca-sub">Falta pouco para finalizar</div>
+    </div>
+</div>
+{% endif %}
+{% endmacro %}
+
+{#- O que ela recebe, logo abaixo do preço (produto_planos.checkout_destaques: uma linha por item, com emoji). -#}
+{% macro destaques(plano) %}
+{% set linhas = (plano.checkout_destaques or '').splitlines() | map('trim') | select | list %}
+{% if linhas %}
+<ul class="destaques-plano">
+    {% for linha in linhas %}<li>{{ linha }}</li>{% endfor %}
+</ul>
+{% endif %}
+{% endmacro %}
+
+{#- O que pode não chegar na caixa cheia: o item principal do plano (música, acesso ao app ou e-book). -#}
+{% macro o_que_chega(plano) -%}
+{%- set tipo = (plano.principais[0].tipo if plano.principais else '') -%}
+{{- {'musica': 'a música', 'app': 'o acesso'}.get(tipo, 'o e-book') -}}
+{%- endmacro %}
+
+{#- Razão social e CNPJ de quem vende (Decreto 7.962/2013), junto dos links do rodapé. -#}
+{% macro empresa(empresa) %}
+{% if empresa and empresa.razao_social and empresa.cnpj %}
+{{ empresa.razao_social }} · CNPJ {{ empresa.cnpj }}<br>
+{% endif %}
+{% endmacro %}
