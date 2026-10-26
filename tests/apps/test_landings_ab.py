@@ -80,3 +80,7 @@ def test_nomes_das_telas_da_musica_seguem_a_ordem_do_quiz():
     esperado = ['para_quem', 'pessoas', 'ocasiao', 'lembrancas', 'frase_obrigatoria', 'clima', 'estilo', 'voz', 'contato']
     assert [p['chave'] for p in PERGUNTAS] == esperado
     assert all(views._ETAPAS_MUSICA[n].startswith('Quiz:') for n in range(1, len(PERGUNTAS) + 1))
+
+
+def test_quiz_antigo_da_musica_fica_fora_do_funil():
+    assert views._montar_etapas_quiz([{'pagina': 'musica', 'etapa': 5, 'pararam': 2, 'pagos': 0, 'etapa_nome': 'x'}]) == []

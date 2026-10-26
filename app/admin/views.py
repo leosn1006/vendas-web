@@ -1956,8 +1956,6 @@ _ETAPAS_MUSICA = {
 }
 _ETAPAS_QUIZ = {
     'musica-v2': _ETAPAS_MUSICA,
-    # Quiz antigo, de 12 telas (até 22/10/2026): telas pelo nome gravado; letra, prévia e checkout iguais.
-    'musica': {**{n: None for n in range(1, 13)}, **{n: _ETAPAS_MUSICA[n] for n in (20, 30, 40)}},
     'fatia2-e': [
         'Abriu a página', 'Sua situação', 'Seu sonho', 'Dias por semana',
         'O que você já tentou', 'O que te trava', 'Sua experiência', 'Uma possibilidade',
@@ -1979,8 +1977,8 @@ _ETAPAS_QUIZ = {
 # Música: 40 = checkout direto; 42 = recusou o popup e foi; 43 = aceitou; 44 = fechou o popup e depois foi
 # (41 = viu o popup e saiu: abandono).
 _ETAPAS_CHECKOUT_QUIZ = {'fatia2-e': {17, 19, 20, 21}, 'fatia1-e': {2, 4, 5, 6},
-                         'musica-v2': {40, 42, 43, 44}, 'musica': {40}}
-# Páginas que saíram do ar: o funil delas ainda aparece no período, mas não entram no teste A/B.
+                         'musica-v2': {40, 42, 43, 44}}
+# Páginas que saíram do ar (o quiz antigo da Música, de 12 telas, até 22/10/2026): fora do funil e do A/B.
 _PAGINAS_ENCERRADAS = {'musica'}
 
 # Teste A/B das landings: por página, visitas, quem foi ao checkout, pagos e receita, com os pagos
@@ -2040,7 +2038,8 @@ def _montar_etapas_quiz(linhas):
     A maior desistência (fora a última etapa, onde "parar" = ir pro checkout) vem marcada."""
     paginas = {}
     for row in linhas or []:
-        paginas.setdefault(row['pagina'], {})[int(row['etapa'])] = row
+        if row['pagina'] not in _PAGINAS_ENCERRADAS:
+            paginas.setdefault(row['pagina'], {})[int(row['etapa'])] = row
     resultado = []
     for pagina, por_etapa in paginas.items():
         nomes = _ETAPAS_QUIZ.get(pagina, [])
