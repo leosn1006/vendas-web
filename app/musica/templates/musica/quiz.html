@@ -49,6 +49,8 @@ label + .campo{margin-top:8px}
 .medidor-barra{height:10px;background:var(--fundo-2);border-radius:99px;overflow:hidden}
 .medidor-barra div{height:100%;width:0;background:var(--cor);border-radius:99px;transition:width .3s}
 .medidor-texto{margin-top:8px;font-weight:700;color:var(--suave)}
+.garantia-quiz{display:flex;gap:8px;align-items:center;color:var(--texto);font-weight:600;font-size:1rem;margin:20px 0 0}
+.garantia-quiz i{color:var(--ok);font-size:1.3rem}
 .dica-mic{display:flex;gap:8px;align-items:flex-start;color:var(--suave);font-size:.95rem;margin-top:14px}
 .pular{display:block;margin:14px auto 0}
 @media (max-width:560px){ .opcoes{grid-template-columns:repeat(2,minmax(0,1fr))} .funil{padding:0 16px 48px} }
@@ -87,7 +89,7 @@ const GUARDAR = "musica_quiz_v2", GUARDAR_HORAS = 6;   // pouco tempo: o celular
 
 let respostas = {}, pessoas = [{nome: "", apelido: "", pronuncia: ""}], lembrancas = ["", "", ""];
 let contato = {de: "", email: ""}, atual = PERGUNTAS[0].chave, tokenRobo = "";
-let comPronuncia = false, ultimaEtapa = "";
+let comPronuncia = false, comApelido = false, ultimaEtapa = "";
 window.turnstileOk = t => tokenRobo = t;
 
 const el = id => document.getElementById(id);
@@ -186,19 +188,24 @@ function htmlOpcoes(p){
 function htmlPessoas(){
   const grupo = ehGrupo(), eu = ehEu();
   comPronuncia = comPronuncia || pessoas.some(p => p.pronuncia);
+  comApelido = comApelido || pessoas.some(p => p.apelido);   // só o nome à vista; apelido e pronúncia por link
   return pessoas.map((p, i) => `<div class="${grupo ? "pessoa" : ""}" data-i="${i}">
       ${grupo ? `<p class="pessoa-titulo">Pessoa ${i + 1}</p>${pessoas.length > 2 ? `<button type="button" class="remover" data-remover="${i}" aria-label="Tirar">×</button>` : ""}` : ""}
       <label for="nome${i}">${grupo ? "Nome" : eu ? "Seu nome" : "Nome"}</label>
-      <input class="campo" id="nome${i}" data-campo="nome" maxlength="80" autocomplete="off" placeholder="Ex.: ${["Helena", "Beatriz", "Carla", "Luiza"][i]}" value="${esc(p.nome)}">
-      <label for="apelido${i}">${eu ? "Como gosta de ser chamada (opcional)" : "Apelido carinhoso (opcional)"}</label>
-      <input class="campo" id="apelido${i}" data-campo="apelido" maxlength="80" autocomplete="off" placeholder="Ex.: Lena, Bia, Mozão" value="${esc(p.apelido)}">
+      <input class="campo" id="nome${i}" data-campo="nome" maxlength="80" autocomplete="off" enterkeyhint="next" placeholder="Ex.: ${["Helena", "Beatriz", "Carla", "Luiza"][i]}" value="${esc(p.nome)}">
+      <div class="apelido" style="display:${comApelido ? "block" : "none"}">
+        <label for="apelido${i}">${eu ? "Como gosta de ser chamada (opcional)" : "Apelido carinhoso (opcional)"}</label>
+        <input class="campo" id="apelido${i}" data-campo="apelido" maxlength="80" autocomplete="off" enterkeyhint="next" placeholder="Ex.: Lena, Bia, Mozão" value="${esc(p.apelido)}">
+      </div>
       <div class="pronuncia" style="display:${comPronuncia ? "block" : "none"}">
         <label for="pronuncia${i}">Como se fala (se for diferente da escrita)</label>
-        <input class="campo" id="pronuncia${i}" data-campo="pronuncia" maxlength="80" autocomplete="off" placeholder="Ex.: Theo → Téo" value="${esc(p.pronuncia)}">
+        <input class="campo" id="pronuncia${i}" data-campo="pronuncia" maxlength="80" autocomplete="off" enterkeyhint="next" placeholder="Ex.: Theo → Téo" value="${esc(p.pronuncia)}">
       </div></div>`).join("")
-    + (comPronuncia ? "" : `<button type="button" class="link-simples" id="mostrarPronuncia">O nome se fala diferente de como se escreve?</button>`)
+    + (comApelido ? "" : `<div><button type="button" class="link-simples" id="mostrarApelido">${eu ? "Gosta de ser chamada de outro jeito?" : grupo ? "Têm apelido?" : "Tem apelido?"}</button></div>`)
+    + (comPronuncia ? "" : `<div><button type="button" class="link-simples" id="mostrarPronuncia">O nome se fala diferente de como se escreve?</button></div>`)
     + (grupo && pessoas.length < REGRAS.max_pessoas ? `<button type="button" class="adicionar" id="adicionar"><i class="ti ti-plus" aria-hidden="true"></i> Adicionar mais uma pessoa</button>` : "")
-    + `<div class="acoes"><button class="botao" id="avancar" type="button">Continuar</button></div>`;
+    + `<p class="garantia-quiz"><i class="ti ti-headphones" aria-hidden="true"></i><span>Você ouve a música antes e só paga se gostar</span></p>`
+    + `<div class="acoes"><button class="botao" id="avancar" type="button">Continuar, falta pouco</button></div>`;
 }
 
 const guiasLembrancas = () => REGRAS.lembrancas[REGRAS.guia_lembrancas[respostas.para_quem] || "padrao"];
@@ -278,6 +285,10 @@ function ligar(p, passo){
   passo.querySelectorAll("[data-campo]").forEach(i => i.addEventListener("input", () => {
     pessoas[+i.closest("[data-i]").dataset.i][i.dataset.campo] = i.value; guardar();
   }));
+  if (el("mostrarApelido")) el("mostrarApelido").onclick = e => {
+    comApelido = true; passo.querySelectorAll(".apelido").forEach(d => d.style.display = "block"); e.target.remove();
+    const campo = passo.querySelector(".apelido input"); campo && campo.focus();
+  };
   if (el("mostrarPronuncia")) el("mostrarPronuncia").onclick = e => {
     comPronuncia = true; passo.querySelectorAll(".pronuncia").forEach(d => d.style.display = "block"); e.target.remove();
   };
