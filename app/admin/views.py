@@ -1921,6 +1921,11 @@ _SQL_FUNIL_WEB = """
 # adicionar colunas de timestamp por marco (ex: data_chegou_landing) em vez de inferir pelo
 # estado atual.
 
+# Páginas que o Leo tirou da Analytics Web de vez (todo o histórico some do funil e do A/B, em qualquer período):
+# o quiz antigo da Música, de 12 telas, até 22/10/2026. Página que só sai do A/B não entra aqui.
+_PAGINAS_FORA_DO_ADMIN = ('musica',)
+_SEM_PAGINAS_FORA = 'AND q.pagina NOT IN (' + ', '.join(f"'{p}'" for p in _PAGINAS_FORA_DO_ADMIN) + ')'
+
 _SQL_QUIZ_WEB = """
     SELECT
         q.pagina,
@@ -1932,6 +1937,7 @@ _SQL_QUIZ_WEB = """
     JOIN pedidos p ON p.id = q.pedido_id
     WHERE p.produto_id = %s
       AND p.data_contato_site BETWEEN %s AND %s
+      """ + _SEM_PAGINAS_FORA + """
     GROUP BY q.pagina, q.etapa
     ORDER BY q.pagina, q.etapa
 """
@@ -1943,7 +1949,7 @@ _SQL_QUIZ_WEB = """
 # Nomes das etapas de cada quiz, na ordem (os mesmos que o JS da página envia) — permitem
 # listar TODAS as etapas no admin, inclusive as que ninguém abandonou. Quiz sem entrada aqui
 # usa os nomes gravados no banco. Lista = etapas 0, 1, 2... seguidas; dict = numeração com saltos
-# (a Música: quiz 1–9, letra 20, prévia 30, compra 40–43): só as etapas do dict e as gravadas aparecem.
+# (a Música: quiz 1–9, letra 20, prévia 30, compra 40–44): só as etapas do dict e as gravadas aparecem.
 # Nome None = o gravado pela página.
 # Quiz da Música: desde 25/10/2026 a etapa é a posição FIXA da pergunta (ordem de PERGUNTAS em musica/dominio/
 # quiz.py), mesmo quando uma tela é pulada (?ocasiao= ou ?para_quem= da landing). Antes era a posição na tela.
@@ -1978,8 +1984,6 @@ _ETAPAS_QUIZ = {
 # (41 = viu o popup e saiu: abandono).
 _ETAPAS_CHECKOUT_QUIZ = {'fatia2-e': {17, 19, 20, 21}, 'fatia1-e': {2, 4, 5, 6},
                          'musica-v2': {40, 42, 43, 44}}
-# Páginas que saíram do ar (o quiz antigo da Música, de 12 telas, até 22/10/2026): fora do funil e do A/B.
-_PAGINAS_ENCERRADAS = {'musica'}
 
 # Teste A/B das landings: por página, visitas, quem foi ao checkout, pagos e receita, com os pagos
 # separados por plano (pedido sem plano = de antes dos planos = plano padrão).
@@ -1993,6 +1997,7 @@ _SQL_AB_LANDINGS = """
          (SELECT pad.id FROM produto_planos pad WHERE pad.produto_id = %s AND pad.padrao = 1))
     WHERE p.produto_id = %s
       AND p.data_contato_site BETWEEN %s AND %s
+      """ + _SEM_PAGINAS_FORA + """
     GROUP BY q.pagina, q.etapa, pp.id, pp.nome, pp.padrao
 """
 # Primeira visita de cada página no período: o A/B só compara a partir de quando TODAS têm visitas
@@ -2001,6 +2006,7 @@ _SQL_AB_INICIO = """
     SELECT q.pagina, MIN(p.data_contato_site) AS primeira
     FROM quiz_progresso q JOIN pedidos p ON p.id = q.pedido_id
     WHERE p.produto_id = %s AND p.data_contato_site BETWEEN %s AND %s
+      """ + _SEM_PAGINAS_FORA + """
     GROUP BY q.pagina
 """
 
@@ -2038,8 +2044,7 @@ def _montar_etapas_quiz(linhas):
     A maior desistência (fora a última etapa, onde "parar" = ir pro checkout) vem marcada."""
     paginas = {}
     for row in linhas or []:
-        if row['pagina'] not in _PAGINAS_ENCERRADAS:
-            paginas.setdefault(row['pagina'], {})[int(row['etapa'])] = row
+        paginas.setdefault(row['pagina'], {})[int(row['etapa'])] = row
     resultado = []
     for pagina, por_etapa in paginas.items():
         nomes = _ETAPAS_QUIZ.get(pagina, [])
@@ -2628,13 +2633,11 @@ def analytics_web_produto(produto_id):
     # Teste A/B das landings (separado: um erro aqui não pode apagar os funis acima).
     ab_landings, ab_desde = [], None
     try:
-        inicios = [r for r in db.execute_query(_SQL_AB_INICIO, (produto_id, data_ini, data_fim), fetch_all=True) or []
-                   if r['pagina'] not in _PAGINAS_ENCERRADAS]
+        inicios = db.execute_query(_SQL_AB_INICIO, (produto_id, data_ini, data_fim), fetch_all=True) or []
         if len(inicios) > 1:
             ab_desde = max(r['primeira'] for r in inicios)
             ab_landings = _montar_ab_landings(
-                [r for r in db.execute_query(_SQL_AB_LANDINGS, (produto_id, produto_id, ab_desde, data_fim),
-                                             fetch_all=True) or [] if r['pagina'] not in _PAGINAS_ENCERRADAS])
+                db.execute_query(_SQL_AB_LANDINGS, (produto_id, produto_id, ab_desde, data_fim), fetch_all=True))
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro no teste A/B das landings produto #{produto_id}: {e}")
         ab_landings, ab_desde = [], None

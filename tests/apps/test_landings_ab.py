@@ -82,5 +82,8 @@ def test_nomes_das_telas_da_musica_seguem_a_ordem_do_quiz():
     assert all(views._ETAPAS_MUSICA[n].startswith('Quiz:') for n in range(1, len(PERGUNTAS) + 1))
 
 
-def test_quiz_antigo_da_musica_fica_fora_do_funil():
-    assert views._montar_etapas_quiz([{'pagina': 'musica', 'etapa': 5, 'pararam': 2, 'pagos': 0, 'etapa_nome': 'x'}]) == []
+def test_quiz_antigo_da_musica_fica_fora_das_consultas_do_funil_e_do_ab():
+    """O filtro está no SQL das três consultas (funil, início do A/B e linhas do A/B); a página nova continua."""
+    for sql in (views._SQL_QUIZ_WEB, views._SQL_AB_INICIO, views._SQL_AB_LANDINGS):
+        assert "AND q.pagina NOT IN ('musica')" in sql
+    assert 'musica-v2' not in views._PAGINAS_FORA_DO_ADMIN
