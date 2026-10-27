@@ -169,3 +169,38 @@ def para_quem_com_relacao(respostas: dict) -> str:
     if genero == 'm':
         return f'seu {rotulo(relacao)} {nome}'
     return nome
+
+
+# ------------------------------------------------------------------ lembretes (docs/MUSICA.md "Lembretes")
+
+def etapa_lembrete(musica: dict) -> str | None:
+    """Em que etapa do funil a música parou, para os lembretes: 'checkout' (abriu o checkout ou tem pedido esperando
+    pagamento — `em_checkout`, calculado pelo repositório), 'previa', 'letra' ou None (paga, gerando, sem e-mail ou
+    ela pediu para não receber)."""
+    if musica.get('liberada_em') or musica.get('sem_lembretes') or not musica.get('email'):
+        return None
+    if musica.get('em_checkout'):
+        return 'checkout'
+    return {'previa_pronta': 'previa', 'letra_pronta': 'letra'}.get(musica.get('status'))
+
+
+ORDEM_ETAPAS = {'letra': 0, 'previa': 1, 'checkout': 2}
+
+
+def proximo_lembrete(etapa: str, musica: dict, agora: datetime, minutos: tuple, janela: tuple, dias: int):
+    """O que fazer agora: ('zerar', 0) quando a música entrou numa etapa nova (o relógio começa agora);
+    ('enviar', n) com n = o lembrete mais recente já vencido (1, 2 ou 3 — se dois venceram fora do horário, sai só o
+    último, nunca dois seguidos); (None, 0) para esperar. A mesma etapa de novo ("outra versão" volta para a prévia)
+    não zera, e voltar para uma etapa anterior (ex.: o PIX venceu) também não: a série dela já saiu (no máximo 3 por
+    etapa, 9 no total)."""
+    salva = musica.get('lembrete_etapa')
+    if salva in ORDEM_ETAPAS and ORDEM_ETAPAS[etapa] < ORDEM_ETAPAS[salva]:
+        return None, 0
+    if etapa != salva or not musica.get('lembrete_desde'):
+        return 'zerar', 0
+    passou = agora - musica['lembrete_desde']
+    enviados = musica.get('lembretes_enviados') or 0
+    if enviados >= len(minutos) or passou > timedelta(days=dias) or not janela[0] <= agora.hour < janela[1]:
+        return None, 0
+    vencidos = sum(1 for m in minutos if passou >= timedelta(minutes=m))
+    return ('enviar', vencidos) if vencidos > enviados else (None, 0)

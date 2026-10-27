@@ -153,11 +153,16 @@ def _prefill_musica(plano):
     token = request.args.get('musica') or ''
     if not plano_vende_musica(plano) or not re.fullmatch(r'[0-9a-f]{32}', token):
         return {}
+    import logging
+    try:   # lembretes: esta música chegou no checkout (uma falha aqui não pode tirar o preenchimento)
+        from musica.integracao import checkout_aberto
+        checkout_aberto(token)
+    except Exception as e:
+        logging.getLogger(__name__).error(f"[WEB-CHECKOUT] Erro ao marcar o checkout aberto da música: {e}")
     try:
         from musica.integracao import dados_para_checkout
         return dados_para_checkout(token)
     except Exception as e:
-        import logging
         logging.getLogger(__name__).error(f"[WEB-CHECKOUT] Erro ao preencher o checkout da música: {e}")
         return {}
 

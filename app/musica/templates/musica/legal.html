@@ -28,6 +28,14 @@
   <h1>Não encontramos esta página</h1>
   <p>O link pode ter sido digitado errado ou já não estar mais no ar. Se você comprou uma música, use o link do e-mail da compra.</p>
   <p><a class="botao" href="{{ url_for('musica.inicio') }}">Criar uma música</a></p>
+{% elif pagina == "sem_lembretes" %}
+  <h1>Parar os lembretes?</h1>
+  <p>Você não vai mais receber e-mails lembrando desta música. A música continua guardada e você pode voltar quando quiser.</p>
+  <form method="post"><button class="botao" type="submit">Não quero mais receber</button></form>
+  <p><a href="{{ url_for('musica.pagina_previa', token=token) }}">Voltar para a minha música</a></p>
+{% elif pagina == "sem_lembretes_ok" %}
+  <h1>Pronto 💛</h1>
+  <p>Não vamos mais te lembrar desta música por e-mail. Se mudar de ideia, o link da música continua funcionando.</p>
 {% elif pagina == "liberando" %}
   <h1>Sua música está sendo liberada 🎵</h1>
   <p>O pagamento foi confirmado e estamos preparando tudo. Atualize esta página em alguns minutos.</p>

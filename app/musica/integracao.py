@@ -51,6 +51,11 @@ def token_do_pedido(pedido_id: int) -> str | None:
     return musica['token'] if musica else None
 
 
+def checkout_aberto(token: str) -> None:
+    """O checkout desta música abriu: conta para os lembretes (etapa checkout)."""
+    casos_de_uso.checkout_aberto(servicos(), token)
+
+
 def dados_para_checkout(token: str) -> dict:
     """O e-mail e o WhatsApp do quiz, para o checkout já abrir preenchido (quem tem o token é quem fez o quiz;
     o JS do checkout tira o 55 e põe a máscara). O nome não: o quiz pede só o primeiro nome, e o checkout precisa

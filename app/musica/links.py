@@ -13,6 +13,20 @@ def previa(musica: dict) -> str:
     return f"{base(musica.get('dominio'))}/musica/p/{musica['token']}"
 
 
+def checkout(musica: dict) -> str:
+    """Checkout da música, reabrindo o pedido com o PIX ainda válido (se houver), montado por web.links.link_checkout
+    (CLAUDE.md). Vai só para a própria cliente (lembrete), então pode levar o token."""
+    from web.links import link_checkout
+    plano = {'slug': musica['pedido_aberto_plano'], 'padrao': False} if musica.get('pedido_aberto_plano') else None
+    return base(musica.get('dominio')) + link_checkout(musica['produto_id'], plano, pedido=musica.get('pedido_aberto_id'),
+                                                       musica=musica['token'])
+
+
+def sem_lembretes(musica: dict) -> str:
+    """Link do rodapé dos lembretes: "não quero mais receber"."""
+    return f"{base(musica.get('dominio'))}/musica/p/{musica['token']}/sem-lembretes"
+
+
 def presente(musica: dict) -> str:
     """Página do presente (QR code e e-mail para quem recebe): só a música, sem dados de quem comprou."""
     return f"{base(musica.get('dominio'))}/musica/m/{musica['token']}"

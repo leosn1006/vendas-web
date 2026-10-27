@@ -38,6 +38,12 @@ MAX_TENTATIVAS_GERACAO = 3      # se o gerador falhar, tenta de novo até este t
 MINUTOS_PARA_TRAVA = 6          # geração que passa disso é tratada como falha (e tenta de novo)
 DIAS_GUARDAR_NAO_PAGAS = 90     # promessa da política de privacidade
 
+# Lembretes por e-mail para quem parou na letra, na prévia ou no checkout (docs/MUSICA.md "Lembretes"): minutos depois
+# de entrar na etapa, horário em que podem sair (Brasília; fora dele esperam a manhã) e por quantos dias valem.
+LEMBRETES_MINUTOS = (15, 180, 1440)
+LEMBRETES_JANELA = (8, 22)
+LEMBRETES_DIAS = 3
+
 # Presente por e-mail que não chegou (erro no envio ou devolução, quase sempre caixa lotada): até 4 envios no mesmo
 # dia, esperando 1 h, 2 h e 4 h entre eles. Depois disso, quem comprou é avisado para mandar o link por conta própria.
 PRESENTE_MAX_TENTATIVAS = 4

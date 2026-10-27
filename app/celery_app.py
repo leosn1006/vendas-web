@@ -141,7 +141,7 @@ celery_app.conf.beat_schedule = {
         'options': {'queue': 'baixa'},
     },
     # Produto Música (docs/MUSICA.md): presentes por e-mail na hora marcada, destravar tarefas perdidas e
-    # reconciliar pagos; lembretes de prévia não comprada (8h–21h); limpeza das não pagas de 90+ dias.
+    # reconciliar pagos; lembretes de quem parou na letra, na prévia ou no checkout; limpeza das não pagas de 90+ dias.
     'musica-manutencao': {
         'task': 'musica.manutencao',
         'schedule': crontab(minute='*/5'),
@@ -149,7 +149,7 @@ celery_app.conf.beat_schedule = {
     },
     'musica-lembretes': {
         'task': 'musica.lembretes',
-        'schedule': crontab(minute='7,37', hour='8-21'),
+        'schedule': crontab(minute='*/5'),   # 15 min / 3 h / 24 h por etapa; o horário (8h–22h) fica no código
         'options': {'queue': 'normal'},
     },
     'musica-limpeza': {

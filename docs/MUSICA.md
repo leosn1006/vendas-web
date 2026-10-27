@@ -50,6 +50,26 @@ O admin recusa recurso no papel errado e item de música no plano padrão de pro
 - **NF-e:** produto com `nfe_automatica = 0` (admin → dados básicos, só admin) fica fora da emissão diária, por PIX
   e cartão. **A Música precisa ficar assim** até a decisão fiscal (música não é livro).
 
+## Lembretes por e-mail (`musica.lembretes`, desde 27/10/2026)
+
+Quem parou numa etapa recebe **3 e-mails: 15 min, 3 h e 24 h** depois de a música entrar nela
+(`config.LEMBRETES_MINUTOS`), das **8h às 22h** (fora disso espera a manhã e, se venceram dois, sai só o mais recente),
+por até 3 dias. Regras em `regras.etapa_lembrete` / `proximo_lembrete`; textos em `mensagens._LEMBRETES`.
+
+| Etapa | Quando | Link do botão |
+|---|---|---|
+| `letra` | viu a letra e não criou a música | página da música (`/musica/p/<token>`) |
+| `previa` | ouviu a prévia e não foi ao checkout | página da música |
+| `checkout` | o checkout desta música abriu (`checkout_aberto_em`) ou ela tem pedido esperando pagamento (1002) | checkout reabrindo o pedido com o PIX ainda válido |
+
+- Avançou de etapa: o relógio zera e passa a valer a sequência da nova. "Outra versão" (volta para a prévia) não zera,
+  e voltar para uma etapa anterior (o PIX venceu) não reenvia: no máximo 3 por etapa, 9 no total.
+- Não cobra a música antiga de quem refez e comprou outra com o mesmo e-mail.
+- Para quando ela paga ou toca em "Não quer mais estes lembretes?" no rodapé (`/musica/p/<token>/sem-lembretes`:
+  o link só pergunta; o botão confirma — leitores de e-mail abrem links sozinhos).
+- Pedido de música **não** recebe o e-mail genérico de PIX não pago (`fluxo_followup_web`): a etapa `checkout` cuida.
+- Só e-mail por enquanto (falta um template de WhatsApp aprovado para isso). Colunas na migration 095.
+
 ## Testes na landing (`inicio.html`)
 
 - **Preço fora da landing (desde o deploy do commit 728c172 — use a data e hora do deploy como corte):** o cartão "Um presente que ninguém esquece" mostra "Você ouve antes e
@@ -142,7 +162,7 @@ Nada mais muda. Antes, confirmar se existe acesso oficial do Suno por API para u
 o pico das datas fortes). Arquivos em `storage/musica/<token>/` (privado, volume do app e dos workers).
 
 **Rotinas (beat):** `musica.manutencao` (5 min: presentes na hora marcada, destravar tarefa perdida, reconciliar
-pagos), `musica.lembretes` (e-mail 1 h e 24 h depois da prévia não comprada, 8h–21h),
+pagos), `musica.lembretes` (a cada 5 min; ver "Lembretes"),
 `musica.limpeza` (04h13: apaga músicas não compradas de 90+ dias, banco e disco — promessa da privacidade).
 
 **Custo e abuso:** cada quiz custa uma letra na OpenAI e cada prévia uma geração (~11 créditos). Limites por e-mail

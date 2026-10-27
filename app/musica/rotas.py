@@ -217,6 +217,18 @@ def pagina_previa(token):
     return render_template('musica/pedido.html', token=token)
 
 
+@bp.route('/p/<token>/sem-lembretes', methods=['GET', 'POST'])
+def sem_lembretes(token):
+    """Link do rodapé dos lembretes. O GET só pergunta (leitores de e-mail abrem os links sozinhos para checar
+    segurança — um GET que já parasse os lembretes pararia sem ela pedir); o botão faz o POST."""
+    if not re.fullmatch(r'[0-9a-f]{32}', token) or not servicos().repositorio.por_token(token):
+        return _nao_encontrada()
+    if request.method == 'POST':
+        uc.parar_lembretes(servicos(), token)
+        return render_template('musica/legal.html', pagina='sem_lembretes_ok', atualizado=ATUALIZADO_LEGAL)
+    return render_template('musica/legal.html', pagina='sem_lembretes', token=token, atualizado=ATUALIZADO_LEGAL)
+
+
 @bp.get('/m/<token>')
 def pagina_presente(token):
     """O presente: ouvir, baixar e ver o videoclipe. Sem dados de quem comprou, sem cross-sell."""

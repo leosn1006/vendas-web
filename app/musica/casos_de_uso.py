@@ -656,20 +656,47 @@ def manutencao(s) -> dict:
 
 
 def enviar_lembretes(s) -> int:
-    """Quem ouviu a prévia e não comprou: e-mail 1 h e 24 h depois (WhatsApp quando houver número)."""
-    enviados = 0
-    for numero in (1, 2):
-        for musica in s.repositorio.para_lembrete(numero):
-            s.repositorio.atualizar(musica['id'], **{f'lembrete{numero}_em': _agora()})
-            respostas = musica['respostas']
-            assunto, corpo = mensagens.lembrete(numero, respostas.get('de') or '', regras.para_quem(respostas),
-                                                links.previa(musica))
-            try:
-                s.notificador.email(musica['produto_id'], musica['email'], assunto, corpo)
-                enviados += 1
-            except Exception:
-                logger.exception(f"[MUSICA] Lembrete {numero} da música #{musica['id']} falhou")
+    """Tarefa (a cada 5 min): e-mails para quem parou na letra, na prévia ou no checkout, 15 min, 3 h e 24 h depois
+    de a música entrar na etapa (regras.etapa_lembrete / proximo_lembrete; docs/MUSICA.md "Lembretes"). Grava antes
+    de enviar: uma falha no Gmail não vira e-mail repetido na próxima rodada."""
+    agora, enviados = _agora(), 0
+    for musica in s.repositorio.candidatas_lembrete():
+        etapa = regras.etapa_lembrete(musica)
+        if not etapa:
+            continue
+        acao, numero = regras.proximo_lembrete(etapa, musica, agora, config.LEMBRETES_MINUTOS,
+                                               config.LEMBRETES_JANELA, config.LEMBRETES_DIAS)
+        if acao == 'zerar':
+            s.repositorio.atualizar(musica['id'], lembrete_etapa=etapa, lembrete_desde=agora, lembretes_enviados=0)
+            continue
+        if acao != 'enviar':
+            continue
+        s.repositorio.atualizar(musica['id'], lembretes_enviados=numero, lembrete_ultimo_em=agora)
+        respostas = musica['respostas']
+        assunto, corpo = mensagens.lembrete(etapa, numero, regras.primeiro_nome(respostas.get('de')),
+                                            regras.para_quem(respostas),
+                                            links.checkout(musica) if etapa == 'checkout' else links.previa(musica),
+                                            links.sem_lembretes(musica))
+        try:
+            s.notificador.email(musica['produto_id'], musica['email'], assunto, corpo)
+            enviados += 1
+        except Exception:
+            logger.exception(f"[MUSICA] Lembrete {numero} ({etapa}) da música #{musica['id']} falhou")
     return enviados
+
+
+def checkout_aberto(s, token) -> None:
+    """O checkout desta música abriu (/pay?musica=): ela passa para a etapa checkout dos lembretes. Grava só a 1ª vez."""
+    musica = s.repositorio.por_token(token) if token else None
+    if musica and not musica.get('checkout_aberto_em') and not musica['liberada_em']:
+        s.repositorio.atualizar(musica['id'], checkout_aberto_em=_agora())
+
+
+def parar_lembretes(s, token) -> bool:
+    """O link do rodapé: ela não quer mais lembretes desta música."""
+    musica = _musica(s, token)
+    s.repositorio.atualizar(musica['id'], sem_lembretes=1)
+    return True
 
 
 def limpar_antigas(s) -> int:

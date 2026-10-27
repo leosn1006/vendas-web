@@ -37,7 +37,9 @@ class RepositorioMemoria:
             'liberada_em': None, 'video_status': None, 'video_versao': None, 'video_legenda': None, 'video_erro': None,
             'presente_nome': None, 'presente_email': None, 'presente_mensagem': None, 'presente_em': None,
             'presente_enviado_em': None, 'presente_tentativas': 0, 'presente_thread_id': None,
-            'presente_falhou_em': None, 'lembrete1_em': None, 'lembrete2_em': None,
+            'presente_falhou_em': None, 'checkout_aberto_em': None,
+            'lembrete_etapa': None, 'lembrete_desde': None, 'lembretes_enviados': 0, 'lembrete_ultimo_em': None,
+            'sem_lembretes': 0, 'em_checkout': 0, 'pedido_aberto_id': None, 'pedido_aberto_plano': None,
             'presente_whatsapp': None, 'presente_wa_msg_id': None, 'presente_wa_status': None,
             'presente_wa_entregue_em': None, 'presente_wa_link_em': None, 'comprador_wa_msg_id': None,
             'comprador_wa_em': None,
@@ -149,8 +151,17 @@ class RepositorioMemoria:
     def presentes_sem_confirmacao(self, minutos):
         return [self.por_id(m['id']) for m in self.musicas.values() if m.get('_envio_interrompido')]
 
-    def para_lembrete(self, numero):
-        return []
+    def candidatas_lembrete(self):
+        """Como o SQL: não pagas, com e-mail, sem "não quero mais", na letra ou na prévia; `em_checkout` = o checkout
+        desta música abriu (`checkout_aberto_em`) ou o teste marcou um pedido esperando pagamento (`em_checkout`)."""
+        saida = []
+        for m in self.musicas.values():
+            if m['liberada_em'] or not m['email'] or m['sem_lembretes'] or m['status'] not in ('letra_pronta', 'previa_pronta'):
+                continue
+            copia = self.por_id(m['id'])
+            copia['em_checkout'] = int(bool(m['em_checkout'] or m['checkout_aberto_em']))
+            saida.append(copia)
+        return saida
 
     def paradas(self, status, minutos):
         return []

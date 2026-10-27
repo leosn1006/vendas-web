@@ -37,18 +37,67 @@ def presente_nao_entregue(nome_quem_recebe, email, link, tentativas):
     return f'Não conseguimos entregar a música para {nome_quem_recebe}', corpo
 
 
-def lembrete(numero, de, para, link):
-    """Para quem ouviu a prévia e não comprou (1 h e 24 h depois)."""
+# Lembretes (docs/MUSICA.md "Lembretes"): etapa → os 3 e-mails (15 min, 3 h, 24 h) como (assunto, parágrafos, botão).
+# {oi}/{de_} = saudação/vocativo com o primeiro nome de quem cria (ou sem nome), {para} = nome de quem recebe. Sem urgência falsa: a música fica guardada 90 dias.
+_LEMBRETES = {
+    'letra': (
+        ('A letra de {para} ficou pronta ✍️',
+         ['{oi} A letra que você criou para <b>{para}</b> está te esperando.',
+          'Leia, ajuste se quiser e toque em <b>Criar a música</b>: em poucos minutos você ouve como ficou.'],
+         'Ver a letra'),
+        ('Falta só um toque para ouvir a música de {para}',
+         ['{de_}você já fez a parte mais difícil: contou a história.',
+          'Agora é só criar a música e ouvir um trecho. Você só paga se gostar.'],
+         'Criar a música'),
+        ('{para} vai se emocionar 💛',
+         ['{de_}a letra continua guardada.',
+          'Imagina a reação de <b>{para}</b> ouvindo o próprio nome cantado. Leva só um minuto.'],
+         'Ouvir como fica'),
+    ),
+    'previa': (
+        ('Gostou da música de {para}? 🎶',
+         ['{oi} Você ouviu um trecho da música de <b>{para}</b>.',
+          'As duas versões completas ficam liberadas na hora, depois do pagamento.'],
+         'Ouvir de novo'),
+        ('A música de {para} está te esperando',
+         ['{de_}ela ficou linda, e é única: foi feita com a história de vocês.',
+          'Libere a versão completa e guarde para sempre.'],
+         'Liberar a música'),
+        ('Imagina a reação de {para}…',
+         ['{de_}a música continua guardada aqui.',
+          'Um presente que ninguém mais no mundo tem, com o nome de <b>{para}</b>.'],
+         'Ouvir a música'),
+    ),
+    'checkout': (
+        ('Ficou alguma dúvida no pagamento?',
+         ['{oi} Vimos que você começou a liberar a música de <b>{para}</b>.',
+          'Se algo deu errado no PIX ou no cartão, é só continuar de onde parou. Dúvidas? Responda este e-mail.'],
+         'Continuar o pagamento'),
+        ('A música de {para} está quase sua 🎁',
+         ['{de_}falta só o pagamento para liberar a música completa.',
+          'Pagamento seguro, no PIX ou no cartão, e a música chega na hora.'],
+         'Liberar a música'),
+        ('Ainda dá tempo de surpreender {para}',
+         ['{de_}seu pedido continua guardado com tudo o que você escolheu.', 'É só finalizar.'],
+         'Finalizar o pedido'),
+    ),
+}
+
+
+def _maiuscula(texto):
+    return texto[:1].upper() + texto[1:]
+
+
+def lembrete(etapa, numero, de, para, link, link_sair):
+    """Lembrete `numero` (1, 2 ou 3) da `etapa` (letra, previa, checkout), com o link de sair no rodapé."""
     e = html.escape
-    if numero == 1:
-        assunto = f'A música de {para} está te esperando 🎶'
-        corpo = _p(f'Oi, {e(de)}!') + _p(f'A música que você criou para <b>{e(para)}</b> ficou linda. '
-                                           'Falta só liberar a versão completa.')
-    else:
-        assunto = f'A música de {para} ainda está guardada aqui'
-        corpo = _p(f'{e(de)}, imagina a reação de <b>{e(para)}</b> ouvindo o próprio nome cantado 💛') + \
-            _p('A música continua guardada. Ouça de novo:')
-    return assunto, corpo + _botao('Ouvir a minha música', link)
+    assunto, paragrafos, botao = _LEMBRETES[etapa][numero - 1]
+    # {oi} = "Oi, Leo!" ou "Oi!"; {de_} = "Leo, " ou nada (sem nome, a frase começa direto, com maiúscula)
+    trocas = {'oi': f'Oi, {e(de)}!' if de else 'Oi!', 'de_': f'{e(de)}, ' if de else '', 'para': e(para or 'quem você ama')}
+    corpo = ''.join(_p(_maiuscula(t.format(**trocas))) for t in paragrafos) + _botao(botao, link)
+    corpo += (f'<p style="font-size:13px; color:#888; margin:24px 0 0; text-align:center;">Não quer mais estes lembretes? '
+              f'<a href="{e(link_sair)}" style="color:#888;">Clique aqui</a>.</p>')
+    return assunto.format(de=de or '', para=para or 'quem você ama'), corpo
 
 
 def presente_whatsapp_nao_chegou(nome_quem_recebe, link):

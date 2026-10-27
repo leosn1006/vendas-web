@@ -195,17 +195,32 @@ class RepositorioMysql:
                AND presente_enviado_em >= NOW() - INTERVAL 3 DAY ORDER BY presente_enviado_em DESC LIMIT 1""",
             tuple(recusados), fetch_one=True))
 
-    def para_lembrete(self, numero):
-        """Prévias prontas e não compradas há mais de 1 h (lembrete 1) ou 24 h (lembrete 2), de até 3 dias."""
-        if numero == 1:
-            sql = """SELECT * FROM musicas WHERE status = 'previa_pronta' AND liberada_em IS NULL AND email IS NOT NULL
-                     AND lembrete1_em IS NULL AND gerando_desde <= NOW() - INTERVAL 1 HOUR
-                     AND gerando_desde >= NOW() - INTERVAL 3 DAY"""
-        else:
-            sql = """SELECT * FROM musicas WHERE status = 'previa_pronta' AND liberada_em IS NULL AND email IS NOT NULL
-                     AND lembrete1_em IS NOT NULL AND lembrete2_em IS NULL
-                     AND gerando_desde <= NOW() - INTERVAL 24 HOUR AND gerando_desde >= NOW() - INTERVAL 3 DAY"""
-        return [_musica(l) for l in (db.execute_query(sql, fetch_all=True) or [])]
+    def candidatas_lembrete(self):
+        """Músicas que podem receber lembrete (a etapa e a hora certa saem de regras.etapa_lembrete/proximo_lembrete):
+        não pagas, com e-mail, sem o "não quero mais", dos últimos 5 dias, paradas na letra, na prévia ou no checkout,
+        e sem outra música paga pelo mesmo e-mail depois dela (refez e comprou: não cobra a antiga). As mais novas
+        primeiro. `em_checkout`: o checkout DESTA música abriu ou há pedido dela esperando pagamento (1002);
+        `pedido_aberto_id`/`_plano`: o pedido com o PIX ainda válido e o plano (fora o padrão), para o link reabri-lo."""
+        linhas = db.execute_query(
+            """SELECT m.*,
+                      (m.checkout_aberto_em IS NOT NULL OR EXISTS (
+                           SELECT 1 FROM musica_pedidos mp JOIN pedidos p ON p.id = mp.pedido_id
+                           WHERE mp.musica_id = m.id AND p.estado_id = 1002)) AS em_checkout,
+                      a.id AS pedido_aberto_id, IF(pp.padrao = 1, NULL, pp.slug) AS pedido_aberto_plano
+               FROM musicas m
+               LEFT JOIN pedidos a ON a.id = (
+                   SELECT MAX(p.id) FROM musica_pedidos mp JOIN pedidos p ON p.id = mp.pedido_id
+                   WHERE mp.musica_id = m.id AND p.estado_id = 1002
+                     AND (p.expiracao_solicitacao_bb IS NULL OR p.expiracao_solicitacao_bb > NOW()))
+               LEFT JOIN produto_planos pp ON pp.id = a.plano_id
+               WHERE m.liberada_em IS NULL AND m.email IS NOT NULL AND m.sem_lembretes = 0
+                 AND m.criado_em >= NOW() - INTERVAL 5 DAY
+                 AND m.status IN ('letra_pronta', 'previa_pronta')
+                 AND NOT EXISTS (SELECT 1 FROM musicas outra WHERE outra.email = m.email
+                                 AND outra.liberada_em >= m.criado_em)
+               ORDER BY m.id DESC
+               LIMIT 500""", fetch_all=True) or []
+        return [_musica(l) for l in linhas]
 
     def paradas(self, status, minutos):
         """Músicas presas num status de espera há mais de `minutos` (worker reiniciado, tarefa perdida)."""

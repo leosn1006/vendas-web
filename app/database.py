@@ -838,6 +838,8 @@ def buscar_pedidos_followup_pagamento_web(minutos_sem_atualizacao: int = 60) -> 
         AND NOT EXISTS (
             SELECT 1 FROM pedidos pg
             WHERE pg.email = p.email AND pg.produto_id = p.produto_id AND pg.estado_id IN (0, 1000))
+        -- Pedido de música: quem lembra são os lembretes da própria Música (etapa checkout, musica.lembretes)
+        AND NOT EXISTS (SELECT 1 FROM musica_pedidos mp WHERE mp.pedido_id = p.id)
         -- Uma cobrança por cliente e produto a cada 7 dias, mesmo com várias tentativas
         AND NOT EXISTS (
             SELECT 1 FROM pedidos pf
