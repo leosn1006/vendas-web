@@ -657,20 +657,29 @@ def manutencao(s) -> dict:
 
 def enviar_lembretes(s) -> int:
     """Tarefa (a cada 5 min): e-mails para quem parou na letra, na prévia ou no checkout, 15 min, 3 h e 24 h depois
-    de a música entrar na etapa (regras.etapa_lembrete / proximo_lembrete; docs/MUSICA.md "Lembretes"). Uma música
-    por e-mail (regras.uma_por_email) e no mínimo 2 h entre dois lembretes para o mesmo e-mail. Grava antes de
-    enviar: uma falha no Gmail não vira e-mail repetido na próxima rodada."""
+    de a pessoa entrar na etapa — uma série por pessoa e etapa, de uma música só, no mínimo 2 h entre dois
+    (regras.escolher_lembretes / proximo_lembrete; docs/MUSICA.md "Lembretes"). Grava antes de enviar: uma falha no
+    Gmail não vira e-mail repetido na próxima rodada."""
     agora, enviados = _agora(), 0
-    for musica, etapa in regras.uma_por_email(s.repositorio.candidatas_lembrete(), agora, config.LEMBRETES_MINUTOS,
-                                              config.LEMBRETES_DIAS):
-        acao, numero = regras.proximo_lembrete(etapa, musica, agora, config.LEMBRETES_MINUTOS, config.LEMBRETES_JANELA,
+    escolhidas = regras.escolher_lembretes(s.repositorio.candidatas_lembrete(), s.repositorio.series_lembrete(), agora,
+                                           config.LEMBRETES_MINUTOS, config.LEMBRETES_DIAS)
+    for musica, etapa, serie, ultimo in escolhidas:
+        chave = regras.chave_email(musica['email'])
+        if serie and serie.get('trocou'):   # outra música assumiu a série: grava o relógio novo dela
+            s.repositorio.salvar_serie(chave, etapa, inicio=serie['inicio'], desde=serie['desde'],
+                                       enviados=serie['enviados'], ultimo_em=serie.get('ultimo_em'), musica_id=musica['id'])
+        acao, numero = regras.proximo_lembrete(serie, ultimo, agora, config.LEMBRETES_MINUTOS, config.LEMBRETES_JANELA,
                                                config.LEMBRETES_DIAS, config.LEMBRETES_INTERVALO_EMAIL)
         if acao == 'zerar':
-            s.repositorio.atualizar(musica['id'], lembrete_etapa=etapa, lembrete_desde=agora, lembretes_enviados=0)
+            s.repositorio.salvar_serie(chave, etapa, inicio=agora, desde=agora, enviados=0, ultimo_em=None,
+                                       musica_id=musica['id'])
             continue
         if acao != 'enviar':
             continue
-        s.repositorio.atualizar(musica['id'], lembretes_enviados=numero, lembrete_ultimo_em=agora)
+        s.repositorio.salvar_serie(chave, etapa, inicio=serie['inicio'], desde=serie['desde'], enviados=numero,
+                                   ultimo_em=agora, musica_id=musica['id'])
+        if regras.ORDEM_ETAPAS[etapa] > regras.ORDEM_ETAPAS.get(musica.get('lembrete_etapa'), -1):
+            s.repositorio.atualizar(musica['id'], lembrete_etapa=etapa)   # recebeu lembrete nesta etapa: não volta
         respostas = musica['respostas']
         assunto, corpo = mensagens.lembrete(etapa, numero, regras.primeiro_nome(respostas.get('de')),
                                             regras.para_quem(respostas),
@@ -692,9 +701,10 @@ def checkout_aberto(s, token) -> None:
 
 
 def parar_lembretes(s, token) -> bool:
-    """O link do rodapé: ela não quer mais lembretes — de nenhuma música deste e-mail (senão a próxima assumiria)."""
+    """O link do rodapé: esta pessoa (o e-mail) não quer mais lembretes, de nenhuma música, por 90 dias."""
     musica = _musica(s, token)
-    s.repositorio.parar_lembretes_email(musica['email'])
+    if musica['email']:
+        s.repositorio.parar_lembretes_email(regras.chave_email(musica['email']))
     return True
 
 

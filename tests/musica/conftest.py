@@ -3,7 +3,7 @@ import copy
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -25,6 +25,8 @@ class RepositorioMemoria:
     def __init__(self):
         self.musicas, self.vinculos, self.pedidos, self.itens = {}, {}, {}, {}
         self.geracoes_24h = 0
+        self.series, self.lembretes_saida = {}, {}   # lembretes por pessoa (musica_lembretes / _saida: chave -> quando)
+        self.agora = None   # relógio dos testes (None = o de verdade): criado_em e a janela de 24 h da compra
 
     def criar(self, produto_id, respostas, email, whatsapp, ip, pedido_origem_id, dominio):
         mid = len(self.musicas) + 1
@@ -38,11 +40,10 @@ class RepositorioMemoria:
             'presente_nome': None, 'presente_email': None, 'presente_mensagem': None, 'presente_em': None,
             'presente_enviado_em': None, 'presente_tentativas': 0, 'presente_thread_id': None,
             'presente_falhou_em': None, 'checkout_aberto_em': None,
-            'lembrete_etapa': None, 'lembrete_desde': None, 'lembretes_enviados': 0, 'lembrete_ultimo_em': None,
-            'sem_lembretes': 0, 'em_checkout': 0, 'pedido_aberto_id': None, 'pedido_aberto_plano': None,
+            'em_checkout': 0, 'pedido_aberto_id': None, 'pedido_aberto_plano': None, 'lembrete_etapa': None,
             'presente_whatsapp': None, 'presente_wa_msg_id': None, 'presente_wa_status': None,
             'presente_wa_entregue_em': None, 'presente_wa_link_em': None, 'comprador_wa_msg_id': None,
-            'comprador_wa_em': None,
+            'comprador_wa_em': None, 'criado_em': self.agora or datetime.now(),
         }
         return dict(self.musicas[mid])
 
@@ -152,28 +153,33 @@ class RepositorioMemoria:
         return [self.por_id(m['id']) for m in self.musicas.values() if m.get('_envio_interrompido')]
 
     def candidatas_lembrete(self):
-        """Como o SQL: não pagas, com e-mail, na letra ou na prévia, de e-mails sem "não quero mais" e sem compra
-        nas últimas 24 h; `em_checkout` = o checkout desta música abriu (`checkout_aberto_em`) ou o teste marcou um
-        pedido esperando pagamento; `ultimo_lembrete_email` = o último lembrete para o mesmo e-mail."""
-        def chave(m):
-            return str(m['email'] or '').strip().lower()
-        saida = []
+        """Como o SQL: não pagas, com e-mail, na letra ou na prévia, de pessoas sem "não quero mais" e sem compra
+        depois desta música ou nas últimas 24 h; `em_checkout` = o checkout desta música abriu (`checkout_aberto_em`)
+        ou o teste marcou um pedido esperando pagamento."""
+        from musica.dominio.regras import chave_email
+        saida, agora = [], self.agora or datetime.now()
         for m in self.musicas.values():
-            irmas = [o for o in self.musicas.values() if chave(o) == chave(m)]
+            compras = [o['liberada_em'] for o in self.musicas.values()
+                       if o['liberada_em'] and chave_email(o['email']) == chave_email(m['email'])]
             if (m['liberada_em'] or not m['email'] or m['status'] not in ('letra_pronta', 'previa_pronta')
-                    or any(o['sem_lembretes'] or o['liberada_em'] for o in irmas)):
+                    or agora - self.lembretes_saida.get(chave_email(m['email']), agora - timedelta(days=91))
+                    <= timedelta(days=90)
+                    or any(c >= m['criado_em'] or c >= agora - timedelta(days=1) for c in compras)):
                 continue
             copia = self.por_id(m['id'])
             copia['em_checkout'] = int(bool(m['em_checkout'] or m['checkout_aberto_em']))
-            copia['ultimo_lembrete_email'] = max((o['lembrete_ultimo_em'] for o in irmas if o['lembrete_ultimo_em']),
-                                                 default=None)
             saida.append(copia)
         return saida
 
-    def parar_lembretes_email(self, email):
-        for m in self.musicas.values():
-            if str(m['email'] or '').strip().lower() == str(email or '').strip().lower():
-                m['sem_lembretes'] = 1
+    def series_lembrete(self):
+        return copy.deepcopy(self.series)
+
+    def salvar_serie(self, chave_email, etapa, inicio, desde, enviados, ultimo_em, musica_id):
+        self.series[(chave_email, etapa)] = {'inicio': inicio, 'desde': desde, 'enviados': enviados,
+                                             'ultimo_em': ultimo_em, 'musica_id': musica_id}
+
+    def parar_lembretes_email(self, chave_email):
+        self.lembretes_saida[chave_email] = self.agora or datetime.now()
 
     def paradas(self, status, minutos):
         return []

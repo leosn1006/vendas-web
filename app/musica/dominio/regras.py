@@ -172,68 +172,92 @@ def para_quem_com_relacao(respostas: dict) -> str:
 
 
 # ------------------------------------------------------------------ lembretes (docs/MUSICA.md "Lembretes")
+# A série de cada etapa é DA PESSOA (o e-mail), guardada fora da música (repositorio.series_lembrete): uma música
+# nova, uma "outra versão" ou uma música que muda de etapa não recomeçam nem duplicam a série — no máximo 3 por etapa,
+# 9 no total, faça quantas músicas fizer.
+
+ORDEM_ETAPAS = {'letra': 0, 'previa': 1, 'checkout': 2}
+
 
 def etapa_lembrete(musica: dict) -> str | None:
-    """Em que etapa do funil a música parou, para os lembretes: 'checkout' (abriu o checkout ou tem pedido esperando
-    pagamento — `em_checkout`, calculado pelo repositório), 'previa', 'letra' ou None (paga, gerando, sem e-mail ou
-    ela pediu para não receber)."""
-    if musica.get('liberada_em') or musica.get('sem_lembretes') or not musica.get('email'):
+    """Em que etapa do funil a música parou: 'checkout' (o checkout dela abriu ou tem pedido esperando pagamento —
+    `em_checkout`, calculado pelo repositório), 'previa', 'letra' ou None (paga, gerando ou sem e-mail)."""
+    if musica.get('liberada_em') or not musica.get('email'):
         return None
     if musica.get('em_checkout'):
         return 'checkout'
     return {'previa_pronta': 'previa', 'letra_pronta': 'letra'}.get(musica.get('status'))
 
 
-ORDEM_ETAPAS = {'letra': 0, 'previa': 1, 'checkout': 2}
-
-
 def chave_email(email) -> str:
-    """O mesmo e-mail para os lembretes: sem espaços nas pontas e sem diferença de maiúsculas (igual ao SQL)."""
-    return str(email or '').strip().lower()
+    """A pessoa dos lembretes: o e-mail sem espaços nas pontas e sem diferença de maiúsculas (= LOWER(TRIM()) no SQL;
+    o e-mail do quiz já chega sem espaços e em minúsculas — rotas.api_criar)."""
+    return str(email or '').strip(' ').lower()
 
 
-def serie_encerrada(etapa: str, musica: dict, agora: datetime, minutos: tuple, dias: int) -> bool:
-    """A série desta etapa já acabou (3 enviados ou passou da validade), ou a música voltou para uma etapa anterior
-    (essa série já saiu)."""
-    salva = musica.get('lembrete_etapa')
-    if salva in ORDEM_ETAPAS and ORDEM_ETAPAS[etapa] < ORDEM_ETAPAS[salva]:
-        return True
-    if etapa != salva or not musica.get('lembrete_desde'):
-        return False   # etapa nova: a série vai começar
-    return (musica.get('lembretes_enviados') or 0) >= len(minutos) or agora - musica['lembrete_desde'] > timedelta(days=dias)
+def serie_acabou(serie: dict | None, agora: datetime, minutos: tuple, dias: int) -> bool:
+    """A série de uma etapa já mandou todos os lembretes ou passou da validade (contada do início da série, não do
+    relógio — trocar de música não estica a validade)."""
+    return bool(serie) and (serie['enviados'] >= len(minutos) or agora - serie['inicio'] > timedelta(days=dias))
 
 
-def uma_por_email(musicas: list[dict], agora: datetime, minutos: tuple, dias: int) -> list[tuple[dict, str]]:
-    """[(música, etapa)] com uma música por e-mail: entre as que ainda têm lembrete pela frente, a que chegou mais longe
-    no funil e, empatando, a mais recente. Quem fez várias músicas recebe os lembretes de uma só — e uma série que já
-    acabou não silencia a música nova."""
-    grupos = {}
+def escolher_lembretes(musicas: list[dict], series: dict, agora: datetime, minutos: tuple, dias: int) -> list[tuple]:
+    """Uma música por pessoa: [(música, etapa, série ou None, último lembrete da pessoa)]. `series`:
+    {(chave_email, etapa): {'inicio', 'desde', 'enviados', 'ultimo_em', 'musica_id'}}.
+    - Escolhida: entre as músicas cuja série da etapa ainda tem lembrete pela frente, a que chegou mais longe no funil
+      e, empatando, a mais recente.
+    - A CONTAGEM é da pessoa, o RELÓGIO é da música: se uma música mais nova assumiu (fez outra), a série continua no
+      próximo lembrete, contado de agora ('trocou') — nunca dispara de uma vez o que venceu para a anterior. Se a da
+      vez está ocupada ("outra versão"), a pessoa espera: o relógio não vai e volta.
+    - Uma música não volta a receber lembrete de uma etapa anterior à mais avançada em que já recebeu
+      (`musicas.lembrete_etapa`, por música — ex.: o PIX venceu e ela voltou à prévia).
+    - Uma série que acabou recomeça só para uma música criada depois de a janela dela fechar: ela voltou dias depois
+      (uma nova visita, uma nova série)."""
+    por_pessoa = {}
+    for (chave, etapa), serie in series.items():
+        por_pessoa.setdefault(chave, {})[etapa] = serie
+    pessoas = {}
     for musica in musicas:
         etapa = etapa_lembrete(musica)
-        if etapa and not serie_encerrada(etapa, musica, agora, minutos, dias):
-            grupos.setdefault(chave_email(musica.get('email')), []).append((musica, etapa))
-    return [max(grupo, key=lambda par: (ORDEM_ETAPAS[par[1]], par[0]['id'])) for grupo in grupos.values()]
+        if etapa and ORDEM_ETAPAS.get(musica.get('lembrete_etapa'), -1) <= ORDEM_ETAPAS[etapa]:
+            pessoas.setdefault(chave_email(musica['email']), []).append((musica, etapa))
+    escolhidas = []
+    for chave, grupo in pessoas.items():
+        dela = por_pessoa.get(chave, {})
+        aptas = []
+        for musica, etapa in grupo:
+            serie = dela.get(etapa)
+            if serie_acabou(serie, agora, minutos, dias):
+                criada = musica.get('criado_em')
+                if not (criada and criada > serie['inicio'] + timedelta(days=dias)):
+                    continue
+                serie = None   # voltou dias depois: série nova
+            aptas.append((musica, etapa, serie))
+        if aptas:
+            musica, etapa, serie = max(aptas, key=lambda t: (ORDEM_ETAPAS[t[1]], t[0]['id']))
+            da_vez = (serie or {}).get('musica_id')
+            if da_vez and da_vez > musica['id']:
+                continue   # a música da vez dela (mais nova) está ocupada — ex.: "outra versão" — e volta já já
+            if da_vez and da_vez != musica['id']:
+                serie = {**serie, 'desde': agora, 'trocou': True}   # música mais nova: o relógio recomeça, a contagem não
+            ultimo = max((s['ultimo_em'] for s in dela.values() if s.get('ultimo_em')), default=None)
+            escolhidas.append((musica, etapa, serie, ultimo))
+    return escolhidas
 
 
-def proximo_lembrete(etapa: str, musica: dict, agora: datetime, minutos: tuple, janela: tuple, dias: int,
+def proximo_lembrete(serie: dict | None, ultimo_da_pessoa, agora: datetime, minutos: tuple, janela: tuple, dias: int,
                      intervalo_email: int = 0):
-    """O que fazer agora: ('zerar', 0) quando a música entrou numa etapa nova (o relógio começa agora);
+    """O que fazer agora com a série escolhida: ('zerar', 0) quando ela ainda não existe (o relógio começa agora);
     ('enviar', n) com n = o lembrete mais recente já vencido (1, 2 ou 3 — se dois venceram fora do horário, sai só o
-    último, nunca dois seguidos); (None, 0) para esperar. A mesma etapa de novo ("outra versão" volta para a prévia)
-    não zera, e voltar para uma etapa anterior (ex.: o PIX venceu) também não: a série dela já saiu (no máximo 3 por
-    etapa, 9 no total). `intervalo_email`: minutos mínimos desde o último lembrete para este e-mail, de qualquer
-    música (`ultimo_lembrete_email`, calculado pelo repositório)."""
-    if serie_encerrada(etapa, musica, agora, minutos, dias):
-        return None, 0
-    if etapa != musica.get('lembrete_etapa') or not musica.get('lembrete_desde'):
+    último, nunca dois seguidos); (None, 0) para esperar. `intervalo_email`: minutos mínimos desde o último lembrete
+    para esta pessoa, de qualquer etapa."""
+    if not serie:
         return 'zerar', 0
-    if not janela[0] <= agora.hour < janela[1]:
+    if serie_acabou(serie, agora, minutos, dias) or not janela[0] <= agora.hour < janela[1]:
         return None, 0
-    passou = agora - musica['lembrete_desde']
-    vencidos = sum(1 for m in minutos if passou >= timedelta(minutes=m))
-    if vencidos <= (musica.get('lembretes_enviados') or 0):
+    vencidos = sum(1 for m in minutos if agora - serie['desde'] >= timedelta(minutes=m))
+    if vencidos <= serie['enviados']:
         return None, 0
-    ultimo = musica.get('ultimo_lembrete_email')
-    if ultimo and agora - ultimo < timedelta(minutes=intervalo_email):
-        return None, 0   # outra música dela acabou de mandar um
+    if ultimo_da_pessoa and agora - ultimo_da_pessoa < timedelta(minutes=intervalo_email):
+        return None, 0   # acabou de receber outro
     return 'enviar', vencidos

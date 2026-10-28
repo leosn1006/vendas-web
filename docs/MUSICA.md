@@ -52,27 +52,33 @@ O admin recusa recurso no papel errado e item de música no plano padrão de pro
 
 ## Lembretes por e-mail (`musica.lembretes`, desde 27/10/2026)
 
-Quem parou numa etapa recebe **3 e-mails: 15 min, 3 h e 24 h** depois de a música entrar nela
-(`config.LEMBRETES_MINUTOS`), das **8h às 22h** (fora disso espera a manhã e, se venceram dois, sai só o mais recente),
-por até 3 dias. Regras em `regras.etapa_lembrete` / `proximo_lembrete`; textos em `mensagens._LEMBRETES`.
+Quem parou numa etapa recebe **3 e-mails: 15 min, 3 h e 24 h** depois de entrar nela (`config.LEMBRETES_MINUTOS`),
+das **8h às 22h** (fora disso espera a manhã e, se venceram dois, sai só o mais recente), por até 3 dias.
+Regras em `regras.escolher_lembretes` / `proximo_lembrete`; textos em `mensagens._LEMBRETES`.
 
 | Etapa | Quando | Link do botão |
 |---|---|---|
 | `letra` | viu a letra e não criou a música | página da música (`/musica/p/<token>`) |
 | `previa` | ouviu a prévia e não foi ao checkout | página da música |
-| `checkout` | o checkout desta música abriu (`checkout_aberto_em`) ou ela tem pedido esperando pagamento (1002) | checkout reabrindo o pedido com o PIX ainda válido |
+| `checkout` | o checkout desta música abriu (`musicas.checkout_aberto_em`) ou ela tem pedido esperando pagamento (1002) | checkout reabrindo o pedido com o PIX ainda válido |
 
-- Avançou de etapa: o relógio zera e passa a valer a sequência da nova. "Outra versão" (volta para a prévia) não zera,
-  e voltar para uma etapa anterior (o PIX venceu) não reenvia: no máximo 3 por etapa, 9 no total.
-- Não cobra a música antiga de quem refez e comprou outra com o mesmo e-mail.
-- **Por pessoa (e-mail):** quem fez várias músicas recebe os lembretes de uma só — entre as que ainda têm lembrete pela
-  frente, a que chegou mais longe no funil (checkout > prévia > letra) e, empatando, a mais recente
-  (`regras.uma_por_email`); no mínimo 2 h entre dois lembretes para o mesmo e-mail; "não quero mais" e uma compra
-  nas últimas 24 h param todas as músicas daquele e-mail.
-- Para quando ela paga ou toca em "Não quer mais estes lembretes?" no rodapé (`/musica/p/<token>/sem-lembretes`:
-  o link só pergunta; o botão confirma — leitores de e-mail abrem links sozinhos).
+- **A série é da pessoa (o e-mail), não da música** — tabela `musica_lembretes` (e-mail + etapa: quando começou,
+  quantos saíram, o último, a música; migration 096). Faça quantas músicas fizer, mude de etapa, peça "outra versão":
+  no máximo 3 por etapa, 9 no total, em cada visita. Os e-mails falam da música que chegou mais longe no funil (checkout > prévia > letra) e,
+  empatando, da mais recente. A **contagem** é da pessoa e o **relógio** é da música: se ela faz outra música, a série
+  continua no próximo lembrete, contado de quando a nova assumiu ("outra versão" da música da vez não mexe no
+  relógio: a pessoa só espera a versão ficar pronta) — nunca dispara de uma vez o que venceu para
+  a anterior), e sem esticar a validade (3 dias do início da série). Uma música que já recebeu lembrete numa etapa
+  seguinte não volta a receber da anterior (`musicas.lembrete_etapa`, marca da própria música). Uma série que acabou
+  só recomeça para uma música criada depois de a janela dela fechar (voltou dias depois: nova visita, nova série).
+  No mínimo 2 h entre dois lembretes para a mesma pessoa.
+- **Para** quando ela compra (depois da música ou nas últimas 24 h) ou toca em "Não quer mais estes lembretes?" no
+  rodapé (`/musica/p/<token>/sem-lembretes`: o link só pergunta, o botão confirma — leitores de e-mail abrem links
+  sozinhos). O pedido de saída vale para a pessoa por 90 dias (`musica_lembretes_saida`).
 - Pedido de música **não** recebe o e-mail genérico de PIX não pago (`fluxo_followup_web`): a etapa `checkout` cuida.
-- Só e-mail por enquanto (falta um template de WhatsApp aprovado para isso). Colunas na migration 095.
+- Só e-mail por enquanto (falta um template de WhatsApp aprovado para isso). De `musicas` (095) continua valendo só
+  `lembrete_etapa` (a marca acima); `lembrete_desde`, `lembretes_enviados`, `lembrete_ultimo_em` e `sem_lembretes`
+  ficaram sem uso.
 
 ## Testes na landing (`inicio.html`)
 
