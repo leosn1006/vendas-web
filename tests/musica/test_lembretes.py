@@ -124,13 +124,15 @@ def test_avancar_de_etapa_troca_a_sequencia(s, monkeypatch):
     _rodar(s, monkeypatch, DIA + timedelta(minutes=15))                       # 1º da letra
     s.repositorio.atualizar(musica['id'], status='previa_pronta')             # criou a música e ouviu
     _rodar(s, monkeypatch, DIA + timedelta(minutes=20))                       # zera na prévia
-    _rodar(s, monkeypatch, DIA + timedelta(minutes=35))                       # 1º da prévia
+    assert _rodar(s, monkeypatch, DIA + timedelta(minutes=35)) == 0           # 2 h desde o último e-mail dela
+    assert _rodar(s, monkeypatch, DIA + timedelta(minutes=15 + 120)) == 1     # 1º da prévia
     assuntos = [e['assunto'] for e in s.notificador.emails]
     assert assuntos[0].startswith('A letra de') and assuntos[1].startswith('Gostou da música de')
 
 
 def test_pagou_ou_pediu_para_parar_nao_recebe_mais(s, monkeypatch):
     paga, parou = _na_etapa(s, 'previa'), _na_etapa(s, 'previa')
+    s.repositorio.atualizar(parou['id'], email='outra@exemplo.com')
     _rodar(s, monkeypatch, DIA)
     s.repositorio.atualizar(paga['id'], liberada_em=DIA)
     assert uc.parar_lembretes(s, parou['token'])
@@ -154,7 +156,33 @@ def test_checkout_ganha_de_previa_mais_nova_do_mesmo_email():
     musicas = [{'id': 1, 'email': 'a@b.com', 'status': 'previa_pronta', 'em_checkout': 1},
                {'id': 2, 'email': 'a@b.com', 'status': 'previa_pronta'},
                {'id': 3, 'email': 'outra@b.com', 'status': 'letra_pronta'}]
-    assert [(m['id'], e) for m, e in regras.uma_por_email(musicas)] == [(1, 'checkout'), (3, 'letra')]
+    assert [(m['id'], e) for m, e in regras.uma_por_email(musicas, DIA, MINUTOS, DIAS)] == [(1, 'checkout'), (3, 'letra')]
+
+
+def test_serie_encerrada_nao_silencia_a_musica_nova():
+    """O checkout da música antiga já mandou os 3: a prévia nova do mesmo e-mail passa a receber."""
+    musicas = [{'id': 1, 'email': 'a@b.com', 'status': 'previa_pronta', 'em_checkout': 1, 'lembrete_etapa': 'checkout',
+                'lembrete_desde': DIA - timedelta(days=1), 'lembretes_enviados': 3},
+               {'id': 2, 'email': ' A@b.com', 'status': 'previa_pronta'}]
+    assert [(m['id'], e) for m, e in regras.uma_por_email(musicas, DIA, MINUTOS, DIAS)] == [(2, 'previa')]
+
+
+def test_parar_vale_para_todas_as_musicas_do_email(s, monkeypatch):
+    a, b = _na_etapa(s, 'previa'), _na_etapa(s, 'previa')
+    for m in (a, b):
+        s.repositorio.atualizar(m['id'], email='maria@gmail.com')
+    uc.parar_lembretes(s, b['token'])
+    _rodar(s, monkeypatch, DIA)
+    assert _rodar(s, monkeypatch, DIA + timedelta(minutes=15)) == 0
+    assert s.repositorio.candidatas_lembrete() == []
+
+
+def test_comprou_uma_nao_recebe_lembrete_da_outra(s, monkeypatch):
+    paga, outra = _na_etapa(s, 'previa'), _na_etapa(s, 'letra')
+    for m in (paga, outra):
+        s.repositorio.atualizar(m['id'], email='maria@gmail.com')
+    s.repositorio.atualizar(paga['id'], liberada_em=DIA)
+    assert s.repositorio.candidatas_lembrete() == []
 
 
 def test_link_do_checkout_sem_pedido_aberto():

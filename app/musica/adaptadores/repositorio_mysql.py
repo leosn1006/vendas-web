@@ -197,30 +197,37 @@ class RepositorioMysql:
 
     def candidatas_lembrete(self):
         """Músicas que podem receber lembrete (a etapa e a hora certa saem de regras.etapa_lembrete/proximo_lembrete):
-        não pagas, com e-mail, sem o "não quero mais", dos últimos 5 dias, paradas na letra, na prévia ou no checkout,
-        e sem outra música paga pelo mesmo e-mail depois dela (refez e comprou: não cobra a antiga). As mais novas
-        primeiro. `em_checkout`: o checkout DESTA música abriu ou há pedido dela esperando pagamento (1002);
+        não pagas, com e-mail, dos últimos 5 dias, paradas na letra, na prévia ou no checkout, de e-mails que não pediram
+        para parar e não compraram nada depois desta música nem nas últimas 24 h. As mais novas primeiro.
+        "Mesmo e-mail" = LOWER(TRIM(email)), igual a regras.chave_email. `ultimo_lembrete_email`: o último lembrete
+        para este e-mail, de qualquer música (o intervalo mínimo entre dois). `em_checkout`: o checkout DESTA música abriu ou há pedido dela esperando pagamento (1002);
         `pedido_aberto_id`/`_plano`: o pedido com o PIX ainda válido e o plano (fora o padrão), para o link reabri-lo."""
         linhas = db.execute_query(
             """SELECT m.*,
                       (m.checkout_aberto_em IS NOT NULL OR EXISTS (
                            SELECT 1 FROM musica_pedidos mp JOIN pedidos p ON p.id = mp.pedido_id
                            WHERE mp.musica_id = m.id AND p.estado_id = 1002)) AS em_checkout,
-                      a.id AS pedido_aberto_id, IF(pp.padrao = 1, NULL, pp.slug) AS pedido_aberto_plano
+                      a.id AS pedido_aberto_id, IF(pp.padrao = 1, NULL, pp.slug) AS pedido_aberto_plano,
+                      (SELECT MAX(o.lembrete_ultimo_em) FROM musicas o
+                       WHERE LOWER(TRIM(o.email)) = LOWER(TRIM(m.email))) AS ultimo_lembrete_email
                FROM musicas m
                LEFT JOIN pedidos a ON a.id = (
                    SELECT MAX(p.id) FROM musica_pedidos mp JOIN pedidos p ON p.id = mp.pedido_id
                    WHERE mp.musica_id = m.id AND p.estado_id = 1002
                      AND (p.expiracao_solicitacao_bb IS NULL OR p.expiracao_solicitacao_bb > NOW()))
                LEFT JOIN produto_planos pp ON pp.id = a.plano_id
-               WHERE m.liberada_em IS NULL AND m.email IS NOT NULL AND m.sem_lembretes = 0
+               WHERE m.liberada_em IS NULL AND m.email IS NOT NULL
                  AND m.criado_em >= NOW() - INTERVAL 5 DAY
                  AND m.status IN ('letra_pronta', 'previa_pronta')
-                 AND NOT EXISTS (SELECT 1 FROM musicas outra WHERE outra.email = m.email
-                                 AND outra.liberada_em >= m.criado_em)
+                 AND NOT EXISTS (SELECT 1 FROM musicas outra WHERE LOWER(TRIM(outra.email)) = LOWER(TRIM(m.email))
+                                 AND (outra.sem_lembretes = 1 OR outra.liberada_em >= m.criado_em
+                                      OR outra.liberada_em >= NOW() - INTERVAL 1 DAY))
                ORDER BY m.id DESC
-               LIMIT 500""", fetch_all=True) or []
+               LIMIT 2000""", fetch_all=True) or []
         return [_musica(l) for l in linhas]
+
+    def parar_lembretes_email(self, email):
+        db.execute_query("UPDATE musicas SET sem_lembretes = 1 WHERE LOWER(TRIM(email)) = LOWER(TRIM(%s))", (email,))
 
     def paradas(self, status, minutos):
         """Músicas presas num status de espera há mais de `minutos` (worker reiniciado, tarefa perdida)."""

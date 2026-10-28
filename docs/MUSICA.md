@@ -65,8 +65,10 @@ por até 3 dias. Regras em `regras.etapa_lembrete` / `proximo_lembrete`; textos 
 - Avançou de etapa: o relógio zera e passa a valer a sequência da nova. "Outra versão" (volta para a prévia) não zera,
   e voltar para uma etapa anterior (o PIX venceu) não reenvia: no máximo 3 por etapa, 9 no total.
 - Não cobra a música antiga de quem refez e comprou outra com o mesmo e-mail.
-- **Uma música por e-mail:** quem fez várias recebe os lembretes só da que chegou mais longe no funil (checkout >
-  prévia > letra) e, empatando, da mais recente (`regras.uma_por_email`).
+- **Por pessoa (e-mail):** quem fez várias músicas recebe os lembretes de uma só — entre as que ainda têm lembrete pela
+  frente, a que chegou mais longe no funil (checkout > prévia > letra) e, empatando, a mais recente
+  (`regras.uma_por_email`); no mínimo 2 h entre dois lembretes para o mesmo e-mail; "não quero mais" e uma compra
+  nas últimas 24 h param todas as músicas daquele e-mail.
 - Para quando ela paga ou toca em "Não quer mais estes lembretes?" no rodapé (`/musica/p/<token>/sem-lembretes`:
   o link só pergunta; o botão confirma — leitores de e-mail abrem links sozinhos).
 - Pedido de música **não** recebe o e-mail genérico de PIX não pago (`fluxo_followup_web`): a etapa `checkout` cuida.

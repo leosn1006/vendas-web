@@ -658,12 +658,13 @@ def manutencao(s) -> dict:
 def enviar_lembretes(s) -> int:
     """Tarefa (a cada 5 min): e-mails para quem parou na letra, na prévia ou no checkout, 15 min, 3 h e 24 h depois
     de a música entrar na etapa (regras.etapa_lembrete / proximo_lembrete; docs/MUSICA.md "Lembretes"). Uma música
-    por e-mail (regras.uma_por_email): quem fez várias recebe só os lembretes de uma. Grava antes de enviar: uma
-    falha no Gmail não vira e-mail repetido na próxima rodada."""
+    por e-mail (regras.uma_por_email) e no mínimo 2 h entre dois lembretes para o mesmo e-mail. Grava antes de
+    enviar: uma falha no Gmail não vira e-mail repetido na próxima rodada."""
     agora, enviados = _agora(), 0
-    for musica, etapa in regras.uma_por_email(s.repositorio.candidatas_lembrete()):
-        acao, numero = regras.proximo_lembrete(etapa, musica, agora, config.LEMBRETES_MINUTOS,
-                                               config.LEMBRETES_JANELA, config.LEMBRETES_DIAS)
+    for musica, etapa in regras.uma_por_email(s.repositorio.candidatas_lembrete(), agora, config.LEMBRETES_MINUTOS,
+                                              config.LEMBRETES_DIAS):
+        acao, numero = regras.proximo_lembrete(etapa, musica, agora, config.LEMBRETES_MINUTOS, config.LEMBRETES_JANELA,
+                                               config.LEMBRETES_DIAS, config.LEMBRETES_INTERVALO_EMAIL)
         if acao == 'zerar':
             s.repositorio.atualizar(musica['id'], lembrete_etapa=etapa, lembrete_desde=agora, lembretes_enviados=0)
             continue
@@ -691,9 +692,9 @@ def checkout_aberto(s, token) -> None:
 
 
 def parar_lembretes(s, token) -> bool:
-    """O link do rodapé: ela não quer mais lembretes desta música."""
+    """O link do rodapé: ela não quer mais lembretes — de nenhuma música deste e-mail (senão a próxima assumiria)."""
     musica = _musica(s, token)
-    s.repositorio.atualizar(musica['id'], sem_lembretes=1)
+    s.repositorio.parar_lembretes_email(musica['email'])
     return True
 
 

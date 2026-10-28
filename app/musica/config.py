@@ -43,6 +43,7 @@ DIAS_GUARDAR_NAO_PAGAS = 90     # promessa da política de privacidade
 LEMBRETES_MINUTOS = (15, 180, 1440)
 LEMBRETES_JANELA = (8, 22)
 LEMBRETES_DIAS = 3
+LEMBRETES_INTERVALO_EMAIL = 120   # minutos mínimos entre dois lembretes para o mesmo e-mail (de qualquer música)
 
 # Presente por e-mail que não chegou (erro no envio ou devolução, quase sempre caixa lotada): até 4 envios no mesmo
 # dia, esperando 1 h, 2 h e 4 h entre eles. Depois disso, quem comprou é avisado para mandar o link por conta própria.

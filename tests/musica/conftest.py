@@ -152,16 +152,28 @@ class RepositorioMemoria:
         return [self.por_id(m['id']) for m in self.musicas.values() if m.get('_envio_interrompido')]
 
     def candidatas_lembrete(self):
-        """Como o SQL: não pagas, com e-mail, sem "não quero mais", na letra ou na prévia; `em_checkout` = o checkout
-        desta música abriu (`checkout_aberto_em`) ou o teste marcou um pedido esperando pagamento (`em_checkout`)."""
+        """Como o SQL: não pagas, com e-mail, na letra ou na prévia, de e-mails sem "não quero mais" e sem compra
+        nas últimas 24 h; `em_checkout` = o checkout desta música abriu (`checkout_aberto_em`) ou o teste marcou um
+        pedido esperando pagamento; `ultimo_lembrete_email` = o último lembrete para o mesmo e-mail."""
+        def chave(m):
+            return str(m['email'] or '').strip().lower()
         saida = []
         for m in self.musicas.values():
-            if m['liberada_em'] or not m['email'] or m['sem_lembretes'] or m['status'] not in ('letra_pronta', 'previa_pronta'):
+            irmas = [o for o in self.musicas.values() if chave(o) == chave(m)]
+            if (m['liberada_em'] or not m['email'] or m['status'] not in ('letra_pronta', 'previa_pronta')
+                    or any(o['sem_lembretes'] or o['liberada_em'] for o in irmas)):
                 continue
             copia = self.por_id(m['id'])
             copia['em_checkout'] = int(bool(m['em_checkout'] or m['checkout_aberto_em']))
+            copia['ultimo_lembrete_email'] = max((o['lembrete_ultimo_em'] for o in irmas if o['lembrete_ultimo_em']),
+                                                 default=None)
             saida.append(copia)
         return saida
+
+    def parar_lembretes_email(self, email):
+        for m in self.musicas.values():
+            if str(m['email'] or '').strip().lower() == str(email or '').strip().lower():
+                m['sem_lembretes'] = 1
 
     def paradas(self, status, minutos):
         return []
