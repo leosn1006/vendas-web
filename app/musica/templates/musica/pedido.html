@@ -171,7 +171,7 @@ function desenhar(p){
           <li><i class="ti ti-check" aria-hidden="true"></i>As duas versões completas, em MP3</li>
           <li><i class="ti ti-check" aria-hidden="true"></i>A letra de "${esc(p.titulo)}"</li>
           ${pl.videoclipe ? `<li><i class="ti ti-check" aria-hidden="true"></i>Videoclipe com as suas fotos, para o Status e o Instagram</li>` : ""}
-          <li><i class="ti ti-check" aria-hidden="true"></i>${p.tem_whatsapp ? "Chega na hora, no seu e-mail e no seu WhatsApp" : "Chega na hora, no seu e-mail (e no WhatsApp, se você informar no pagamento)"}</li>
+          <li><i class="ti ti-check" aria-hidden="true"></i>${!p.whatsapp_ativo ? "Chega na hora, no seu e-mail" : p.tem_whatsapp ? "Chega na hora, no seu e-mail e no seu WhatsApp" : "Chega na hora, no seu e-mail (e no WhatsApp, se você informar no pagamento)"}</li>
         </ul>
         ${pl.descricao ? `<p class="suave" style="margin:0 0 14px">${esc(pl.descricao)}</p>` : ""}
         <a class="botao ${pl.videoclipe || p.planos.length === 1 ? "" : "secundario"}" href="${pl.link}"${pl.padrao ? " data-padrao" : ""}>${pl.videoclipe ? "Quero com o videoclipe" : "Quero a música completa"}</a>

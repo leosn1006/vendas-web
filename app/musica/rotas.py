@@ -142,7 +142,7 @@ def _variaveis_das_paginas():
     produto = _produto()
     marca = (produto or {}).get('email_nome_remetente') or (produto or {}).get('nome') or 'Canção de Presente'
     return {'marca': marca, 'turnstile_site_key': config.TURNSTILE_SITE_KEY, 'dominio_cfg': _empresa(),
-            'produto_id': _pid()}
+            'produto_id': _pid(), 'whatsapp_ativo': config.WHATSAPP_ATIVO}   # só promete WhatsApp com o envio ligado
 
 
 def _com_cookie_do_funil(resposta, pedido_id):
@@ -397,7 +397,9 @@ def api_ver(token):
         'letra': regras.para_leitura(musica['letra_exibicao']),
         'ajustes_restantes': max(0, config.LIMITE_AJUSTES_LETRA - musica['ajustes_letra']),
         'outras_versoes_restantes': max(0, config.LIMITE_OUTRA_VERSAO - musica['outras_versoes']),
-        'tem_whatsapp': bool(regras.telefone_whatsapp(musica.get('whatsapp'))),   # "chega no e-mail e no WhatsApp"
+        # "chega no e-mail e no WhatsApp": só com o envio do WhatsApp da Música ligado (MUSICA_WHATSAPP_ATIVO)
+        'whatsapp_ativo': config.WHATSAPP_ATIVO,
+        'tem_whatsapp': config.WHATSAPP_ATIVO and bool(regras.telefone_whatsapp(musica.get('whatsapp'))),
     }
     if musica['liberada_em']:
         resposta['link_musica'] = url_for('musica.pagina_presente', token=token)

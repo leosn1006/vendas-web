@@ -186,7 +186,7 @@ footer .largura{display:flex;justify-content:space-between;gap:16px;flex-wrap:wr
     <div class="garantias surgir">
       <div><i class="ti ti-headphones" aria-hidden="true"></i>Você ouve antes e só paga se gostar</div>
       <div><i class="ti ti-clock" aria-hidden="true"></i>Pronta em poucos minutos</div>
-      <div><i class="ti ti-brand-whatsapp" aria-hidden="true"></i>Chega na hora, no seu e-mail e, se quiser, no WhatsApp</div>
+      <div><i class="ti ti-mail" aria-hidden="true"></i>Chega na hora, no seu e-mail{% if whatsapp_ativo %} e, se quiser, no WhatsApp{% endif %}</div>
     </div>
 
     <section class="bloco" id="exemplos">
@@ -221,7 +221,7 @@ footer .largura{display:flex;justify-content:space-between;gap:16px;flex-wrap:wr
         <ol class="passos">
           <li><div><h3>Conte a história</h3><p>Responda umas perguntas rápidas: o nome, o apelido e as lembranças que só vocês têm.</p></div></li>
           <li><div><h3>Ouça antes de pagar</h3><p>Você lê a letra, pode pedir ajustes e ouve um trecho das duas versões da música.</p></div></li>
-          <li><div><h3>Entregue o presente</h3><p>Receba a música completa no seu e-mail e, se quiser, no WhatsApp, pronta para enviar e emocionar.</p></div></li>
+          <li><div><h3>Entregue o presente</h3><p>Receba a música completa no seu e-mail{% if whatsapp_ativo %} e, se quiser, no WhatsApp{% endif %}, pronta para enviar e emocionar.</p></div></li>
         </ol>
       </div>
     </section>
@@ -241,7 +241,7 @@ footer .largura{display:flex;justify-content:space-between;gap:16px;flex-wrap:wr
           <li><i class="ti ti-check" aria-hidden="true"></i>Duas versões completas da música para você escolher</li>
           <li><i class="ti ti-check" aria-hidden="true"></i>Letra escrita a partir da história de vocês</li>
           <li><i class="ti ti-check" aria-hidden="true"></i>Arquivo MP3 para guardar e compartilhar</li>
-          <li><i class="ti ti-check" aria-hidden="true"></i>Entrega na hora, no seu e-mail e, se quiser, no WhatsApp</li>
+          <li><i class="ti ti-check" aria-hidden="true"></i>Entrega na hora, no seu e-mail{% if whatsapp_ativo %} e, se quiser, no WhatsApp{% endif %}</li>
         </ul>
         <a class="botao" href="{{ url_for('musica.criar') }}">Criar minha música</a>
       </div>
@@ -252,7 +252,7 @@ footer .largura{display:flex;justify-content:space-between;gap:16px;flex-wrap:wr
       <details><summary>Preciso pagar antes de ouvir?</summary><p>Não. Você ouve um trecho da música pronta e só paga se gostar.</p></details>
       <details><summary>Posso mudar a letra?</summary><p>Pode. Antes de criar a música, você lê a letra e pede os ajustes que quiser.</p></details>
       <details><summary>Quanto tempo demora?</summary><p>A letra fica pronta em menos de um minuto e a música, em poucos minutos.</p></details>
-      <details><summary>O que eu recebo?</summary><p>Duas versões completas da música em MP3, com a letra, no seu e-mail e, se você informar o número, no seu WhatsApp. Também dá para levar o videoclipe com as suas fotos, o cartão com QR code e a entrega por e-mail para quem vai receber.</p></details>
+      <details><summary>O que eu recebo?</summary><p>Duas versões completas da música em MP3, com a letra, no seu e-mail{% if whatsapp_ativo %} e, se você informar o número, no seu WhatsApp{% endif %}. Também dá para levar o videoclipe com as suas fotos, o cartão com QR code e a entrega por e-mail para quem vai receber.</p></details>
       <details><summary>Quais estilos posso escolher?</summary><p>Sertanejo, rock, gospel, MPB, pagode, forró, samba, pop, valsa, infantil e vários outros.</p></details>
     </section>
 
