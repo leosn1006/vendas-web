@@ -397,6 +397,7 @@ def api_ver(token):
         'letra': regras.para_leitura(musica['letra_exibicao']),
         'ajustes_restantes': max(0, config.LIMITE_AJUSTES_LETRA - musica['ajustes_letra']),
         'outras_versoes_restantes': max(0, config.LIMITE_OUTRA_VERSAO - musica['outras_versoes']),
+        'tem_whatsapp': bool(regras.telefone_whatsapp(musica.get('whatsapp'))),   # "chega no e-mail e no WhatsApp"
     }
     if musica['liberada_em']:
         resposta['link_musica'] = url_for('musica.pagina_presente', token=token)
