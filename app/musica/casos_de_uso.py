@@ -657,13 +657,11 @@ def manutencao(s) -> dict:
 
 def enviar_lembretes(s) -> int:
     """Tarefa (a cada 5 min): e-mails para quem parou na letra, na prévia ou no checkout, 15 min, 3 h e 24 h depois
-    de a música entrar na etapa (regras.etapa_lembrete / proximo_lembrete; docs/MUSICA.md "Lembretes"). Grava antes
-    de enviar: uma falha no Gmail não vira e-mail repetido na próxima rodada."""
+    de a música entrar na etapa (regras.etapa_lembrete / proximo_lembrete; docs/MUSICA.md "Lembretes"). Uma música
+    por e-mail (regras.uma_por_email): quem fez várias recebe só os lembretes de uma. Grava antes de enviar: uma
+    falha no Gmail não vira e-mail repetido na próxima rodada."""
     agora, enviados = _agora(), 0
-    for musica in s.repositorio.candidatas_lembrete():
-        etapa = regras.etapa_lembrete(musica)
-        if not etapa:
-            continue
+    for musica, etapa in regras.uma_por_email(s.repositorio.candidatas_lembrete()):
         acao, numero = regras.proximo_lembrete(etapa, musica, agora, config.LEMBRETES_MINUTOS,
                                                config.LEMBRETES_JANELA, config.LEMBRETES_DIAS)
         if acao == 'zerar':

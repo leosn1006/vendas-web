@@ -138,6 +138,25 @@ def test_pagou_ou_pediu_para_parar_nao_recebe_mais(s, monkeypatch):
     assert s.repositorio.por_id(parou['id'])['sem_lembretes'] == 1
 
 
+def test_varias_musicas_do_mesmo_email_recebem_um_lembrete_so(s, monkeypatch):
+    """A cliente que fez 4 músicas em 20 min (3 prévias e 1 letra) recebe um e-mail, da prévia mais recente."""
+    previas = [_na_etapa(s, 'previa') for _ in range(3)]
+    letra = _na_etapa(s, 'letra')
+    for m in previas + [letra]:
+        s.repositorio.atualizar(m['id'], email='Maria@Gmail.com' if m is letra else 'maria@gmail.com')
+    _rodar(s, monkeypatch, DIA)
+    assert _rodar(s, monkeypatch, DIA + timedelta(minutes=15)) == 1
+    assert _rodar(s, monkeypatch, DIA + timedelta(minutes=30)) == 0
+    assert f"/musica/p/{previas[-1]['token']}" in s.notificador.emails[0]['html']
+
+
+def test_checkout_ganha_de_previa_mais_nova_do_mesmo_email():
+    musicas = [{'id': 1, 'email': 'a@b.com', 'status': 'previa_pronta', 'em_checkout': 1},
+               {'id': 2, 'email': 'a@b.com', 'status': 'previa_pronta'},
+               {'id': 3, 'email': 'outra@b.com', 'status': 'letra_pronta'}]
+    assert [(m['id'], e) for m, e in regras.uma_por_email(musicas)] == [(1, 'checkout'), (3, 'letra')]
+
+
 def test_link_do_checkout_sem_pedido_aberto():
     m = {'token': 'f' * 32, 'produto_id': 17, 'dominio': 'lsnlivros.com.br'}
     assert links.checkout(m).endswith(f"/pay/17?musica={'f' * 32}")

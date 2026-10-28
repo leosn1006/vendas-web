@@ -187,6 +187,22 @@ def etapa_lembrete(musica: dict) -> str | None:
 ORDEM_ETAPAS = {'letra': 0, 'previa': 1, 'checkout': 2}
 
 
+def uma_por_email(musicas: list[dict]) -> list[tuple[dict, str]]:
+    """[(música, etapa)] com uma música por e-mail: quem fez várias (para pessoas diferentes ou refazendo) recebe os
+    lembretes só da que chegou mais longe no funil e, empatando, da mais recente. As outras ficam em silêncio — 4
+    músicas não viram 4 e-mails na mesma manhã."""
+    escolhida = {}
+    for musica in musicas:
+        etapa = etapa_lembrete(musica)
+        if not etapa:
+            continue
+        chave = (musica.get('email') or '').strip().lower()
+        if chave not in escolhida or (ORDEM_ETAPAS[etapa], musica['id']) > (ORDEM_ETAPAS[escolhida[chave][1]],
+                                                                          escolhida[chave][0]['id']):
+            escolhida[chave] = (musica, etapa)
+    return list(escolhida.values())
+
+
 def proximo_lembrete(etapa: str, musica: dict, agora: datetime, minutos: tuple, janela: tuple, dias: int):
     """O que fazer agora: ('zerar', 0) quando a música entrou numa etapa nova (o relógio começa agora);
     ('enviar', n) com n = o lembrete mais recente já vencido (1, 2 ou 3 — se dois venceram fora do horário, sai só o
