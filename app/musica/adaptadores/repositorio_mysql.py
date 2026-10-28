@@ -199,7 +199,8 @@ class RepositorioMysql:
         """Músicas que podem receber lembrete (a pessoa, a série e a hora saem de regras.escolher_lembretes /
         proximo_lembrete): não pagas, com e-mail, dos últimos 5 dias, paradas na letra ou na prévia (o checkout é a
         prévia que foi ao pagamento), de e-mails sem "não quero mais" nos últimos 90 dias e sem compra depois desta
-        música nem nas últimas 24 h. "Mesmo e-mail" = LOWER(TRIM(email)), igual a regras.chave_email.
+        música nem nas últimas 24 h. "Mesmo e-mail" = o e-mail como gravado: criar_musica o grava já em
+        regras.chave_email (sem espaços, minúsculas) — e assim usa o índice idx_musicas_email.
         `em_checkout`: o checkout DESTA música abriu ou há pedido dela esperando pagamento (1002);
         `pedido_aberto_id`/`_plano`: o pedido com o PIX ainda válido e o plano (fora o padrão), para o link reabri-lo."""
         linhas = db.execute_query(
@@ -210,11 +211,8 @@ class RepositorioMysql:
                            WHERE mp.musica_id = m.id AND p.estado_id = 1002)) AS em_checkout,
                       a.id AS pedido_aberto_id, IF(pp.padrao = 1, NULL, pp.slug) AS pedido_aberto_plano
                FROM musicas m
-               LEFT JOIN (SELECT LOWER(TRIM(email)) AS chave, MAX(liberada_em) AS ultima
-                          FROM musicas WHERE liberada_em >= NOW() - INTERVAL 6 DAY
-                          GROUP BY LOWER(TRIM(email))) compra ON compra.chave = LOWER(TRIM(m.email))
                LEFT JOIN musica_lembretes_saida saida
-                      ON saida.email_chave = LOWER(TRIM(m.email)) AND saida.em >= NOW() - INTERVAL 90 DAY
+                      ON saida.email_chave = m.email AND saida.em >= NOW() - INTERVAL 90 DAY
                LEFT JOIN pedidos a ON a.id = (
                    SELECT MAX(p.id) FROM musica_pedidos mp JOIN pedidos p ON p.id = mp.pedido_id
                    WHERE mp.musica_id = m.id AND p.estado_id = 1002
@@ -224,17 +222,22 @@ class RepositorioMysql:
                  AND m.criado_em >= NOW() - INTERVAL 5 DAY
                  AND m.status IN ('letra_pronta', 'previa_pronta')
                  AND saida.email_chave IS NULL
-                 AND (compra.ultima IS NULL OR (compra.ultima < m.criado_em AND compra.ultima < NOW() - INTERVAL 1 DAY))
+                 AND NOT EXISTS (SELECT 1 FROM musicas outra WHERE outra.email = m.email
+                                 AND outra.liberada_em >= LEAST(m.criado_em, NOW() - INTERVAL 1 DAY))
                ORDER BY m.id DESC
                LIMIT 5000""", fetch_all=True) or []   # trava de segurança; o normal é bem menos (5 dias de músicas)
         return [_musica(l) for l in linhas]
 
     def series_lembrete(self):
-        """As séries da janela que importa: 5 dias de músicas + 3 de validade."""
-        linhas = db.execute_query("SELECT email_chave, etapa, inicio, desde, enviados, ultimo_em, musica_id "
-                                  "FROM musica_lembretes WHERE inicio >= NOW() - INTERVAL 8 DAY", fetch_all=True) or []
+        """As séries da janela que importa (5 dias de músicas + 3 de validade), com o status da música da vez."""
+        linhas = db.execute_query(
+            """SELECT l.email_chave, l.etapa, l.inicio, l.desde, l.enviados, l.ultimo_em, l.musica_id,
+                      m.status AS musica_status
+               FROM musica_lembretes l LEFT JOIN musicas m ON m.id = l.musica_id
+               WHERE l.inicio >= NOW() - INTERVAL 8 DAY""", fetch_all=True) or []
         return {(l['email_chave'], l['etapa']): {'inicio': l['inicio'], 'desde': l['desde'], 'enviados': l['enviados'],
-                                                 'ultimo_em': l['ultimo_em'], 'musica_id': l['musica_id']}
+                                                 'ultimo_em': l['ultimo_em'], 'musica_id': l['musica_id'],
+                                                 'musica_status': l['musica_status']}
                 for l in linhas}
 
     def salvar_serie(self, chave_email, etapa, inicio, desde, enviados, ultimo_em, musica_id):

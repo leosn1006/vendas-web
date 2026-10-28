@@ -162,6 +162,7 @@ class RepositorioMemoria:
             compras = [o['liberada_em'] for o in self.musicas.values()
                        if o['liberada_em'] and chave_email(o['email']) == chave_email(m['email'])]
             if (m['liberada_em'] or not m['email'] or m['status'] not in ('letra_pronta', 'previa_pronta')
+                    or agora - m['criado_em'] > timedelta(days=5)
                     or agora - self.lembretes_saida.get(chave_email(m['email']), agora - timedelta(days=91))
                     <= timedelta(days=90)
                     or any(c >= m['criado_em'] or c >= agora - timedelta(days=1) for c in compras)):
@@ -172,7 +173,10 @@ class RepositorioMemoria:
         return saida
 
     def series_lembrete(self):
-        return copy.deepcopy(self.series)
+        """Como o SQL: as séries com início nos últimos 8 dias, com o status da música da vez."""
+        agora = self.agora or datetime.now()
+        return {k: {**v, 'musica_status': (self.musicas.get(v['musica_id']) or {}).get('status')}
+                for k, v in copy.deepcopy(self.series).items() if agora - v['inicio'] <= timedelta(days=8)}
 
     def salvar_serie(self, chave_email, etapa, inicio, desde, enviados, ultimo_em, musica_id):
         self.series[(chave_email, etapa)] = {'inicio': inicio, 'desde': desde, 'enviados': enviados,

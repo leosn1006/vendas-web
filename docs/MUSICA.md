@@ -67,7 +67,8 @@ Regras em `regras.escolher_lembretes` / `proximo_lembrete`; textos em `mensagens
   no máximo 3 por etapa, 9 no total, em cada visita. Os e-mails falam da música que chegou mais longe no funil (checkout > prévia > letra) e,
   empatando, da mais recente. A **contagem** é da pessoa e o **relógio** é da música: se ela faz outra música, a série
   continua no próximo lembrete, contado de quando a nova assumiu ("outra versão" da música da vez não mexe no
-  relógio: a pessoa só espera a versão ficar pronta) — nunca dispara de uma vez o que venceu para
+  relógio: aquela etapa espera a versão ficar pronta e as outras seguem; música da vez parada em erro, paga ou em
+  outra etapa não trava ninguém) — nunca dispara de uma vez o que venceu para
   a anterior), e sem esticar a validade (3 dias do início da série). Uma música que já recebeu lembrete numa etapa
   seguinte não volta a receber da anterior (`musicas.lembrete_etapa`, marca da própria música). Uma série que acabou
   só recomeça para uma música criada depois de a janela dela fechar (voltou dias depois: nova visita, nova série).

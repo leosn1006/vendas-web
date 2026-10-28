@@ -47,7 +47,8 @@ def _bloquear_se_comprada(musica):
 def criar_musica(s, produto_id, respostas, email, whatsapp, ip, pedido_origem_id=None, dominio=None):
     if not respostas.get('nome') or not respostas.get('lembrancas') or not respostas.get('de'):
         raise Recusa('Faltou preencher o nome, as lembranças ou o seu nome.')
-    if '@' not in (email or ''):
+    email = regras.chave_email(email)   # gravado já normalizado: os lembretes comparam o e-mail direto (com índice)
+    if '@' not in email:
         raise Recusa('Confira o seu e-mail.')
     # Cada quiz já custa uma letra na OpenAI: limite por e-mail/IP (o de gerar() só cobre a música).
     if s.repositorio.musicas_criadas_recentes(email, ip) >= config.LIMITE_LETRAS_DIA:
@@ -665,19 +666,19 @@ def enviar_lembretes(s) -> int:
                                            config.LEMBRETES_MINUTOS, config.LEMBRETES_DIAS)
     for musica, etapa, serie, ultimo in escolhidas:
         chave = regras.chave_email(musica['email'])
-        if serie and serie.get('trocou'):   # outra música assumiu a série: grava o relógio novo dela
-            s.repositorio.salvar_serie(chave, etapa, inicio=serie['inicio'], desde=serie['desde'],
-                                       enviados=serie['enviados'], ultimo_em=serie.get('ultimo_em'), musica_id=musica['id'])
         acao, numero = regras.proximo_lembrete(serie, ultimo, agora, config.LEMBRETES_MINUTOS, config.LEMBRETES_JANELA,
                                                config.LEMBRETES_DIAS, config.LEMBRETES_INTERVALO_EMAIL)
         if acao == 'zerar':
             s.repositorio.salvar_serie(chave, etapa, inicio=agora, desde=agora, enviados=0, ultimo_em=None,
                                        musica_id=musica['id'])
-            continue
+        elif acao == 'enviar':
+            s.repositorio.salvar_serie(chave, etapa, inicio=serie['inicio'], desde=serie['desde'], enviados=numero,
+                                       ultimo_em=agora, musica_id=musica['id'])
+        elif serie.get('trocou'):   # outra música assumiu a série: grava o relógio novo dela
+            s.repositorio.salvar_serie(chave, etapa, inicio=serie['inicio'], desde=serie['desde'],
+                                       enviados=serie['enviados'], ultimo_em=serie.get('ultimo_em'), musica_id=musica['id'])
         if acao != 'enviar':
             continue
-        s.repositorio.salvar_serie(chave, etapa, inicio=serie['inicio'], desde=serie['desde'], enviados=numero,
-                                   ultimo_em=agora, musica_id=musica['id'])
         if regras.ORDEM_ETAPAS[etapa] > regras.ORDEM_ETAPAS.get(musica.get('lembrete_etapa'), -1):
             s.repositorio.atualizar(musica['id'], lembrete_etapa=etapa)   # recebeu lembrete nesta etapa: não volta
         respostas = musica['respostas']

@@ -108,10 +108,25 @@ def test_musica_que_avancou_nao_volta_para_a_etapa_anterior():
 
 def test_outra_versao_da_musica_da_vez_nao_mexe_no_relogio():
     """A música da vez (4) está gerando outra versão: a mais antiga (3) não assume nem recomeça o relógio."""
-    series = {('a@b.com', 'previa'): _serie(DIA - timedelta(hours=1), 1, musica_id=4)}
+    series = {('a@b.com', 'previa'): {**_serie(DIA - timedelta(hours=1), 1, musica_id=4), 'musica_status': 'gerando'}}
     assert regras.escolher_lembretes([_m(3)], series, DIA, MINUTOS, DIAS) == []
+    series[('a@b.com', 'previa')]['musica_status'] = 'previa_pronta'   # a versão nova ficou pronta: a 4 segue
     (_, _, serie, _), = regras.escolher_lembretes([_m(3), _m(4)], series, DIA, MINUTOS, DIAS)
     assert serie['desde'] == DIA - timedelta(hours=1) and not serie.get('trocou')
+
+
+def test_musica_da_vez_parada_em_erro_nao_trava_a_pessoa():
+    series = {('a@b.com', 'previa'): {**_serie(DIA - timedelta(hours=1), 1, musica_id=4), 'musica_status': 'erro'}}
+    (musica, _, serie, _), = regras.escolher_lembretes([_m(3)], series, DIA, MINUTOS, DIAS)
+    assert musica['id'] == 3 and serie['trocou'] and serie['enviados'] == 1
+
+
+def test_etapa_esperando_nao_trava_as_outras():
+    """O checkout espera a música da vez (em produção), mas a letra de outra música dela segue."""
+    series = {('a@b.com', 'checkout'): {**_serie(DIA - timedelta(hours=1), 1, musica_id=9), 'musica_status': 'gerando'}}
+    escolhidas = regras.escolher_lembretes([_m(3, em_checkout=1), _m(2, status='letra_pronta')], series, DIA,
+                                           MINUTOS, DIAS)
+    assert [(m['id'], e) for m, e, _, _ in escolhidas] == [(2, 'letra')]
 
 
 def test_marca_da_musica_so_quando_o_lembrete_sai(s, monkeypatch):
@@ -262,3 +277,10 @@ def test_pix_da_musica_sai_do_lembrete_generico():
     import inspect
     import database
     assert 'musica_pedidos' in inspect.getsource(database.buscar_pedidos_followup_pagamento_web)
+
+
+def test_email_da_musica_ja_gravado_na_chave_dos_lembretes(s):
+    """Os lembretes comparam o e-mail como gravado (com índice): a criação já o normaliza."""
+    from tests.musica.conftest import RESPOSTAS
+    musica = uc.criar_musica(s, 17, dict(RESPOSTAS), '  Maria@Gmail.COM ', '', '1.2.3.4')
+    assert musica['email'] == 'maria@gmail.com' == regras.chave_email(' Maria@Gmail.COM')

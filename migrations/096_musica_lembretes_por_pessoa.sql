@@ -26,9 +26,8 @@ CREATE TABLE IF NOT EXISTS musica_lembretes_saida (
 -- empatando, a mais recente) — relógio, contagem e música vêm da MESMA linha; o início (validade) é o mais antigo dela
 -- naquela etapa.
 INSERT IGNORE INTO musica_lembretes (email_chave, etapa, inicio, desde, enviados, ultimo_em, musica_id)
-SELECT chave, lembrete_etapa, inicio, lembrete_desde, lembretes_enviados, ultimo, id
-FROM (SELECT LOWER(TRIM(email)) AS chave, lembrete_etapa, lembrete_desde, lembretes_enviados, id,
-             MAX(lembrete_ultimo_em) OVER (PARTITION BY LOWER(TRIM(email))) AS ultimo,
+SELECT chave, lembrete_etapa, inicio, lembrete_desde, lembretes_enviados, lembrete_ultimo_em, id
+FROM (SELECT LOWER(TRIM(email)) AS chave, lembrete_etapa, lembrete_desde, lembretes_enviados, lembrete_ultimo_em, id,
              MIN(lembrete_desde) OVER (PARTITION BY LOWER(TRIM(email)), lembrete_etapa) AS inicio,
              ROW_NUMBER() OVER (PARTITION BY LOWER(TRIM(email)), lembrete_etapa
                                 ORDER BY lembretes_enviados DESC, lembrete_desde DESC, id DESC) AS ordem
@@ -36,6 +35,11 @@ FROM (SELECT LOWER(TRIM(email)) AS chave, lembrete_etapa, lembrete_desde, lembre
       WHERE email IS NOT NULL AND lembrete_etapa IS NOT NULL AND lembrete_desde IS NOT NULL
         AND criado_em >= NOW() - INTERVAL 6 DAY) x
 WHERE ordem = 1;
+
+-- musicas.lembrete_etapa passa a ser "a etapa mais avançada em que esta música JÁ RECEBEU lembrete". A 095 a gravava
+-- ao começar a série (antes de qualquer envio): sem lembrete enviado, não vale (senão uma música que só começou a
+-- série do checkout e teve o PIX vencido nunca mais teria os da prévia).
+UPDATE musicas SET lembrete_etapa = NULL WHERE lembrete_etapa IS NOT NULL AND lembretes_enviados = 0;
 
 -- Quem já pediu para parar (095, por música): vale para a pessoa, 90 dias contados de agora.
 INSERT IGNORE INTO musica_lembretes_saida (email_chave, em)

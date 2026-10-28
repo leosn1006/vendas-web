@@ -86,8 +86,9 @@ class Repositorio(Protocol):
         """Há presente_surpresa saindo agora (há poucos minutos) para este número, ainda sem wamid gravado?"""
     def candidatas_lembrete(self) -> list[dict]: ...
     def series_lembrete(self) -> dict:
-        """{(chave_email, etapa): {'inicio', 'desde', 'enviados', 'ultimo_em', 'musica_id'}} das séries recentes
-        (musica_id: a música da vez — sem ele a troca de música não recomeça o relógio)."""
+        """{(chave_email, etapa): {'inicio', 'desde', 'enviados', 'ultimo_em', 'musica_id', 'musica_status'}} das
+        séries recentes (musica_id/_status: a música da vez e em que pé ela está — sem eles a troca de música não
+        recomeça o relógio e uma "outra versão" não é esperada)."""
     def salvar_serie(self, chave_email: str, etapa: str, inicio, desde, enviados: int, ultimo_em,
                      musica_id: int) -> None: ...
     def parar_lembretes_email(self, chave_email: str) -> None: ...

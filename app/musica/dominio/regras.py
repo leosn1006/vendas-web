@@ -201,14 +201,19 @@ def serie_acabou(serie: dict | None, agora: datetime, minutos: tuple, dias: int)
     return bool(serie) and (serie['enviados'] >= len(minutos) or agora - serie['inicio'] > timedelta(days=dias))
 
 
+EM_PRODUCAO = ('escrevendo', 'gerando', 'processando')   # a música volta sozinha para a letra/prévia
+
+
 def escolher_lembretes(musicas: list[dict], series: dict, agora: datetime, minutos: tuple, dias: int) -> list[tuple]:
     """Uma música por pessoa: [(música, etapa, série ou None, último lembrete da pessoa)]. `series`:
-    {(chave_email, etapa): {'inicio', 'desde', 'enviados', 'ultimo_em', 'musica_id'}}.
+    {(chave_email, etapa): {'inicio', 'desde', 'enviados', 'ultimo_em', 'musica_id', 'musica_status'}}.
     - Escolhida: entre as músicas cuja série da etapa ainda tem lembrete pela frente, a que chegou mais longe no funil
       e, empatando, a mais recente.
-    - A CONTAGEM é da pessoa, o RELÓGIO é da música: se uma música mais nova assumiu (fez outra), a série continua no
-      próximo lembrete, contado de agora ('trocou') — nunca dispara de uma vez o que venceu para a anterior. Se a da
-      vez está ocupada ("outra versão"), a pessoa espera: o relógio não vai e volta.
+    - A CONTAGEM é da pessoa, o RELÓGIO é da música: se outra música assumiu a série, ela continua no próximo
+      lembrete, contado de agora ('trocou') — nunca dispara de uma vez o que venceu para a anterior.
+    - Se a música da vez é mais nova e está em produção ("outra versão", `EM_PRODUCAO`), aquela etapa espera ela
+      voltar (o relógio não vai e volta) e tenta-se a próxima opção da pessoa; parada em erro, paga ou em outra etapa,
+      a escolhida assume.
     - Uma música não volta a receber lembrete de uma etapa anterior à mais avançada em que já recebeu
       (`musicas.lembrete_etapa`, por música — ex.: o PIX venceu e ela voltou à prévia).
     - Uma série que acabou recomeça só para uma música criada depois de a janela dela fechar: ela voltou dias depois
@@ -232,16 +237,14 @@ def escolher_lembretes(musicas: list[dict], series: dict, agora: datetime, minut
                 if not (criada and criada > serie['inicio'] + timedelta(days=dias)):
                     continue
                 serie = None   # voltou dias depois: série nova
+            if serie and (serie.get('musica_id') or 0) > musica['id'] and serie.get('musica_status') in EM_PRODUCAO:
+                continue   # a música da vez (mais nova) está em produção: esta etapa espera ela voltar
+            if serie and serie.get('musica_id') not in (None, musica['id']):
+                serie = {**serie, 'desde': agora, 'trocou': True}   # outra música assumiu: relógio novo, mesma contagem
             aptas.append((musica, etapa, serie))
         if aptas:
-            musica, etapa, serie = max(aptas, key=lambda t: (ORDEM_ETAPAS[t[1]], t[0]['id']))
-            da_vez = (serie or {}).get('musica_id')
-            if da_vez and da_vez > musica['id']:
-                continue   # a música da vez dela (mais nova) está ocupada — ex.: "outra versão" — e volta já já
-            if da_vez and da_vez != musica['id']:
-                serie = {**serie, 'desde': agora, 'trocou': True}   # música mais nova: o relógio recomeça, a contagem não
             ultimo = max((s['ultimo_em'] for s in dela.values() if s.get('ultimo_em')), default=None)
-            escolhidas.append((musica, etapa, serie, ultimo))
+            escolhidas.append((*max(aptas, key=lambda t: (ORDEM_ETAPAS[t[1]], t[0]['id'])), ultimo))
     return escolhidas
 
 
