@@ -44,6 +44,7 @@ class RepositorioMemoria:
             'presente_whatsapp': None, 'presente_wa_msg_id': None, 'presente_wa_status': None,
             'presente_wa_entregue_em': None, 'presente_wa_link_em': None, 'comprador_wa_msg_id': None,
             'comprador_wa_em': None, 'criado_em': self.agora or datetime.now(),
+            'rascunho_de': None, 'rascunho_usado_em': None, 'refeita_em': None,
         }
         return dict(self.musicas[mid])
 
@@ -52,7 +53,8 @@ class RepositorioMemoria:
         return copy.deepcopy(m) if m else None
 
     def por_token(self, token):
-        return next((self.por_id(m['id']) for m in self.musicas.values() if m['token'] == token), None)
+        return next((self.por_id(m['id']) for m in self.musicas.values()
+                     if m['token'] == token and not m['rascunho_de']), None)
 
     def por_job(self, job_id):
         return next((self.por_id(m['id']) for m in self.musicas.values() if m['job_id'] == job_id), None)
@@ -181,6 +183,16 @@ class RepositorioMemoria:
     def salvar_serie(self, chave_email, etapa, inicio, desde, enviados, ultimo_em, musica_id):
         self.series[(chave_email, etapa)] = {'inicio': inicio, 'desde': desde, 'enviados': enviados,
                                              'ultimo_em': ultimo_em, 'musica_id': musica_id}
+
+    def rascunho_ativo(self, musica_id):
+        return next((self.por_id(m['id']) for m in sorted(self.musicas.values(), key=lambda m: m['id'])
+                     if m['rascunho_de'] == musica_id and not m['rascunho_usado_em']), None)
+
+    def marcar_rascunho_usado(self, rascunho_id, usado=True):
+        if usado and self.musicas[rascunho_id]['rascunho_usado_em']:
+            return False
+        self.musicas[rascunho_id]['rascunho_usado_em'] = datetime.now() if usado else None
+        return True
 
     def parar_lembretes_email(self, chave_email):
         self.lembretes_saida[chave_email] = self.agora or datetime.now()

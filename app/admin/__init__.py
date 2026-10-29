@@ -7,7 +7,7 @@ admin_bp = Blueprint(
     url_prefix='/admin'
 )
 
-from admin import auth, views, apps_views, planos_views  # noqa: E402, F401 — era "from app.admin"
+from admin import auth, views, apps_views, planos_views, musica_views  # noqa: E402, F401 — era "from app.admin"
 
 
 @admin_bp.context_processor

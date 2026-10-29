@@ -13,6 +13,7 @@ from musica import config, links, mensagens
 from musica.portas import ErroPassageiro
 from musica.dominio import legenda, regras
 from musica.dominio import modelos as m_
+from musica.dominio.quiz import ESTILOS as ESTILOS_QUIZ, combinacao_invalida, vozes_para
 from musica.dominio.recursos import ENTREGA_EMAIL, MUSICA, QRCODE, VIDEOCLIPE
 
 logger = logging.getLogger(__name__)
@@ -717,3 +718,197 @@ def limpar_antigas(s) -> int:
         s.repositorio.apagar(musica['id'])
         apagadas += 1
     return apagadas
+
+
+
+# ============================================================ admin: refazer a música de uma compra
+# docs/MUSICA.md "Refazer a música de uma compra". O admin trabalha num RASCUNHO (uma música nova, sem e-mail nem
+# pedido: fora dos lembretes, dos limites e de qualquer aviso à cliente) e só no fim troca o conteúdo da música dela —
+# o token, o link, o QR code, o pedido e o presente não mudam. Até a troca, a música dela não é tocada.
+
+# O que o admin pode mudar (a música). E-mail/WhatsApp de quem comprou, pedido, plano, entrega e fotos ficam travados.
+CAMPOS_EDITAVEIS = ('para_quem', 'nome', 'apelido', 'pronuncia', 'ocasiao', 'ocasiao_outra', 'lembrancas',
+                    'frase_obrigatoria', 'clima', 'estilo', 'voz', 'de')
+_EM_ANDAMENTO = (m_.ESCREVENDO, m_.GERANDO, m_.PROCESSANDO)
+_NOMES_CAMPOS = {'para_quem': 'pra quem é', 'ocasiao': 'ocasião', 'clima': 'tom', 'estilo': 'estilo', 'voz': 'voz'}
+
+
+def _original_paga(s, musica_id):
+    musica = s.repositorio.por_id(musica_id)
+    if not musica or not musica['liberada_em'] or musica.get('rascunho_de'):
+        raise Recusa('Só dá para refazer uma música já paga.', 404)
+    return musica
+
+
+def _rascunho(s, rascunho_id, livre=True):
+    """O rascunho ainda não usado. `livre`: recusa se ele está escrevendo ou gerando agora."""
+    rascunho = s.repositorio.por_id(rascunho_id)
+    if not rascunho or not rascunho.get('rascunho_de') or rascunho.get('rascunho_usado_em'):
+        raise Recusa('Este rascunho não existe ou já foi usado.', 404)
+    if livre and rascunho['status'] in _EM_ANDAMENTO:
+        raise Recusa('Espere terminar o que está em andamento (letra ou música).')
+    return rascunho
+
+
+def respostas_editadas(base: dict, formulario) -> dict:
+    """As escolhas do formulário do admin sobre as `base`: só CAMPOS_EDITAVEIS (qualquer outro campo enviado é
+    ignorado) e só combinações que o quiz aceita (mesma regra da cliente: quiz.combinacao_invalida)."""
+    respostas = dict(base)
+    for campo in CAMPOS_EDITAVEIS:
+        if campo in formulario:
+            valor = str(formulario.get(campo) or '').strip()[:1500]
+            if valor:
+                respostas[campo] = valor
+            else:
+                respostas.pop(campo, None)
+    if respostas.get('nome') != base.get('nome'):
+        respostas.pop('pessoas', None)   # grupo com os nomes editados à mão: vale o "nome" (a IA trata o plural)
+    respostas = regras.respostas_atuais(respostas)
+    if not respostas.get('nome') or not respostas.get('lembrancas') or not respostas.get('de'):
+        raise Recusa('Preencha o nome, as lembranças e a dedicatória ("de").')
+    # Confere só o grupo que o admin mexeu, com as regras do quiz: relação/ocasião/tom entre si e estilo/voz entre si.
+    # Uma música de uma versão antiga do quiz (ex.: sem ocasião) pode trocar a voz ou corrigir o nome sem travar por
+    # algo que já era assim.
+    def mexeu(*campos):
+        return any(respostas.get(c) != base.get(c) for c in campos)
+    erro = None
+    if mexeu('para_quem', 'ocasiao', 'clima'):
+        erro = combinacao_invalida({**respostas, 'estilo': 'pop', 'voz': 'feminina'})   # só a 1ª parte da regra
+    if not erro and mexeu('estilo', 'voz'):
+        if respostas.get('estilo') not in {e for e, _ in ESTILOS_QUIZ}:
+            erro = 'estilo'
+        elif respostas.get('voz') not in vozes_para(respostas.get('estilo')):
+            erro = 'voz'
+    if erro:
+        raise Recusa(f"Essa escolha de {_NOMES_CAMPOS.get(erro, erro)} não combina com as outras (o quiz não deixaria).")
+    return respostas
+
+
+def criar_rascunho(s, musica_id, formulario, letra_nova=False):
+    """"Refazer a música": rascunho com as escolhas (editadas) e, de partida, a LETRA ATUAL dela — para ajustar só o
+    que ela pediu. `letra_nova`: escreve outra do zero com as escolhas (quando mudou relação, lembranças, tom...)."""
+    original = _original_paga(s, musica_id)
+    if s.repositorio.rascunho_ativo(original['id']):
+        raise Recusa('Já existe um rascunho para esta música: use ou descarte antes de começar outro.')
+    respostas = respostas_editadas(original['respostas'], formulario)
+    rascunho = s.repositorio.criar(original['produto_id'], respostas, None, None, None, None, original['dominio'])
+    campos = {'rascunho_de': original['id']}
+    if not letra_nova:
+        campos.update(status=m_.LETRA_PRONTA, titulo=original['titulo'], letra_exibicao=original['letra_exibicao'],
+                      letra_suno=original['letra_suno'], modelo_letra=original['modelo_letra'])
+    s.repositorio.atualizar(rascunho['id'], **campos)
+    if s.repositorio.rascunho_ativo(original['id'])['id'] != rascunho['id']:   # clique duplo: vale o mais antigo
+        s.repositorio.apagar(rascunho['id'])
+        raise Recusa('Já existe um rascunho para esta música: use ou descarte antes de começar outro.')
+    if letra_nova:
+        s.agenda.escrever_letra(rascunho['id'])
+    logger.info(f"[MUSICA] Rascunho #{rascunho['id']} criado para refazer a música #{original['id']}")
+    return s.repositorio.por_id(rascunho['id'])
+
+
+def editar_escolhas_rascunho(s, rascunho_id, formulario, letra_nova=False):
+    rascunho = _rascunho(s, rascunho_id)
+    respostas = respostas_editadas(rascunho['respostas'], formulario)
+    s.repositorio.atualizar(rascunho['id'], respostas=respostas)
+    if letra_nova:
+        _escrever_rascunho(s, rascunho)
+
+
+def _escrever_rascunho(s, rascunho, instrucao=None):
+    if not s.repositorio.trocar_status(rascunho['id'], rascunho['status'], m_.ESCREVENDO):   # clique duplo
+        raise Recusa('A letra já está sendo escrita.')
+    s.agenda.escrever_letra(rascunho['id'], instrucao)
+
+
+def ajustar_rascunho(s, rascunho_id, instrucao):
+    """Ajuste da letra pela IA (sem o limite de ajustes da cliente), a partir da letra atual do rascunho."""
+    rascunho = _rascunho(s, rascunho_id)
+    instrucao = (instrucao or '').strip()[:800]
+    if not instrucao:
+        raise Recusa('Escreva o que mudar na letra.')
+    if not rascunho['letra_suno']:
+        raise Recusa('O rascunho ainda não tem letra.')
+    _escrever_rascunho(s, rascunho, instrucao)
+
+
+def editar_letra_rascunho(s, rascunho_id, titulo, exibicao, cantada):
+    """Letra à mão: a que a cliente lê e a cantada (vai para o gerador: [Verse], [Chorus]... e o nome escrito como se
+    fala). Volta para "letra pronta": precisa criar a música de novo."""
+    rascunho = _rascunho(s, rascunho_id)
+    titulo, exibicao, cantada = (titulo or '').strip()[:255], (exibicao or '').strip(), (cantada or '').strip()
+    if not titulo or not exibicao or not cantada:
+        raise Recusa('Preencha o título e as duas letras.')
+    if len(cantada) > 3000:
+        raise Recusa('A letra cantada está longa demais para o gerador (até 3.000 caracteres).')
+    s.repositorio.atualizar(rascunho['id'], status=m_.LETRA_PRONTA, titulo=titulo, letra_exibicao=exibicao,
+                            letra_suno=cantada)
+
+
+def gerar_rascunho(s, rascunho_id):
+    """Cria (ou recria) a música do rascunho — sem o limite diário da cliente; cada geração custa crédito."""
+    rascunho = _rascunho(s, rascunho_id)
+    if rascunho['status'] not in (m_.LETRA_PRONTA, m_.PREVIA_PRONTA, m_.ERRO) or not rascunho['letra_suno']:
+        raise Recusa('O rascunho precisa ter a letra pronta para criar a música.')
+    if not s.repositorio.trocar_status(rascunho['id'], rascunho['status'], m_.GERANDO):
+        raise Recusa('A música já está sendo criada.')
+    s.repositorio.atualizar(rascunho['id'], job_id=None, geracoes=0)   # as novas tentativas automáticas valem de novo
+    try:
+        _mandar_gerar(s, s.repositorio.por_id(rascunho['id']))
+    except m_.ErroGerador as erro:
+        s.repositorio.atualizar(rascunho['id'], status=rascunho['status'])
+        raise Recusa(f'O gerador recusou agora: {erro}. Tente de novo em alguns minutos.', 503)
+
+
+def usar_rascunho(s, rascunho_id, avisar=True) -> dict:
+    """"Usar esta na compra da cliente": o conteúdo do rascunho entra na música dela (mesmo token, link, QR, pedido
+    e presente). Áudios trocados sem janela quebrada (arquivos.copiar_audios); se ela tinha mandado fotos para o
+    videoclipe, ele é refeito com as mesmas fotos, versão e legenda; e-mail para ela se `avisar`."""
+    rascunho = _rascunho(s, rascunho_id)
+    if rascunho['status'] != m_.PREVIA_PRONTA or not rascunho['faixas']:
+        raise Recusa('Crie a música do rascunho e ouça antes de usar.')
+    original = _original_paga(s, rascunho['rascunho_de'])
+    if original['video_status'] == 'fazendo':   # o vídeo em andamento sairia com o áudio novo e a letra antiga
+        raise Recusa('O videoclipe dela está sendo feito agora. Espere uns minutos e tente de novo.')
+    if not s.repositorio.marcar_rascunho_usado(rascunho['id']):   # clique duplo / dois admins
+        raise Recusa('Este rascunho não existe ou já foi usado.', 404)
+    numeros = [f['numero'] for f in rascunho['faixas']]
+    try:
+        s.arquivos.copiar_audios(rascunho['token'], original['token'], numeros)
+    except OSError as erro:
+        s.repositorio.marcar_rascunho_usado(rascunho['id'], usado=False)
+        logger.exception(f"[MUSICA] Cópia dos áudios do rascunho #{rascunho['id']} falhou")
+        raise Recusa(f'Não deu para copiar os arquivos do rascunho ({erro}). A música dela não mudou.', 500)
+    s.repositorio.atualizar(original['id'], titulo=rascunho['titulo'], letra_exibicao=rascunho['letra_exibicao'],
+                            letra_suno=rascunho['letra_suno'], respostas=rascunho['respostas'],
+                            faixas=rascunho['faixas'], modelo_letra=rascunho['modelo_letra'], refeita_em=_agora())
+    video = VIDEOCLIPE in s.repositorio.recursos_do_pedido(original['pedido_id']) and s.arquivos.tem_fotos(original['token'])
+    if video:
+        versao = original['video_versao'] if original['video_versao'] in numeros else numeros[0]
+        s.repositorio.atualizar(original['id'], video_status='fazendo', video_versao=versao, video_erro=None)
+        s.agenda.fazer_video(original['id'])
+    avisada = False
+    pedido = s.repositorio.pedido_pago(original['pedido_id']) if avisar else None
+    if avisar and not pedido:   # pedido fora de "pago" (ex.: devolvido): sem link da compra para mandar
+        logger.warning(f"[MUSICA] Música #{original['id']} refeita sem aviso: o pedido não está como pago")
+    if pedido:
+        respostas = rascunho['respostas']
+        assunto, corpo = mensagens.musica_atualizada(
+            regras.primeiro_nome(pedido.get('contact_name'), respostas.get('de')), regras.para_quem(respostas),
+            links.compra(pedido.get('guid'), pedido.get('dns_origem') or original['dominio']), video)
+        try:
+            s.notificador.email(original['produto_id'], _email_de_quem_comprou(s, original), assunto, corpo)
+            avisada = True
+        except Exception:
+            logger.exception(f"[MUSICA] Aviso da música refeita #{original['id']} não saiu")
+            s.notificador.equipe(f"Música #{original['id']} refeita, mas o e-mail para a cliente não saiu")
+    logger.info(f"[MUSICA] Música #{original['id']} refeita com o rascunho #{rascunho['id']} "
+                f"(vídeo refeito: {video}, cliente avisada: {avisada})")
+    return {'video': video, 'avisada': avisada}
+
+
+def descartar_rascunho(s, rascunho_id) -> int:
+    """Apaga o rascunho (e os arquivos dele). Devolve o id da música original, para voltar à página dela."""
+    rascunho = _rascunho(s, rascunho_id, livre=False)
+    s.arquivos.apagar(rascunho['token'])
+    s.repositorio.apagar(rascunho['id'])
+    return rascunho['rascunho_de']

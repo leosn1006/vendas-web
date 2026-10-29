@@ -126,3 +126,17 @@ def link_do_presente(nome_quem_recebe, de, link):
         linhas += ['', f'Com carinho, {de}.']
     return '\n'.join(linhas)
 
+
+
+
+def musica_atualizada(de, para, link, video_refeito):
+    """Para quem comprou: o admin refez a música (a pedido dela). O link da área da compra é o mesmo de sempre."""
+    e = html.escape
+    corpo = _p(f'Oi, {e(de)}!' if de else 'Oi!')
+    corpo += _p(f'A música de <b>{e(para)}</b> foi atualizada com o que você pediu. Ela já está no mesmo lugar de '
+                'sempre, pronta para ouvir e baixar 🎶')
+    if video_refeito:
+        corpo += _p('O videoclipe está sendo refeito com as mesmas fotos e fica pronto em alguns minutos.')
+    corpo += _p('O link da página do presente e o QR code continuam os mesmos.')
+    corpo += _botao('Ouvir a música atualizada', link)
+    return f'A música de {para} foi atualizada 🎶', corpo

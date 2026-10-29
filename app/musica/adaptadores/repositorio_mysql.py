@@ -34,7 +34,9 @@ class RepositorioMysql:
         return _musica(db.execute_query("SELECT * FROM musicas WHERE id = %s", (musica_id,), fetch_one=True))
 
     def por_token(self, token):
-        return _musica(db.execute_query("SELECT * FROM musicas WHERE token = %s", (token,), fetch_one=True))
+        """Os caminhos públicos (página, checkout, presente) chegam pelo token: rascunho do admin não aparece."""
+        return _musica(db.execute_query("SELECT * FROM musicas WHERE token = %s AND rascunho_de IS NULL", (token,),
+                                        fetch_one=True))
 
     def por_job(self, job_id):
         return _musica(db.execute_query("SELECT * FROM musicas WHERE job_id = %s", (job_id,), fetch_one=True))
@@ -220,7 +222,7 @@ class RepositorioMysql:
                LEFT JOIN produto_planos pp ON pp.id = a.plano_id
                WHERE m.liberada_em IS NULL AND m.email IS NOT NULL
                  AND m.criado_em >= NOW() - INTERVAL 5 DAY
-                 AND m.status IN ('letra_pronta', 'previa_pronta')
+                 AND m.status IN ('letra_pronta', 'previa_pronta') AND m.rascunho_de IS NULL
                  AND saida.email_chave IS NULL
                  AND NOT EXISTS (SELECT 1 FROM musicas outra WHERE outra.email = m.email
                                  AND outra.liberada_em >= LEAST(m.criado_em, NOW() - INTERVAL 1 DAY))
@@ -247,6 +249,45 @@ class RepositorioMysql:
                ON DUPLICATE KEY UPDATE inicio = VALUES(inicio), desde = VALUES(desde), enviados = VALUES(enviados),
                                        ultimo_em = VALUES(ultimo_em), musica_id = VALUES(musica_id)""",
             (chave_email, etapa, inicio, desde, enviados, ultimo_em, musica_id))
+
+    # ---------------------------------------------------------- admin: músicas vendidas e rascunhos
+
+    _SQL_VENDAS = """SELECT m.id, m.token, m.titulo, m.liberada_em, m.refeita_em, m.video_status, m.dominio,
+                             p.id AS pedido_id, p.guid, p.contact_name, p.email AS email_compra, p.contact_phone,
+                             p.valor_pago, p.data_pagamento, p.dns_origem, pp.nome AS plano
+                      FROM musicas m JOIN pedidos p ON p.id = m.pedido_id
+                      LEFT JOIN produto_planos pp ON pp.id = p.plano_id
+                      WHERE m.liberada_em IS NOT NULL AND m.rascunho_de IS NULL"""
+
+    def musicas_vendidas(self, busca='', limite=200):
+        """As músicas pagas, mais recentes primeiro; `busca` = nº do pedido ou parte do e-mail/nome de quem comprou."""
+        busca = (busca or '').strip()
+        if busca.isdigit():
+            return db.execute_query(self._SQL_VENDAS + " AND p.id = %s ORDER BY m.liberada_em DESC LIMIT %s",
+                                    (int(busca), limite), fetch_all=True) or []
+        if busca:
+            parecido = f'%{busca}%'
+            return db.execute_query(self._SQL_VENDAS + " AND (p.email LIKE %s OR p.contact_name LIKE %s) "
+                                    "ORDER BY m.liberada_em DESC LIMIT %s", (parecido, parecido, limite),
+                                    fetch_all=True) or []
+        return db.execute_query(self._SQL_VENDAS + " ORDER BY m.liberada_em DESC LIMIT %s", (limite,),
+                                fetch_all=True) or []
+
+    def venda_da_musica(self, musica_id):
+        return db.execute_query(self._SQL_VENDAS + " AND m.id = %s", (musica_id,), fetch_one=True)
+
+    def rascunho_ativo(self, musica_id):
+        """O rascunho do admin para refazer esta música, ainda não usado (no máximo um por vez: vale o mais antigo)."""
+        return _musica(db.execute_query("SELECT * FROM musicas WHERE rascunho_de = %s AND rascunho_usado_em IS NULL "
+                                        "ORDER BY id LIMIT 1", (musica_id,), fetch_one=True))
+
+    def marcar_rascunho_usado(self, rascunho_id, usado=True):
+        """Trava do "usar" (clique duplo / dois admins): só um consegue marcar. `usado=False` desfaz após falha."""
+        if not usado:
+            db.execute_query("UPDATE musicas SET rascunho_usado_em = NULL WHERE id = %s", (rascunho_id,))
+            return True
+        return db.execute_query("UPDATE musicas SET rascunho_usado_em = NOW() WHERE id = %s "
+                                "AND rascunho_usado_em IS NULL", (rascunho_id,), return_rowcount=True) == 1
 
     def parar_lembretes_email(self, chave_email):
         db.execute_query("INSERT INTO musica_lembretes_saida (email_chave, em) VALUES (%s, NOW()) "

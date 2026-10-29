@@ -81,6 +81,28 @@ Regras em `regras.escolher_lembretes` / `proximo_lembrete`; textos em `mensagens
   `lembrete_etapa` (a marca acima); `lembrete_desde`, `lembretes_enviados`, `lembrete_ultimo_em` e `sem_lembretes`
   ficaram sem uso.
 
+## Refazer a música de uma compra (admin, desde 29/10/2026)
+
+Quando a cliente pede mudança depois de pagar (letra, nome, pronúncia, voz…): **Admin → 🎵 Músicas vendidas**
+(`/admin/musicas`, só administradores; busca por nº do pedido, e-mail ou nome) → abrir a música → **Refazer a música**.
+
+- Cria um **rascunho** (`musicas.rascunho_de` = id da original; migration 098), sem e-mail nem pedido — fora dos
+  lembretes e dos limites. A música dela **não muda** até o admin clicar em "Usar esta na compra".
+- O rascunho começa com o título e a letra dela (ou letra nova, se marcar). Dá para: **pedir ajuste à IA** (sem o
+  limite de 2 da cliente), **editar à mão** o título e as duas letras (a que ela lê e a cantada, com `[Verse]`/`[Chorus]`
+  e o nome escrito como se fala) e **mudar as escolhas** da música (relação, nome/apelido/pronúncia, ocasião,
+  lembranças, frase, tom, estilo, voz, "de"). O servidor confere só o grupo que mudou (relação/ocasião/tom ou
+  estilo/voz) com as regras do quiz — músicas do quiz antigo, sem ocasião, não travam.
+- **Travado** (`casos_de_uso.CAMPOS_EDITAVEIS` é a lista do que pode): e-mail/WhatsApp de quem comprou, pedido, plano,
+  itens, valor, presente agendado e as fotos do vídeo.
+- **Criar a música** gera as 2 versões (~R$ 0,60 por vez, sem limite) para ouvir no admin.
+- **Usar esta na compra** copia os áudios para a pasta da original (temporário + `os.replace`, sem janela quebrada) e
+  troca título, letras, escolhas e faixas — **mesmo token**: link da compra, página do presente e QR code continuam
+  valendo. Se o pedido tem videoclipe e ela já mandou fotos, o vídeo é refeito com as mesmas fotos. A caixinha
+  "Avisar por e-mail" (marcada) manda "A música de … foi atualizada 🎶". A original ganha `refeita_em` (selo
+  "refeita" na lista) e o log registra quem fez.
+- **Descartar** apaga o rascunho e os arquivos dele; a original fica como estava.
+
 ## Testes na landing (`inicio.html`)
 
 - **Preço fora da landing (desde o deploy do commit 728c172 — use a data e hora do deploy como corte):** o cartão "Um presente que ninguém esquece" mostra "Você ouve antes e

@@ -1,0 +1,51 @@
+{% extends "admin/base.html" %}
+{% block title %}Músicas vendidas{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Músicas vendidas</h1>
+        <p class="page-subtitle">As músicas pagas da Canção de Presente. Abra uma para ver a letra, ouvir as versões completas ou refazer a música a pedido da cliente.</p>
+    </div>
+</div>
+
+<div class="card">
+    <form method="get" style="display:flex; gap:10px; margin-bottom:18px; max-width:520px;">
+        <input type="text" name="busca" value="{{ busca }}" placeholder="Nº do pedido, e-mail ou nome de quem comprou" style="flex:1;">
+        <button type="submit" class="btn btn-primary btn-sm">Buscar</button>
+        {% if busca %}<a href="{{ url_for('admin.musicas_vendidas') }}" class="btn btn-ghost btn-sm">Limpar</a>{% endif %}
+    </form>
+    {% if vendas %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Pedido</th>
+                    <th>Quem comprou</th>
+                    <th>Música</th>
+                    <th>Plano</th>
+                    <th style="text-align:right;">Valor</th>
+                    <th>Paga em</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vendas %}
+                <tr>
+                    <td style="font-family: var(--mono); font-size: 13px;">#{{ v.pedido_id }}</td>
+                    <td style="font-size: 14px;">{{ v.contact_name or '—' }}<br><span style="color: var(--muted); font-size: 12px;">{{ v.email_compra or '' }}</span></td>
+                    <td style="font-size: 14px;">{{ v.titulo or '—' }}{% if v.refeita_em %} <span class="badge badge-yellow">refeita</span>{% endif %}</td>
+                    <td style="font-size: 13px;">{{ v.plano or '—' }}</td>
+                    <td style="text-align:right; font-family: var(--mono); font-size: 13px;">R$&nbsp;{{ ('%.2f'|format(v.valor_pago or 0)).replace('.', ',') }}</td>
+                    <td style="font-size: 13px; color: var(--muted);">{{ v.liberada_em.strftime('%d/%m/%Y %H:%M') if v.liberada_em else '—' }}</td>
+                    <td style="text-align:right;"><a href="{{ url_for('admin.musica_detalhe', musica_id=v.id) }}" class="btn btn-ghost btn-sm">Abrir</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--muted); font-size: 14px; padding: 8px 0 20px;">{% if busca %}Nenhuma música paga encontrada para "{{ busca }}".{% else %}Nenhuma música paga ainda.{% endif %}</p>
+    {% endif %}
+</div>
+{% endblock %}

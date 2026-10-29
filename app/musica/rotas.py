@@ -251,7 +251,7 @@ def musica_completa(token, numero):
     if numero not in (1, 2) or not arquivo.exists():
         return _nao_encontrada()
     return send_file(arquivo, mimetype='audio/mpeg', as_attachment=request.args.get('baixar') == '1',
-                     download_name=f"{musica['titulo'] or 'musica'} - versao {numero}.mp3", conditional=True)
+                     download_name=f"{musica['titulo'] or 'musica'} - versao {numero}.mp3", conditional=True, max_age=0)
 
 
 @bp.get('/m/<token>/videoclipe.mp4')
@@ -264,7 +264,7 @@ def videoclipe(token):
     if VIDEOCLIPE not in recursos or musica['video_status'] != 'pronto' or not arquivo.exists():
         return _nao_encontrada()
     return send_file(arquivo, mimetype='video/mp4', as_attachment=request.args.get('baixar') == '1',
-                     download_name=f"{musica['titulo'] or 'videoclipe'}.mp4", conditional=True)
+                     download_name=f"{musica['titulo'] or 'videoclipe'}.mp4", conditional=True, max_age=0)
 
 
 @bp.get('/m/<token>/videoclipe.jpg')
@@ -276,7 +276,7 @@ def capa_video(token):
     arquivo = servicos().arquivos.capa_video(token)
     if not arquivo.exists():
         return _nao_encontrada()
-    return send_file(arquivo, mimetype='image/jpeg')
+    return send_file(arquivo, mimetype='image/jpeg', conditional=True, max_age=0)
 
 
 @bp.get('/previa/<token>/<int:numero>.mp3')
@@ -286,7 +286,7 @@ def previa(token, numero):
     arquivo = servicos().arquivos.previa(token, numero)
     if not arquivo.exists():
         return _nao_encontrada()
-    return send_file(arquivo, mimetype='audio/mpeg')
+    return send_file(arquivo, mimetype='audio/mpeg', conditional=True, max_age=0)
 
 
 @bp.get('/compra/<guid>')

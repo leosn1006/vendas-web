@@ -542,6 +542,10 @@
            class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.apps_') %}active{% endif %}">
             <span class="icon">📱</span> Apps das clientes
         </a>
+        <a href="{{ url_for('admin.musicas_vendidas') }}"
+           class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.musica') %}active{% endif %}">
+            <span class="icon">🎵</span> Músicas vendidas
+        </a>
         {% endif %}
 
         <!-- Sub-menu do produto ativo -->

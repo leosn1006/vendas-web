@@ -1,0 +1,198 @@
+{% extends "admin/base.html" %}
+{% block title %}Música #{{ musica.id }}{% endblock %}
+
+{% set NOMES = {'para_quem': 'Pra quem é', 'nome': 'Nome de quem recebe', 'apelido': 'Apelido', 'pronuncia': 'Pronúncia',
+                'ocasiao': 'Ocasião', 'ocasiao_outra': 'Qual ocasião', 'lembrancas': 'Lembranças',
+                'frase_obrigatoria': 'Frase que não pode faltar', 'clima': 'Tom', 'estilo': 'Estilo', 'voz': 'Voz',
+                'de': 'Dedicatória (de)'} %}
+{% set STATUS = {'escrevendo': ('Escrevendo a letra…', 'badge-yellow'), 'letra_pronta': ('Letra pronta', 'badge-blue'),
+                 'gerando': ('Criando a música…', 'badge-yellow'), 'processando': ('Criando a música…', 'badge-yellow'),
+                 'previa_pronta': ('Música pronta: ouça abaixo', 'badge-green'), 'erro': ('O gerador falhou', 'badge-red'),
+                 'erro_letra': ('A letra falhou', 'badge-red')} %}
+
+{# Opções de um select. O valor que a música tem e que não está na lista (vazio ou de uma versão antiga do quiz) entra
+   como opção marcada com data-atual: o JS nunca a desabilita, e o servidor só confere o que o admin mudou. #}
+{% macro opcoes(pares, atual) %}
+{%- set valores = pares|map('first')|list -%}
+{%- if (atual or '') not in valores %}<option value="{{ atual or '' }}" data-atual selected>{{ atual ~ ' (do quiz antigo)' if atual else '— não escolhido no quiz' }}</option>{% endif -%}
+{%- for v, t in pares %}<option value="{{ v }}" {{ 'selected data-atual' if atual == v }}>{{ t }}</option>{% endfor -%}
+{% endmacro %}
+
+{% macro escolhas(respostas, acao, botao, com_letra_nova_marcada=false) %}
+<form method="post" action="{{ acao }}" class="form-escolhas">
+    <div class="form-grid">
+        <div class="form-group"><label>{{ NOMES.para_quem }}</label>
+            <select name="para_quem" data-campo="para_quem">{{ opcoes(relacoes, respostas.para_quem) }}</select></div>
+        <div class="form-group"><label>{{ NOMES.de }}</label>
+            <input type="text" name="de" maxlength="80" value="{{ respostas.de or '' }}"></div>
+        <div class="form-group"><label>{{ NOMES.nome }}</label>
+            <input type="text" name="nome" maxlength="200" value="{{ respostas.nome or '' }}"></div>
+        <div class="form-group"><label>{{ NOMES.apelido }}</label>
+            <input type="text" name="apelido" maxlength="200" value="{{ respostas.apelido or '' }}"></div>
+        <div class="form-group span-2"><label>{{ NOMES.pronuncia }}</label>
+            <input type="text" name="pronuncia" maxlength="300" placeholder="Ex.: Theo se fala Téo" value="{{ respostas.pronuncia or '' }}"></div>
+        <div class="form-group"><label>{{ NOMES.ocasiao }}</label>
+            <select name="ocasiao" data-campo="ocasiao">{{ opcoes(ocasioes, respostas.ocasiao) }}</select></div>
+        <div class="form-group"><label>{{ NOMES.ocasiao_outra }} <small style="color:var(--muted)">(só em "Outra ocasião")</small></label>
+            <input type="text" name="ocasiao_outra" maxlength="200" value="{{ respostas.ocasiao_outra or '' }}"></div>
+        <div class="form-group span-2"><label>{{ NOMES.lembrancas }}</label>
+            <textarea name="lembrancas" rows="5">{{ respostas.lembrancas or '' }}</textarea></div>
+        <div class="form-group span-2"><label>{{ NOMES.frase_obrigatoria }}</label>
+            <input type="text" name="frase_obrigatoria" maxlength="300" value="{{ respostas.frase_obrigatoria or '' }}"></div>
+        <div class="form-group"><label>{{ NOMES.clima }}</label>
+            <select name="clima" data-campo="clima">{{ opcoes(tons, respostas.clima) }}</select></div>
+        <div class="form-group"><label>{{ NOMES.estilo }}</label>
+            <select name="estilo" data-campo="estilo">{{ opcoes(estilos, respostas.estilo) }}</select></div>
+        <div class="form-group"><label>{{ NOMES.voz }}</label>
+            <select name="voz" data-campo="voz">{{ opcoes(vozes, respostas.voz) }}</select></div>
+    </div>
+    <label style="display:flex; gap:8px; align-items:center; margin:14px 0; font-size:14px;">
+        <input type="checkbox" name="letra_nova" value="1" {{ 'checked' if com_letra_nova_marcada }}>
+        Escrever uma letra nova do zero com estas escolhas (use quando mudar pra quem é, ocasião, lembranças, tom ou estilo)
+    </label>
+    <button type="submit" class="btn btn-primary btn-sm">{{ botao }}</button>
+</form>
+{% endmacro %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ musica.titulo or 'Música' }}</h1>
+        <p class="page-subtitle">Pedido #{{ venda.pedido_id }} · para {{ para }}{% if musica.refeita_em %} · refeita em {{ musica.refeita_em.strftime('%d/%m/%Y %H:%M') }}{% endif %}</p>
+    </div>
+    <a href="{{ url_for('admin.musicas_vendidas') }}" class="btn btn-ghost btn-sm">← Músicas vendidas</a>
+</div>
+
+<div class="card" style="margin-bottom: 20px;">
+    <p style="font-size:12px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin:0 0 10px;">A compra (não muda)</p>
+    <div class="form-grid" style="font-size:14px;">
+        <div><b>Quem comprou:</b> {{ venda.contact_name or '—' }}</div>
+        <div><b>E-mail:</b> {{ venda.email_compra or '—' }}</div>
+        <div><b>WhatsApp:</b> {{ musica.whatsapp or venda.contact_phone or '—' }}</div>
+        <div><b>Plano:</b> {{ venda.plano or '—' }} · R$ {{ ('%.2f'|format(venda.valor_pago or 0)).replace('.', ',') }}</div>
+        <div><b>Itens:</b> {{ nomes_itens|join(' · ') }}</div>
+        <div><b>Paga em:</b> {{ musica.liberada_em.strftime('%d/%m/%Y %H:%M') }}</div>
+        <div class="span-2"><a href="{{ link_compra }}" target="_blank" rel="noopener">Área da compra ↗</a> · <a href="{{ link_presente }}" target="_blank" rel="noopener">Página do presente ↗</a></div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 20px;">
+    <p style="font-size:12px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin:0 0 10px;">A música da cliente (agora)</p>
+    {% for f in musica.faixas or [] %}
+    <div style="margin-bottom:8px; font-size:14px;">Versão {{ f.numero }}<br><audio controls preload="none" src="{{ url_for('admin.musica_audio_admin', musica_id=musica.id, numero=f.numero) }}" style="width:100%; max-width:520px;"></audio></div>
+    {% endfor %}
+    <p style="font-size:14px; margin:12px 0 4px;"><b>Videoclipe:</b>
+        {% if 'videoclipe' in recursos %}{{ {'fazendo': 'sendo feito', 'pronto': 'pronto', 'erro': 'falhou'}.get(musica.video_status, 'ela ainda não mandou as fotos') }}{% if tem_fotos %} (fotos guardadas; versão {{ musica.video_versao or 1 }}){% endif %}{% else %}não comprou{% endif %}</p>
+    <details style="margin-top:10px;"><summary style="cursor:pointer; font-size:14px;">Letra e escolhas</summary>
+        <div class="form-grid" style="margin-top:12px;">
+            <pre style="white-space:pre-wrap; font-family:inherit; font-size:14px; background:var(--bg); padding:12px; border-radius:8px;">{{ musica.letra_exibicao or '' }}</pre>
+            <div style="font-size:13px;">{% for campo, nome in NOMES.items() if musica.respostas.get(campo) %}<p style="margin:0 0 6px;"><b>{{ nome }}:</b> {{ musica.respostas.get(campo) }}</p>{% endfor %}</div>
+        </div>
+    </details>
+</div>
+
+<div class="card" id="refazer">
+    <p style="font-size:12px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin:0 0 6px;">Refazer a música</p>
+    <p style="font-size:13px; color:var(--muted); margin:0 0 16px;">Tudo acontece num rascunho: a música da cliente só muda quando você clicar em "Usar esta na compra da cliente". O link, o QR code, o pedido e a entrega dela continuam os mesmos.</p>
+
+    {% if not rascunho %}
+    {{ escolhas(musica.respostas, url_for('admin.musica_refazer', musica_id=musica.id), 'Começar o rascunho (com a letra atual dela)') }}
+    {% else %}
+    {% set st = STATUS.get(rascunho.status, (rascunho.status, 'badge-blue')) %}
+    <p style="margin:0 0 16px;"><span class="badge {{ st[1] }}" id="status-rascunho" data-status="{{ rascunho.status }}">{{ st[0] }}</span>
+        {% if rascunho.erro and rascunho.status in ('erro', 'erro_letra', 'letra_pronta', 'previa_pronta') %}<small style="color:var(--muted)"> — último aviso: {{ rascunho.erro[:160] }}</small>{% endif %}</p>
+
+    {% if rascunho.status in ('escrevendo', 'gerando', 'processando') %}
+    <p style="font-size:14px;">Aguarde: a página atualiza sozinha quando terminar.</p>
+    {% else %}
+    <h3 style="font-size:16px; margin:8px 0;">1. Letra do rascunho</h3>
+    <p style="font-size:15px; margin:0 0 6px;"><b>{{ rascunho.titulo or '(sem título)' }}</b></p>
+    <pre style="white-space:pre-wrap; font-family:inherit; font-size:14px; background:var(--bg); padding:12px; border-radius:8px; max-width:640px;">{{ rascunho.letra_exibicao or '' }}</pre>
+
+    <form method="post" action="{{ url_for('admin.musica_rascunho_ajuste', rascunho_id=rascunho.id) }}" style="margin:14px 0; max-width:640px;">
+        <label style="font-size:14px; font-weight:600;">Pedir ajuste à IA</label>
+        <textarea name="instrucao" rows="3" maxlength="800" placeholder='Ex.: no refrão, trocar "Ju" por "Juju"; tirar a parte do pai; citar o sítio em Goiás' style="width:100%;"></textarea>
+        <button type="submit" class="btn btn-primary btn-sm" style="margin-top:6px;">Reescrever com este ajuste</button>
+    </form>
+
+    <details style="margin:10px 0;"><summary style="cursor:pointer; font-size:14px; font-weight:600;">Editar a letra à mão</summary>
+        <form method="post" action="{{ url_for('admin.musica_rascunho_letra', rascunho_id=rascunho.id) }}" style="margin-top:10px;">
+            <div class="form-grid">
+                <div class="form-group span-2"><label>Título</label><input type="text" name="titulo" maxlength="255" value="{{ rascunho.titulo or '' }}"></div>
+                <div class="form-group"><label>Letra que a cliente lê</label><textarea name="exibicao" rows="18">{{ rascunho.letra_exibicao or '' }}</textarea></div>
+                <div class="form-group"><label>Letra cantada (vai para o gerador: [Verse], [Chorus]… e o nome escrito como se fala)</label><textarea name="cantada" rows="18" style="font-family:var(--mono); font-size:13px;">{{ rascunho.letra_suno or '' }}</textarea></div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" style="margin-top:8px;">Salvar a letra</button>
+        </form>
+    </details>
+
+    <details style="margin:10px 0;"><summary style="cursor:pointer; font-size:14px; font-weight:600;">Mudar as escolhas (estilo, voz, tom, nome…)</summary>
+        <div style="margin-top:10px;">{{ escolhas(rascunho.respostas, url_for('admin.musica_rascunho_escolhas', rascunho_id=rascunho.id), 'Salvar as escolhas') }}</div>
+    </details>
+
+    <h3 style="font-size:16px; margin:22px 0 8px;">2. Criar a música</h3>
+    <form method="post" action="{{ url_for('admin.musica_rascunho_gerar', rascunho_id=rascunho.id) }}"
+          onsubmit="return confirm('Criar a música com esta letra e estas escolhas? Cada geração custa ~R$ 0,60 de crédito.')">
+        <button type="submit" class="btn btn-primary btn-sm">{{ 'Gerar de novo' if rascunho.status == 'previa_pronta' else 'Criar a música' }} (~R$ 0,60)</button>
+    </form>
+
+    {% if rascunho.status == 'previa_pronta' %}
+    <h3 style="font-size:16px; margin:22px 0 8px;">3. Ouvir e usar</h3>
+    {% for f in rascunho.faixas or [] %}
+    <div style="margin-bottom:8px; font-size:14px;">Versão {{ f.numero }} do rascunho<br><audio controls preload="none" src="{{ url_for('admin.musica_audio_admin', musica_id=rascunho.id, numero=f.numero) }}" style="width:100%; max-width:520px;"></audio></div>
+    {% endfor %}
+    <form method="post" action="{{ url_for('admin.musica_rascunho_usar', rascunho_id=rascunho.id) }}" style="margin-top:14px;"
+          onsubmit="return confirm('Trocar a música da cliente por esta? Ela passa a ouvir a nova pelo mesmo link.')">
+        <label style="display:flex; gap:8px; align-items:center; font-size:14px; margin-bottom:8px;"><input type="checkbox" name="avisar" value="1" checked> Avisar a cliente por e-mail ("Sua música foi atualizada")</label>
+        {% if 'videoclipe' in recursos and tem_fotos %}<p style="font-size:13px; color:var(--muted); margin:0 0 8px;">O videoclipe dela será refeito com as mesmas fotos.</p>{% endif %}
+        <button type="submit" class="btn btn-primary">Usar esta na compra da cliente</button>
+    </form>
+    {% endif %}
+    {% endif %}
+
+    <form method="post" action="{{ url_for('admin.musica_rascunho_descartar', rascunho_id=rascunho.id) }}" style="margin-top:22px;"
+          onsubmit="return confirm('Descartar o rascunho? A música da cliente não muda.')">
+        <button type="submit" class="btn btn-danger btn-sm">Descartar o rascunho</button>
+    </form>
+    {% endif %}
+</div>
+
+<script>
+// Só combinações que o quiz aceita (mesmas regras do servidor): ocasião pela relação, tom pela relação+ocasião,
+// voz pelo estilo. As opções que não combinam ficam desabilitadas; o servidor confere de novo ao salvar.
+(function () {
+    const REGRAS = {{ regras_quiz|tojson }};
+    document.querySelectorAll('.form-escolhas').forEach(form => {
+        const campo = nome => form.querySelector(`[data-campo="${nome}"]`);
+        function limitar(select, permitidas) {
+            [...select.options].forEach(o => { o.disabled = !o.hasAttribute('data-atual') && !permitidas.includes(o.value); });
+            if (select.selectedOptions[0] && select.selectedOptions[0].disabled) {
+                const primeira = [...select.options].find(o => !o.disabled); if (primeira) select.value = primeira.value;
+            }
+        }
+        function atualizar() {
+            const rel = campo('para_quem').value;
+            limitar(campo('ocasiao'), REGRAS.ocasioes_por_relacao[rel] || []);
+            limitar(campo('clima'), ((REGRAS.tons_por_relacao[rel] || {})[campo('ocasiao').value]) || []);
+            limitar(campo('voz'), REGRAS.vozes_por_estilo[campo('estilo').value] || ['feminina', 'masculina']);
+        }
+        ['para_quem', 'ocasiao', 'estilo'].forEach(n => campo(n).addEventListener('change', atualizar));
+        atualizar();
+    });
+    // Clique duplo: o botão trava ao enviar (o servidor também confere).
+    document.querySelectorAll('#refazer form').forEach(f => f.addEventListener('submit', e => {
+        if (!e.defaultPrevented) f.querySelectorAll('button[type=submit]').forEach(b => { b.disabled = true; });
+    }));
+    // Enquanto o rascunho escreve ou gera, pergunta o andamento e recarrega quando muda.
+    const selo = document.getElementById('status-rascunho');
+    if (selo && ['escrevendo', 'gerando', 'processando'].includes(selo.dataset.status)) {
+        setInterval(async () => {
+            try {
+                const r = await (await fetch("{{ url_for('admin.musica_andamento', musica_id=musica.id) }}")).json();
+                if (r.status !== selo.dataset.status) location.reload();
+            } catch (e) {}
+        }, 5000);
+    }
+})();
+</script>
+{% endblock %}
