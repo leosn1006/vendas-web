@@ -242,6 +242,11 @@ def vozes_para(estilo: str) -> list[str]:
 def combinacao_invalida(respostas: dict) -> str | None:
     """O que não combina nas respostas (mesma regra que a tela usa), ou None. O navegador já filtra; isto é a
     conferência do servidor contra um envio feito à mão."""
+    return relacao_invalida(respostas) or estilo_voz_invalido(respostas)
+
+
+def relacao_invalida(respostas: dict) -> str | None:
+    """1ª parte da regra: relação, ocasião e tom entre si."""
     para_quem = respostas.get('para_quem')
     if para_quem not in {r['valor'] for r in RELACOES}:
         return 'para_quem'
@@ -249,6 +254,11 @@ def combinacao_invalida(respostas: dict) -> str | None:
         return 'ocasiao'
     if respostas.get('clima') not in tons_para(para_quem, respostas.get('ocasiao')):
         return 'clima'
+    return None
+
+
+def estilo_voz_invalido(respostas: dict) -> str | None:
+    """2ª parte da regra: estilo e voz entre si."""
     if respostas.get('estilo') not in {e for e, _ in ESTILOS}:
         return 'estilo'
     if respostas.get('voz') not in vozes_para(respostas.get('estilo')):

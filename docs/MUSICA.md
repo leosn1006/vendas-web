@@ -98,7 +98,8 @@ Quando a cliente pede mudança depois de pagar (letra, nome, pronúncia, voz…)
 - **Criar a música** gera as 2 versões (~R$ 0,60 por vez, sem limite) para ouvir no admin.
 - **Usar esta na compra** copia os áudios para a pasta da original (temporário + `os.replace`, sem janela quebrada) e
   troca título, letras, escolhas e faixas — **mesmo token**: link da compra, página do presente e QR code continuam
-  valendo. Se o pedido tem videoclipe e ela já mandou fotos, o vídeo é refeito com as mesmas fotos. A caixinha
+  valendo. Se ela já tinha o videoclipe (pronto ou que falhou), ele é refeito com as mesmas fotos,
+  versão e legenda; enquanto o vídeo dela está sendo feito, a troca espera. A caixinha
   "Avisar por e-mail" (marcada) manda "A música de … foi atualizada 🎶". A original ganha `refeita_em` (selo
   "refeita" na lista) e o log registra quem fez.
 - **Descartar** apaga o rascunho e os arquivos dele; a original fica como estava.

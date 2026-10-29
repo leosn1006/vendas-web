@@ -53,8 +53,14 @@ class Arquivos:
             for temporario, _ in trocas:
                 temporario.unlink(missing_ok=True)
             raise
-        for temporario, destino in trocas:
-            os.replace(temporario, destino)
+        try:
+            for temporario, destino in trocas:
+                os.replace(temporario, destino)
+        except OSError as erro:   # raríssimo (renomear na mesma pasta): repetir a cópia completa a troca
+            for temporario, _ in trocas:
+                temporario.unlink(missing_ok=True)
+            erro.troca_parcial = True
+            raise
         for tipo in ('completa', 'previa'):
             for sobra in (self.pasta(para_token) / tipo).glob('*.mp3'):
                 if sobra.stem.isdigit() and int(sobra.stem) not in numeros:

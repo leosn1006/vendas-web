@@ -13,7 +13,7 @@ from musica import config, links, mensagens
 from musica.portas import ErroPassageiro
 from musica.dominio import legenda, regras
 from musica.dominio import modelos as m_
-from musica.dominio.quiz import ESTILOS as ESTILOS_QUIZ, combinacao_invalida, vozes_para
+from musica.dominio.quiz import estilo_voz_invalido, relacao_invalida
 from musica.dominio.recursos import ENTREGA_EMAIL, MUSICA, QRCODE, VIDEOCLIPE
 
 logger = logging.getLogger(__name__)
@@ -752,7 +752,7 @@ def _rascunho(s, rascunho_id, livre=True):
 
 def respostas_editadas(base: dict, formulario) -> dict:
     """As escolhas do formulário do admin sobre as `base`: só CAMPOS_EDITAVEIS (qualquer outro campo enviado é
-    ignorado) e só combinações que o quiz aceita (mesma regra da cliente: quiz.combinacao_invalida)."""
+    ignorado) e só combinações que o quiz aceita (mesmas regras da cliente: quiz.relacao_invalida e estilo_voz_invalido)."""
     respostas = dict(base)
     for campo in CAMPOS_EDITAVEIS:
         if campo in formulario:
@@ -771,14 +771,8 @@ def respostas_editadas(base: dict, formulario) -> dict:
     # algo que já era assim.
     def mexeu(*campos):
         return any(respostas.get(c) != base.get(c) for c in campos)
-    erro = None
-    if mexeu('para_quem', 'ocasiao', 'clima'):
-        erro = combinacao_invalida({**respostas, 'estilo': 'pop', 'voz': 'feminina'})   # só a 1ª parte da regra
-    if not erro and mexeu('estilo', 'voz'):
-        if respostas.get('estilo') not in {e for e, _ in ESTILOS_QUIZ}:
-            erro = 'estilo'
-        elif respostas.get('voz') not in vozes_para(respostas.get('estilo')):
-            erro = 'voz'
+    erro = ((mexeu('para_quem', 'ocasiao', 'clima') and relacao_invalida(respostas))
+            or (mexeu('estilo', 'voz') and estilo_voz_invalido(respostas)))
     if erro:
         raise Recusa(f"Essa escolha de {_NOMES_CAMPOS.get(erro, erro)} não combina com as outras (o quiz não deixaria).")
     return respostas
@@ -797,9 +791,9 @@ def criar_rascunho(s, musica_id, formulario, letra_nova=False):
         campos.update(status=m_.LETRA_PRONTA, titulo=original['titulo'], letra_exibicao=original['letra_exibicao'],
                       letra_suno=original['letra_suno'], modelo_letra=original['modelo_letra'])
     s.repositorio.atualizar(rascunho['id'], **campos)
-    if s.repositorio.rascunho_ativo(original['id'])['id'] != rascunho['id']:   # clique duplo: vale o mais antigo
-        s.repositorio.apagar(rascunho['id'])
-        raise Recusa('Já existe um rascunho para esta música: use ou descarte antes de começar outro.')
+    if s.repositorio.rascunhos_ativos(original['id']) != [rascunho['id']]:   # clique duplo / dois admins
+        s.repositorio.apagar(rascunho['id'])   # quem vê outro desiste (no pior caso os dois: é só clicar de novo)
+        raise Recusa('Outro rascunho foi criado ao mesmo tempo para esta música. Recarregue a página.')
     if letra_nova:
         s.agenda.escrever_letra(rascunho['id'])
     logger.info(f"[MUSICA] Rascunho #{rascunho['id']} criado para refazer a música #{original['id']}")
@@ -809,7 +803,10 @@ def criar_rascunho(s, musica_id, formulario, letra_nova=False):
 def editar_escolhas_rascunho(s, rascunho_id, formulario, letra_nova=False):
     rascunho = _rascunho(s, rascunho_id)
     respostas = respostas_editadas(rascunho['respostas'], formulario)
-    s.repositorio.atualizar(rascunho['id'], respostas=respostas)
+    campos = {'respostas': respostas}
+    if respostas != rascunho['respostas'] and rascunho['status'] == m_.PREVIA_PRONTA:
+        campos['status'] = rascunho['status'] = m_.LETRA_PRONTA   # a música gerada era das escolhas antigas
+    s.repositorio.atualizar(rascunho['id'], **campos)
     if letra_nova:
         _escrever_rascunho(s, rascunho)
 
@@ -855,7 +852,8 @@ def gerar_rascunho(s, rascunho_id):
     try:
         _mandar_gerar(s, s.repositorio.por_id(rascunho['id']))
     except m_.ErroGerador as erro:
-        s.repositorio.atualizar(rascunho['id'], status=rascunho['status'])
+        s.repositorio.atualizar(rascunho['id'], status=rascunho['status'], job_id=rascunho['job_id'],
+                                geracoes=rascunho['geracoes'])
         raise Recusa(f'O gerador recusou agora: {erro}. Tente de novo em alguns minutos.', 503)
 
 
@@ -875,13 +873,19 @@ def usar_rascunho(s, rascunho_id, avisar=True) -> dict:
     try:
         s.arquivos.copiar_audios(rascunho['token'], original['token'], numeros)
     except OSError as erro:
-        s.repositorio.marcar_rascunho_usado(rascunho['id'], usado=False)
+        s.repositorio.marcar_rascunho_usado(rascunho['id'], usado=False)   # copiar de novo refaz tudo
         logger.exception(f"[MUSICA] Cópia dos áudios do rascunho #{rascunho['id']} falhou")
+        if getattr(erro, 'troca_parcial', False):
+            s.notificador.equipe(f"Música #{original['id']}: troca dos áudios ficou pela metade ({erro})")
+            raise Recusa(f'A troca dos arquivos parou no meio ({erro}). Clique em "Usar esta na compra" de novo '
+                         'para completar.', 500)
         raise Recusa(f'Não deu para copiar os arquivos do rascunho ({erro}). A música dela não mudou.', 500)
     s.repositorio.atualizar(original['id'], titulo=rascunho['titulo'], letra_exibicao=rascunho['letra_exibicao'],
                             letra_suno=rascunho['letra_suno'], respostas=rascunho['respostas'],
                             faixas=rascunho['faixas'], modelo_letra=rascunho['modelo_letra'], refeita_em=_agora())
-    video = VIDEOCLIPE in s.repositorio.recursos_do_pedido(original['pedido_id']) and s.arquivos.tem_fotos(original['token'])
+    # Refaz só o vídeo que ela já pediu (pronto ou que falhou), com a versão e a legenda que ela escolheu.
+    video = (original['video_status'] in ('pronto', 'erro') and s.arquivos.tem_fotos(original['token'])
+             and VIDEOCLIPE in s.repositorio.recursos_do_pedido(original['pedido_id']))
     if video:
         versao = original['video_versao'] if original['video_versao'] in numeros else numeros[0]
         s.repositorio.atualizar(original['id'], video_status='fazendo', video_versao=versao, video_erro=None)
@@ -896,7 +900,7 @@ def usar_rascunho(s, rascunho_id, avisar=True) -> dict:
             regras.primeiro_nome(pedido.get('contact_name'), respostas.get('de')), regras.para_quem(respostas),
             links.compra(pedido.get('guid'), pedido.get('dns_origem') or original['dominio']), video)
         try:
-            s.notificador.email(original['produto_id'], _email_de_quem_comprou(s, original), assunto, corpo)
+            s.notificador.email(original['produto_id'], pedido.get('email') or original['email'], assunto, corpo)
             avisada = True
         except Exception:
             logger.exception(f"[MUSICA] Aviso da música refeita #{original['id']} não saiu")
@@ -909,6 +913,9 @@ def usar_rascunho(s, rascunho_id, avisar=True) -> dict:
 def descartar_rascunho(s, rascunho_id) -> int:
     """Apaga o rascunho (e os arquivos dele). Devolve o id da música original, para voltar à página dela."""
     rascunho = _rascunho(s, rascunho_id, livre=False)
+    if rascunho['status'] in (m_.GERANDO, m_.PROCESSANDO) and rascunho.get('gerando_desde') \
+            and _agora() - rascunho['gerando_desde'] < timedelta(minutes=30):   # o download recriaria a pasta
+        raise Recusa('A música do rascunho está sendo criada. Espere terminar para descartar.')
     s.arquivos.apagar(rascunho['token'])
     s.repositorio.apagar(rascunho['id'])
     return rascunho['rascunho_de']

@@ -188,6 +188,10 @@ class RepositorioMemoria:
         return next((self.por_id(m['id']) for m in sorted(self.musicas.values(), key=lambda m: m['id'])
                      if m['rascunho_de'] == musica_id and not m['rascunho_usado_em']), None)
 
+    def rascunhos_ativos(self, musica_id):
+        return sorted(m['id'] for m in self.musicas.values()
+                      if m['rascunho_de'] == musica_id and not m['rascunho_usado_em'])
+
     def marcar_rascunho_usado(self, rascunho_id, usado=True):
         if usado and self.musicas[rascunho_id]['rascunho_usado_em']:
             return False

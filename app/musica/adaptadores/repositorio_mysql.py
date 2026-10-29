@@ -281,6 +281,11 @@ class RepositorioMysql:
         return _musica(db.execute_query("SELECT * FROM musicas WHERE rascunho_de = %s AND rascunho_usado_em IS NULL "
                                         "ORDER BY id LIMIT 1", (musica_id,), fetch_one=True))
 
+    def rascunhos_ativos(self, musica_id):
+        linhas = db.execute_query("SELECT id FROM musicas WHERE rascunho_de = %s AND rascunho_usado_em IS NULL "
+                                  "ORDER BY id", (musica_id,), fetch_all=True) or []
+        return [l['id'] for l in linhas]
+
     def marcar_rascunho_usado(self, rascunho_id, usado=True):
         """Trava do "usar" (clique duplo / dois admins): só um consegue marcar. `usado=False` desfaz após falha."""
         if not usado:
@@ -297,7 +302,7 @@ class RepositorioMysql:
         """Músicas presas num status de espera há mais de `minutos` (worker reiniciado, tarefa perdida)."""
         coluna = 'gerando_desde' if status == 'gerando' else 'atualizado_em'
         linhas = db.execute_query(f"SELECT id FROM musicas WHERE status = %s AND {coluna} < NOW() - INTERVAL %s MINUTE "
-                                  "AND criado_em >= NOW() - INTERVAL 2 DAY LIMIT 200", (status, minutos), fetch_all=True) or []
+                                  "AND (criado_em >= NOW() - INTERVAL 2 DAY OR rascunho_de IS NOT NULL) LIMIT 200", (status, minutos), fetch_all=True) or []
         return [l['id'] for l in linhas]
 
     def nao_pagas_antigas(self, dias):

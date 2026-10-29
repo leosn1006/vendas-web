@@ -197,3 +197,30 @@ def test_clique_duplo_no_usar_avisa_uma_vez(s):
     assert s.repositorio.marcar_rascunho_usado(rascunho['id'])   # a 1ª requisição marcou
     with pytest.raises(Recusa, match='já foi usado'):
         uc.usar_rascunho(s, rascunho['id'])
+
+
+def test_mudar_escolhas_depois_de_gerar_pede_gerar_de_novo(s):
+    original = _paga(s)
+    rascunho = _gerar(s, uc.criar_rascunho(s, original['id'], {}))
+    uc.editar_escolhas_rascunho(s, rascunho['id'], {'voz': 'masculina'})
+    assert s.repositorio.por_id(rascunho['id'])['status'] == 'letra_pronta'
+    with pytest.raises(Recusa, match='Crie a música'):
+        uc.usar_rascunho(s, rascunho['id'])
+
+
+def test_nao_faz_video_que_ela_nao_pediu(s):
+    original = _paga(s, recursos=('musica', 'videoclipe'))
+    fotos = s.arquivos.pasta_video(original['token']) / 'fotos'
+    fotos.mkdir(parents=True)
+    (fotos / '00.jpg').write_bytes(b'jpg')   # mandou fotos, mas não clicou em fazer o vídeo
+    rascunho = _gerar(s, uc.criar_rascunho(s, original['id'], {}))
+    assert uc.usar_rascunho(s, rascunho['id'], avisar=False)['video'] is False
+    assert s.repositorio.por_id(original['id'])['video_status'] is None
+
+
+def test_nao_descarta_no_meio_da_geracao(s):
+    original = _paga(s)
+    rascunho = uc.criar_rascunho(s, original['id'], {})
+    uc.gerar_rascunho(s, rascunho['id'])
+    with pytest.raises(Recusa, match='sendo criada'):
+        uc.descartar_rascunho(s, rascunho['id'])
