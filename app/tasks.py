@@ -397,29 +397,33 @@ def processar_orcamento_sheets(self, data_str=None):
             if agora.hour <= 4:  # Google Ads ainda apura o dia anterior até ~04h
                 datas.append(ontem)
 
-        erro_google = None
-        try:
-            from fluxos.fluxo_orcamento_sheets import processar_orcamento_sheets as _fn
-            for data in datas:
-                logger.info(f"[TASK-ORCAMENTO-SHEETS] 📊 Processando data={data}...")
-                resultado = _fn(data)
-                logger.info(f"[TASK-ORCAMENTO-SHEETS] ✅ {data}: {resultado}")
-        except Exception as exc:
-            logger.error(f"[TASK-ORCAMENTO-SHEETS] ❌ Erro: {exc}")
-            import traceback
-            traceback.print_exc()
-            erro_google = exc
+        from fluxos.fluxo_orcamento_sheets import processar_orcamento_sheets as _fn
+        for data in datas:
+            logger.info(f"[TASK-ORCAMENTO-SHEETS] 📊 Processando data={data}...")
+            resultado = _fn(data)
+            logger.info(f"[TASK-ORCAMENTO-SHEETS] ✅ {data}: {resultado}")
+    except Exception as exc:
+        logger.error(f"[TASK-ORCAMENTO-SHEETS] ❌ Erro: {exc}")
+        import traceback
+        traceback.print_exc()
+        raise self.retry(exc=exc, countdown=600)
+    finally:
+        _redis.delete(lock_key)
 
-        # A Meta roda mesmo com erro no Google e seu erro não vira retry. O retry do Google a chama de novo, sem
-        # duplicar dados (upsert).
-        try:
-            from fluxos.fluxo_orcamento_meta import processar_orcamento_meta
-            processar_orcamento_meta(data_str)
-        except Exception as exc:
-            logger.error(f"[TASK-ORCAMENTO-SHEETS] ❌ Erro na Meta: {type(exc).__name__}: {exc}")
 
-        if erro_google:
-            raise self.retry(exc=erro_google, countdown=600)
+@shared_task
+def processar_orcamento_meta(data_str=None):
+    """Destino das vendas e investimento das campanhas da Meta. Sem retry: a leitura se repete na hora seguinte."""
+    lock_key = "lock:orcamento_meta"
+    if not _redis.set(lock_key, 1, nx=True, ex=3300):  # TTL 55 min — evita sobreposição entre execuções horárias
+        logger.info("[TASK-ORCAMENTO-META] ⏭ Outra instância já em execução — ignorando")
+        return
+
+    try:
+        from fluxos.fluxo_orcamento_meta import processar_orcamento_meta as _fn
+        _fn(data_str)
+    except Exception as exc:
+        logger.error(f"[TASK-ORCAMENTO-META] ❌ Erro: {type(exc).__name__}: {exc}")
     finally:
         _redis.delete(lock_key)
 

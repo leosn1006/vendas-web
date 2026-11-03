@@ -113,10 +113,10 @@ def test_42_pedido_da_meta_sem_gclid_nao_sai(banco, exportar):
 
 def test_migration_cobre_o_esquema_e_e_idempotente():
     sql = (RAIZ / 'migrations' / '099_conversoes_meta.sql').read_text(encoding='utf-8')
-    for coluna in ('fbc', 'client_ip', 'client_user_agent', 'data_envio_meta', 'plataforma'):
+    for coluna in ('fbc', 'client_ip', 'client_user_agent', 'data_envio_meta', 'plataforma', 'meta_conta_id', 'meta_dataset_id',
+                   'meta_token_env_var'):
         assert f'ADD COLUMN {coluna} ' in sql
     assert "DEFAULT ''google''" in sql
-    assert 'CREATE TABLE IF NOT EXISTS meta_dataset_dns' in sql and 'UNIQUE KEY uk_produto_dns (produto_id, dns)' in sql
     assert sql.count('information_schema') == 3 and sql.count('ALTER TABLE') == 3
 
 
@@ -156,33 +156,6 @@ def admin(monkeypatch, banco):
     return SimpleNamespace(app=app, views=views, usuario=usuario)
 
 
-@pytest.mark.parametrize('form', [
-    {'dns': 'site.com', 'dataset_id': '12a', 'token_env_var': 'META_TOKEN_LSN'},
-    {'dns': 'site.com', 'dataset_id': '123', 'token_env_var': 'SECRET_KEY'},
-    {'dns': '', 'dataset_id': '123', 'token_env_var': 'META_TOKEN_LSN'},
-], ids=['dataset_com_letra', 'outra_variavel', 'sem_dns'])
-def test_admin_recusa_dataset_invalido(banco, admin, form):
-    with admin.app.test_request_context('/', method='POST', data=form):
-        admin.views.adicionar_conversao_meta.__wrapped__(1)
-    assert banco.contar('meta_dataset_dns') == 0
-
-
-def test_admin_adiciona_alterna_e_remove_dataset(banco, admin):
-    form = {'dns': ' Site.com ', 'dataset_id': '123', 'token_env_var': 'META_TOKEN_LSN'}
-    with admin.app.test_request_context('/', method='POST', data=form):
-        admin.views.adicionar_conversao_meta.__wrapped__(1)
-    linha = banco.execute_query('SELECT * FROM meta_dataset_dns', fetch_one=True)
-    assert linha['dns'] == 'site.com' and linha['ativo'] == 1
-
-    with admin.app.test_request_context('/', method='POST'):
-        admin.views.alternar_conversao_meta.__wrapped__(2, linha['id'])  # de outro produto: nada muda
-        assert banco.execute_query('SELECT ativo FROM meta_dataset_dns', fetch_one=True)['ativo'] == 1
-        admin.views.alternar_conversao_meta.__wrapped__(1, linha['id'])
-        assert banco.execute_query('SELECT ativo FROM meta_dataset_dns', fetch_one=True)['ativo'] == 0
-        admin.views.remover_conversao_meta.__wrapped__(1, linha['id'])
-    assert banco.contar('meta_dataset_dns') == 0
-
-
 def test_admin_altera_a_plataforma_da_campanha(banco, admin):
     banco.campanha('123', nome='Nome', plataforma='google')
     form = {'campaignid': '123', 'nome': 'Nome', 'plataforma': 'meta'}
@@ -199,21 +172,20 @@ def test_admin_recusa_plataforma_desconhecida(banco, admin):
     assert banco.ler_campanha('123')['nome'] == 'Nome'
 
 
-def test_acoes_de_dataset_so_para_admin():
-    fonte = (RAIZ / 'app' / 'admin' / 'views.py').read_text(encoding='utf-8')
-    for funcao in ('adicionar_conversao_meta', 'alternar_conversao_meta', 'remover_conversao_meta'):
-        assert re.search(rf"@requer_admin\ndef {funcao}\(", fonte)
+def test_remover_campanha_da_meta_guarda_canal_e_destino(banco, admin):
+    banco.campanha('123', nome='Nome', plataforma='meta')
+    banco.dataset()
+    with admin.app.test_request_context('/', method='POST', data={'campaignid': '123'}):
+        admin.views.remover_campanha.__wrapped__(1)
+    campanha = banco.ler_campanha('123')
+    assert campanha['nome'] == '123' and campanha['plataforma'] == 'meta' and campanha['meta_dataset_id'] == '999'
 
 
-@pytest.mark.parametrize('eh_admin, tem_formulario', [(True, True), (False, False)])
-def test_tela_de_conversoes_meta_renderiza(banco, admin, monkeypatch, eh_admin, tem_formulario):
-    banco.dataset(dns='site.com', dataset_id='555')
-    monkeypatch.setattr(admin.views, '_get_produto_or_redirect', lambda pid: {'id': pid, 'nome': 'Produto'})
-    admin.usuario.eh_admin = eh_admin
-    with admin.app.test_request_context('/admin/produto/1/conversoes-meta'):
-        html = admin.views.conversoes_meta_produto.__wrapped__(1)
-    assert 'site.com' in html and '555' in html and 'META_TOKEN_LSN' in html
-    assert ('Adicionar dataset' in html) is tem_formulario and ('Remover' in html) is tem_formulario
+def test_remover_campanha_do_google_continua_apagando(banco, admin):
+    banco.campanha('123', nome='Nome', plataforma='google')
+    with admin.app.test_request_context('/', method='POST', data={'campaignid': '123'}):
+        admin.views.remover_campanha.__wrapped__(1)
+    assert banco.ler_campanha('123') is None
 
 
 def test_tela_de_campanhas_tem_o_seletor_de_plataforma(banco, admin, monkeypatch):

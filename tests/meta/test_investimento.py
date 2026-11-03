@@ -31,10 +31,10 @@ def linha(campanha='123', data='2026-10-30', moeda='BRL', spend='12.34', nome='C
 def meta(monkeypatch):
     """API simulada: `contas[token]` lista as contas; `insights[conta]` é a lista de páginas de cada conta."""
     class Estado:
-        contas, insights, chamadas = {}, {}, []
+        contas, insights, conjuntos, chamadas = {}, {}, {}, []
 
     estado = Estado()
-    estado.contas, estado.insights, estado.chamadas = {}, {}, []
+    estado.contas, estado.insights, estado.conjuntos, estado.chamadas = {}, {}, {}, []
 
     def get(url, headers=None, params=None, timeout=None):
         token = headers['Authorization'].removeprefix('Bearer ')
@@ -45,6 +45,11 @@ def meta(monkeypatch):
             if isinstance(contas, Exception):
                 raise contas
             return Resposta({'data': [{'id': c} for c in contas]})
+        if caminho.endswith('/adsets'):
+            conjuntos = estado.conjuntos.get(caminho.removesuffix('/adsets'), [])
+            if isinstance(conjuntos, Exception):
+                raise conjuntos
+            return Resposta({'data': conjuntos})
         conta = caminho.removesuffix('/insights')
         paginas = estado.insights[conta]
         if isinstance(paginas, Exception):
@@ -180,6 +185,95 @@ def test_39_erro_numa_conta_nao_atrapalha_as_outras(banco, meta):
     assert len(_orcamento(banco)) == 1 and resumo['erros'] == 1 and resumo['contas'] == 1
 
 
+def _conjunto(campanha='123', dataset='555'):
+    return {'campaign_id': campanha, 'promoted_object': {'pixel_id': dataset, 'custom_event_type': 'PURCHASE'}}
+
+
+def test_35_descobre_conta_dataset_e_token_da_campanha(banco, meta):
+    banco.campanha('123', plataforma='meta')
+    meta.insights['act_1'] = [[]]
+    meta.conjuntos['act_1'] = [_conjunto()]
+    processar_orcamento_meta()
+    campanha = banco.ler_campanha('123')
+    assert campanha['meta_conta_id'] == '1' and campanha['meta_dataset_id'] == '555'
+    assert campanha['meta_token_env_var'] == 'META_TOKEN_A'
+
+
+def test_35_cada_bm_grava_o_proprio_token(banco, meta, monkeypatch):
+    monkeypatch.setenv('META_TOKEN_B', 'tb')
+    banco.campanha('123', plataforma='meta')
+    banco.campanha('456', plataforma='meta')
+    meta.contas['tb'] = ['act_2']
+    meta.insights['act_1'] = meta.insights['act_2'] = [[]]
+    meta.conjuntos['act_1'] = [_conjunto('123', '111')]
+    meta.conjuntos['act_2'] = [_conjunto('456', '222')]
+    processar_orcamento_meta()
+    assert banco.ler_campanha('123')['meta_token_env_var'] == 'META_TOKEN_A'
+    assert banco.ler_campanha('456')['meta_dataset_id'] == '222' and banco.ler_campanha('456')['meta_token_env_var'] == 'META_TOKEN_B'
+
+
+def test_35_campanha_do_google_nao_ganha_destino(banco, meta):
+    banco.campanha('123', plataforma='google')
+    meta.insights['act_1'] = [[]]
+    meta.conjuntos['act_1'] = [_conjunto()]
+    processar_orcamento_meta()
+    assert banco.ler_campanha('123')['meta_dataset_id'] is None
+
+
+def test_35_conjunto_sem_dataset_nao_apaga_o_destino(banco, meta):
+    banco.campanha('123', plataforma='meta')
+    banco.dataset()
+    meta.insights['act_1'] = [[]]
+    meta.conjuntos['act_1'] = [{'campaign_id': '123', 'promoted_object': {}}, {'campaign_id': '123'}]
+    processar_orcamento_meta()
+    assert banco.ler_campanha('123')['meta_dataset_id'] == '999'
+
+
+def test_35_mais_de_um_dataset_avisa_e_usa_um_so(banco, meta, caplog):
+    banco.campanha('123', plataforma='meta')
+    meta.insights['act_1'] = [[]]
+    meta.conjuntos['act_1'] = [_conjunto(dataset='222'), _conjunto(dataset='111')]
+    processar_orcamento_meta()
+    assert banco.ler_campanha('123')['meta_dataset_id'] == '111' and 'mais de um dataset' in caplog.text
+
+
+def test_35_mais_de_um_dataset_compara_como_numero(banco, meta):
+    banco.campanha('123', plataforma='meta')
+    meta.insights['act_1'] = [[]]
+    meta.conjuntos['act_1'] = [_conjunto(dataset='999'), _conjunto(dataset='1000')]
+    processar_orcamento_meta()
+    assert banco.ler_campanha('123')['meta_dataset_id'] == '999'
+
+
+def test_39_falha_no_destino_deixa_outro_token_tentar(banco, meta, monkeypatch):
+    monkeypatch.setenv('META_TOKEN_B', 'tb')
+    banco.campanha('123', plataforma='meta')
+    meta.contas['tb'] = ['act_1']
+    meta.insights['act_1'] = [[]]
+    estado = iter([requests.ConnectionError('fora'), [_conjunto()]])
+    original = fluxo.requests.get
+
+    def get(url, **kw):
+        if url.endswith('/adsets'):
+            r = next(estado)
+            if isinstance(r, Exception):
+                raise r
+            meta.conjuntos['act_1'] = r
+        return original(url, **kw)
+    monkeypatch.setattr(fluxo.requests, 'get', get)
+    processar_orcamento_meta()
+    campanha = banco.ler_campanha('123')
+    assert campanha['meta_dataset_id'] == '555' and campanha['meta_token_env_var'] == 'META_TOKEN_B'
+
+
+def test_39_erro_ao_ler_os_conjuntos_nao_impede_o_gasto(banco, meta):
+    banco.campanha('123', plataforma='meta')
+    meta.conjuntos['act_1'] = requests.ConnectionError('fora')
+    meta.insights['act_1'] = [[linha()]]
+    resumo = processar_orcamento_meta()
+    assert len(_orcamento(banco)) == 1 and resumo['erros'] == 1
+
+
 def test_39_linha_ruim_nao_descarta_o_resto_da_conta(banco, meta):
     meta.contas['ta'] = ['act_1']
     banco.campanha('123', plataforma='meta')
@@ -226,71 +320,46 @@ def test_variavel_vazia_nao_conta_como_token(banco, meta, monkeypatch):
 @pytest.fixture
 def task(monkeypatch):
     import tasks
-    import fluxos.fluxo_orcamento_sheets as sheets
     monkeypatch.setattr(tasks._redis, 'set', lambda *a, **k: True)
     monkeypatch.setattr(tasks._redis, 'delete', lambda *a: None)
-    registro = {'google': [], 'meta': []}
-    monkeypatch.setattr(sheets, 'processar_orcamento_sheets', lambda data: registro['google'].append(data) or {})
-    monkeypatch.setattr(fluxo, 'processar_orcamento_meta', lambda data: registro['meta'].append(data) or {})
-    registro['sheets'] = sheets
-    registro['task'] = tasks.processar_orcamento_sheets
-    return registro
+    return tasks
 
 
-def test_40_meta_roda_depois_do_google_e_recebe_a_data(task):
-    task['task'].run('2026-10-15')
-    assert task['google'] == ['2026-10-15'] and task['meta'] == ['2026-10-15']
+def test_40_task_propria_recebe_a_data(task, monkeypatch):
+    datas = []
+    monkeypatch.setattr(fluxo, 'processar_orcamento_meta', datas.append)
+    task.processar_orcamento_meta.run('2026-10-15')
+    task.processar_orcamento_meta.run()
+    assert datas == ['2026-10-15', None]
 
 
-def test_40_sem_data_a_meta_recebe_none_uma_vez(task):
-    task['task'].run()
-    assert task['meta'] == [None]
-
-
-def test_40_erro_na_meta_nao_vira_retry(task, monkeypatch):
+def test_40_erro_na_meta_nao_levanta_nem_reagenda(task, monkeypatch):
     def falha(data):
         raise RuntimeError('meta fora')
     monkeypatch.setattr(fluxo, 'processar_orcamento_meta', falha)
-    task['task'].run('2026-10-15')  # não levanta
+    monkeypatch.setattr(task.processar_orcamento_meta, 'retry', lambda **k: pytest.fail('não pode reagendar'), raising=False)
+    task.processar_orcamento_meta.run()
 
 
-def test_40_erro_no_google_nao_impede_a_meta_e_mantem_o_retry(task, monkeypatch):
-    def falha(data):
-        raise ValueError('planilha fora')
-    monkeypatch.setattr(task['sheets'], 'processar_orcamento_sheets', falha)
-
-    class Reagendou(Exception):
-        pass
-
-    pedidos_retry = []
-
-    def retry(exc=None, countdown=None):
-        pedidos_retry.append((exc, countdown))
-        return Reagendou()
-    monkeypatch.setattr(task['task'], 'retry', retry)
-    with pytest.raises(Reagendou):
-        task['task'].run('2026-10-15')
-    assert task['meta'] == ['2026-10-15']
-    assert isinstance(pedidos_retry[0][0], ValueError) and pedidos_retry[0][1] == 600
+def test_40_rotina_do_google_nao_chama_a_meta(task, monkeypatch):
+    import fluxos.fluxo_orcamento_sheets as sheets
+    monkeypatch.setattr(sheets, 'processar_orcamento_sheets', lambda data: {})
+    monkeypatch.setattr(fluxo, 'processar_orcamento_meta', lambda data: pytest.fail('não pode chamar a Meta'))
+    task.processar_orcamento_sheets.run('2026-10-15')
 
 
-def test_40_erro_nos_dois_o_retry_e_do_google(task, monkeypatch):
-    def falha_google(data):
-        raise ValueError('planilha fora')
+def test_40_trava_impede_duas_execucoes(task, monkeypatch):
+    monkeypatch.setattr(task._redis, 'set', lambda *a, **k: False)
+    monkeypatch.setattr(fluxo, 'processar_orcamento_meta', lambda data: pytest.fail('não pode rodar'))
+    task.processar_orcamento_meta.run()
 
-    def falha_meta(data):
-        raise RuntimeError('meta fora')
-    monkeypatch.setattr(task['sheets'], 'processar_orcamento_sheets', falha_google)
-    monkeypatch.setattr(fluxo, 'processar_orcamento_meta', falha_meta)
 
-    class Reagendou(Exception):
-        pass
-
-    pedidos_retry = []
-    monkeypatch.setattr(task['task'], 'retry', lambda exc=None, countdown=None: pedidos_retry.append(exc) or Reagendou())
-    with pytest.raises(Reagendou):
-        task['task'].run('2026-10-15')
-    assert isinstance(pedidos_retry[0], ValueError)
+def test_40_agendada_no_minuto_17_na_fila_baixa():
+    from celery_app import celery_app
+    agendamento = celery_app.conf.beat_schedule['orcamento-meta-horario']
+    assert agendamento['task'] == 'tasks.processar_orcamento_meta'
+    assert agendamento['schedule'].minute == {17} and agendamento['options']['queue'] == 'baixa'
+    assert celery_app.conf.task_routes['tasks.processar_orcamento_meta']['queue'] == 'baixa'
 
 
 # ─── Agendamento do envio ─────────────────────────────────────────────────────

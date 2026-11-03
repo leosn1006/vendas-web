@@ -1,5 +1,5 @@
 -- Conversões da Meta (Instagram), docs/META_CONVERSOES.md: o clique fica no pedido (fbc), como o gclid; a campanha diz o
--- canal (campanhas.plataforma); a venda vai para o dataset do domínio (meta_dataset_dns). Idempotente.
+-- canal e o destino (campanhas.plataforma, meta_dataset_id e meta_token_env_var). Idempotente.
 SET NAMES utf8mb4;
 
 SET @tem = (SELECT COUNT(*) FROM information_schema.COLUMNS
@@ -19,19 +19,10 @@ PREPARE p FROM @sql; EXECUTE p; DEALLOCATE PREPARE p;
 SET @tem = (SELECT COUNT(*) FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'campanhas' AND COLUMN_NAME = 'plataforma');
 SET @sql = IF(@tem = 0, 'ALTER TABLE campanhas
-    ADD COLUMN plataforma VARCHAR(20) NOT NULL DEFAULT ''google'' COMMENT ''Canal da campanha: google ou meta''', 'SELECT 1');
+    ADD COLUMN plataforma VARCHAR(20) NOT NULL DEFAULT ''google'' COMMENT ''Canal da campanha: google ou meta'',
+    ADD COLUMN meta_conta_id VARCHAR(50) NULL COMMENT ''Conta de anúncio da campanha, descoberta pelo token'',
+    ADD COLUMN meta_dataset_id VARCHAR(30) NULL COMMENT ''Dataset para onde vão as vendas, descoberto nos conjuntos da campanha'',
+    ADD COLUMN meta_token_env_var VARCHAR(100) NULL COMMENT ''Nome da env var do token que enxerga a campanha (META_TOKEN_...)''', 'SELECT 1');
 PREPARE p FROM @sql; EXECUTE p; DEALLOCATE PREPARE p;
-
-CREATE TABLE IF NOT EXISTS meta_dataset_dns (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    produto_id    INT          NOT NULL,
-    dns           VARCHAR(255) NOT NULL COMMENT 'Domínio do pedido, ou * para os domínios sem linha própria',
-    dataset_id    VARCHAR(30)  NOT NULL,
-    token_env_var VARCHAR(100) NOT NULL COMMENT 'Nome da env var com o token da BM (META_TOKEN_...)',
-    ativo         BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_produto_dns (produto_id, dns),
-    FOREIGN KEY (produto_id) REFERENCES produtos(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SHOW COLUMNS FROM pedidos LIKE 'fbc';

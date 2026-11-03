@@ -25,11 +25,10 @@ _COLUNAS_PEDIDOS = """
 _ESQUEMA = f"""
     CREATE TABLE pedidos (id INTEGER PRIMARY KEY AUTOINCREMENT, {_COLUNAS_PEDIDOS});
     CREATE TABLE campanhas (produto_id INT, campaignid TEXT, nome TEXT NOT NULL, venda_web INT DEFAULT 0,
-                            plataforma TEXT NOT NULL DEFAULT 'google', PRIMARY KEY (produto_id, campaignid));
+                            plataforma TEXT NOT NULL DEFAULT 'google', meta_conta_id TEXT, meta_dataset_id TEXT,
+                            meta_token_env_var TEXT, PRIMARY KEY (produto_id, campaignid));
     CREATE TABLE orcamento_campanha (produto_id INT, campaignid TEXT, data TEXT, valor_investido REAL, cliques INT,
                                      impressoes INT, PRIMARY KEY (produto_id, campaignid, data));
-    CREATE TABLE meta_dataset_dns (id INTEGER PRIMARY KEY AUTOINCREMENT, produto_id INT, dns TEXT, dataset_id TEXT,
-                                   token_env_var TEXT, ativo INT DEFAULT 1, UNIQUE (produto_id, dns));
     CREATE TABLE google_ads_planilha_dns (id INTEGER PRIMARY KEY AUTOINCREMENT, produto_id INT, dns TEXT,
                                           google_sheets_spreadsheet_id TEXT, google_sheets_sheet_name TEXT,
                                           google_ads_conversion_name TEXT, google_sa_env_var TEXT, ativo INT DEFAULT 1);
@@ -77,9 +76,9 @@ class BancoSqlite:
         self.conexao.execute('INSERT INTO campanhas (produto_id, campaignid, nome, plataforma, venda_web) VALUES (?, ?, ?, ?, ?)',
                              (produto_id, campaignid, nome or campaignid, plataforma, venda_web))
 
-    def dataset(self, dns='site.com', produto_id=1, dataset_id='999', token_env_var='META_TOKEN_LSN', ativo=1):
-        self.conexao.execute('INSERT INTO meta_dataset_dns (produto_id, dns, dataset_id, token_env_var, ativo) VALUES (?, ?, ?, ?, ?)',
-                             (produto_id, dns, dataset_id, token_env_var, ativo))
+    def dataset(self, campaignid='123', dataset_id='999', token_env_var='META_TOKEN_LSN'):
+        self.conexao.execute('UPDATE campanhas SET meta_conta_id = ?, meta_dataset_id = ?, meta_token_env_var = ? WHERE campaignid = ?',
+                             ('1', dataset_id, token_env_var, campaignid))
 
     def ler_pedido(self, pedido_id) -> dict:
         return dict(self.conexao.execute('SELECT * FROM pedidos WHERE id = ?', (pedido_id,)).fetchone())

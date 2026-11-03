@@ -106,7 +106,12 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute=10),  # toda hora no :10 — hoje sempre; ontem também entre 00h–04h
         'options': {'queue': 'baixa'},
     },
-    # Compras para a API de Conversões da Meta. O investimento roda junto com o orçamento do Google (acima).
+    # Meta: primeiro o destino das vendas e o investimento; depois, as compras para a API de Conversões.
+    'orcamento-meta-horario': {
+        'task': 'tasks.processar_orcamento_meta',
+        'schedule': crontab(minute=17),  # toda hora no :17
+        'options': {'queue': 'baixa'},
+    },
     'conversoes-meta-horario': {
         'task': 'tasks.processar_conversoes_meta',
         'schedule': crontab(minute=23),  # toda hora no :23
@@ -218,6 +223,7 @@ celery_app.conf.update(
         "tasks.reconciliar_pix_pendentes_web":           {"queue": "baixa"},
         "tasks.processar_orcamento_sheets":              {"queue": "baixa"},
         "tasks.processar_conversoes_meta":               {"queue": "baixa"},
+        "tasks.processar_orcamento_meta":                {"queue": "baixa"},
         "tasks.verificar_qualidade_whatsapp":            {"queue": "baixa"},
         "tasks.verificar_status_wpp_web":                {"queue": "baixa"},
         "tasks.verificar_qualidade_whatsapp_produto":     {"queue": "normal"},

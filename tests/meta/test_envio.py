@@ -119,43 +119,35 @@ def test_22_com_5_dias_e_meio_ainda_vai(banco, venda_meta):
     assert venda_meta(data_pagamento=dias_atras(5.5)) in _ids_selecionados()
 
 
-def test_23_sem_dataset_nao_vai(banco, venda_meta):
+def test_23_campanha_sem_destino_nao_chama_a_meta_e_avisa(banco, venda_meta, meta, caplog):
     banco.campanha('123', plataforma='meta')
-    banco.dataset(dns='outro.com')
-    banco.dataset(dns='*', produto_id=2)
-    venda_meta()
-    assert _ids_selecionados() == []
+    pid = venda_meta()
+    with caplog.at_level(logging.ERROR):
+        resumo = executar()
+    assert meta.chamadas == [] and resumo['pendentes'] == 1
+    assert banco.ler_pedido(pid)['data_envio_meta'] is None
+    assert f'Venda {pid}' in caplog.text and 'ainda sem destino' in caplog.text
 
 
-def test_23_coringa_vai(banco, venda_meta):
+def test_23_usa_o_dataset_e_o_token_da_campanha(banco, venda_meta, meta, monkeypatch):
+    monkeypatch.setenv('META_TOKEN_OUTRA', 'token-da-outra-bm')
     banco.campanha('123', plataforma='meta')
-    banco.dataset(dns='*', dataset_id='111')
+    banco.dataset(dataset_id='111', token_env_var='META_TOKEN_OUTRA')
     venda_meta()
-    assert database.busca_vendas_pendentes_meta()[0]['meta_dataset_id'] == '111'
+    executar()
+    assert meta.chamadas[0].url.endswith('/111/events')
+    assert meta.chamadas[0].headers['Authorization'] == 'Bearer token-da-outra-bm'
 
 
-def test_23_coringa_inativo_nao_vai(banco, venda_meta):
+def test_23_mesmo_dominio_em_duas_campanhas_vai_para_o_dataset_de_cada_uma(banco, venda_meta, meta):
     banco.campanha('123', plataforma='meta')
-    banco.dataset(dns='*', ativo=0)
-    venda_meta()
-    assert _ids_selecionados() == []
-
-
-def test_23_linha_do_dominio_tem_prioridade_sobre_o_coringa(banco, venda_meta):
-    banco.campanha('123', plataforma='meta')
-    banco.dataset(dns='*', dataset_id='111')
-    banco.dataset(dataset_id='222')
-    venda_meta()
-    vendas = database.busca_vendas_pendentes_meta()
-    assert [v['meta_dataset_id'] for v in vendas] == ['222']
-
-
-def test_23_linha_do_dominio_inativa_bloqueia_mesmo_com_coringa(banco, venda_meta):
-    banco.campanha('123', plataforma='meta')
-    banco.dataset(dns='*', dataset_id='111')
-    banco.dataset(dataset_id='222', ativo=0)
-    venda_meta()
-    assert _ids_selecionados() == []
+    banco.campanha('456', plataforma='meta')
+    banco.dataset('123', dataset_id='111')
+    banco.dataset('456', dataset_id='222')
+    venda_meta(campaignid='123', data_pagamento=dias_atras(2))
+    venda_meta(campaignid='456', data_pagamento=dias_atras(1))
+    executar()
+    assert [c.url.rsplit('/', 2)[1] for c in meta.chamadas] == ['111', '222']
 
 
 # ─── Evento ───────────────────────────────────────────────────────────────────
@@ -225,7 +217,7 @@ def test_29_sem_dominio_ou_navegador_nao_monta(campos):
 
 def test_29_venda_fica_pendente_sem_chamar_a_meta(banco, venda_meta, meta, caplog):
     banco.campanha('123', plataforma='meta')
-    banco.dataset(dns='*')
+    banco.dataset()
     pid = venda_meta(client_user_agent=None)
     with caplog.at_level(logging.WARNING):
         resumo = executar()
@@ -336,7 +328,6 @@ def test_34_aviso_de_janela(meta, monkeypatch, caplog, dias, avisa):
     agora_br = datetime.now(timezone(timedelta(hours=-3))).replace(tzinfo=None)
     venda = {**vars(_venda(data_pagamento=agora_br - timedelta(days=dias))), 'meta_dataset_id': '999',
              'meta_token_env_var': 'META_TOKEN_LSN'}
-    monkeypatch.setattr(fluxo, 'busca_vendas_meta_sem_dataset', lambda: [])
     monkeypatch.setattr(fluxo, 'busca_vendas_pendentes_meta', lambda: [venda])
     monkeypatch.setattr(fluxo, 'marcar_venda_como_enviada_a_meta', lambda pedido_id: None)
     meta.resposta = lambda: Resposta({'events_received': 0})
@@ -349,29 +340,11 @@ def test_34_venda_aceita_nao_gera_aviso_de_janela(meta, monkeypatch, caplog):
     agora_br = datetime.now(timezone(timedelta(hours=-3))).replace(tzinfo=None)
     venda = {**vars(_venda(data_pagamento=agora_br - timedelta(days=5))), 'meta_dataset_id': '999',
              'meta_token_env_var': 'META_TOKEN_LSN'}
-    monkeypatch.setattr(fluxo, 'busca_vendas_meta_sem_dataset', lambda: [])
     monkeypatch.setattr(fluxo, 'busca_vendas_pendentes_meta', lambda: [venda])
     monkeypatch.setattr(fluxo, 'marcar_venda_como_enviada_a_meta', lambda pedido_id: None)
     with caplog.at_level(logging.ERROR):
         executar()
     assert 'sem aceite há' not in caplog.text
-
-
-def test_venda_sem_dataset_gera_erro_no_log(meta, banco, venda_meta, caplog):
-    banco.campanha('123', plataforma='meta')
-    pid = venda_meta(dns_origem='www.site.com')
-    with caplog.at_level(logging.ERROR):
-        executar()
-    assert f'Venda {pid}' in caplog.text and 'sem dataset' in caplog.text and meta.chamadas == []
-
-
-def test_linha_inativa_do_dominio_e_escolha_do_admin_e_nao_avisa(meta, banco, venda_meta, caplog):
-    banco.campanha('123', plataforma='meta')
-    banco.dataset(dns='www.site.com', ativo=0)
-    venda_meta(dns_origem='www.site.com')
-    with caplog.at_level(logging.ERROR):
-        executar()
-    assert 'sem dataset' not in caplog.text and meta.chamadas == []
 
 
 @pytest.mark.parametrize('entrada, esperado', [
@@ -388,18 +361,21 @@ def test_31_data_invalida_no_aviso_nao_derruba_as_outras_vendas(meta, monkeypatc
     ruim = {**vars(_venda(id=1, data_pagamento='data ruim')), 'meta_dataset_id': '999', 'meta_token_env_var': 'META_TOKEN_LSN'}
     boa = {**vars(_venda(id=2)), 'meta_dataset_id': '999', 'meta_token_env_var': 'META_TOKEN_LSN'}
     marcadas = []
-    monkeypatch.setattr(fluxo, 'busca_vendas_meta_sem_dataset', lambda: [])
     monkeypatch.setattr(fluxo, 'busca_vendas_pendentes_meta', lambda: [ruim, boa])
     monkeypatch.setattr(fluxo, 'marcar_venda_como_enviada_a_meta', marcadas.append)
     resumo = executar()
     assert marcadas == [2] and resumo['erros'] == 1 and resumo['enviadas'] == 1
 
 
-def test_falha_no_diagnostico_nao_impede_o_envio(meta, monkeypatch):
-    def quebra():
-        raise RuntimeError('fora do ar')
-    venda = {**vars(_venda()), 'meta_dataset_id': '999', 'meta_token_env_var': 'META_TOKEN_LSN'}
-    monkeypatch.setattr(fluxo, 'busca_vendas_meta_sem_dataset', quebra)
+def test_34_queda_de_rede_tambem_avisa(meta, monkeypatch, caplog):
+    agora_br = datetime.now(timezone(timedelta(hours=-3))).replace(tzinfo=None)
+    venda = {**vars(_venda(data_pagamento=agora_br - timedelta(days=5))), 'meta_dataset_id': '999',
+             'meta_token_env_var': 'META_TOKEN_LSN', 'campaignid': '123'}
     monkeypatch.setattr(fluxo, 'busca_vendas_pendentes_meta', lambda: [venda])
-    monkeypatch.setattr(fluxo, 'marcar_venda_como_enviada_a_meta', lambda pedido_id: None)
-    assert executar()['enviadas'] == 1
+
+    def fora(*a, **k):
+        raise fluxo.requests.ConnectionError('fora')
+    monkeypatch.setattr(fluxo.requests, 'post', fora)
+    with caplog.at_level(logging.ERROR):
+        resumo = executar()
+    assert resumo['erros'] == 1 and 'sem aceite há' in caplog.text

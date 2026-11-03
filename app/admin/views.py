@@ -34,7 +34,6 @@ from database import (db,
     get_config_cartao_produto_admin, salvar_config_cartao_produto,
     busca_financeiro_produto, buscar_tenant_slug_produto,
     listar_planilhas_dns_produto, adicionar_planilha_dns, atualizar_planilha_dns, remover_planilha_dns,
-    listar_datasets_meta_produto, adicionar_dataset_meta, alternar_dataset_meta, remover_dataset_meta,
     listar_notificacoes_em_analise, marcar_notificacao_respondida, bloquear_pedido,
     buscar_notificacao_em_analise_pedido, bloquear_followup_pedido,
     buscar_pedido_web_por_email, buscar_mensagens_email_pedido, buscar_anexos_email_pedido,
@@ -2764,6 +2763,8 @@ _SQL_LISTA_CAMPANHAS = """
         c.nome,
         COALESCE(c.venda_web, FALSE) AS venda_web,
         COALESCE(c.plataforma, 'google') AS plataforma,
+        c.meta_conta_id,
+        c.meta_dataset_id,
         COUNT(*) AS total_pedidos
     FROM pedidos p
     LEFT JOIN campanhas c ON c.produto_id = p.produto_id AND c.campaignid = p.campaignid
@@ -2822,8 +2823,13 @@ def remover_campanha(produto_id):
         flash('Campaign ID não informado.', 'warning')
         return redirect(url_for('admin.campanhas_produto', produto_id=produto_id))
     try:
+        # Na Meta, a linha guarda o canal e o destino das vendas: só o nome volta a ser o ID.
         db.execute_query(
-            "DELETE FROM campanhas WHERE produto_id = %s AND campaignid = %s",
+            "UPDATE campanhas SET nome = campaignid WHERE produto_id = %s AND campaignid = %s AND plataforma = 'meta'",
+            (produto_id, campaignid)
+        )
+        db.execute_query(
+            "DELETE FROM campanhas WHERE produto_id = %s AND campaignid = %s AND plataforma <> 'meta'",
             (produto_id, campaignid)
         )
         flash(f'Nome removido da campanha {campaignid}.', 'success')
@@ -3492,63 +3498,6 @@ def remover_planilha_google(produto_id, planilha_id):
         logger.error(f"[ADMIN] ❌ Erro ao remover planilha DNS: {e}")
         flash(f'Erro ao remover: {e}', 'danger')
     return redirect(url_for('admin.planilhas_google_produto', produto_id=produto_id))
-
-
-# ── Conversões Meta por DNS ──────────────────────────────────────────────────
-
-@admin_bp.route('/produto/<int:produto_id>/conversoes-meta')
-@requer_acesso_produto
-def conversoes_meta_produto(produto_id):
-    session['produto_ativo_id'] = produto_id
-    produto = _get_produto_or_redirect(produto_id)
-    if not produto:
-        return redirect(url_for('admin.dashboard'))
-    datasets = listar_datasets_meta_produto(produto_id)
-    return render_template('admin/produto_conversoes_meta.html', produto=produto, datasets=datasets)
-
-
-@admin_bp.route('/produto/<int:produto_id>/conversoes-meta/adicionar', methods=['POST'])
-@requer_admin
-def adicionar_conversao_meta(produto_id):
-    dns           = request.form.get('dns', '').strip().lower()
-    dataset_id    = request.form.get('dataset_id', '').strip()
-    token_env_var = request.form.get('token_env_var', '').strip()
-    if not dns or not re.fullmatch(r'[0-9]+', dataset_id) or not token_env_var.startswith('META_TOKEN_'):
-        flash('Informe o DNS, o Dataset ID só com números e a variável começando com META_TOKEN_.', 'danger')
-        return redirect(url_for('admin.conversoes_meta_produto', produto_id=produto_id))
-    try:
-        adicionar_dataset_meta(produto_id, dns, dataset_id, token_env_var)
-        flash(f'Dataset para "{dns}" adicionado.', 'success')
-        logger.info(f"[ADMIN] ✅ Dataset Meta DNS '{dns}' adicionado ao produto #{produto_id} por {current_user.email}")
-    except Exception as e:
-        logger.error(f"[ADMIN] ❌ Erro ao adicionar dataset Meta: {e}")
-        flash(f'Erro ao adicionar: {e}', 'danger')
-    return redirect(url_for('admin.conversoes_meta_produto', produto_id=produto_id))
-
-
-@admin_bp.route('/produto/<int:produto_id>/conversoes-meta/<int:dataset_id>/alternar', methods=['POST'])
-@requer_admin
-def alternar_conversao_meta(produto_id, dataset_id):
-    try:
-        alternar_dataset_meta(produto_id, dataset_id)
-        logger.info(f"[ADMIN] ✅ Dataset Meta #{dataset_id} alternado no produto #{produto_id} por {current_user.email}")
-    except Exception as e:
-        logger.error(f"[ADMIN] ❌ Erro ao alternar dataset Meta: {e}")
-        flash(f'Erro ao alternar: {e}', 'danger')
-    return redirect(url_for('admin.conversoes_meta_produto', produto_id=produto_id))
-
-
-@admin_bp.route('/produto/<int:produto_id>/conversoes-meta/<int:dataset_id>/remover', methods=['POST'])
-@requer_admin
-def remover_conversao_meta(produto_id, dataset_id):
-    try:
-        remover_dataset_meta(produto_id, dataset_id)
-        flash('Dataset removido.', 'success')
-        logger.info(f"[ADMIN] ✅ Dataset Meta #{dataset_id} removido do produto #{produto_id} por {current_user.email}")
-    except Exception as e:
-        logger.error(f"[ADMIN] ❌ Erro ao remover dataset Meta: {e}")
-        flash(f'Erro ao remover: {e}', 'danger')
-    return redirect(url_for('admin.conversoes_meta_produto', produto_id=produto_id))
 
 
 # ── Financeiro (PIX + Web) ────────────────────────────────────────────────────

@@ -1031,55 +1031,22 @@ def remover_planilha_dns(planilha_id):
 # ── Conversões Meta ───────────────────────────────────────────────────────────
 
 def busca_vendas_pendentes_meta() -> list:
-    """Vendas de campanha da Meta ainda não aceitas, com o dataset do domínio do pedido ou, sem linha para ele, o
-    coringa '*' do produto. Linha do domínio inativa bloqueia o envio. A Meta rejeita a requisição inteira se houver
-    evento com mais de 7 dias: daí o limite de 6."""
+    """Vendas de campanha da Meta ainda não aceitas, com o dataset e o token da campanha (vazios até a rotina de
+    investimento descobri-los). A Meta rejeita a requisição inteira se houver evento com mais de 7 dias: daí o limite de 6."""
     query = """
-        SELECT p.*,
-               COALESCE(d.dataset_id, w.dataset_id)       AS meta_dataset_id,
-               COALESCE(d.token_env_var, w.token_env_var) AS meta_token_env_var
+        SELECT p.*, c.meta_dataset_id, c.meta_token_env_var
         FROM pedidos p
         JOIN campanhas c
           ON c.produto_id = p.produto_id
          AND c.campaignid = p.campaignid
          AND c.plataforma = 'meta'
-        LEFT JOIN meta_dataset_dns d
-          ON d.produto_id = p.produto_id
-         AND d.dns        = p.dns_origem
-        LEFT JOIN meta_dataset_dns w
-          ON w.produto_id = p.produto_id
-         AND w.dns        = '*'
-         AND w.ativo      = TRUE
         WHERE p.estado_id IN (0, 1000)
           AND COALESCE(p.gclid, '')  = ''
           AND COALESCE(p.wbraid, '') = ''
           AND COALESCE(p.gbraid, '') = ''
           AND p.data_envio_meta IS NULL
           AND p.data_pagamento >= NOW() - INTERVAL 6 DAY
-          AND (d.ativo = TRUE OR (d.id IS NULL AND w.id IS NOT NULL))
         ORDER BY p.data_pagamento ASC
-    """
-    return db.execute_query(query, fetch_all=True) or []
-
-def busca_vendas_meta_sem_dataset() -> list:
-    """Vendas de campanha da Meta que ficam fora do envio por falta de cadastro (domínio errado ou www diferente, por
-    exemplo). Linha do domínio inativa é escolha do admin e não entra aqui."""
-    query = """
-        SELECT p.id, p.produto_id, p.dns_origem
-        FROM pedidos p
-        JOIN campanhas c
-          ON c.produto_id = p.produto_id
-         AND c.campaignid = p.campaignid
-         AND c.plataforma = 'meta'
-        WHERE p.estado_id IN (0, 1000)
-          AND COALESCE(p.gclid, '')  = ''
-          AND COALESCE(p.wbraid, '') = ''
-          AND COALESCE(p.gbraid, '') = ''
-          AND p.data_envio_meta IS NULL
-          AND p.data_pagamento >= NOW() - INTERVAL 6 DAY
-          AND NOT EXISTS (SELECT 1 FROM meta_dataset_dns m
-                          WHERE m.produto_id = p.produto_id
-                            AND (m.dns = p.dns_origem OR (m.dns = '*' AND m.ativo = TRUE)))
     """
     return db.execute_query(query, fetch_all=True) or []
 
@@ -1113,25 +1080,12 @@ def gravar_clique_pedido(pedido_id, ip=None, navegador=None, fbc=None):
            WHERE id = %s AND estado_id NOT IN (0, 1000)""",
         ((ip or '')[:45] or None, (navegador or '')[:512] or None, fbc, pedido_id))
 
-def listar_datasets_meta_produto(produto_id) -> list:
-    return db.execute_query(
-        "SELECT * FROM meta_dataset_dns WHERE produto_id = %s ORDER BY dns",
-        (produto_id,), fetch_all=True) or []
-
-def adicionar_dataset_meta(produto_id, dns, dataset_id, token_env_var):
+def atualizar_destino_campanha_meta(campaignid, conta_id, dataset_id, token_env_var):
+    """A conta, o dataset e o token da campanha, descobertos pelo token. Campanha marcada como Google não muda."""
     db.execute_query(
-        "INSERT INTO meta_dataset_dns (produto_id, dns, dataset_id, token_env_var) VALUES (%s, %s, %s, %s)",
-        (produto_id, dns, dataset_id, token_env_var))
-
-def alternar_dataset_meta(produto_id, dataset_id):
-    db.execute_query(
-        "UPDATE meta_dataset_dns SET ativo = NOT ativo WHERE id = %s AND produto_id = %s",
-        (dataset_id, produto_id))
-
-def remover_dataset_meta(produto_id, dataset_id):
-    db.execute_query(
-        "DELETE FROM meta_dataset_dns WHERE id = %s AND produto_id = %s",
-        (dataset_id, produto_id))
+        """UPDATE campanhas SET meta_conta_id = %s, meta_dataset_id = %s, meta_token_env_var = %s
+           WHERE campaignid = %s AND plataforma = 'meta'""",
+        (conta_id, dataset_id, token_env_var, campaignid))
 
 
 # ── orcamento_campanha (sheets) ───────────────────────────────────────────────

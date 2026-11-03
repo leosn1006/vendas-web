@@ -5,9 +5,8 @@ A venda de anúncio do Instagram volta para a Meta pela API de Conversões e o i
 ## Colocar um produto no ar
 
 1. **Rode a migration** `099_conversoes_meta.sql`, antes de subir o código.
-2. **Token:** crie um usuário do sistema na BM do produto, com acesso às contas e ao dataset, e coloque o token no `.env` como `META_TOKEN_<BM>`. Um `META_TOKEN_` novo também precisa de uma linha no serviço `worker-baixa` do `docker-compose.yml`.
-3. **Admin → produto → Conversões Meta:** cadastre o dataset e o nome da variável do token. Use o domínio do site ou `*` para os domínios sem linha própria.
-4. **URL do anúncio:** nos parâmetros de URL do anúncio, use:
+2. **Token:** crie um usuário do sistema na BM do produto, com `ads_read`, acesso às contas e ao dataset, e coloque o token no `.env` como `META_TOKEN_<BM>`. Um `META_TOKEN_` novo também precisa de uma linha no serviço `worker-baixa` do `docker-compose.yml`.
+3. **URL do anúncio:** nos parâmetros de URL do anúncio, use:
 
    ```
    gad_campaignid={{campaign.id}}&adgroupid={{adset.id}}&creative={{ad.id}}&placement={{placement}}&utm_source=meta
@@ -15,7 +14,9 @@ A venda de anúncio do Instagram volta para a Meta pela API de Conversões e o i
 
    O `fbclid` a Meta coloca sozinha. Sem `utm_source=meta` e sem campanha numérica, o clique não conta como anúncio.
 
-A campanha nasce no primeiro clique, com o ID no lugar do nome, e o nome verdadeiro chega na leitura seguinte de investimento. Campanha que já existia não muda de canal sozinha: ajuste em **Campanhas**.
+A campanha nasce no primeiro clique, com o ID no lugar do nome. A rotina de investimento preenche depois o nome, a conta, o dataset e o token dela: não há cadastro de dataset. Até lá, a venda da campanha fica pendente e sai na rodada seguinte. Campanha que já existia não muda de canal sozinha: ajuste em **Campanhas**.
+
+O destino sai dos conjuntos da campanha (`promoted_object.pixel_id`), o dataset em que eles otimizam, e o token é o que enxergou a conta. Para parar o envio de uma campanha, marque-a como Google em **Campanhas**.
 
 ## Testar antes de valer
 
@@ -28,13 +29,13 @@ No dev, `config.WHATSAPP_API_URL` é um endereço morto: nada chega à Meta e as
 | O quê | Quando | Onde |
 |---|---|---|
 | Envio das compras | Toda hora, no minuto :23, fila `baixa` | `tasks.processar_conversoes_meta` → `fluxos/fluxo_meta_conversoes.py` |
-| Investimento | Logo depois do Google, toda hora no :10 | `tasks.processar_orcamento_sheets` → `fluxos/fluxo_orcamento_meta.py` |
+| Destino das vendas e investimento | Toda hora, no minuto :17, fila `baixa` | `tasks.processar_orcamento_meta` → `fluxos/fluxo_orcamento_meta.py` |
 
-Para reprocessar o investimento de um dia, chame `tasks.processar_orcamento_sheets` com `data_str='AAAA-MM-DD'`.
+Para reprocessar o investimento de um dia, chame `tasks.processar_orcamento_meta` com `data_str='AAAA-MM-DD'`.
 
 ## Quais vendas vão
 
-Pedido pago (estados 0 e 1000), de campanha com `plataforma='meta'`, sem `gclid`, `wbraid` e `gbraid`, ainda não aceito e pago nos últimos 6 dias. O dataset é a linha do domínio do pedido ou, sem linha para ele, a linha `*`. Valor: site = valor pago; WhatsApp = R$ 10.
+Pedido pago (estados 0 e 1000), de campanha com `plataforma='meta'`, sem `gclid`, `wbraid` e `gbraid`, ainda não aceito e pago nos últimos 6 dias. O destino é o da campanha do pedido. Valor: site = valor pago; WhatsApp = R$ 10.
 
 ## Como investigar no log do `worker-baixa`
 
@@ -43,14 +44,15 @@ Procure por `FLUXO-META-CONVERSOES` e `ORCAMENTO-META`.
 | Mensagem | O que significa | O que fazer |
 |---|---|---|
 | `sem aceite há N dias` | A venda está perto de sair da seleção: aos 6 dias, para de ser tentada e sem novo aviso | Resolva a causa, que aparece em outra linha da mesma venda |
+| `ainda sem destino` | A rotina de investimento não achou dataset nos conjuntos da campanha: ela ainda não rodou, o token não enxerga a conta, ou a campanha não otimiza por conversão | Confira o token e o objetivo da campanha. A venda é tentada de novo a cada hora |
 | `sem domínio ou sem navegador` | Falta `dns_origem` ou `client_user_agent`, que a Meta exige | A venda fica pendente e é tentada de novo a cada hora |
-| `token ... inválido ou vazio` | O nome no admin não começa com `META_TOKEN_`, ou a variável não chegou ao `worker-baixa` | Corrija o admin, o `.env` ou o `docker-compose.yml` |
+| `token ... inválido ou vazio` | A variável saiu do `.env` ou não chegou ao `worker-baixa` | Corrija o `.env` ou o `docker-compose.yml` |
 | `recusada: HTTP ...` | A Meta recusou o evento | Veja a mensagem de erro da Meta na mesma linha |
 | `Erro ao listar as contas de META_TOKEN_...` | A BM está bloqueada ou o token expirou | As outras BMs continuam. Troque o token |
 | `só gravamos BRL` | A conta de anúncios não está em reais | O gasto dela não entra no ROI |
-| `não encontrada em campanhas` | A campanha ainda não recebeu clique, ou foi removida em Campanhas | O gasto entra depois do primeiro clique: a leitura cobre 7 dias para trás |
+| `não encontrada em campanhas` | A campanha ainda não recebeu clique,  | O gasto entra depois do primeiro clique: a leitura cobre 7 dias para trás |
 
-Remover uma campanha no admin apaga também o canal dela: as vendas e o gasto param até o próximo clique recriá-la como Meta.
+Em **Campanhas**, "Remover" numa campanha da Meta só volta o nome para o ID: o canal e o destino ficam.
 
 ## Fora do escopo
 

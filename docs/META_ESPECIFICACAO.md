@@ -9,7 +9,7 @@ Vamos anunciar no Instagram. A venda precisa voltar para a Meta pela API de Conv
 | De qual campanha veio | `pedidos.campaignid` | `pedidos.campaignid` |
 | Qual pessoa clicou | `gclid` | `fbc`, montado do `fbclid` |
 | De qual canal é a campanha | Padrão | `campanhas.plataforma = 'meta'` |
-| Para onde vai a venda | Planilha (`google_ads_planilha_dns`) | Dataset (`meta_dataset_dns`) |
+| Para onde vai a venda | Planilha (`google_ads_planilha_dns`) | Dataset da campanha (`campanhas.meta_dataset_id`), descoberto pela API |
 | Como chega lá | Service account em env var | Token em env var (`META_TOKEN_<BM>`) |
 
 Cada produto anuncia em BM própria, para um bloqueio não derrubar os outros. Um token enxerga só as contas da sua BM.
@@ -52,7 +52,7 @@ São os nomes que o código já lê, então landings e checkout não mudam de co
 
 ### Envio das compras
 - Seleção: pedido pago (estados 0 e 1000), de campanha `plataforma='meta'`, sem `gclid`, `wbraid` e `gbraid`, ainda não aceito e pago nos últimos 6 dias. A Meta rejeita a requisição inteira se houver evento com mais de 7 dias.
-- Dataset: a linha do domínio do pedido (`dns_origem`) ou, sem linha para ele, o coringa `dns='*'` do produto. Linha do domínio **inativa** bloqueia o envio, sem cair no coringa. Sem dataset, a venda não é enviada, e cada rodada registra um erro no log.
+- Destino: o dataset e o token da campanha do pedido. Campanha ainda sem destino: a venda fica pendente, com erro no log.
 - Agendamento: toda hora no minuto :23, fila `baixa`, com trava no Redis como em `processar_orcamento_sheets`, sem retry. O que não foi aceito volta na hora seguinte.
 - Um evento por requisição. Erro de qualquer tipo numa venda não atrapalha as outras.
 - A venda só é marcada como enviada depois de `events_received >= 1`.
@@ -80,9 +80,10 @@ user_data:
 - Cartão não guarda telefone: vai só com o e-mail.
 
 ### Investimento
-- Roda logo depois do Google em `tasks.processar_orcamento_sheets`, mesmo com erro no Google. Erro na Meta não vira retry da task. O retry do Google chama a Meta de novo, sem duplicar dados (upsert).
+- Roda em task própria, `tasks.processar_orcamento_meta`, toda hora no minuto :17, fila `baixa`, com trava no Redis e sem retry. Não mexe na rotina do Google.
 - Tokens: todas as variáveis de ambiente `META_TOKEN_*` não vazias.
-- Contas: `GET me/adaccounts` de cada token. Não há tabela de contas. Uma BM bloqueada não atrapalha as outras. Conta vista por dois tokens é lida uma vez.
+- Destino: `GET <act_id>/adsets` com `campaign_id,promoted_object`. O `pixel_id` é o dataset da campanha, gravado com a conta e o nome da variável do token. Erro aqui não impede a leitura do gasto. Com mais de um dataset, avisa no log e usa o menor ID (numérico).
+- Contas: `GET me/adaccounts` de cada token. Não há tabela de contas. Uma BM bloqueada não atrapalha as outras. Conta vista por dois tokens é lida uma vez, a menos que a leitura do primeiro falhe.
 - Dados: `GET <act_id>/insights`, com `level=campaign`, `time_increment=1`, `time_range` e campos `campaign_id,campaign_name,spend,inline_link_clicks,impressions,account_currency,date_start`. Ler todas as páginas (`paging.next` e `paging.cursors.after`).
 - Período: sempre os últimos 7 dias, para entrar o gasto anterior ao primeiro clique e os ajustes da Meta. Reprocessamento manual com `data_str` lê um dia só.
 - Grava com `upsert_orcamento_campanha`, na data de cada linha. Produto com `buscar_produto_id_por_campaignid`; campanha sem linha é ignorada, com aviso.
@@ -91,11 +92,10 @@ user_data:
 - O orçamento configurado não é gravado: o ROI usa o gasto.
 
 ### Admin
-- Produto → **Conversões Meta**: listar, adicionar, ativar/desativar e remover dataset por domínio. Dataset ID só com números, variável começando com `META_TOKEN_`. Adicionar, alternar e remover só para admin, seguindo `produto_planilhas_google.html`.
-- Produto → **Campanhas**: seletor de plataforma (Google ou Meta).
+- Produto → **Campanhas**: seletor de plataforma (Google ou Meta). "Remover" numa campanha da Meta só volta o nome para o ID, porque a linha guarda o canal e o destino.
 
 ### Configuração
-- Migration `099_conversoes_meta.sql`, idempotente, no estilo da 098: em `pedidos`, `fbc`, `client_ip`, `client_user_agent`, `data_envio_meta` e índice para a seleção; em `campanhas`, `plataforma`; tabela `meta_dataset_dns`, única por produto e domínio.
+- Migration `099_conversoes_meta.sql`, idempotente, no estilo da 098: em `pedidos`, `fbc`, `client_ip`, `client_user_agent`, `data_envio_meta` e índice para a seleção; em `campanhas`, `plataforma`, `meta_conta_id`, `meta_dataset_id`, `meta_token_env_var`.
 - `docker-compose.yml`: no serviço `worker-baixa`, `META_TOKEN_LSN` e `META_TEST_EVENT_CODE`. Também em `.env.example`.
 - `docs/META_CONVERSOES.md` para quem vai operar, e menção no `CLAUDE.md`.
 
@@ -133,7 +133,7 @@ Pixel, cookie de clique, `_fbp`, eventos além da compra, anúncio que abre o Wh
 20. Pago, campanha Meta, dataset ativo: vai.
 21. Pago, campanha Google, ou com `gclid`: não vai.
 22. Não pago, já enviado, ou pago há mais de 6 dias: não vai.
-23. Sem dataset: não vai. Coringa: vai. Linha do domínio tem prioridade sobre o coringa. Linha do domínio inativa, com coringa ativo: não vai.
+23. Campanha sem destino: não chama a Meta, conta como pendente e registra erro. Com destino: usa o dataset e o token da campanha.
 
 **Evento e envio**
 24. Evento do site: campos acima, com valor real pago.
@@ -149,12 +149,12 @@ Pixel, cookie de clique, `_fbp`, eventos além da compra, anúncio que abre o Wh
 34. Aviso de janela: com 5 dias sim, com 4 não.
 
 **Investimento**
-35. Grava na tabela do Google, com cada dia na sua data; atualiza o nome.
+35. Grava na tabela do Google, com cada dia na sua data; atualiza o nome e o destino da campanha.
 36. Descobre as contas pelo token; lê todas as páginas.
 37. Sem data: últimos 7 dias. Com data: um dia.
 38. Campanha sem linha e moeda diferente de BRL: não grava.
-39. BM bloqueada e erro numa conta: as outras continuam. Conta vista por dois tokens é lida uma vez.
-40. Erro na Meta não vira retry da task; erro no Google não impede a Meta.
+39. BM bloqueada e erro numa conta: as outras continuam. Conta vista por dois tokens é lida uma vez, a menos que a leitura do primeiro falhe.
+40. Task própria no minuto :17: erro na Meta não levanta nem reagenda, e a rotina do Google não chama a Meta.
 
 **Compatibilidade**
 41. Música: pedido novo herda `fbc` e campanha da origem; pedido que já tem clique não muda; origem sem clique não muda nada.

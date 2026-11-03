@@ -23,7 +23,7 @@
 
 Conversões voltam pro Google Ads via Google Sheets (GCLID) — venda do site com o valor real pago, WhatsApp com R$ 10 fixo; mexer em atribuição/GCLID afeta o ROI das campanhas.
 
-**Meta (Instagram)** segue o mesmo caminho (`docs/META_CONVERSOES.md`): o clique fica no pedido (`fbc`), `campanhas.plataforma = 'meta'` diz o canal, a venda vai pela API de Conversões para o dataset do domínio (`meta_dataset_dns`) com o token `META_TOKEN_<BM>`, e o investimento entra em `orcamento_campanha`.
+**Meta (Instagram)** segue o mesmo caminho (`docs/META_CONVERSOES.md`): o clique fica no pedido (`fbc`), `campanhas.plataforma = 'meta'` diz o canal, a venda vai pela API de Conversões para o dataset da campanha, descoberto pelo token `META_TOKEN_<BM>` nos conjuntos dela, e o investimento entra em `orcamento_campanha`.
 
 **Música de Presente** (`app/musica/`, `/musica/...`; `docs/MUSICA.md`): produto sem e-book — quiz → letra (OpenAI) → música (gerador na borda: Apiframe no MVP, `MUSICA_GERADOR`) → prévia grátis → checkout (`?musica=<token>`) → área da compra. Entregável `tipo='musica'` com `recurso` (música, videoclipe, QR, entrega por e-mail); fica fora da NF-e automática (`produtos.nfe_automatica = 0`).
 

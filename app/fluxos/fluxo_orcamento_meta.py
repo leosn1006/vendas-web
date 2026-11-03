@@ -1,4 +1,5 @@
-"""Investimento das campanhas da Meta: lê os insights de cada conta e grava em orcamento_campanha, como o Google."""
+"""Campanhas da Meta: descobre o destino das vendas (conta, dataset e token) e grava o investimento em orcamento_campanha,
+como o Google."""
 import json
 import logging
 import os
@@ -7,7 +8,8 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 import config
-from database import atualizar_nome_automatico_campanha, buscar_produto_id_por_campaignid, upsert_orcamento_campanha
+from database import (atualizar_destino_campanha_meta, atualizar_nome_automatico_campanha,
+                      buscar_produto_id_por_campaignid, upsert_orcamento_campanha)
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,19 @@ def _ler_paginas(caminho: str, token: str, params: dict) -> list:
         params['after'] = depois
 
 
+def _sincronizar_destinos(act_id: str, nome_token: str, token: str) -> None:
+    """Cada conjunto diz o dataset em que otimiza (promoted_object.pixel_id), e é para lá que a venda deve ir."""
+    por_campanha = {}
+    for conjunto in _ler_paginas(f'{act_id}/adsets', token, {'fields': 'campaign_id,promoted_object'}):
+        dataset_id = (conjunto.get('promoted_object') or {}).get('pixel_id')
+        if dataset_id and conjunto.get('campaign_id'):
+            por_campanha.setdefault(str(conjunto['campaign_id']), set()).add(str(dataset_id))
+    for campaignid, datasets in por_campanha.items():
+        if len(datasets) > 1:
+            logger.warning(f"[ORCAMENTO-META] ⚠️ Campanha {campaignid} com mais de um dataset: {sorted(datasets)}")
+        atualizar_destino_campanha_meta(campaignid, act_id.removeprefix('act_'), min(datasets, key=int), nome_token)
+
+
 def _gravar_linha(linha: dict) -> bool:
     campaignid = str(linha.get('campaign_id') or '')
     if linha.get('account_currency') != 'BRL':
@@ -85,6 +100,13 @@ def processar_orcamento_meta(data_str: str | None = None) -> dict:
             act_id = conta.get('id') if isinstance(conta, dict) else None
             if not act_id or act_id in contas_lidas:
                 continue
+            destino_lido = True
+            try:
+                _sincronizar_destinos(act_id, nome, token)
+            except Exception as e:  # o gasto não depende disso
+                logger.error(f"[ORCAMENTO-META] ❌ Erro ao ler os conjuntos da conta {act_id}: {type(e).__name__}: {e}")
+                resumo['erros'] += 1
+                destino_lido = False
             try:
                 for linha in _ler_paginas(f'{act_id}/insights', token, params):
                     try:
@@ -92,7 +114,8 @@ def processar_orcamento_meta(data_str: str | None = None) -> dict:
                     except Exception as e:  # uma linha ruim não descarta o resto da conta
                         logger.error(f"[ORCAMENTO-META] ❌ Conta {act_id}, linha {linha}: {type(e).__name__}: {e}")
                         resumo['erros'] += 1
-                contas_lidas.add(act_id)  # só depois de ler: se este token falhar, outro que veja a conta tenta
+                if destino_lido:  # só com as duas leituras: se este token falhar, outro que veja a conta tenta
+                    contas_lidas.add(act_id)
                 resumo['contas'] += 1
             except Exception as e:
                 logger.error(f"[ORCAMENTO-META] ❌ Erro na conta {act_id}: {type(e).__name__}: {e}")
