@@ -3,7 +3,8 @@ import os
 from urllib.parse import urlparse, parse_qs
 from agente_gera_mensagem_inicial import gera_mensagem_inicial_randomicamente
 from flask import jsonify, request
-from database import Pedido, criar_pedido, selecionar_telefone_produto
+from database import Pedido, criar_pedido, gravar_clique_pedido, selecionar_telefone_produto
+from meta_clique import clique_meta, ip_e_navegador, registrar_campanha_meta
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -19,6 +20,15 @@ FALLBACK_TELEFONE = {
     12: "556182419539",
 }
 
+def _gravar_clique_lead(pedido_id, fbc):
+    """fbc, IP e navegador do lead. Uma falha aqui nunca impede a resposta com o número do WhatsApp."""
+    try:
+        ip, navegador = ip_e_navegador(request)
+        gravar_clique_pedido(pedido_id, ip=ip, navegador=navegador, fbc=fbc)
+    except Exception as e:
+        logger.error(f"[LEAD] ❌ Erro ao gravar o clique do pedido #{pedido_id}: {e}")
+
+
 def persistir_lead(body):
     try:
         logger.info(f"[LEAD] 📦 Dados recebidos para criar lead: {body}")
@@ -29,6 +39,9 @@ def persistir_lead(body):
         wbraid = _qparams.get('wbraid', [''])[0]
         gbraid = _qparams.get('gbraid', [''])[0]
         campaignid = body.get('campaignid', "")
+        clique = clique_meta({**{k: v[0] for k, v in _qparams.items()}, **({'gclid': gclid} if gclid else {})})
+        if clique:
+            campaignid = clique['campaignid']
         adgroupid = body.get('adgroupid', "")
         creative = body.get('creative', "")
         matchtype = body.get('matchtype', "")
@@ -87,7 +100,10 @@ def persistir_lead(body):
             video_id=video_id,
             dns_origem=dns_origem,
         )
-        criar_pedido(pedido)
+        pedido_id = criar_pedido(pedido)
+        _gravar_clique_lead(pedido_id, clique['fbc'] if clique else None)
+        if clique:
+            registrar_campanha_meta(produto, clique['campaignid'], venda_web=False)
         # logger.info(f"[LEAD] ✅ Lead gravado com gclid: {gclid}")
         resposta = {
             "whatsapp_numero": whatsapp_numero,

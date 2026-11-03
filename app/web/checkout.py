@@ -18,6 +18,58 @@ logger = logging.getLogger(__name__)
 COOKIE_MAX_AGE_FUNIL = 86400  # 24h — alinhado à validade do PIX do BB Pay (gerar_pix: expiracao = now + 24h)
 
 
+def _rascunho_com_clique_meta(pedido: dict) -> bool:
+    """O rascunho está com clique da Meta? O fbclid é opcional, então sem `fbc` quem diz é o canal da campanha."""
+    from database import plataforma_campanha
+
+    if pedido.get('gclid'):
+        return False
+    return bool(pedido.get('fbc')) or plataforma_campanha(pedido['produto_id'], pedido.get('campaignid')) == 'meta'
+
+
+def _clique_novo_no_rascunho(args, pedido: dict, clique: dict | None) -> bool:
+    """A visita traz um clique que substitui o do rascunho? Sem clique na URL (ex.: navegou da landing para o
+    checkout, link da bio), mantém a campanha que já está no pedido."""
+    from meta_clique import fbclid_do_fbc
+
+    gclid = args.get('gclid', '')
+    if gclid:
+        return gclid != (pedido.get('gclid') or '')
+    if clique:
+        if pedido.get('gclid'):
+            return True
+        if clique['fbclid']:
+            return clique['fbclid'] != fbclid_do_fbc(pedido.get('fbc'))  # o mesmo fbclid é F5
+        return clique['campaignid'] != (pedido.get('campaignid') or '')
+    # wbraid/gbraid ainda não são salvos: só tiram o clique da Meta, nunca apagam um gclid.
+    if args.get('wbraid') or args.get('gbraid'):
+        return _rascunho_com_clique_meta(pedido)
+    return False
+
+
+def _clique_meta_do_corpo(body: dict, produto_id: int) -> dict | None:
+    """Pedido criado sem rascunho: o clique da Meta vem no corpo do checkout (utmData)."""
+    from meta_clique import clique_meta, registrar_campanha_meta
+
+    clique = clique_meta(body, chave_campanha='campaignid')
+    if clique:
+        registrar_campanha_meta(produto_id, clique['campaignid'], venda_web=True)
+    return clique
+
+
+def _gravar_navegador(pedido_id: int) -> None:
+    """IP e navegador vão no evento da Meta. Falha aqui nunca derruba o checkout."""
+    try:
+        from flask import request
+        from database import gravar_clique_pedido
+        from meta_clique import ip_e_navegador
+
+        ip, navegador = ip_e_navegador(request)
+        gravar_clique_pedido(pedido_id, ip=ip, navegador=navegador)
+    except Exception as e:
+        logger.error(f'[WEB-CHECKOUT] Erro ao gravar IP e navegador do pedido #{pedido_id}: {e}')
+
+
 def rastrear_visita_funil(request_obj, produto_id: int, estado_novo: int, cookie_prefixo: str = 'pedido_web') -> int:
     """
     Cria ou reaproveita um pedido "não finalizado" (estado 1004 = chegou na página de vendas,
@@ -41,25 +93,29 @@ def rastrear_visita_funil(request_obj, produto_id: int, estado_novo: int, cookie
     """
     from database import (get_pedido_nao_finalizado, avancar_pedido_web, criar_pedido_web_inicial,
                           atualizar_campanha_rascunho)
+    from meta_clique import clique_meta, registrar_campanha_meta
 
     cookie_nome = f'{cookie_prefixo}_{produto_id}'
     pedido_id_cookie = request_obj.cookies.get(cookie_nome, '')
     args = request_obj.args
+    clique = clique_meta(args)
+    if clique:
+        registrar_campanha_meta(produto_id, clique['campaignid'], venda_web=True)
 
     if pedido_id_cookie.isdigit():
         pedido = get_pedido_nao_finalizado(int(pedido_id_cookie), produto_id)
         if pedido:
             if pedido['estado_id'] == 1004 and estado_novo == 1003:
                 avancar_pedido_web(pedido['id'], 1003)
-            # Voltou por outro anúncio (gclid novo): vale o último clique. Sem gclid na URL (ex.: navegou
-            # da landing para o checkout), mantém a campanha que já está no pedido.
-            gclid = args.get('gclid', '')
-            if gclid and gclid != (pedido.get('gclid') or ''):
+            # Voltou por outro anúncio: vale o último clique, e campanha, gclid e fbc trocam juntos (a venda vai
+            # para um canal só).
+            if _clique_novo_no_rascunho(args, pedido, clique):
                 atualizar_campanha_rascunho(
-                    pedido['id'], gclid=gclid, campaignid=args.get('gad_campaignid', ''),
+                    pedido['id'], gclid=args.get('gclid', ''), campaignid=args.get('gad_campaignid', ''),
                     adgroupid=args.get('adgroupid', ''), creative=args.get('creative', ''),
                     matchtype=args.get('matchtype', ''), device=args.get('device', ''),
-                    placement=args.get('placement', ''), video_id=args.get('video_id', ''))
+                    placement=args.get('placement', ''), video_id=args.get('video_id', ''),
+                    fbc=clique['fbc'] if clique else None)
             return pedido['id']
 
     dns_origem = (request_obj.headers.get('X-Forwarded-Host') or request_obj.host or '').split(':')[0].lower()
@@ -73,6 +129,7 @@ def rastrear_visita_funil(request_obj, produto_id: int, estado_novo: int, cookie
         device=args.get('device', ''),
         placement=args.get('placement', ''),
         video_id=args.get('video_id', ''),
+        fbc=clique['fbc'] if clique else None,
     )
 
 
@@ -250,6 +307,7 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
             email=body.get('email', ''),
         )
     else:
+        clique = _clique_meta_do_corpo(body, produto_id)
         pedido_id = criar_pedido_web_unificado(
             produto_id=produto_id,
             phone_number_id=phone_number_id,
@@ -265,7 +323,9 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
             device=body.get('device', ''),
             placement=body.get('placement', ''),
             video_id=body.get('video_id', ''),
+            fbc=clique['fbc'] if clique else None,
         )
+    _gravar_navegador(pedido_id)
     gravar_desconto_pedido(pedido_id, desconto)
     try:
         criar_itens_pedido_web(pedido_id, plano, valor_principal, bump_rows)
@@ -594,6 +654,7 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
         finalizar_pedido_web(pedido_id, phone_number_id='', contact_phone='',
                              contact_name=body.get('nome', ''), email=body.get('email', ''))
     else:
+        clique = _clique_meta_do_corpo(body, produto_id)
         pedido_id = criar_pedido_web_unificado(
             produto_id=produto_id, phone_number_id='', contact_phone='',
             contact_name=body.get('nome', ''), dns_origem=dns_origem, email=body.get('email', ''),
@@ -601,7 +662,9 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
             adgroupid=body.get('adgroupid', ''), creative=body.get('creative', ''),
             matchtype=body.get('matchtype', ''), device=body.get('device', ''),
             placement=body.get('placement', ''), video_id=body.get('video_id', ''),
+            fbc=clique['fbc'] if clique else None,
         )
+    _gravar_navegador(pedido_id)
 
     # Nova tentativa no mesmo pedido (1006/1007): regrava o desconto (mesmo 0) e o item principal,
     # para o pedido refletir o que será cobrado agora.

@@ -1028,6 +1028,90 @@ def remover_planilha_dns(planilha_id):
         "DELETE FROM google_ads_planilha_dns WHERE id = %s", (planilha_id,))
 
 
+# ── Conversões Meta ───────────────────────────────────────────────────────────
+
+def busca_vendas_pendentes_meta() -> list:
+    """Vendas de campanha da Meta ainda não aceitas, com o dataset do domínio do pedido ou, sem linha para ele, o
+    coringa '*' do produto. Linha do domínio inativa bloqueia o envio. A Meta rejeita a requisição inteira se houver
+    evento com mais de 7 dias: daí o limite de 6."""
+    query = """
+        SELECT p.*,
+               COALESCE(d.dataset_id, w.dataset_id)       AS meta_dataset_id,
+               COALESCE(d.token_env_var, w.token_env_var) AS meta_token_env_var
+        FROM pedidos p
+        JOIN campanhas c
+          ON c.produto_id = p.produto_id
+         AND c.campaignid = p.campaignid
+         AND c.plataforma = 'meta'
+        LEFT JOIN meta_dataset_dns d
+          ON d.produto_id = p.produto_id
+         AND d.dns        = p.dns_origem
+        LEFT JOIN meta_dataset_dns w
+          ON w.produto_id = p.produto_id
+         AND w.dns        = '*'
+         AND w.ativo      = TRUE
+        WHERE p.estado_id IN (0, 1000)
+          AND COALESCE(p.gclid, '')  = ''
+          AND COALESCE(p.wbraid, '') = ''
+          AND COALESCE(p.gbraid, '') = ''
+          AND p.data_envio_meta IS NULL
+          AND p.data_pagamento >= NOW() - INTERVAL 6 DAY
+          AND (d.ativo = TRUE OR (d.id IS NULL AND w.id IS NOT NULL))
+        ORDER BY p.data_pagamento ASC
+    """
+    return db.execute_query(query, fetch_all=True) or []
+
+def marcar_venda_como_enviada_a_meta(pedido_id):
+    db.execute_query("UPDATE pedidos SET data_envio_meta = CURRENT_TIMESTAMP WHERE id = %s", (pedido_id,))
+
+def criar_campanha_meta(produto_id, campaignid, venda_web):
+    """Primeiro clique de anúncio: o ID fica no lugar do nome. Campanha que já existe não muda (o admin pode ter
+    ajustado)."""
+    db.execute_query(
+        """INSERT IGNORE INTO campanhas (produto_id, campaignid, nome, venda_web, plataforma)
+           VALUES (%s, %s, %s, %s, 'meta')""",
+        (produto_id, campaignid, campaignid, venda_web))
+
+def plataforma_campanha(produto_id, campaignid) -> str | None:
+    row = db.execute_query(
+        "SELECT plataforma FROM campanhas WHERE produto_id = %s AND campaignid = %s",
+        (produto_id, campaignid), fetch_one=True)
+    return row['plataforma'] if row else None
+
+def atualizar_nome_automatico_campanha(produto_id, campaignid, nome):
+    """Troca só o nome automático (igual ao ID). Nome dado no admin fica."""
+    db.execute_query(
+        "UPDATE campanhas SET nome = %s WHERE produto_id = %s AND campaignid = %s AND nome = campaignid",
+        (nome[:255], produto_id, campaignid))
+
+def gravar_clique_pedido(pedido_id, ip=None, navegador=None, fbc=None):
+    """IP e navegador ao finalizar o pedido ou criar o lead; no lead, também o fbc. Pedido pago nunca muda."""
+    db.execute_query(
+        """UPDATE pedidos SET client_ip = %s, client_user_agent = %s, fbc = COALESCE(%s, fbc)
+           WHERE id = %s AND estado_id NOT IN (0, 1000)""",
+        ((ip or '')[:45] or None, (navegador or '')[:512] or None, fbc, pedido_id))
+
+def listar_datasets_meta_produto(produto_id) -> list:
+    return db.execute_query(
+        "SELECT * FROM meta_dataset_dns WHERE produto_id = %s ORDER BY dns",
+        (produto_id,), fetch_all=True) or []
+
+def adicionar_dataset_meta(produto_id, dns, dataset_id, token_env_var):
+    db.execute_query(
+        "INSERT INTO meta_dataset_dns (produto_id, dns, dataset_id, token_env_var) VALUES (%s, %s, %s, %s)",
+        (produto_id, dns, dataset_id, token_env_var))
+
+def alternar_dataset_meta(produto_id, dataset_id):
+    db.execute_query(
+        "UPDATE meta_dataset_dns SET ativo = NOT ativo WHERE id = %s AND produto_id = %s",
+        (dataset_id, produto_id))
+
+def remover_dataset_meta(produto_id, dataset_id):
+    db.execute_query(
+        "DELETE FROM meta_dataset_dns WHERE id = %s AND produto_id = %s",
+        (dataset_id, produto_id))
+
+
 # ── orcamento_campanha (sheets) ───────────────────────────────────────────────
 
 def buscar_produto_id_por_campaignid(campaignid) -> int | None:
@@ -2556,7 +2640,7 @@ def criar_pedido_web_inicial(produto_id: int, estado_id: int, dns_origem: str = 
                              gclid: str = '', campaignid: str = '', adgroupid: str = '',
                              creative: str = '', matchtype: str = '',
                              device: str = '', placement: str = '',
-                             video_id: str = '') -> int:
+                             video_id: str = '', fbc: str = None) -> int:
     """
     Cria um pedido em `pedidos` numa etapa anterior à identificação do cliente
     (estado_id 1004 = chegou na página de vendas, ou 1003 = chegou no checkout) — sem
@@ -2567,13 +2651,13 @@ def criar_pedido_web_inicial(produto_id: int, estado_id: int, dns_origem: str = 
     guid = secrets.token_urlsafe(6)
     return db.execute_query(
         """INSERT INTO pedidos
-             (produto_id, guid, valor_pago, estado_id, fluxo_inicial, gclid,
+             (produto_id, guid, valor_pago, estado_id, fluxo_inicial, gclid, fbc,
               data_ultima_atualizacao, data_contato_site,
               dns_origem, campaignid, adgroupid, creative, matchtype, device, placement, video_id)
-           VALUES (%s, %s, 0.0, %s, 'web', %s,
+           VALUES (%s, %s, 0.0, %s, 'web', %s, %s,
                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
                    %s, %s, %s, %s, %s, %s, %s, %s)""",
-        (produto_id, guid, estado_id, gclid or '',
+        (produto_id, guid, estado_id, gclid or '', fbc,
          dns_origem or '', campaignid or '', adgroupid or '', creative or '',
          matchtype or '', device or '', placement or '', video_id or '')
     )
@@ -2581,15 +2665,15 @@ def criar_pedido_web_inicial(produto_id: int, estado_id: int, dns_origem: str = 
 
 def atualizar_campanha_rascunho(pedido_id: int, gclid: str = '', campaignid: str = '', adgroupid: str = '',
                                 creative: str = '', matchtype: str = '', device: str = '', placement: str = '',
-                                video_id: str = '') -> None:
+                                video_id: str = '', fbc: str = None) -> None:
     """Visita nova de anúncio num pedido rascunho já existente (1004/1003, mesmo cookie): passa a valer a
-    campanha do último clique — é o gclid que volta para o Google Ads na venda (padrão do Ads; sem isso,
+    campanha do último clique — é o gclid ou o fbc que volta para o canal na venda (padrão do Ads; sem isso,
     quem volta por outro anúncio teria a venda creditada ao primeiro)."""
     db.execute_query(
-        """UPDATE pedidos SET gclid = %s, campaignid = %s, adgroupid = %s, creative = %s, matchtype = %s,
+        """UPDATE pedidos SET gclid = %s, fbc = %s, campaignid = %s, adgroupid = %s, creative = %s, matchtype = %s,
                   device = %s, placement = %s, video_id = %s
            WHERE id = %s AND estado_id IN (1004, 1003)""",
-        (gclid, campaignid or '', adgroupid or '', creative or '', matchtype or '', device or '',
+        (gclid, fbc, campaignid or '', adgroupid or '', creative or '', matchtype or '', device or '',
          placement or '', video_id or '', pedido_id))
 
 
@@ -2655,23 +2739,23 @@ def criar_pedido_web_unificado(produto_id: int, phone_number_id: str,
                                campaignid: str = '', adgroupid: str = '',
                                creative: str = '', matchtype: str = '',
                                device: str = '', placement: str = '',
-                               video_id: str = '') -> int:
+                               video_id: str = '', fbc: str = None) -> int:
     """Cria pedido em `pedidos` com estado 1001 (Pedido web criado). Retorna o id."""
     _contact_phone = contact_phone or ''
     guid = secrets.token_urlsafe(6)
     return db.execute_query(
         """INSERT INTO pedidos
-             (produto_id, guid, valor_pago, estado_id, fluxo_inicial, gclid,
+             (produto_id, guid, valor_pago, estado_id, fluxo_inicial, gclid, fbc,
               data_ultima_atualizacao, data_contato_site, data_pedido,
               phone_number_id, contact_phone, contact_name, contact_to, email,
                 dns_origem,
               campaignid, adgroupid, creative, matchtype, device, placement, video_id)
-           VALUES (%s, %s, 0.0, 1001, 'web', %s,
+           VALUES (%s, %s, 0.0, 1001, 'web', %s, %s,
                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
                    %s, %s, %s, %s, %s,
                     %s,
                    %s, %s, %s, %s, %s, %s, %s)""",
-        (produto_id, guid, gclid or '',
+        (produto_id, guid, gclid or '', fbc,
          phone_number_id or '', _contact_phone, contact_name or '', _contact_phone or None, email or '',
             dns_origem or '',
          campaignid or '', adgroupid or '', creative or '',

@@ -24,6 +24,7 @@
                     <th>Campaign ID</th>
                     <th>Nome</th>
                     <th style="text-align:center;">Venda Web</th>
+                    <th style="text-align:center;">Plataforma</th>
                     <th style="text-align:right;">Pedidos</th>
                     <th></th>
                 </tr>
@@ -53,6 +54,13 @@
                     <td style="text-align:center;">
                         <input type="checkbox" name="venda_web" form="form-campanha-{{ loop.index }}"
                                {% if c.venda_web %}checked{% endif %}>
+                    </td>
+                    <td style="text-align:center;">
+                        <select name="plataforma" form="form-campanha-{{ loop.index }}"
+                                style="margin: 0; padding: 5px 10px; font-size: 13px;">
+                            <option value="google" {% if c.plataforma == 'google' %}selected{% endif %}>Google</option>
+                            <option value="meta" {% if c.plataforma == 'meta' %}selected{% endif %}>Meta</option>
+                        </select>
                     </td>
                     <td style="text-align:right; font-family: var(--mono); font-size: 13px; color: var(--muted);">
                         {{ c.total_pedidos }}

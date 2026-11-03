@@ -85,14 +85,15 @@ class RepositorioMysql:
         pode estar em vários pedidos (mais de um PIX gerado) — o primeiro pago libera."""
         db.execute_query("INSERT INTO musica_pedidos (pedido_id, musica_id) VALUES (%s, %s) "
                          "ON DUPLICATE KEY UPDATE musica_id = VALUES(musica_id)", (pedido_id, musica_id))
-        # Atribuição do Google Ads: a campanha (GCLID) ficou no rascunho da landing em que a música nasceu.
+        # Atribuição do Google Ads e da Meta: a campanha (GCLID ou fbc) ficou no rascunho da landing em que a música nasceu.
         # Se a compra criou um pedido novo (ex.: voltou pelo e-mail de lembrete), ele herda a campanha.
         db.execute_query(
             """UPDATE pedidos p JOIN musicas m ON m.id = %s JOIN pedidos o ON o.id = m.pedido_origem_id
-               SET p.gclid = o.gclid, p.campaignid = o.campaignid, p.adgroupid = o.adgroupid,
+               SET p.gclid = o.gclid, p.fbc = o.fbc, p.campaignid = o.campaignid, p.adgroupid = o.adgroupid,
                    p.creative = o.creative, p.matchtype = o.matchtype, p.device = o.device,
                    p.placement = o.placement, p.video_id = o.video_id
-               WHERE p.id = %s AND o.id <> p.id AND COALESCE(p.gclid, '') = '' AND COALESCE(o.gclid, '') <> ''""",
+               WHERE p.id = %s AND o.id <> p.id AND COALESCE(p.gclid, '') = '' AND COALESCE(p.fbc, '') = ''
+                 AND (COALESCE(o.gclid, '') <> '' OR COALESCE(o.fbc, '') <> '')""",
             (musica_id, pedido_id))
 
     def pedido_pago(self, pedido_id):
