@@ -178,8 +178,8 @@ def test_25_whatsapp_vale_10_reais():
 
 def test_26_hash_so_em_email_e_telefone():
     user_data = montar_evento(_venda())['user_data']
-    assert user_data['em'] == _sha('maria@exemplo.com')
-    assert user_data['ph'] == _sha('5561981163324')
+    assert user_data['em'] == [_sha('maria@exemplo.com')]
+    assert user_data['ph'] == [_sha('5561981163324')]
     assert user_data['fbc'] == 'fb.1.1700000000000.AbC'
     assert user_data['client_ip_address'] == '200.1.2.3' and user_data['client_user_agent'] == 'Mozilla/5.0'
 
@@ -336,9 +336,70 @@ def test_34_aviso_de_janela(meta, monkeypatch, caplog, dias, avisa):
     agora_br = datetime.now(timezone(timedelta(hours=-3))).replace(tzinfo=None)
     venda = {**vars(_venda(data_pagamento=agora_br - timedelta(days=dias))), 'meta_dataset_id': '999',
              'meta_token_env_var': 'META_TOKEN_LSN'}
+    monkeypatch.setattr(fluxo, 'busca_vendas_meta_sem_dataset', lambda: [])
     monkeypatch.setattr(fluxo, 'busca_vendas_pendentes_meta', lambda: [venda])
     monkeypatch.setattr(fluxo, 'marcar_venda_como_enviada_a_meta', lambda pedido_id: None)
     meta.resposta = lambda: Resposta({'events_received': 0})
     with caplog.at_level(logging.ERROR):
         executar()
     assert ('sem aceite há' in caplog.text) is avisa
+
+
+def test_34_venda_aceita_nao_gera_aviso_de_janela(meta, monkeypatch, caplog):
+    agora_br = datetime.now(timezone(timedelta(hours=-3))).replace(tzinfo=None)
+    venda = {**vars(_venda(data_pagamento=agora_br - timedelta(days=5))), 'meta_dataset_id': '999',
+             'meta_token_env_var': 'META_TOKEN_LSN'}
+    monkeypatch.setattr(fluxo, 'busca_vendas_meta_sem_dataset', lambda: [])
+    monkeypatch.setattr(fluxo, 'busca_vendas_pendentes_meta', lambda: [venda])
+    monkeypatch.setattr(fluxo, 'marcar_venda_como_enviada_a_meta', lambda pedido_id: None)
+    with caplog.at_level(logging.ERROR):
+        executar()
+    assert 'sem aceite há' not in caplog.text
+
+
+def test_venda_sem_dataset_gera_erro_no_log(meta, banco, venda_meta, caplog):
+    banco.campanha('123', plataforma='meta')
+    pid = venda_meta(dns_origem='www.site.com')
+    with caplog.at_level(logging.ERROR):
+        executar()
+    assert f'Venda {pid}' in caplog.text and 'sem dataset' in caplog.text and meta.chamadas == []
+
+
+def test_linha_inativa_do_dominio_e_escolha_do_admin_e_nao_avisa(meta, banco, venda_meta, caplog):
+    banco.campanha('123', plataforma='meta')
+    banco.dataset(dns='www.site.com', ativo=0)
+    venda_meta(dns_origem='www.site.com')
+    with caplog.at_level(logging.ERROR):
+        executar()
+    assert 'sem dataset' not in caplog.text and meta.chamadas == []
+
+
+@pytest.mark.parametrize('entrada, esperado', [
+    ('55999998888', '5555999998888'),    # celular do DDD 55 gravado sem o DDI
+    ('5533334444', '555533334444'),      # fixo do DDD 55 gravado sem o DDI
+    ('5555999998888', '5555999998888'),
+    ('14155550123', '14155550123'),
+])
+def test_27_ddd_55_sem_ddi(entrada, esperado):
+    assert fluxo.normalizar_telefone(entrada) == esperado
+
+
+def test_31_data_invalida_no_aviso_nao_derruba_as_outras_vendas(meta, monkeypatch):
+    ruim = {**vars(_venda(id=1, data_pagamento='data ruim')), 'meta_dataset_id': '999', 'meta_token_env_var': 'META_TOKEN_LSN'}
+    boa = {**vars(_venda(id=2)), 'meta_dataset_id': '999', 'meta_token_env_var': 'META_TOKEN_LSN'}
+    marcadas = []
+    monkeypatch.setattr(fluxo, 'busca_vendas_meta_sem_dataset', lambda: [])
+    monkeypatch.setattr(fluxo, 'busca_vendas_pendentes_meta', lambda: [ruim, boa])
+    monkeypatch.setattr(fluxo, 'marcar_venda_como_enviada_a_meta', marcadas.append)
+    resumo = executar()
+    assert marcadas == [2] and resumo['erros'] == 1 and resumo['enviadas'] == 1
+
+
+def test_falha_no_diagnostico_nao_impede_o_envio(meta, monkeypatch):
+    def quebra():
+        raise RuntimeError('fora do ar')
+    venda = {**vars(_venda()), 'meta_dataset_id': '999', 'meta_token_env_var': 'META_TOKEN_LSN'}
+    monkeypatch.setattr(fluxo, 'busca_vendas_meta_sem_dataset', quebra)
+    monkeypatch.setattr(fluxo, 'busca_vendas_pendentes_meta', lambda: [venda])
+    monkeypatch.setattr(fluxo, 'marcar_venda_como_enviada_a_meta', lambda pedido_id: None)
+    assert executar()['enviadas'] == 1

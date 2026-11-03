@@ -35,7 +35,8 @@ def _ler_paginas(caminho: str, token: str, params: dict) -> list:
             params=params,
             timeout=30,
         )
-        resposta.raise_for_status()
+        if resposta.status_code >= 400:
+            raise RuntimeError(f"HTTP {resposta.status_code} — {resposta.text[:500]}")
         corpo = resposta.json()
         if not isinstance(corpo, dict):
             raise ValueError(f"resposta inesperada da Meta em {caminho}")
@@ -81,12 +82,16 @@ def processar_orcamento_meta(data_str: str | None = None) -> dict:
             continue
 
         for conta in contas:
-            act_id = conta.get('id')
+            act_id = conta.get('id') if isinstance(conta, dict) else None
             if not act_id or act_id in contas_lidas:
                 continue
             try:
                 for linha in _ler_paginas(f'{act_id}/insights', token, params):
-                    resumo['upserts' if _gravar_linha(linha) else 'ignoradas'] += 1
+                    try:
+                        resumo['upserts' if _gravar_linha(linha) else 'ignoradas'] += 1
+                    except Exception as e:  # uma linha ruim não descarta o resto da conta
+                        logger.error(f"[ORCAMENTO-META] ❌ Conta {act_id}, linha {linha}: {type(e).__name__}: {e}")
+                        resumo['erros'] += 1
                 contas_lidas.add(act_id)  # só depois de ler: se este token falhar, outro que veja a conta tenta
                 resumo['contas'] += 1
             except Exception as e:

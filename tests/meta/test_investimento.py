@@ -12,6 +12,7 @@ from fluxos.fluxo_orcamento_meta import processar_orcamento_meta
 class Resposta:
     def __init__(self, corpo, status=200):
         self.corpo, self.status_code = corpo, status
+        self.text = 'detalhe do erro'
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -175,6 +176,16 @@ def test_39_erro_numa_conta_nao_atrapalha_as_outras(banco, meta):
     banco.campanha('123', plataforma='meta')
     meta.insights['act_1'] = requests.ConnectionError('fora')
     meta.insights['act_2'] = [[linha()]]
+    resumo = processar_orcamento_meta()
+    assert len(_orcamento(banco)) == 1 and resumo['erros'] == 1 and resumo['contas'] == 1
+
+
+def test_39_linha_ruim_nao_descarta_o_resto_da_conta(banco, meta):
+    meta.contas['ta'] = ['act_1']
+    banco.campanha('123', plataforma='meta')
+    ruim = linha()
+    del ruim['date_start']
+    meta.insights['act_1'] = [[ruim, linha()]]
     resumo = processar_orcamento_meta()
     assert len(_orcamento(banco)) == 1 and resumo['erros'] == 1 and resumo['contas'] == 1
 

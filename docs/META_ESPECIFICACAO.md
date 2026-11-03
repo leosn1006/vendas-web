@@ -44,19 +44,19 @@ São os nomes que o código já lê, então landings e checkout não mudam de co
 - Último clique no rascunho (`rastrear_visita_funil`): clique novo troca campanha, `gclid` e `fbc` juntos. A venda vai para um canal só.
 - Clique do Google na mesma URL vence o da Meta.
 - Visita só com `wbraid` ou `gbraid`: troca a campanha e zera o `fbc` apenas se o pedido estiver com clique da Meta. Em qualquer outro caso, não muda nada, para não apagar um `gclid` que o pedido já tem. O site ainda não salva `wbraid` e `gbraid`; isso fica para outro trabalho.
-- Pedido criado sem rascunho (corpo do `gerar_pix` e do `gerar_cartao`) também captura o clique. Os templates `checkout.html`, `checkout-2.html` e `dicas-quimio.html` precisam mandar `fbclid` e `utm_source` em `utmData`.
+- Pedido criado sem rascunho (corpo do `gerar_pix` e do `gerar_cartao`) também captura o clique. Os templates `checkout.html`, `checkout-2.html`, `dicas-quimio.html` e `guia-paes-sem-gluten.html` mandam `wbraid`, `gbraid`, `fbclid` e `utm_source` em `utmData`.
 - Landing do WhatsApp (`persistir_lead`): a URL chega no corpo, e os parâmetros dela seguem a mesma regra. Falha ao gravar o clique nunca pode impedir a resposta com o número do WhatsApp.
 - IP (`X-Real-IP`, depois `remote_addr`) e navegador (`User-Agent`) são gravados ao finalizar o pedido, ou ao criar o lead. Falha aqui nunca derruba o checkout.
 - Pedido pago nunca muda.
-- Música (`musica/adaptadores/repositorio_mysql.py`, `vincular_pedido`): o pedido novo herda a campanha do rascunho em que a música nasceu. A herança precisa levar também o `fbc`, e valer se a origem tiver `gclid` ou `fbc` e o pedido novo não tiver nenhum dos dois.
+- Música (`musica/adaptadores/repositorio_mysql.py`, `vincular_pedido`): o pedido novo herda a campanha do rascunho em que a música nasceu. A herança leva também o `fbc`, e vale se o pedido novo não tiver `gclid` nem `fbc` e a origem tiver `gclid` ou `fbc`. Também vale se a campanha da origem for Meta e o pedido novo não tiver campanha, porque o `fbclid` é opcional.
 
 ### Envio das compras
 - Seleção: pedido pago (estados 0 e 1000), de campanha `plataforma='meta'`, sem `gclid`, `wbraid` e `gbraid`, ainda não aceito e pago nos últimos 6 dias. A Meta rejeita a requisição inteira se houver evento com mais de 7 dias.
-- Dataset: a linha do domínio do pedido (`dns_origem`) ou, sem linha para ele, o coringa `dns='*'` do produto. Linha do domínio **inativa** bloqueia o envio, sem cair no coringa. Sem dataset, a venda não é enviada.
+- Dataset: a linha do domínio do pedido (`dns_origem`) ou, sem linha para ele, o coringa `dns='*'` do produto. Linha do domínio **inativa** bloqueia o envio, sem cair no coringa. Sem dataset, a venda não é enviada, e cada rodada registra um erro no log.
 - Agendamento: toda hora no minuto :23, fila `baixa`, com trava no Redis como em `processar_orcamento_sheets`, sem retry. O que não foi aceito volta na hora seguinte.
 - Um evento por requisição. Erro de qualquer tipo numa venda não atrapalha as outras.
 - A venda só é marcada como enviada depois de `events_received >= 1`.
-- Depois de 5 dias sem aceite, cada tentativa registra um erro no log, porque aos 6 ela sai da seleção sem rastro.
+- Depois de 5 dias, cada tentativa não aceita registra um erro no log, porque aos 6 ela sai da seleção sem rastro.
 - `META_TEST_EVENT_CODE` preenchida: manda `test_event_code` e **não** marca como enviada.
 - URL: `config.WHATSAPP_API_URL` + `<dataset>/events`, com token no cabeçalho `Authorization: Bearer`. No dev, essa URL é um endereço morto. Token nunca em log nem na URL.
 - O nome da variável do token vem do admin: só aceitar `META_TOKEN_*`, para outro segredo do ambiente nunca sair para a Meta.
@@ -72,8 +72,8 @@ custom_data: currency BRL, value = valor_conversao() de fluxo_upload_google_ads.
 user_data:
   client_user_agent e client_ip_address, sem hash
   fbc, sem hash
-  em: SHA256 do e-mail sem espaços nas pontas e em minúsculas
-  ph: SHA256 do telefone só com dígitos, sem zeros à esquerda, com DDI
+  em: lista com o SHA256 do e-mail sem espaços nas pontas e em minúsculas
+  ph: lista com o SHA256 do telefone só com dígitos, sem zeros à esquerda, com DDI
 ```
 - Celular brasileiro salvo sem o 9º dígito (12 dígitos, começando com 55, 5º dígito de 6 a 9) ganha o 9 de volta antes do hash. Telefone fixo e de outros países não muda. O pedido sempre tem DDI.
 - Sem `dns_origem` ou sem `client_user_agent`: não envia, porque a Meta exige. Registra aviso e a venda segue pendente.

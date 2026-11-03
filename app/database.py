@@ -1061,6 +1061,28 @@ def busca_vendas_pendentes_meta() -> list:
     """
     return db.execute_query(query, fetch_all=True) or []
 
+def busca_vendas_meta_sem_dataset() -> list:
+    """Vendas de campanha da Meta que ficam fora do envio por falta de cadastro (domínio errado ou www diferente, por
+    exemplo). Linha do domínio inativa é escolha do admin e não entra aqui."""
+    query = """
+        SELECT p.id, p.produto_id, p.dns_origem
+        FROM pedidos p
+        JOIN campanhas c
+          ON c.produto_id = p.produto_id
+         AND c.campaignid = p.campaignid
+         AND c.plataforma = 'meta'
+        WHERE p.estado_id IN (0, 1000)
+          AND COALESCE(p.gclid, '')  = ''
+          AND COALESCE(p.wbraid, '') = ''
+          AND COALESCE(p.gbraid, '') = ''
+          AND p.data_envio_meta IS NULL
+          AND p.data_pagamento >= NOW() - INTERVAL 6 DAY
+          AND NOT EXISTS (SELECT 1 FROM meta_dataset_dns m
+                          WHERE m.produto_id = p.produto_id
+                            AND (m.dns = p.dns_origem OR (m.dns = '*' AND m.ativo = TRUE)))
+    """
+    return db.execute_query(query, fetch_all=True) or []
+
 def marcar_venda_como_enviada_a_meta(pedido_id):
     db.execute_query("UPDATE pedidos SET data_envio_meta = CURRENT_TIMESTAMP WHERE id = %s", (pedido_id,))
 

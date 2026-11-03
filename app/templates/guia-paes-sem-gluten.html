@@ -1058,6 +1058,10 @@
     const urlParams = new URLSearchParams(window.location.search);
     const utmData = {
         gclid:      urlParams.get('gclid')          || '',
+        wbraid:     urlParams.get('wbraid')         || '',
+        gbraid:     urlParams.get('gbraid')         || '',
+        fbclid:     urlParams.get('fbclid')         || '',
+        utm_source: urlParams.get('utm_source')     || '',
         campaignid: urlParams.get('gad_campaignid') || '',
         adgroupid:  urlParams.get('adgroupid')      || '',
         creative:   urlParams.get('creative')       || '',

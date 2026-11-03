@@ -86,6 +86,7 @@ class RepositorioMysql:
         db.execute_query("INSERT INTO musica_pedidos (pedido_id, musica_id) VALUES (%s, %s) "
                          "ON DUPLICATE KEY UPDATE musica_id = VALUES(musica_id)", (pedido_id, musica_id))
         # Atribuição do Google Ads e da Meta: a campanha (GCLID ou fbc) ficou no rascunho da landing em que a música nasceu.
+        # O fbclid é opcional, então um anúncio da Meta sem fbc se reconhece pela campanha.
         # Se a compra criou um pedido novo (ex.: voltou pelo e-mail de lembrete), ele herda a campanha.
         db.execute_query(
             """UPDATE pedidos p JOIN musicas m ON m.id = %s JOIN pedidos o ON o.id = m.pedido_origem_id
@@ -93,7 +94,14 @@ class RepositorioMysql:
                    p.creative = o.creative, p.matchtype = o.matchtype, p.device = o.device,
                    p.placement = o.placement, p.video_id = o.video_id
                WHERE p.id = %s AND o.id <> p.id AND COALESCE(p.gclid, '') = '' AND COALESCE(p.fbc, '') = ''
-                 AND (COALESCE(o.gclid, '') <> '' OR COALESCE(o.fbc, '') <> '')""",
+                 AND NOT EXISTS (SELECT 1 FROM campanhas cp
+                                 WHERE cp.produto_id = p.produto_id AND cp.campaignid = p.campaignid
+                                   AND cp.plataforma = 'meta')
+                 AND (COALESCE(o.gclid, '') <> '' OR COALESCE(o.fbc, '') <> ''
+                      OR (COALESCE(p.campaignid, '') = '' AND EXISTS (
+                            SELECT 1 FROM campanhas c
+                            WHERE c.produto_id = o.produto_id AND c.campaignid = o.campaignid
+                              AND c.plataforma = 'meta')))""",
             (musica_id, pedido_id))
 
     def pedido_pago(self, pedido_id):

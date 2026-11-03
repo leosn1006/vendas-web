@@ -15,6 +15,7 @@ def musica(banco):
     from musica.adaptadores.repositorio_mysql import RepositorioMysql
 
     def vincular(origem: dict, novo: dict) -> dict:
+        banco.campanha('888', plataforma='meta')
         origem_id = banco.pedido(produto_id=1, estado_id=1004, **origem)
         novo_id = banco.pedido(produto_id=1, estado_id=1001, **novo)
         banco.conexao.execute('INSERT INTO musicas (id, pedido_origem_id) VALUES (1, ?)', (origem_id,))
@@ -43,6 +44,21 @@ def test_41_pedido_que_ja_tem_clique_nao_muda(musica, clique):
 def test_41_origem_sem_clique_nao_muda_nada(musica):
     p = musica({'gclid': '', 'fbc': None, 'campaignid': '123'}, {'gclid': '', 'campaignid': '777'})
     assert p['campaignid'] == '777' and not p['fbc'] and p['gclid'] == ''
+
+
+def test_41_anuncio_da_meta_sem_fbclid_herda_a_campanha(musica):
+    p = musica({'gclid': '', 'fbc': None, 'campaignid': '888', 'adgroupid': '9'}, {'gclid': '', 'campaignid': ''})
+    assert p['campaignid'] == '888' and p['adgroupid'] == '9' and not p['fbc']
+
+
+def test_41_pedido_com_campanha_nao_herda_anuncio_sem_fbclid(musica):
+    p = musica({'gclid': '', 'fbc': None, 'campaignid': '888'}, {'gclid': '', 'campaignid': '777'})
+    assert p['campaignid'] == '777'
+
+
+def test_41_pedido_de_anuncio_meta_sem_fbclid_nao_e_sobrescrito_pelo_google(musica):
+    p = musica({'gclid': 'G1', 'campaignid': '777'}, {'gclid': '', 'fbc': None, 'campaignid': '888'})
+    assert p['gclid'] == '' and p['campaignid'] == '888'
 
 
 # ─── Exportação do Google ─────────────────────────────────────────────────────
