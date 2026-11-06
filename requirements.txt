@@ -23,6 +23,7 @@ pymupdf==1.27.1
 
 # Fila assíncrona
 celery[redis]==5.4.0
+kombu==5.6.2  # a que rodava em produção até 06/11; o celery 5.4 aceita kombu <6.0 e o 5.7 exige redis-py 6.1+ (conflita com redis==5.2.1)
 redis==5.2.1
 flower==2.0.1
 
