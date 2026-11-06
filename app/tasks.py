@@ -1068,3 +1068,17 @@ def apps_reconciliar_licencas(self):
             logger.info(f'[APPS] Reconciliação liberou {n} licença(s)')
     except Exception as exc:
         logger.error(f'[APPS] ❌ Erro na reconciliação de licenças: {exc}')
+
+
+# ============ CERTIFICADOS SSL ============
+
+@shared_task(name='tasks.verificar_certificados_ssl', bind=True, max_retries=3)
+def verificar_certificados_ssl(self):
+    """Avisa o admin@ por e-mail quando um certificado está perto de vencer (ver certificados_ssl.py).
+    Se o envio falhar (Gmail fora, token), tenta de novo em 30 min: o aviso não pode se perder."""
+    try:
+        from certificados_ssl import verificar_certificados
+        verificar_certificados()
+    except Exception as exc:
+        logger.exception(f'[SSL] ❌ Erro na verificação dos certificados: {exc}')
+        raise self.retry(exc=exc, countdown=1800)

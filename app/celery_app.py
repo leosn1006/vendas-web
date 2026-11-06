@@ -168,6 +168,12 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(hour=4, minute=13),
         'options': {'queue': 'baixa'},
     },
+    # Certificados SSL: e-mail ao admin@ se algum estiver a 20 dias ou menos de vencer (certificados_ssl.py).
+    'verificar-certificados-ssl': {
+        'task': 'tasks.verificar_certificados_ssl',
+        'schedule': crontab(hour=4, minute=41),
+        'options': {'queue': 'baixa'},
+    },
 }
 
 from celery.signals import worker_process_init
@@ -231,6 +237,7 @@ celery_app.conf.update(
         "tasks.coletar_custo_whatsapp":                  {"queue": "baixa"},
         "tasks.apps_rotina_diaria":                      {"queue": "baixa"},
         "tasks.apps_reconciliar_licencas":               {"queue": "baixa"},
+        "tasks.verificar_certificados_ssl":              {"queue": "baixa"},
         # NF-e — tudo na fila 'normal' (orquestrador, emissão individual e relatório)
         "tasks.emitir_nfe":                              {"queue": "normal"},
         "tasks.emitir_nfe_cartao":                       {"queue": "normal"},

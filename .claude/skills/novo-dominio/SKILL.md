@@ -44,6 +44,7 @@ Copie sempre do domínio-modelo do mesmo tipo; não reescreva do zero.
 | `app/whatsapp_seguranca.py`: host em `_HOST_SECRET_MAP` e `_HOST_ACCESS_TOKEN_MAP` | variáveis novas | variáveis da marca original | variáveis novas |
 | `.env.example`: `WHATSAPP_APP_SECRET_<SLUG>` e `WHATSAPP_ACCESS_TOKEN_<SLUG>` (placeholders) | ✔ | — | ✔ |
 | `docker-compose.yml`: `- WHATSAPP_APP_SECRET_<SLUG>=${WHATSAPP_APP_SECRET_<SLUG>:-}` e o de `ACCESS_TOKEN` em **app, worker-urgente, worker-normal, worker-baixa** | ✔ (8 linhas) | — | ✔ (8 linhas) |
+| `app/certificados_ssl.py`: domínio em `DOMINIOS` (alerta diário de vencimento do SSL) | ✔ | ✔ | ✔ |
 
 Nos templates, troque **todos** os dados da empresa do modelo (grep pelo CNPJ, e-mail, nome e
 domínio antigos no arquivo novo para garantir que não sobrou nada).
