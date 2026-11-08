@@ -234,6 +234,30 @@ def _vincular_musica(plano, body: dict, pedido_id: int, produto_id: int) -> None
         logger.error(f'[WEB-CHECKOUT] ❌ Pedido #{pedido_id} sem música vinculada: {e}')
 
 
+def _whatsapp_do_checkout(body: dict) -> str:
+    """WhatsApp digitado no checkout (opcional) no formato do webhook: DDI na frente (vem do
+    front, padrão 55) e celular BR sem o 9º dígito. Vazio se ela não preencheu."""
+    ddi = re.sub(r'\D', '', body.get('ddi') or '55') or '55'
+    fone = re.sub(r'\D', '', body.get('whatsapp') or '')
+    if not fone:
+        return ''
+    if ddi == '55':
+        # Brasil: DDD + número (10/11 dígitos) ainda não tem o DDI — olhar só o prefixo
+        # confundiria o DDD 55 (RS) com o DDI.
+        if len(fone) in (10, 11):
+            fone = '55' + fone
+        if len(fone) == 13 and fone.startswith('55') and fone[4] == '9':  # 5561981163324 → 556181163324
+            fone = fone[:4] + fone[5:]
+    elif not fone.startswith(ddi):
+        fone = ddi + fone
+    return fone
+
+
+def _phone_number_id_do_produto(produto_id: int) -> str:
+    from database import get_phone_number_id_produto
+    return get_phone_number_id_produto(produto_id) or os.getenv('WHATSAPP_PHONE_NUMBER_ID', '')
+
+
 def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     """
     Cria um pedido em `pedidos` (estado 1001) e gera uma solicitação PIX no BB Pay.
@@ -245,7 +269,7 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     from web.bb_pay import criar_solicitacao
     from database import (get_produto_disponivel_web, resolver_plano_checkout,
                           criar_pedido_web_unificado, atualizar_pedido_solicitacao_bb,
-                          get_phone_number_id_produto, criar_itens_pedido_web,
+                          criar_itens_pedido_web,
                           listar_bumps_validos, get_pedido_nao_finalizado, finalizar_pedido_web)
 
     erro = _erro_validacao_email(body)
@@ -279,16 +303,8 @@ def gerar_pix(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     # Bumps: nunca confiar em preço vindo do cliente — releitura pelos ids escolhidos.
     bump_rows = listar_bumps_validos(plano, body.get('bump_ids'))
     valor = valor_principal + sum(float(b['preco_promocional']) for b in bump_rows)
-    phone_number_id = get_phone_number_id_produto(produto_id) or os.getenv('WHATSAPP_PHONE_NUMBER_ID', '')
-
-    # Normaliza telefone para formato WhatsApp: DDI vem do frontend, fallback 55
-    _ddi   = re.sub(r'\D', '', body.get('ddi', '55')) or '55'
-    _phone = re.sub(r'\D', '', body.get('whatsapp', ''))
-    if _phone and not _phone.startswith(_ddi):
-        _phone = _ddi + _phone
-    # Remove o 9º dígito de celular BR para compatibilidade com formato do webhook WhatsApp
-    if len(_phone) == 13 and _phone[4] == '9':  # ex: 5561981163324 → 556181163324
-        _phone = _phone[:4] + _phone[5:]
+    phone_number_id = _phone_number_id_do_produto(produto_id)
+    _phone = _whatsapp_do_checkout(body)
 
     # Se a visita já tinha um pedido "não finalizado" (1004/1003, criado ao carregar a
     # landing/checkout), reaproveita essa linha em vez de criar uma nova — mantém o funil
@@ -645,18 +661,23 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     # 1006 (negado) e 1007 (não processado): nova tentativa no MESMO pedido, cujos itens já foram
     # gravados na primeira — não regravar (duplicaria pedido_itens).
     eh_retry_de_negado = bool(pedido_existente and pedido_existente['estado_id'] in (1006, 1007))
+    # WhatsApp opcional do formulário — mesmo tratamento do Pix (ver gerar_pix).
+    phone_number_id = _phone_number_id_do_produto(produto_id)
+    _phone = _whatsapp_do_checkout(body)
     if pedido_existente:
         pedido_id = pedido_existente['id']
         if eh_retry_de_negado:
             # finalizar_pedido_web é no-op em estado 1006 (WHERE só aceita 1003/1004).
-            # Atualiza identidade explicitamente para capturar e-mail/nome corrigidos pelo cliente.
-            atualizar_identidade_pedido(pedido_id, body.get('nome', ''), body.get('email', ''))
-        finalizar_pedido_web(pedido_id, phone_number_id='', contact_phone='',
-                             contact_name=body.get('nome', ''), email=body.get('email', ''))
+            # Atualiza identidade explicitamente para capturar nome/e-mail/WhatsApp corrigidos pelo cliente.
+            atualizar_identidade_pedido(pedido_id, body.get('nome', ''), body.get('email', ''),
+                                        contact_phone=_phone, phone_number_id=phone_number_id)
+        else:
+            finalizar_pedido_web(pedido_id, phone_number_id=phone_number_id, contact_phone=_phone,
+                                 contact_name=body.get('nome', ''), email=body.get('email', ''))
     else:
         clique = _clique_meta_do_corpo(body, produto_id)
         pedido_id = criar_pedido_web_unificado(
-            produto_id=produto_id, phone_number_id='', contact_phone='',
+            produto_id=produto_id, phone_number_id=phone_number_id, contact_phone=_phone,
             contact_name=body.get('nome', ''), dns_origem=dns_origem, email=body.get('email', ''),
             gclid=body.get('gclid', ''), campaignid=body.get('campaignid', ''),
             adgroupid=body.get('adgroupid', ''), creative=body.get('creative', ''),

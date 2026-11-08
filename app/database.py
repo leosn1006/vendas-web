@@ -751,11 +751,23 @@ def atualizar_pedido_com_interesse_produto(pedido_id, interesse_produto):
     db.execute_query(query, (interesse_produto, pedido_id))
     return pedido_id
 
-def atualizar_identidade_pedido(pedido_id: int, contact_name: str, email: str) -> None:
-    db.execute_query(
-        "UPDATE pedidos SET contact_name = %s, email = %s WHERE id = %s",
-        (contact_name, email, pedido_id),
-    )
+def atualizar_identidade_pedido(pedido_id: int, contact_name: str, email: str,
+                                contact_phone: str = '', phone_number_id: str = '') -> None:
+    """Regrava nome, e-mail e WhatsApp de um pedido web que já passou de 1003/1004 (nova
+    tentativa de cartão, 1006/1007), onde `finalizar_pedido_web` não atualiza nada. WhatsApp vazio
+    na nova tentativa mantém o da tentativa anterior."""
+    if contact_phone:
+        db.execute_query(
+            """UPDATE pedidos
+               SET contact_name = %s, email = %s, contact_phone = %s, contact_to = %s, phone_number_id = %s
+               WHERE id = %s""",
+            (contact_name, email, contact_phone, contact_phone, phone_number_id or '', pedido_id),
+        )
+    else:
+        db.execute_query(
+            "UPDATE pedidos SET contact_name = %s, email = %s WHERE id = %s",
+            (contact_name, email, pedido_id),
+        )
 
 def atualizar_pedido_com_data_followup(pedido_id):
     """
