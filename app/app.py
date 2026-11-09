@@ -437,7 +437,13 @@ def pudim_e3():
 
 @app.get("/tempero")
 def tempero():
-    return render_template('tempero.html')
+    # A/B da contribuição no site (docs/CONTRIBUICAO_WEB.md): o braço sorteado decide se "Quero receber" vai pro
+    # WhatsApp ou abre a entrega no site. Sem configuração ou com erro, contribuicao=None e a landing é a de sempre.
+    from web.contribuicao import contexto_landing, gravar_cookie_braco
+    contribuicao = contexto_landing(request, 11)
+    resp = make_response(render_template('tempero.html', contribuicao=contribuicao))
+    gravar_cookie_braco(resp, 11, contribuicao)
+    return resp
 
 @app.get("/tempero-e")
 def tempero_e():

@@ -144,6 +144,12 @@
             box-shadow: 0 12px 28px rgba(0, 0, 0, .5), 0 0 0 1px var(--glow-2) inset;
         }
 
+        /* Card liberado: capa/título abrem o leitor; embaixo, "Ler agora" e "Baixar" lado a lado (mesmo azul). */
+        .item-ebook.liberado { display: flex; flex-direction: column; }
+        .item-abrir { display: block; flex: 1; color: inherit; text-decoration: none; }
+        .acoes-item { display: flex; justify-content: space-between; gap: 8px; padding: 2px 12px 8px; }
+        .acoes-item .cta-ler { padding: 6px 0; text-decoration: none; }
+
         .capa-wrap { position: relative; }
         .capa {
             width: 100%;
@@ -289,6 +295,9 @@
                 </header>
             </div>
 
+            {# Entrega por contribuição ainda não paga (docs/CONTRIBUICAO_WEB.md): recado da persona + botão. #}
+            {% if contribuicao %}{% include '_contribuicao_estante.html' %}{% endif %}
+
             {# Apps das clientes (ex.: App Fatias): mesmo card dos livros, tocar abre o app já logada
                (ver apps/_nucleo/rotas.py). Capa = "Imagem pequena" do produto do app; sem ela, o ícone. #}
             {% if meus_apps %}
@@ -333,7 +342,8 @@
             {% if meus_apps or minha_musica %}<div class="secao-titulo-lista">Meus livros</div>{% endif %}
             <div class="grid-ebooks">
                 {% for item in itens %}
-                <a class="item-ebook{% if item.bloqueado %} bloqueado{% endif %}" href="/pedido/{{ item.guid_pedido }}/ler/{{ item.id }}?estante=v2">
+                {% if item.bloqueado %}
+                <a class="item-ebook bloqueado" href="/pedido/{{ item.guid_pedido }}/ler/{{ item.id }}?estante=v2">
                     <div class="capa-wrap">
                         {% if item.imagem_pequena %}
                         <img class="capa" src="{{ url_for('static', filename='images/' + item.imagem_pequena) }}" alt="{{ item.nome }}"
@@ -341,20 +351,40 @@
                         {% else %}
                         <div class="capa placeholder">📖</div>
                         {% endif %}
-                        {% if item.bloqueado %}<span class="badge-cadeado">🔒</span>{% endif %}
+                        <span class="badge-cadeado">🔒</span>
                     </div>
                     <div class="titulo">{{ item.nome }}</div>
-                    {% if item.bloqueado %}
-                    <div class="legenda-bloqueado">Libera após confirmar o pagamento</div>
-                    {% else %}
-                    <div class="cta-ler">📖 Ler agora</div>
-                    {% endif %}
+                    <div class="legenda-bloqueado">{{ 'Libera com a sua contribuição' if contribuicao else 'Libera após confirmar o pagamento' }}</div>
                 </a>
+                {% else %}
+                {# Liberado: duas ações no mesmo card (capa/título/Ler abrem o leitor; Baixar salva o PDF). O card é um
+                   div porque link dentro de link não vale em HTML. #}
+                <div class="item-ebook liberado">
+                    <a class="item-abrir" href="/pedido/{{ item.guid_pedido }}/ler/{{ item.id }}?estante=v2">
+                        <div class="capa-wrap">
+                            {% if item.imagem_pequena %}
+                            <img class="capa" src="{{ url_for('static', filename='images/' + item.imagem_pequena) }}" alt="{{ item.nome }}"
+                                 {% if loop.index0 == 0 %}fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}>
+                            {% else %}
+                            <div class="capa placeholder">📖</div>
+                            {% endif %}
+                        </div>
+                        <div class="titulo">{{ item.nome }}</div>
+                    </a>
+                    <div class="acoes-item">
+                        <a class="cta-ler" href="/pedido/{{ item.guid_pedido }}/ler/{{ item.id }}?estante=v2">📖 Ler agora</a>
+                        <a class="cta-ler" href="/pedido/{{ item.guid_pedido }}/arquivo/{{ item.id }}?download=1" download>📥 Baixar</a>
+                    </div>
+                </div>
+                {% endif %}
                 {% endfor %}
             </div>
             {% elif not meus_apps and not minha_musica %}
             <div class="vazio">Nenhum item encontrado.</div>
             {% endif %}
+
+            {# Depois dos livros (o livro vem primeiro): baixar, mandar pro próprio WhatsApp, reenviar o e-mail. #}
+            {% if guardar %}{% include '_estante_guardar.html' %}{% endif %}
 
             {% if cross_sell %}
             <div class="secao-titulo-lista">Livros que você ainda não tem</div>

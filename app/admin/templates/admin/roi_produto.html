@@ -227,6 +227,63 @@
     'Recebido (PIX + Web)', pix_recebido_sem_duplicidade + web_total_recebido, pix_investido + web_investido, taxa_imposto, total_erro,
     custo_wpp=wpp) }}
 
+{% if config_contribuicao %}
+{# A/B da contribuição no site (docs/CONTRIBUICAO_WEB.md): a mesma campanha, sorteio no clique da landing. Aparece
+   sempre que o produto tem o teste configurado; os cliques de piloto/QA (?contrib=) ficam em linhas separadas. #}
+{% set pct_estante = config_contribuicao.percentual_estante if config_contribuicao.ativo else 0 %}
+<div class="card">
+    <p style="font-weight:700;margin-bottom:4px">Teste: contribuição no site × WhatsApp <span style="font-weight:400;color:var(--muted);font-size:13px">— cliques do período, mesma campanha</span></p>
+    <p style="font-size:13px;margin-bottom:8px;color:{{ 'var(--muted)' if not pct_estante else 'inherit' }}">
+        {% if pct_estante %}🟢 Teste ligado: <strong>{{ pct_estante }}%</strong> dos cliques vão para o site.
+        {% else %}⚪ Teste desligado (0%): todo mundo vai para o WhatsApp. Só entram aqui os cliques de piloto (<code>?contrib=estante</code>).{% endif %}
+    </p>
+    {% if not teste_contribuicao %}
+    <p style="font-size:13px;color:var(--muted)">Nenhum clique no período.</p>
+    {% else %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Braço</th>
+                    <th style="text-align:right;">Cliques</th>
+                    <th>Funil</th>
+                    <th style="text-align:right;">Pagos</th>
+                    <th style="text-align:right;">% dos cliques</th>
+                    <th style="text-align:right;">Receita</th>
+                    <th style="text-align:right;">Receita por clique</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% macro pct(n, total) %}{{ n }} <span style="color:var(--muted)">({{ '%.0f'|format(100 * n / total) if total else 0 }}%)</span>{% endmacro %}
+                {% for t in teste_contribuicao %}
+                {% if t.teste and (loop.first or not loop.previtem.teste) %}
+                <tr><td colspan="7" style="font-size:12px;font-weight:700;color:var(--muted);padding-top:14px">Piloto / QA (<code>?contrib=</code>) — fora do resultado do teste</td></tr>
+                {% endif %}
+                <tr{% if t.teste %} style="color:var(--muted)"{% endif %}>
+                    <td><strong>{{ 'Site (estante)' if t.braco == 'estante' else 'WhatsApp' }}</strong>{% if t.teste %} <span style="font-size:11px">· piloto</span>{% endif %}</td>
+                    <td style="text-align:right;font-family:var(--mono);">{{ t.cliques }}</td>
+                    <td style="font-size:12px;line-height:1.6;">
+                        {% if t.braco == 'estante' %}
+                        nome {{ pct(t.nome, t.cliques) }} · ouviu o áudio {{ pct(t.audio1, t.cliques) }} (até o fim {{ t.audio1_fim }})<br>
+                        e-mail/livro {{ pct(t.email, t.cliques) }} · estante {{ pct(t.estante, t.cliques) }} · áudio 2 {{ pct(t.audio2, t.cliques) }} · checkout {{ pct(t.checkout, t.cliques) }}
+                        {% else %}
+                        conversaram {{ pct(t.conversas, t.cliques) }} · receberam o link {{ pct(t.receberam_link, t.cliques) }}
+                        {% endif %}
+                    </td>
+                    <td style="text-align:right;font-family:var(--mono);">{{ t.pagos }}</td>
+                    <td style="text-align:right;font-family:var(--mono);">{{ '%.1f'|format(100 * t.pagos / t.cliques) ~ '%' if t.cliques else '—' }}</td>
+                    <td style="text-align:right;font-family:var(--mono);">{{ t.receita|brl }}</td>
+                    <td style="text-align:right;font-family:var(--mono);"><strong>{{ (t.receita / t.cliques)|brl if t.cliques else '—' }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    <p style="font-size:12px;color:var(--muted);margin-top:8px">Site: pago = pedido do checkout (Pix/cartão confirmado pelo banco), vinculado à estante ou com o mesmo e-mail. WhatsApp: pago = comprovante aceito pela IA (não é dinheiro recebido — compare também o Financeiro). Pagamentos de cliques do fim do período ainda podem chegar.</p>
+</div>
+{% endif %}
+
 {% if vendas_planos %}
 {% set tot_qtd = vendas_planos|sum(attribute='site_qtd') + vendas_planos|sum(attribute='wpp_qtd') %}
 {% set tot_valor = (vendas_planos|map(attribute='site_valor')|map('float')|sum) + (vendas_planos|map(attribute='wpp_valor')|map('float')|sum) %}

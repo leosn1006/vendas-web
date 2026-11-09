@@ -59,7 +59,10 @@
       width: 100%;
       cursor: pointer;
       position: relative;
-      height: 70vh;
+      /* Proporção da capa (1054x1492): a caixa nunca fica mais estreita que a imagem, então o cover não corta as
+         laterais (com height: 70vh fixo, tela alta cortava o título). Tela baixa: limita a 70vh e corta só embaixo. */
+      aspect-ratio: 1054 / 1492;
+      max-height: 70vh;
       overflow: hidden
     }
 
@@ -251,6 +254,7 @@
       width: calc(100% - 32px)
     }
 
+    .braco-estante .btn-wpp .ico { display: none !important }
     .btn-wpp .ico {
       width: 22px;
       height: 22px;
@@ -391,7 +395,10 @@
   </style>
 </head>
 
-<body>
+{# Braço "estante" do A/B da contribuição (docs/CONTRIBUICAO_WEB.md): o livro é entregue no site, então a página
+   não promete WhatsApp (textos e ícone do botão). #}
+{% set estante = contribuicao and contribuicao.braco == 'estante' %}
+<body{% if estante %} class="braco-estante"{% endif %}>
   <div id="loader">
     <div id="loader-box">
       <div id="spinner"></div>
@@ -493,7 +500,7 @@
   <div class="preco">
     <p>Ebook completo — use na sua cozinha ou venda e lucre!</p>
     <div class="valor">R$ 10,00</div>
-    <div class="entrega">&#128241; Receba no WhatsApp em minutos</div>
+    <div class="entrega">{% if estante %}&#128214; Receba agora mesmo, aqui no site{% else %}&#128241; Receba no WhatsApp em minutos{% endif %}</div>
   </div>
   <button class="btn-wpp" onclick="irParaWhatsApp()"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"
       class="ico" aria-hidden="true">
@@ -504,7 +511,7 @@
     <h3>Como funciona?</h3>
     <div class="passo">
       <div class="passo-num">1</div>
-      <p>Clique no botao e envie uma mensagem pelo WhatsApp</p>
+      <p>{% if estante %}Clique no botão e receba o livro na hora{% else %}Clique no botao e envie uma mensagem pelo WhatsApp{% endif %}</p>
     </div>
     <div class="passo">
       <div class="passo-num">2</div>
@@ -542,6 +549,8 @@
     function mostrarLoader() { loader.classList.add('active'); document.body.style.pointerEvents = 'none'; }
     function esconderLoader() { loader.classList.remove('active'); document.body.style.pointerEvents = ''; }
     async function irParaWhatsApp() {
+      // A/B da contribuição (docs/CONTRIBUICAO_WEB.md): no braço "estante" o livro é entregue aqui no site.
+      if (window.Contribuicao) return window.Contribuicao.abrir();
       if (emProcessamento) return;
       emProcessamento = true;
       mostrarLoader();
@@ -580,6 +589,7 @@
       }
     }
   </script>
+  {% if estante %}{% include '_contribuicao_entrada.html' %}{% endif %}
 </body>
 
 </html>

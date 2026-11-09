@@ -307,6 +307,49 @@ def fluxo_followup_pagamento_web(self):
         import traceback
         traceback.print_exc()
 
+@shared_task(name="tasks.enviar_email_contribuicao_entrega", bind=True, max_retries=1)
+def enviar_email_contribuicao_entrega(self, pedido_id: int):
+    """Contribuição no site (docs/CONTRIBUICAO_WEB.md): 'seu livro chegou', logo depois do e-mail informado."""
+    from fluxos.fluxo_contribuicao_email import enviar_entrega
+    try:
+        enviar_entrega(pedido_id)
+    except Exception as exc:
+        logger.error(f"[TASK-CONTRIBUICAO] ❌ Erro no e-mail de entrega do pedido #{pedido_id}: {exc}")
+        raise self.retry(exc=exc, countdown=60)
+
+
+@shared_task(name="tasks.reenviar_email_estante", bind=True, max_retries=0)
+def reenviar_email_estante(self, pedido_id: int):
+    """Botão "Reenviar o e-mail" da Estante 2 (web/estante_acesso.py; limites já checados na rota). Sem retry: um
+    reenvio a menos é melhor que dois iguais. Entrega da contribuição (1009) usa o e-mail dela; pago, o de entrega."""
+    import database as db
+    try:
+        pedido = db.get_pedido(pedido_id)
+        if pedido and pedido['estado_id'] == db.ESTADO_CONTRIBUICAO_ENTREGUE:
+            from fluxos.fluxo_contribuicao_email import enviar_entrega
+            enviar_entrega(pedido_id, reenvio=True)
+        else:
+            from fluxos.entrega_pedido_email import executar
+            executar(pedido_id, reenvio=True)
+        logger.info(f"[TASK-ESTANTE-REENVIO] ✅ E-mail do pedido #{pedido_id} reenviado")
+    except Exception as exc:
+        logger.error(f"[TASK-ESTANTE-REENVIO] ❌ Erro ao reenviar o e-mail do pedido #{pedido_id}: {exc}")
+
+
+@shared_task(name="tasks.lembretes_contribuicao", bind=True, max_retries=0)
+def lembretes_contribuicao(self):
+    """Contribuição no site: lembretes por e-mail (2h e 24h depois da entrega, das 8h às 22h)."""
+    from fluxos.fluxo_contribuicao_email import executar_lembretes
+    try:
+        enviados = executar_lembretes()
+        if enviados:
+            logger.info(f"[TASK-CONTRIBUICAO] ✅ {enviados} lembrete(s) enviado(s)")
+    except Exception as exc:
+        logger.error(f"[TASK-CONTRIBUICAO] ❌ Erro nos lembretes: {exc}")
+        import traceback
+        traceback.print_exc()
+
+
 @shared_task(name="tasks.verificar_emails_clientes", bind=True, max_retries=0)
 def verificar_emails_clientes(self):
     """Leitor da caixa de atendimento (admin@lsnlivros.com.br): triagem, vínculo com o pedido e

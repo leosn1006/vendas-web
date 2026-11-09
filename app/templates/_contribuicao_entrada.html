@@ -1,0 +1,365 @@
+{# Entrada da contribuição no site (docs/CONTRIBUICAO_WEB.md): incluído na landing do WhatsApp quando o braço sorteado
+   é "estante". O botão "Quero receber" chama Contribuicao.abrir() em vez de ir pro WhatsApp. Tudo acontece numa camada
+   DENTRO da página (nada abre em janela nova: bloqueador de popup não pega). Passos:
+     1. "Como posso te chamar?" — o toque em Continuar também libera o som do áudio 1;
+     2. tela de chegada: áudio da persona com o livro "sendo separado" (barra e checklist seguem o áudio);
+     3. depois de 15 s (ou no fim do áudio): e-mail obrigatório + "Abrir meu livro" → Estante 2.
+   Se o servidor falhar ao criar o pedido, cai no fluxo do WhatsApp de sempre. Contexto: web/contribuicao.py. #}
+<style>
+    .ctb-camada { position: fixed; inset: 0; z-index: 9999; background: #0c0a09; color: #f5f5f4; overflow-y: auto;
+        -webkit-overflow-scrolling: touch; font-family: inherit; display: none; }
+    .ctb-camada.aberta { display: block; }
+    .ctb-caixa { max-width: 460px; margin: 0 auto; padding: 22px 18px 40px; min-height: 100%; }
+    .ctb-fechar { position: absolute; top: 10px; right: 12px; background: none; border: 0; color: #a8a29e; font-size: 28px;
+        line-height: 1; padding: 8px; cursor: pointer; }
+    .ctb-persona { display: flex; align-items: center; gap: 12px; margin: 18px 0 22px; }
+    .ctb-persona img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid #10b981; }
+    .ctb-persona strong { display: block; font-size: 19px; }
+    .ctb-persona span { font-size: 14px; color: #a8a29e; }
+    .ctb-balao { background: #1c1917; border-radius: 4px 18px 18px 18px; padding: 16px; font-size: 18px; line-height: 1.45; margin-bottom: 16px; }
+    .ctb-label { display: block; font-size: 16px; font-weight: 700; margin: 6px 0 8px; }
+    .ctb-input { width: 100%; font-size: 19px; padding: 15px 14px; border-radius: 12px; border: 2px solid #44403c;
+        background: #fff; color: #1c1917; }
+    .ctb-input:focus { outline: none; border-color: #10b981; }
+    .ctb-btn { display: block; width: 100%; margin-top: 14px; padding: 18px 14px; border: 0; border-radius: 14px; background: #10b981;
+        color: #fff; font-size: 19px; font-weight: 900; cursor: pointer; box-shadow: 0 6px 18px rgba(16,185,129,.35); }
+    .ctb-btn:disabled { opacity: .6; }
+    .ctb-btn.pulsando { animation: ctbPulso 1.4s ease-in-out infinite; }
+    @keyframes ctbPulso { 0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,.6); } 50% { box-shadow: 0 0 0 14px rgba(16,185,129,0); } }
+    .ctb-erro { color: #fca5a5; font-size: 15px; margin-top: 8px; }
+    .ctb-dica { color: #fcd34d; font-size: 15px; margin-top: 8px; }
+    .ctb-dica a { color: #fcd34d; font-weight: 700; }
+    .ctb-falando { font-size: 14px; color: #10b981; font-weight: 700; }
+    .ctb-player { display: flex; align-items: center; gap: 12px; background: #1c1917; border-radius: 999px; padding: 8px 16px 8px 8px; }
+    .ctb-play { flex: 0 0 auto; width: 52px; height: 52px; border-radius: 50%; border: 0; background: #10b981; color: #fff;
+        font-size: 20px; cursor: pointer; }
+    .ctb-busca { flex: 1; position: relative; height: 40px; display: flex; align-items: center; cursor: pointer; touch-action: none; }
+    .ctb-trilha { flex: 1; height: 6px; background: #44403c; border-radius: 3px; overflow: hidden; }
+    .ctb-trilha i { display: block; height: 100%; width: 0; background: #10b981; transition: width .25s linear; }
+    .ctb-bolinha { position: absolute; top: 50%; left: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+        background: #10b981; transition: left .25s linear; }
+    .ctb-busca.arrastando .ctb-trilha i, .ctb-busca.arrastando .ctb-bolinha { transition: none; }
+    .ctb-tempo { font-size: 14px; color: #d6d3d1; font-variant-numeric: tabular-nums; }
+    .ctb-acoes { display: flex; justify-content: space-between; gap: 10px; margin: 10px 4px 0; font-size: 14px; color: #a8a29e; }
+    .ctb-acoes button { background: none; border: 0; color: #6ee7b7; font: inherit; font-weight: 700; cursor: pointer; padding: 6px 0; }
+    .ctb-texto { background: #1c1917; border-radius: 12px; padding: 14px; font-size: 16px; line-height: 1.5; margin-top: 10px; white-space: pre-line; }
+    .ctb-livro { display: flex; gap: 14px; align-items: flex-start; background: #fff; color: #1c1917; border-radius: 16px; padding: 14px; margin: 20px 0 6px; }
+    .ctb-livro img { width: 86px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,.25); flex: 0 0 auto; }
+    .ctb-livro h3 { font-size: 16px; margin-bottom: 8px; }
+    .ctb-livro ul { list-style: none; padding: 0; margin: 0 0 10px; font-size: 14px; }
+    .ctb-livro li { padding: 3px 0; color: #a8a29e; transition: color .3s; }
+    .ctb-livro li.ok { color: #1c1917; }
+    .ctb-livro li::before { content: '◌ '; color: #a8a29e; }
+    .ctb-livro li.ok::before { content: '✓ '; color: #10b981; font-weight: 900; }
+    .ctb-prog { height: 8px; background: #e7e5e4; border-radius: 4px; overflow: hidden; }
+    .ctb-prog i { display: block; height: 100%; width: 3%; background: #10b981; transition: width .4s ease; }
+    .ctb-prog-txt { font-size: 13px; color: #57534e; margin-top: 6px; }
+    .ctb-entrega { margin-top: 18px; }
+    .ctb-entrega[hidden] { display: none; }
+    .ctb-consent { font-size: 13px; color: #a8a29e; margin-top: 8px; }
+    .ctb-preco { font-size: 14px; color: #a8a29e; text-align: center; margin-top: 12px; }
+    @media (prefers-reduced-motion: reduce) { .ctb-btn.pulsando { animation: none; } }
+</style>
+
+<div class="ctb-camada" id="ctbCamada" role="dialog" aria-modal="true" aria-label="Receber o livro">
+    <div class="ctb-caixa" style="position:relative">
+        <button type="button" class="ctb-fechar" id="ctbFechar" aria-label="Fechar">×</button>
+
+        <div class="ctb-persona">
+            {% if contribuicao.persona_foto %}<img src="{{ contribuicao.persona_foto }}" alt="{{ contribuicao.persona_nome }}">{% endif %}
+            <div><strong>{{ contribuicao.persona_nome }}</strong><span id="ctbStatus">quem preparou o seu livro</span></div>
+        </div>
+
+        {# Passo 1: nome #}
+        <div id="ctbPassoNome">
+            <div class="ctb-balao">Oi! Que bom que você veio 😊<br>Eu já vou te mandar o livro. <strong>Como posso te chamar?</strong></div>
+            <form id="ctbFormNome" novalidate>
+                <label class="ctb-label" for="ctbNome">Seu nome</label>
+                <input class="ctb-input" id="ctbNome" name="nome" autocomplete="given-name" maxlength="60" placeholder="Ex.: Maria" required>
+                <div class="ctb-erro" id="ctbErroNome" hidden>Me diz como posso te chamar 😊</div>
+                <button class="ctb-btn" type="submit">Continuar</button>
+            </form>
+        </div>
+
+        {# Passo 2: áudio + livro chegando + e-mail #}
+        <div id="ctbPassoChegada" hidden>
+            <div class="ctb-falando">🎙️ <span id="ctbFalando">{{ contribuicao.persona_nome }} está falando com você…</span></div>
+            <div class="ctb-player" style="margin-top:10px">
+                <button type="button" class="ctb-play" id="ctbPlay" aria-label="Ouvir">▶</button>
+                <div class="ctb-busca" id="ctbBusca" role="slider" tabindex="0" aria-label="Posição do áudio">
+                    <div class="ctb-trilha"><i id="ctbTrilha"></i></div><b class="ctb-bolinha" id="ctbBolinha"></b>
+                </div>
+                <span class="ctb-tempo" id="ctbTempo">0:00</span>
+            </div>
+            <audio id="ctbAudio" preload="auto" src="{{ contribuicao.audio_intro }}"></audio>
+            <div class="ctb-acoes">
+                <span>🔊 Aumente o volume</span>
+                {% if contribuicao.texto_intro %}<button type="button" id="ctbLer">📝 Ler em vez de ouvir</button>{% endif %}
+            </div>
+            {% if contribuicao.texto_intro %}<div class="ctb-texto" id="ctbTexto" hidden>{{ contribuicao.texto_intro }}</div>{% endif %}
+
+            <div class="ctb-livro">
+                {% if contribuicao.livro_capa %}<img src="{{ contribuicao.livro_capa }}" alt="{{ contribuicao.livro_nome }}">{% endif %}
+                <div style="flex:1">
+                    <h3 id="ctbSeparando">Separando seu livro…</h3>
+                    <ul id="ctbChecklist">{% for item in contribuicao.checklist %}<li>{{ item }}</li>{% endfor %}</ul>
+                    <div class="ctb-prog"><i id="ctbProg"></i></div>
+                    <div class="ctb-prog-txt" id="ctbProgTxt">Preparando…</div>
+                </div>
+            </div>
+
+            <form class="ctb-entrega" id="ctbFormEmail" novalidate hidden>
+                <div class="ctb-balao" style="font-size:17px">Pra você não perder seu livro, me diz seu e-mail que eu te mando o link 💛</div>
+                <label class="ctb-label" for="ctbEmail">Seu e-mail</label>
+                <input class="ctb-input" id="ctbEmail" name="email" type="email" inputmode="email" autocomplete="email"
+                       autocapitalize="off" spellcheck="false" placeholder="seuemail@gmail.com" required>
+                <div class="ctb-dica" id="ctbDica" hidden></div>
+                <div class="ctb-erro" id="ctbErroEmail" hidden></div>
+                <button class="ctb-btn" id="ctbAbrir" type="submit">📖 Abrir meu livro agora</button>
+                <p class="ctb-consent">Vou te mandar o link do livro e no máximo 2 lembretes.</p>
+                <p class="ctb-preco">Você recebe agora e, se gostar, contribui com R$&nbsp;{{ contribuicao.preco }} 💛</p>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% include '_audio_busca.html' %}
+<script>
+(function () {
+    var PRODUTO_ID = {{ contribuicao.produto_id|int }};
+    var CHAVE_GUID = 'contrib_guid_' + PRODUTO_ID;
+    var LIBERA_SEGUNDOS = 15;
+    var camada = document.getElementById('ctbCamada');
+    var audio = document.getElementById('ctbAudio');
+    var guid = null, nome = '', pedidoPromessa = null, liberado = false, audioFalhou = false, inicio = 0, relogio = null;
+
+    function lerGuid() { try { return localStorage.getItem(CHAVE_GUID); } catch (e) { return null; } }
+    function salvarGuid(g) { try { localStorage.setItem(CHAVE_GUID, g); } catch (e) {} }
+    // Entregas já feitas neste navegador (até 5): celular compartilhado (mãe e filho) — quem volta e digita o mesmo
+    // e-mail de uma delas cai na própria Estante (ver /entregar).
+    var CHAVE_ENTREGAS = 'contrib_entregas_' + PRODUTO_ID;
+    function lerEntregas() { try { return JSON.parse(localStorage.getItem(CHAVE_ENTREGAS) || '[]').slice(0, 5); } catch (e) { return []; } }
+    function lembrarEntrega(g) {
+        try {
+            var lista = lerEntregas().filter(function (x) { return x !== g; });
+            lista.unshift(g);
+            localStorage.setItem(CHAVE_ENTREGAS, JSON.stringify(lista.slice(0, 5)));
+        } catch (e) {}
+    }
+    function post(url, dados) {
+        return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
+    }
+    function evento(marco) {
+        if (!guid) return;
+        try {
+            var dados = JSON.stringify({ guid: guid, marco: marco });
+            if (navigator.sendBeacon) navigator.sendBeacon('/api/v1/contribuicao/evento', new Blob([dados], { type: 'application/json' }));
+            else post('/api/v1/contribuicao/evento', { guid: guid, marco: marco });
+        } catch (e) {}
+    }
+    function mmss(s) { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+
+    // Falha ao criar o pedido: segue pro WhatsApp como sempre (a cliente nunca fica sem saída).
+    function caiParaWhatsApp() {
+        camada.classList.remove('aberta');
+        document.documentElement.style.overflow = '';
+        window.Contribuicao = null;
+        if (typeof irParaWhatsApp === 'function') irParaWhatsApp();
+    }
+
+    function criarPedido() {
+        var params = new URLSearchParams(location.search);
+        var dados = {
+            produto_id: PRODUTO_ID, guid: lerGuid(), url: location.href,
+            gclid: params.get('gclid') || '', campaignid: params.get('gad_campaignid') || '',
+            adgroupid: params.get('adgroupid') || '', creative: params.get('creative') || '',
+            matchtype: params.get('matchtype') || '', device: params.get('device') || '',
+            placement: params.get('placement') || '', video_id: params.get('video_id') || ''
+        };
+        return post('/api/v1/contribuicao/iniciar', dados).then(function (r) {
+            if (!r.ok) throw new Error('iniciar ' + r.status);
+            return r.json();
+        }).then(function (j) {
+            guid = j.guid;
+            salvarGuid(guid);
+            return guid;
+        });
+    }
+
+    // ── Passo 1: nome ──
+    document.getElementById('ctbFormNome').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var campo = document.getElementById('ctbNome');
+        nome = campo.value.replace(/\s+/g, ' ').trim();
+        document.getElementById('ctbErroNome').hidden = !!nome;
+        if (!nome) { campo.focus(); return; }
+        // O som precisa começar NESTE toque (regra dos navegadores) — antes de qualquer espera de rede.
+        audio.play().catch(function () { audioFalhou = true; mostrarTexto(); });
+        campo.blur();
+        mostrarChegada();
+        pedidoPromessa.then(function () { return post('/api/v1/contribuicao/nome', { guid: guid, nome: nome }); })
+            .catch(function () {});
+    });
+
+    // ── Passo 2: chegada ──
+    var primeiro = '';
+    function mostrarChegada() {
+        primeiro = nome.split(' ')[0];
+        document.getElementById('ctbPassoNome').hidden = true;
+        document.getElementById('ctbPassoChegada').hidden = false;
+        document.getElementById('ctbSeparando').textContent = 'Separando seu livro, ' + primeiro + '…';
+        inicio = Date.now();
+        relogio = setInterval(atualizar, 500);
+        camada.scrollTop = 0;
+    }
+    function mostrarTexto() {
+        var t = document.getElementById('ctbTexto'), b = document.getElementById('ctbLer');
+        if (t) { t.hidden = false; if (b) b.textContent = '🔼 Esconder o texto'; }
+    }
+    var ler = document.getElementById('ctbLer');
+    if (ler) ler.addEventListener('click', function () {
+        var t = document.getElementById('ctbTexto');
+        t.hidden = !t.hidden;
+        ler.textContent = t.hidden ? '📝 Ler em vez de ouvir' : '🔼 Esconder o texto';
+    });
+    document.getElementById('ctbPlay').addEventListener('click', function () {
+        if (audio.paused) audio.play().catch(function () { audioFalhou = true; mostrarTexto(); }); else audio.pause();
+    });
+    audio.addEventListener('play', function () { document.getElementById('ctbPlay').textContent = '❚❚'; evento('audio1_play_em'); });
+    audio.addEventListener('pause', function () { document.getElementById('ctbPlay').textContent = '▶'; });
+    audio.addEventListener('error', function () { audioFalhou = true; mostrarTexto(); });
+    audio.addEventListener('ended', function () {
+        evento('audio1_fim_em');
+        document.getElementById('ctbFalando').textContent = 'Seu livro está pronto, ' + primeiro + '!';
+        liberar(true);
+    });
+
+    function progresso() {
+        // Segue o áudio; sem áudio (bloqueado/erro/leitura), segue o relógio (~45 s).
+        if (!audioFalhou && audio.duration && !isNaN(audio.duration)) return Math.min(1, audio.currentTime / audio.duration);
+        return Math.min(1, (Date.now() - inicio) / 45000);
+    }
+    // Player (barra + tempo) segue o próprio áudio, não o relógio: o relógio para no "Pronto!" e ela pode ouvir de novo.
+    function atualizarPlayer() {
+        var d = audio.duration && !isNaN(audio.duration) ? audio.duration : 0;
+        var pct = (d ? 100 * audio.currentTime / d : 0) + '%';
+        document.getElementById('ctbTrilha').style.width = pct;
+        document.getElementById('ctbBolinha').style.left = pct;
+        document.getElementById('ctbTempo').textContent = mmss(d ? d - audio.currentTime : 0);
+    }
+    audio.addEventListener('timeupdate', atualizarPlayer);
+    audio.addEventListener('loadedmetadata', atualizarPlayer);
+    window.ligarBuscaAudio(audio, document.getElementById('ctbBusca'), atualizarPlayer);
+    function atualizar() {
+        var p = progresso();
+        atualizarPlayer();
+        document.getElementById('ctbProg').style.width = Math.max(3, Math.round(100 * p)) + '%';
+        var itens = document.querySelectorAll('#ctbChecklist li');
+        for (var i = 0; i < itens.length; i++) itens[i].classList.toggle('ok', p >= (i + 1) / (itens.length + 1));
+        document.getElementById('ctbProgTxt').textContent = p >= 1 ? 'Pronto! ✓' : 'Preparando… ' + Math.round(100 * p) + '%';
+        if (!liberado && (Date.now() - inicio) / 1000 >= LIBERA_SEGUNDOS) liberar(false);
+        if (p >= 1 && liberado) { clearInterval(relogio); document.getElementById('ctbProg').style.width = '100%'; }
+    }
+    function liberar(fimDoAudio) {
+        var form = document.getElementById('ctbFormEmail');
+        if (!liberado) { liberado = true; form.hidden = false; }
+        if (fimDoAudio) document.getElementById('ctbAbrir').classList.add('pulsando');
+    }
+
+    // ── E-mail: mesma sugestão de domínio do checkout (MANTER SINCRONIZADO com web/email_validacao.py) ──
+    var DOMINIOS = ['gmail.com', 'hotmail.com', 'outlook.com', 'hotmail.com.br', 'outlook.com.br', 'yahoo.com.br',
+        'yahoo.com', 'icloud.com', 'bol.com.br', 'uol.com.br', 'terra.com.br', 'ig.com.br', 'live.com', 'msn.com',
+        'oi.com.br', 'globo.com', 'globo.com.br'];
+    function dist(a, b) {
+        var ant = [], i, j;
+        for (j = 0; j <= b.length; j++) ant[j] = j;
+        for (i = 1; i <= a.length; i++) {
+            var at = [i];
+            for (j = 1; j <= b.length; j++) at[j] = Math.min(ant[j] + 1, at[j - 1] + 1, ant[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+            ant = at;
+        }
+        return ant[b.length];
+    }
+    function sugestao(email) {
+        var d = (email.split('@')[1] || '').toLowerCase();
+        if (!d || DOMINIOS.indexOf(d) >= 0) return null;
+        for (var k = 0; k < DOMINIOS.length; k++) if (d.indexOf(DOMINIOS[k]) === 0) return DOMINIOS[k];
+        var melhor = null, md = 3;
+        for (k = 0; k < DOMINIOS.length; k++) { var x = dist(d, DOMINIOS[k]); if (x > 0 && x < md) { md = x; melhor = DOMINIOS[k]; } }
+        return melhor;
+    }
+    var campoEmail = document.getElementById('ctbEmail'), dica = document.getElementById('ctbDica');
+    function mostrarDica(dom) {
+        var usuario = campoEmail.value.trim().split('@')[0];
+        var link = document.createElement('a');
+        link.href = '#';
+        link.textContent = usuario + '@' + dom;
+        link.addEventListener('click', function (e) {
+            e.preventDefault(); campoEmail.value = usuario + '@' + dom; dica.hidden = true;
+        });
+        dica.textContent = 'Você quis dizer ';
+        dica.appendChild(link);
+        dica.appendChild(document.createTextNode('?'));
+        dica.hidden = false;
+    }
+    campoEmail.addEventListener('blur', function () { var s = sugestao(campoEmail.value.trim()); if (s) mostrarDica(s); else dica.hidden = true; });
+    campoEmail.addEventListener('input', function () { dica.hidden = true; document.getElementById('ctbErroEmail').hidden = true; });
+
+    document.getElementById('ctbFormEmail').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var email = campoEmail.value.trim(), erro = document.getElementById('ctbErroEmail'), btn = document.getElementById('ctbAbrir');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+            erro.textContent = 'Confere o e-mail? Ele precisa ter @ e terminar com .com ou .com.br'; erro.hidden = false; return;
+        }
+        btn.disabled = true; btn.textContent = 'Abrindo seu livro…';
+        pedidoPromessa.then(function () { return post('/api/v1/contribuicao/entregar', { guid: guid, nome: nome, email: email, anteriores: lerEntregas() }); })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+            .then(function (res) {
+                if (res.ok && res.j.url) {
+                    if (res.j.guid) { salvarGuid(res.j.guid); lembrarEntrega(res.j.guid); }
+                    location.href = res.j.url; return;
+                }
+                // Este pedido já foi entregue a outro e-mail (voltou na página e trocou): recomeça com um pedido novo.
+                if (res.j.erro === 'ja_entregue') { location.reload(); return; }
+                btn.disabled = false; btn.textContent = '📖 Abrir meu livro agora';
+                if (res.j.erro === 'email') {
+                    erro.textContent = 'Esse e-mail não parece certo. Confere pra mim?'; erro.hidden = false;
+                    if (res.j.sugestao) mostrarDica(res.j.sugestao);
+                } else { erro.textContent = 'Não consegui abrir agora. Tenta de novo, por favor?'; erro.hidden = false; }
+            })
+            .catch(function () {
+                btn.disabled = false; btn.textContent = '📖 Abrir meu livro agora';
+                erro.textContent = 'Sem conexão agora. Tenta de novo, por favor?'; erro.hidden = false;
+            });
+    });
+
+    // Voltar (do checkout/estante) restaura a página congelada (bfcache): o botão ficaria preso em "Abrindo seu livro…".
+    window.addEventListener('pageshow', function (ev) {
+        if (!ev.persisted) return;
+        var btn = document.getElementById('ctbAbrir');
+        btn.disabled = false; btn.textContent = '📖 Abrir meu livro agora';
+        atualizarPlayer();
+    });
+    window.addEventListener('pagehide', function () { audio.pause(); });
+
+    document.getElementById('ctbFechar').addEventListener('click', function () {
+        audio.pause();
+        camada.classList.remove('aberta');
+        document.documentElement.style.overflow = '';
+    });
+
+    window.Contribuicao = {
+        abrir: function () {
+            camada.classList.add('aberta');
+            document.documentElement.style.overflow = 'hidden';
+            if (!pedidoPromessa) {
+                // O clique conta aqui (como o lead do WhatsApp), antes de ela digitar qualquer coisa.
+                pedidoPromessa = criarPedido();
+                pedidoPromessa.catch(caiParaWhatsApp);
+            }
+            setTimeout(function () { var c = document.getElementById('ctbNome'); if (c && !document.getElementById('ctbPassoNome').hidden) c.focus(); }, 50);
+            return true;
+        }
+    };
+})();
+</script>

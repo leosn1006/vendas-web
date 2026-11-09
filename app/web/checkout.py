@@ -965,12 +965,21 @@ def _produto_ja_entregue_whatsapp(pedido) -> bool:
     return pedido.get('data_envio_pedido') is not None or _pedido_pago(pedido) or estado_id >= 2
 
 
+def _entrega_contribuicao(pedido) -> bool:
+    """Entrega da contribuição no site (estado 1009, web/contribuicao.py): pedido web ainda não pago que, como o
+    do WhatsApp, já recebeu o livro — o principal libera e o bônus fica com cadeado até a contribuição (que é outro
+    pedido, vinculado; os bônus liberam pela regra 'liberado prevalece' de listar_itens_ebook_do_cliente)."""
+    return pedido.get('estado_id') == 1009
+
+
 def resolver_pedido_por_guid(guid: str, item_id: int = None):
     """
     Resolve o guid público (link /pedido/<guid>) num pedido, com a regra de acesso por canal:
 
       - Pedido web (estado_id >= 1000): tudo (principal/bônus/bump) só fica acessível com
-        estado_id == 1000 (pago) — igual sempre funcionou.
+        estado_id == 1000 (pago) — igual sempre funcionou. Exceção: a entrega da contribuição
+        (1009, ver _entrega_contribuicao) segue a regra do WhatsApp (principal livre, bônus com
+        cadeado); antes do e-mail (1008) ainda não foi entregue.
       - Pedido WhatsApp (estado_id < 1000): o principal só fica acessível depois que o produto
         foi de fato entregue por mensagem OU o cliente já respondeu a introdução (estado_id >= 2,
         ver _produto_ja_entregue_whatsapp) — um lead recém-criado (acabou de clicar no anúncio,
@@ -1000,7 +1009,12 @@ def resolver_pedido_por_guid(guid: str, item_id: int = None):
     canal_web = pedido['estado_id'] >= 1000
     pago = _pedido_pago(pedido)
 
-    if canal_web and not pago:
+    contribuicao = _entrega_contribuicao(pedido)
+
+    if pedido['estado_id'] == 1008:  # contribuição: clicou, ainda sem e-mail — nada entregue
+        return pedido, None, 'ainda_nao_entregue'
+
+    if canal_web and not pago and not contribuicao:
         return pedido, None, 'aguardando_pagamento'
 
     if not canal_web and not _produto_ja_entregue_whatsapp(pedido):
@@ -1011,7 +1025,7 @@ def resolver_pedido_por_guid(guid: str, item_id: int = None):
         # Item sem arquivo = item app do plano: não há o que ler/baixar (o app abre por "Meus apps").
         if not item or not item.get('path_arquivo'):
             return pedido, None, 'item_invalido'
-        if not canal_web and item['tipo'] == 'bonus' and not pago:
+        if (not canal_web or contribuicao) and item['tipo'] == 'bonus' and not pago:
             return pedido, item, 'aguardando_pagamento'
         return pedido, item, None
 
@@ -1043,14 +1057,16 @@ def listar_itens_ebook_do_cliente(pedido):
     for item in listar_itens_pedido_ebook(pedido['id']):
         item = dict(item)
         item['guid_pedido'] = pedido['guid']
-        item['bloqueado'] = (not canal_web and item['tipo'] == 'bonus' and not pago)
+        item['bloqueado'] = ((not canal_web or _entrega_contribuicao(pedido)) and item['tipo'] == 'bonus' and not pago)
         linhas.append(item)
 
     # União de dois sinais de "mesmo cliente": o heurístico por e-mail/telefone (não pega se o
     # cliente trocou o contato no cross-sell da v2) e o vínculo explícito gravado em
     # /pay2?ref=<guid> (não depende do contato digitado). Dedup por id — o mesmo pedido pode
     # aparecer nos dois.
-    relacionados_por_id = {
+    # Entrega da contribuição (1009): o e-mail foi digitado na entrega, sem verificação nem pagamento — qualquer um
+    # digita o de outra pessoa. Nada de juntar pedidos pelo contato: só o vínculo explícito (o checkout ?ref= dela).
+    relacionados_por_id = {} if _entrega_contribuicao(pedido) else {
         r['id']: r for r in listar_pedidos_pagos_relacionados(
             pedido['id'], pedido.get('email'), pedido.get('contact_phone')
         )

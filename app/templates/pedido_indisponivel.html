@@ -78,7 +78,11 @@
     <div class="container">
         <div class="card">
             {% if motivo == 'aguardando_pagamento' %}
-                {% if canal == 'whatsapp' %}
+                {% if canal == 'contribuicao' %}
+                    <div class="emoji">🎁</div>
+                    <h1>Esse bônus libera com a sua contribuição</h1>
+                    <p>Volte para a sua estante e toque em "Fazer minha contribuição". Assim que o pagamento cair, seus bônus aparecem na hora, sem precisar mandar comprovante.</p>
+                {% elif canal == 'whatsapp' %}
                     <div class="emoji">🔒</div>
                     <h1>Esse bônus ainda não foi liberado</h1>
                     <p>Esse bônus libera assim que a gente confirmar o pagamento do seu pedido. É só usar a chave Pix que a gente já te mandou aqui no WhatsApp e responder essa mesma conversa com o comprovante — a gente libera rapidinho pra você!</p>
@@ -102,7 +106,7 @@
             {% endif %}
 
             {% if pedido and pedido.guid %}
-                <a class="btn-voltar" href="/pedido/{{ pedido.guid }}">← Voltar para os seus produtos</a>
+                <a class="btn-voltar" href="/pedido{{ '2' if canal == 'contribuicao' }}/{{ pedido.guid }}">← Voltar para os seus produtos</a>
             {% endif %}
         </div>
     </div>

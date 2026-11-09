@@ -1,0 +1,93 @@
+{# "Guarde seu livro" (web/estante_acesso.py): para ela não perder o livro se fechar a aba e o e-mail não chegar.
+   Ações em vez de instrução (quem já perdeu a aba não lê o que está nela): baixar, mandar o link para o próprio
+   WhatsApp ("(Você)", o "Conversar comigo") e ver/reenviar o e-mail. Azul e contorno: o verde cheio da página é só
+   da contribuição. #}
+<style>
+    .guardar { background: #fff; color: #1a1a2e; border-radius: 18px; padding: 18px 16px; margin-top: 26px;
+        box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    .guardar h2 { font-size: 17px; font-weight: 900; margin-bottom: 4px; }
+    .guardar-sub { font-size: 14px; color: #5f6b7a; margin-bottom: 12px; line-height: 1.4; }
+    .guardar-btn { display: block; width: 100%; margin-top: 10px; padding: 14px; border-radius: 12px; text-align: center;
+        font: inherit; font-size: 16px; font-weight: 900; text-decoration: none; cursor: pointer; }
+    .guardar-btn.baixar { background: #1967D2; color: #fff; border: 0; }
+    .guardar-btn.wpp { background: #fff; color: #128c4a; border: 2px solid #25a35a; }
+    .guardar-varios { font-size: 15px; line-height: 1.45; background: #eef4fd; border-radius: 12px; padding: 12px 14px; }
+    .guardar-dica { font-size: 13px; color: #5f6b7a; margin-top: 6px; line-height: 1.4; }
+    .guardar-email { margin-top: 16px; padding-top: 14px; border-top: 1px solid #e3e7ef; font-size: 14px; line-height: 1.45; }
+    .guardar-reenviar { margin-top: 10px; background: #fff; color: #1967D2; border: 2px solid #1967D2; border-radius: 12px;
+        padding: 10px 16px; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+    .guardar-reenviar:disabled { opacity: .55; cursor: default; }
+    .guardar-msg { display: block; margin-top: 8px; font-size: 13px; color: #3c5a48; }
+    .guardar-msg.erro { color: #b42318; }
+</style>
+
+<section class="guardar" id="guardar">
+    <h2>📌 Guarde seu livro pra não perder</h2>
+    <p class="guardar-sub">Assim você abre quando quiser, mesmo se fechar esta página.</p>
+
+    {% if guardar.download %}
+    <a class="guardar-btn baixar guardar-baixar" href="{{ guardar.download }}" download>📥 Baixar {{ guardar.livro or 'meu livro' }}</a>
+    {% else %}
+    <p class="guardar-varios">📥 Para guardar no celular, toque em <b>Baixar</b> embaixo de cada livro, aqui em cima.</p>
+    {% endif %}
+    <p class="guardar-dica" id="guardarDicaIphone" hidden>No iPhone, o livro fica no app <b>Arquivos</b>, na pasta <b>Downloads</b>.</p>
+
+    <a class="guardar-btn wpp" target="_blank" rel="noopener"
+       href="https://wa.me/?text={{ ('📚 Meus livros: ' ~ guardar.link)|urlencode }}">💬 Mandar o link pro meu WhatsApp</a>
+    <p class="guardar-dica">Escolha o <b>seu próprio nome</b>, que aparece como <b>(Você)</b> lá em cima da lista.</p>
+
+    {% if guardar.email %}
+    <div class="guardar-email">
+        📧 Também mandamos o link para <b>{{ guardar.email }}</b>. Não achou? Olhe em <b>Promoções</b> ou <b>Spam</b>.
+        <br><button type="button" class="guardar-reenviar" id="guardarReenviar">Reenviar o e-mail</button>
+        <span class="guardar-msg" id="guardarMsg" hidden></span>
+    </div>
+    {% endif %}
+
+    <p class="guardar-dica" style="margin-top:14px">⭐ Ou salve esta página nos favoritos do navegador.</p>
+</section>
+
+<script>
+(function () {
+    var iphone = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    // Dica do iPhone ao tocar em qualquer "Baixar" (o do bloco ou o de cada card).
+    document.addEventListener('click', function (ev) {
+        var link = ev.target.closest && ev.target.closest('a[download]');
+        if (link && iphone) document.getElementById('guardarDicaIphone').hidden = false;
+    });
+
+    var btn = document.getElementById('guardarReenviar');
+    if (!btn) return;
+    var msg = document.getElementById('guardarMsg');
+    var TEXTOS = {
+        recente: 'Já mandamos há pouquinho. Espere uns minutos e confira também Promoções e Spam.',
+        dia: 'Já mandamos algumas vezes hoje. Se não chegou, fale com a gente pelo e-mail aqui embaixo.',
+        ip: 'Não consegui reenviar agora. Tenta de novo mais tarde, por favor.',
+        global: 'Não consegui reenviar agora. Tenta de novo mais tarde, por favor.'
+    };
+    function mostrar(texto, erro) { msg.textContent = texto; msg.className = 'guardar-msg' + (erro ? ' erro' : ''); msg.hidden = false; }
+    btn.addEventListener('click', function () {
+        btn.disabled = true; btn.textContent = 'Enviando…';
+        fetch('/api/v1/estante/{{ guid }}/reenviar-email', { method: 'POST' })
+            .then(function (r) { return r.json().then(function (j) { return { status: r.status, j: j }; }); })
+            .then(function (res) {
+                if (res.status === 200) {
+                    btn.textContent = '✓ Enviado!';
+                    mostrar('Pode levar alguns minutos. Confira também Promoções e Spam.', false);
+                    setTimeout(function () { btn.disabled = false; btn.textContent = 'Reenviar o e-mail'; }, 5 * 60 * 1000);
+                    return;
+                }
+                btn.disabled = false; btn.textContent = 'Reenviar o e-mail';
+                mostrar(TEXTOS[res.j && res.j.erro] || TEXTOS.global, true);
+            })
+            .catch(function () {
+                btn.disabled = false; btn.textContent = 'Reenviar o e-mail';
+                mostrar('Sem conexão agora. Tenta de novo, por favor.', true);
+            });
+    });
+    // Voltar para a página (bfcache) não deixa o botão preso em "Enviando…".
+    window.addEventListener('pageshow', function (ev) {
+        if (ev.persisted && btn.textContent === 'Enviando…') { btn.disabled = false; btn.textContent = 'Reenviar o e-mail'; }
+    });
+})();
+</script>

@@ -862,6 +862,12 @@ def buscar_pedidos_followup_pagamento_web(minutos_sem_atualizacao: int = 60) -> 
             SELECT 1 FROM pedidos pn
             WHERE pn.email = p.email AND pn.produto_id = p.produto_id
               AND pn.estado_id = 1002 AND pn.id > p.id)
+        -- Checkout da contribuição (veio da Estante de uma entrega do braço estante, mesmo produto): quem cobra são
+        -- os lembretes da própria contribuição (fluxo_contribuicao_email), senão ela recebe dois e-mails de cobrança.
+        -- Cross-sell de outro produto e lead do braço wpp continuam no follow-up normal.
+        AND NOT EXISTS (
+            SELECT 1 FROM pedidos_vinculados pv JOIN contribuicao_pedidos cp ON cp.pedido_id = pv.pedido_id_origem
+            WHERE pv.pedido_id_adquirido = p.id AND cp.braco = 'estante' AND cp.produto_id = p.produto_id)
     """
     return db.execute_query(query, (minutos_sem_atualizacao,), fetch_all=True)
 
@@ -2397,9 +2403,309 @@ def listar_pedidos_vinculados_pagos(pedido_id: int) -> list:
         return []
     placeholders = ','.join(['%s'] * len(ids_conhecidos))
     return db.execute_query(
-        f"SELECT id, guid FROM pedidos WHERE id IN ({placeholders}) AND estado_id IN (0, 1000)",
+        f"SELECT id, guid, produto_id FROM pedidos WHERE id IN ({placeholders}) AND estado_id IN (0, 1000)",
         tuple(ids_conhecidos), fetch_all=True
     ) or []
+
+
+# ============================================================================================
+# Contribuição web: "entrega antes, contribuição depois" no site (migration 100, docs/CONTRIBUICAO_WEB.md).
+# O pedido da entrega fica em 1008 (clicou) → 1009 (livro entregue, aguardando contribuição); a contribuição
+# é um pedido web normal do checkout v2 (/pay2?ref=<guid>), ligado em pedidos_vinculados.
+# ============================================================================================
+
+ESTADO_CONTRIBUICAO_CLICOU = 1008
+ESTADO_CONTRIBUICAO_ENTREGUE = 1009
+
+# Marcos do funil que a página pode gravar (POST /api/v1/contribuicao/evento). Os demais (nome_em, email_em,
+# checkout_em, lembretes) são gravados pelo servidor. Nome de coluna vem SÓ desta lista, nunca do cliente.
+MARCOS_CONTRIBUICAO_PAGINA = ('audio1_play_em', 'audio1_fim_em', 'audio2_play_em')
+_MARCOS_CONTRIBUICAO = MARCOS_CONTRIBUICAO_PAGINA + ('nome_em', 'email_em', 'estante_em', 'checkout_em')
+
+
+def get_contribuicao_config(produto_id: int):
+    """Configuração do teste do produto (ou None se o produto não tem a modalidade)."""
+    return db.execute_query("SELECT * FROM contribuicao_config WHERE produto_id = %s", (produto_id,), fetch_one=True)
+
+
+def criar_pedido_contribuicao(produto_id: int, nome: str, atrib: dict, plano: dict) -> dict:
+    """Pedido da entrega no site (estado 1008, fluxo 'web'), com a atribuição do clique (lead_incluir.
+    atribuicao_do_clique) e os itens do plano padrão — principal liberado e bônus com cadeado quando ele
+    chegar a 1009. Sem phone_number_id: o orquestrador do WhatsApp nunca acha esse pedido. Retorna {id, guid}."""
+    guid = secrets.token_urlsafe(6)
+    clique = atrib.get('clique') or {}
+    valor_principal = float(plano['preco_promocional'])
+    pedido_id = db.execute_query(
+        """INSERT INTO pedidos
+             (produto_id, guid, valor_pago, estado_id, fluxo_inicial, contact_name, gclid, wbraid, gbraid, fbc,
+              data_ultima_atualizacao, data_contato_site, dns_origem,
+              campaignid, adgroupid, creative, matchtype, device, placement, video_id)
+           VALUES (%s, %s, 0.0, %s, 'web', %s, %s, %s, %s, %s,
+                   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, %s,
+                   %s, %s, %s, %s, %s, %s, %s)""",
+        (produto_id, guid, ESTADO_CONTRIBUICAO_CLICOU, (nome or '')[:100], atrib.get('gclid') or '',
+         atrib.get('wbraid') or '', atrib.get('gbraid') or '', clique.get('fbc'), atrib.get('dns_origem') or '',
+         atrib.get('campaignid') or '', atrib.get('adgroupid') or '', atrib.get('creative') or '',
+         atrib.get('matchtype') or '', atrib.get('device') or '', atrib.get('placement') or '',
+         atrib.get('video_id') or ''))
+    criar_itens_pedido_web(pedido_id, plano, valor_principal)
+    return {'id': pedido_id, 'guid': guid}
+
+
+def atualizar_clique_contribuicao(pedido_id: int, atrib: dict) -> None:
+    """Clicou de novo num anúncio (gclid/wbraid/gbraid/fbc novos) e caiu na mesma entrega (guid do aparelho): vale o
+    último clique, como no lead novo do WhatsApp, para a venda voltar à campanha certa. Só em entrega não paga."""
+    clique = atrib.get('clique') or {}
+    db.execute_query(
+        """UPDATE pedidos SET gclid = %s, wbraid = %s, gbraid = %s, fbc = %s, campaignid = %s, adgroupid = %s,
+                  creative = %s, matchtype = %s, device = %s, placement = %s, video_id = %s
+           WHERE id = %s AND estado_id IN (%s, %s)""",
+        (atrib.get('gclid') or '', atrib.get('wbraid') or '', atrib.get('gbraid') or '', clique.get('fbc'),
+         atrib.get('campaignid') or '', atrib.get('adgroupid') or '', atrib.get('creative') or '',
+         atrib.get('matchtype') or '', atrib.get('device') or '', atrib.get('placement') or '',
+         atrib.get('video_id') or '', pedido_id, ESTADO_CONTRIBUICAO_CLICOU, ESTADO_CONTRIBUICAO_ENTREGUE))
+
+
+def definir_nome_contribuicao(pedido_id: int, nome: str) -> None:
+    """Só antes da entrega (1008): depois, o nome do pedido não muda por esta rota."""
+    if db.execute_query("UPDATE pedidos SET contact_name = %s WHERE id = %s AND estado_id = %s",
+                        (nome[:100], pedido_id, ESTADO_CONTRIBUICAO_CLICOU), return_rowcount=True):
+        marcar_marco_contribuicao(pedido_id, 'nome_em')
+
+
+def registrar_contribuicao_pedido(pedido_id: int, produto_id: int, braco: str, teste: bool, com_nome: bool = False):
+    """Linha do clique no A/B (os dois braços). INSERT IGNORE: o mesmo pedido nunca troca de braço."""
+    db.execute_query(
+        f"""INSERT IGNORE INTO contribuicao_pedidos (pedido_id, produto_id, braco, teste, nome_em)
+            VALUES (%s, %s, %s, %s, {'NOW()' if com_nome else 'NULL'})""",
+        (pedido_id, produto_id, braco, 1 if teste else 0))
+
+
+def marcar_marco_contribuicao(pedido_id: int, marco: str) -> None:
+    """Grava o primeiro momento de um marco do funil (nunca sobrescreve)."""
+    if marco not in _MARCOS_CONTRIBUICAO:
+        raise ValueError(f'Marco de contribuição inválido: {marco!r}')
+    db.execute_query(
+        f"UPDATE contribuicao_pedidos SET {marco} = NOW() WHERE pedido_id = %s AND {marco} IS NULL", (pedido_id,))
+
+
+def contar_clique_contribuicao(pedido_id: int) -> None:
+    """Clicou de novo em "Quero receber" (mesmo aparelho, mesmo pedido): mais um clique na conta do A/B — no braço
+    wpp cada clique vira um lead (uma linha), então os dois braços contam cliques do mesmo jeito."""
+    db.execute_query("UPDATE contribuicao_pedidos SET cliques = cliques + 1 WHERE pedido_id = %s", (pedido_id,))
+
+
+def juntar_clique_na_entrega_anterior(novo_id: int, anterior_id: int) -> None:
+    """Era a mesma pessoa voltando (mesmo navegador, mesmo e-mail da entrega anterior): o clique novo vira mais um
+    clique da entrega anterior e sai da conta do A/B (senão o funil contaria duas vezes a mesma pessoa). O pedido
+    novo fica em 1008, como qualquer clique que não chegou à entrega."""
+    contar_clique_contribuicao(anterior_id)
+    db.execute_query("DELETE FROM contribuicao_pedidos WHERE pedido_id = %s AND braco = 'estante'", (novo_id,))
+
+
+def get_contribuicao_pedido(pedido_id: int):
+    return db.execute_query("SELECT * FROM contribuicao_pedidos WHERE pedido_id = %s", (pedido_id,), fetch_one=True)
+
+
+def entregar_pedido_contribuicao(pedido_id: int, nome: str, email: str) -> bool:
+    """Informou o e-mail: o livro é entregue (1008 → 1009). Só a partir de 1008: depois de entregue, o e-mail (não
+    verificado) nunca muda — senão o guid viraria um jeito de mandar o "Reenviar o e-mail" para qualquer endereço.
+    Retorna True só para quem fez a transição (dois toques simultâneos: só um entrega e manda o e-mail)."""
+    alterados = db.execute_query(
+        """UPDATE pedidos SET email = %s, contact_name = COALESCE(NULLIF(%s, ''), contact_name),
+                  estado_id = %s, data_ultima_atualizacao = CURRENT_TIMESTAMP,
+                  data_pedido = COALESCE(data_pedido, CURRENT_TIMESTAMP)  -- buscas por e-mail ordenam por ela
+           WHERE id = %s AND estado_id = %s""",
+        (email, (nome or '')[:100], ESTADO_CONTRIBUICAO_ENTREGUE, pedido_id, ESTADO_CONTRIBUICAO_CLICOU),
+        return_rowcount=True)
+    if not alterados:
+        return False
+    marcar_marco_contribuicao(pedido_id, 'email_em')
+    return True
+
+
+def contribuicao_paga(pedido: dict, por_email: bool = True) -> bool:
+    """A cliente desta entrega já contribuiu? Pedido pago (0/1000) do mesmo produto vinculado a este (o checkout
+    v2 com ?ref=) ou, com por_email, com o mesmo e-mail — quem paga por outro caminho (outra aba, /tempero-e).
+
+    por_email=False em tudo que MOSTRA algo: o e-mail da entrega não é verificado (qualquer um digita o de outra
+    pessoa), então ele só serve para NÃO mandar lembrete a quem já comprou."""
+    if any(v['produto_id'] == pedido['produto_id'] for v in listar_pedidos_vinculados_pagos(pedido['id'])):
+        return True
+    email = (pedido.get('email') or '').strip()
+    if not por_email or not email:
+        return False
+    row = db.execute_query(
+        "SELECT 1 FROM pedidos WHERE email = %s AND produto_id = %s AND estado_id IN (0, 1000) AND id <> %s LIMIT 1",
+        (email, pedido['produto_id'], pedido['id']), fetch_one=True)
+    return bool(row)
+
+
+def copiar_atribuicao_pedido(origem_id: int, destino_id: int) -> None:
+    """O pedido da contribuição (checkout) herda o clique do anúncio da entrega — só nos campos vazios, para a
+    venda voltar à campanha certa. A entrega nunca é paga (não vira conversão): não há conversão dupla.
+
+    Um canal só: Google (gclid/wbraid/gbraid) só vem se o destino não tem fbc; o fbc só vem se NENHUM dos dois tem
+    sinal do Google. As condições olham só os valores de antes (no UPDATE com
+    JOIN o MySQL não garante a ordem do SET), senão a venda poderia ir pro Google e pra Meta ao mesmo tempo.
+    Pedido já pago não muda."""
+    db.execute_query(
+        """UPDATE pedidos d JOIN pedidos o ON o.id = %s
+           SET d.gclid      = IF(COALESCE(d.gclid, '') = '' AND COALESCE(d.fbc, '') = '', o.gclid, d.gclid),
+               d.wbraid     = IF(COALESCE(d.wbraid, '') = '' AND COALESCE(d.fbc, '') = '', o.wbraid, d.wbraid),
+               d.gbraid     = IF(COALESCE(d.gbraid, '') = '' AND COALESCE(d.fbc, '') = '', o.gbraid, d.gbraid),
+               d.fbc        = IF(COALESCE(d.fbc, '') = ''
+                                 AND CONCAT(COALESCE(d.gclid, ''), COALESCE(d.wbraid, ''), COALESCE(d.gbraid, '')) = ''
+                                 AND CONCAT(COALESCE(o.gclid, ''), COALESCE(o.wbraid, ''), COALESCE(o.gbraid, '')) = '',
+                                 o.fbc, d.fbc),
+               d.campaignid = IF(COALESCE(d.campaignid, '') = '', o.campaignid, d.campaignid),
+               d.adgroupid  = IF(COALESCE(d.adgroupid, '') = '', o.adgroupid, d.adgroupid),
+               d.creative   = IF(COALESCE(d.creative, '') = '', o.creative, d.creative),
+               d.matchtype  = IF(COALESCE(d.matchtype, '') = '', o.matchtype, d.matchtype),
+               d.device     = IF(COALESCE(d.device, '') = '', o.device, d.device),
+               d.placement  = IF(COALESCE(d.placement, '') = '', o.placement, d.placement),
+               d.video_id   = IF(COALESCE(d.video_id, '') = '', o.video_id, d.video_id)
+           WHERE d.id = %s AND d.estado_id NOT IN (0, 1000)""",
+        (origem_id, destino_id))
+
+
+def buscar_contribuicoes_para_lembrete() -> list:
+    """Entregas (1009) com e-mail que chegaram na hora de um lembrete. `lembrete` = 1 ou 2. As travas de "já
+    pagou" ficam em contribuicao_paga (chamada por pedido no fluxo), igual à lição do follow-up web."""
+    return db.execute_query(
+        """SELECT p.*, cp.lembrete1_em, cp.lembrete2_em, cp.email_em,
+                  CASE WHEN cp.lembrete1_em IS NULL THEN 1 ELSE 2 END AS lembrete
+           FROM contribuicao_pedidos cp
+           JOIN pedidos p ON p.id = cp.pedido_id
+           JOIN contribuicao_config cc ON cc.produto_id = cp.produto_id AND cc.ativo = 1
+           WHERE cp.braco = 'estante' AND p.estado_id = 1009 AND p.email IS NOT NULL AND p.email <> ''
+             AND cp.email_em >= NOW() - INTERVAL 3 DAY
+             -- Duas entregas com o mesmo e-mail (celular e computador): só a mais recente recebe lembretes
+             AND NOT EXISTS (SELECT 1 FROM contribuicao_pedidos cp2 JOIN pedidos p2 ON p2.id = cp2.pedido_id
+                             WHERE cp2.produto_id = cp.produto_id AND cp2.braco = 'estante' AND p2.estado_id = 1009
+                               AND p2.email = p.email AND cp2.email_em > cp.email_em)
+             AND ((cp.lembrete1_em IS NULL AND cp.email_em <= NOW() - INTERVAL cc.lembrete1_minutos MINUTE)
+               OR (cp.lembrete1_em IS NOT NULL AND cp.lembrete2_em IS NULL
+                   AND cp.email_em <= NOW() - INTERVAL cc.lembrete2_minutos MINUTE
+                   -- o 1º pode ter atrasado (fora do horário): o 2º nunca sai colado nele
+                   AND cp.lembrete1_em <= NOW() - INTERVAL LEAST(480, cc.lembrete2_minutos - cc.lembrete1_minutos) MINUTE))
+           ORDER BY cp.email_em""",
+        fetch_all=True) or []
+
+
+def marcar_lembrete_contribuicao(pedido_id: int, lembrete: int) -> bool:
+    """Reserva o lembrete ANTES de enviar (como a Música): duas varreduras simultâneas não mandam o mesmo e-mail.
+    Retorna False se outra varredura já reservou."""
+    coluna = {1: 'lembrete1_em', 2: 'lembrete2_em'}[lembrete]
+    return bool(db.execute_query(
+        f"UPDATE contribuicao_pedidos SET {coluna} = NOW() WHERE pedido_id = %s AND {coluna} IS NULL",
+        (pedido_id,), return_rowcount=True))
+
+
+# E-mails que a própria cliente provoca no site (migration 101). Por tipo: intervalo mínimo e máximo em 24h por pedido,
+# máximo por IP em 1h (alto o bastante para IP de operadora compartilhado, o CGNAT do 4G) e o teto global por hora,
+# que vem de fora (variável de ambiente) e protege a cota do Gmail do admin@.
+LIMITES_ENVIO_EMAIL = {
+    'reenvio_estante':      {'intervalo_min': 5, 'por_dia': 3, 'ip_hora': 20},
+    'entrega_contribuicao': {'intervalo_min': None, 'por_dia': 1, 'ip_hora': 20},
+    'lembrete_contribuicao': {'intervalo_min': None, 'por_dia': 2, 'ip_hora': None},  # beat, sem IP
+}
+
+
+def reservar_envio_email(tipo: str, pedido_id: int, ip: str, limite_global_hora: int) -> str:
+    """Reserva um envio (tabela envios_email_site) se nenhum limite do tipo estourou. Retorna 'ok' ou o limite que
+    barrou: 'recente' (intervalo), 'dia' (24h do pedido), 'ip' (1h do IP) ou 'global' (teto por hora do tipo).
+    Checagem e gravação num só INSERT ... SELECT, sem trava: dois pedidos no mesmo instante podem passar os dois
+    (aceito — o estouro é de uma unidade; a entrega já é única pela transição 1008 → 1009)."""
+    lim = LIMITES_ENVIO_EMAIL[tipo]
+    ip = (ip or '')[:45] or None
+    checagens = [  # (motivo, condição que BARRA, parâmetros) — na ordem em que o motivo é informado
+        ('recente', "SUM(pedido_id = %s AND criado_em > NOW() - INTERVAL %s MINUTE) > 0",
+         (pedido_id, lim['intervalo_min'])) if lim['intervalo_min'] else None,
+        ('dia', "SUM(pedido_id = %s AND criado_em > NOW() - INTERVAL 1 DAY) >= %s",
+         (pedido_id, lim['por_dia'])) if lim['por_dia'] else None,
+        ('ip', "SUM(ip <=> %s AND criado_em > NOW() - INTERVAL 1 HOUR) >= %s",
+         (ip, lim['ip_hora'])) if lim['ip_hora'] else None,
+        ('global', "SUM(criado_em > NOW() - INTERVAL 1 HOUR) >= %s", (limite_global_hora,)),
+    ]
+    checagens = [c for c in checagens if c]
+    barra = ' OR '.join(f'({cond})' for _, cond, _ in checagens)
+    params = tuple(p for _, _, ps in checagens for p in ps)
+    gravou = db.execute_query(
+        f"""INSERT INTO envios_email_site (tipo, pedido_id, ip)
+            SELECT %s, %s, %s FROM DUAL
+            WHERE NOT COALESCE((SELECT {barra} FROM envios_email_site
+                                WHERE tipo = %s AND criado_em > NOW() - INTERVAL 1 DAY), FALSE)""",
+        (tipo, pedido_id, ip) + params + (tipo,), return_rowcount=True)
+    if gravou:
+        return 'ok'
+    for motivo, cond, ps in checagens:
+        r = db.execute_query(
+            f"""SELECT COALESCE(({cond}), FALSE) AS barra FROM envios_email_site
+                WHERE tipo = %s AND criado_em > NOW() - INTERVAL 1 DAY""", ps + (tipo,), fetch_one=True)
+        if r and r['barra']:
+            return motivo
+    return 'global'
+
+
+def desfazer_envio_email(tipo: str, pedido_id: int) -> None:
+    """A reserva foi feita mas o envio nem foi para a fila (Redis fora): devolve a vaga, senão ela fica barrada sem
+    ter recebido nada."""
+    db.execute_query("DELETE FROM envios_email_site WHERE tipo = %s AND pedido_id = %s ORDER BY id DESC LIMIT 1",
+                     (tipo, pedido_id))
+
+
+def busca_teste_contribuicao(produto_id: int, data_ini, data_fim) -> list:
+    """Resultado do A/B da contribuição (admin, ROI do produto): uma linha por braço com o funil e a receita dos
+    cliques do período (contribuicao_pedidos.criado_em). Os cliques de QA/piloto (?contrib=, teste=1) vêm em linhas
+    separadas (`teste` = True), depois das do A/B: acompanham o piloto sem entrar no resultado.
+
+    Pago: braço estante = pedido 0/1000 do produto vinculado à entrega (checkout ?ref=) ou com o mesmo e-mail depois
+    do clique; braço wpp = o próprio lead em estado 0 (comprovante aceito pela IA, não dinheiro recebido).
+    Cada pagamento conta UMA vez por braço: a mesma cliente com duas entregas (celular e computador) e um pagamento
+    só não vira duas vendas. Por isso a soma é feita aqui, não no SQL."""
+    linhas = db.execute_query(
+        """SELECT cp.braco, cp.teste, cp.cliques, cp.nome_em, cp.audio1_play_em, cp.audio1_fim_em, cp.email_em, cp.estante_em,
+                  cp.audio2_play_em, cp.checkout_em,
+                  IF(cp.braco = 'wpp', p.data_pedido, NULL)       AS data_pedido,
+                  IF(cp.braco = 'wpp', p.data_envio_pedido, NULL) AS data_envio_pedido,
+                  CASE WHEN cp.braco = 'wpp' THEN IF(p.estado_id = 0, p.id, NULL)
+                       ELSE (SELECT pg.id FROM pedidos pg
+                             WHERE pg.produto_id = cp.produto_id AND pg.estado_id IN (0, 1000) AND pg.id <> p.id
+                               AND (pg.id IN (SELECT pv.pedido_id_adquirido FROM pedidos_vinculados pv
+                                              WHERE pv.pedido_id_origem = cp.pedido_id)
+                                    OR (COALESCE(p.email, '') <> '' AND pg.email = p.email
+                                        AND pg.data_pagamento >= cp.criado_em))
+                             ORDER BY pg.id LIMIT 1)
+                  END AS pago_id
+           FROM contribuicao_pedidos cp
+           JOIN pedidos p ON p.id = cp.pedido_id
+           WHERE cp.produto_id = %s AND cp.criado_em BETWEEN %s AND %s""",
+        (produto_id, data_ini, data_fim), fetch_all=True) or []
+    marcos = {'nome': 'nome_em', 'audio1': 'audio1_play_em', 'audio1_fim': 'audio1_fim_em', 'email': 'email_em',
+              'estante': 'estante_em', 'audio2': 'audio2_play_em', 'checkout': 'checkout_em',
+              'conversas': 'data_pedido', 'receberam_link': 'data_envio_pedido'}
+    por_braco, pagos = {}, {}
+    for l in linhas:
+        chave = (l['braco'], bool(l['teste']))
+        t = por_braco.setdefault(chave, {'braco': l['braco'], 'teste': chave[1], 'cliques': 0, **{k: 0 for k in marcos}})
+        t['cliques'] += int(l['cliques'] or 0)
+        for k, coluna in marcos.items():
+            t[k] += 1 if l[coluna] else 0
+        if l['pago_id']:
+            pagos.setdefault(chave, set()).add(l['pago_id'])
+    valores = {}
+    todos = sorted({i for ids in pagos.values() for i in ids})
+    if todos:
+        marcadores = ', '.join(['%s'] * len(todos))
+        valores = {r['id']: float(r['valor_pago'] or 0) for r in db.execute_query(
+            f"SELECT id, valor_pago FROM pedidos WHERE id IN ({marcadores})", tuple(todos), fetch_all=True) or []}
+    for chave, t in por_braco.items():
+        ids = pagos.get(chave, set())
+        t['pagos'] = len(ids)
+        t['receita'] = sum(valores.get(i, 0.0) for i in ids)
+    ordem = [(b, teste) for teste in (False, True) for b in ('wpp', 'estante')]
+    return [por_braco[k] for k in ordem if k in por_braco]
 
 
 def busca_comparativo_variante_checkout(data_ini, data_fim) -> dict:
@@ -3585,9 +3891,10 @@ def buscar_pedido_web_por_email(termo: str, produto_id: int):
         return None
     return db.execute_query(
         """SELECT * FROM pedidos
-           WHERE produto_id = %s AND estado_id IN (1000, 1001, 1002, 1003, 1004, 1005, 1006)
+           WHERE produto_id = %s AND estado_id IN (1000, 1001, 1002, 1003, 1004, 1005, 1006, 1008, 1009)
              AND email LIKE %s
-           ORDER BY data_pedido DESC LIMIT 1""",
+           -- Pago primeiro: a entrega da contribuição (1008/1009) tem e-mail digitado sem verificação
+           ORDER BY estado_id = 1000 DESC, data_pedido DESC LIMIT 1""",
         (produto_id, f'%{termo}%'), fetch_one=True,
     )
 

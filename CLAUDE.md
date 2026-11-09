@@ -27,6 +27,8 @@ Conversões voltam pro Google Ads via Google Sheets (GCLID) — venda do site co
 
 **Música de Presente** (`app/musica/`, `/musica/...`; `docs/MUSICA.md`): produto sem e-book — quiz → letra (OpenAI) → música (gerador na borda: Apiframe no MVP, `MUSICA_GERADOR`) → prévia grátis → checkout (`?musica=<token>`) → área da compra. Entregável `tipo='musica'` com `recurso` (música, videoclipe, QR, entrega por e-mail); fica fora da NF-e automática (`produtos.nfe_automatica = 0`).
 
+**Contribuição no site** (`web/contribuicao.py`, `docs/CONTRIBUICAO_WEB.md`): A/B na landing do WhatsApp (começa no Tempero) — parte dos cliques recebe o livro na Estante 2 antes de pagar (estados 1008/1009, áudio da persona, e-mail obrigatório) e paga a "contribuição" pelo checkout v2 (`?ref=`), um pedido web normal. Configuração em `contribuicao_config` (`percentual_estante = 0` desliga); resultado no ROI do produto.
+
 **Atendimento por e-mail:** a caixa `admin@lsnlivros.com.br` é lida a cada 10 min (`app/fluxos/fluxo_email_conversas.py`); cada e-mail é ligado ao pedido e ganha resposta pronta na fila `/admin/atendimento-email`, que um humano aprova. Detalhes em `docs/ATENDIMENTO_EMAIL.md`.
 
 ## Stack
@@ -56,4 +58,4 @@ Hooks em `.claude/hooks/` automatizam duas dessas regras: no dev, negam por padr
 
 ## Documentação
 
-`docs/` — `PLANOS.md` (produto → planos → entregáveis), `APPS.md`, `MUSICA.md`, `META_CONVERSOES.md`, `FLUXO_MENSAGENS.md`, `WEBHOOK_WHATSAPP.md`, `PLAYBOOK_SITE_VENDA_WEB.md`, `INTEGRACAO.md` (gateway WhatsApp Web), `ATENDIMENTO_EMAIL.md` (fila de e-mail, Gmail, DKIM/DMARC), `SEGURANCA*.md`. SSL/certbot: `infra/certbot/README.md`.
+`docs/` — `CONTRIBUICAO_WEB.md`, `PLANOS.md` (produto → planos → entregáveis), `APPS.md`, `MUSICA.md`, `META_CONVERSOES.md`, `FLUXO_MENSAGENS.md`, `WEBHOOK_WHATSAPP.md`, `PLAYBOOK_SITE_VENDA_WEB.md`, `INTEGRACAO.md` (gateway WhatsApp Web), `ATENDIMENTO_EMAIL.md` (fila de e-mail, Gmail, DKIM/DMARC), `SEGURANCA*.md`. SSL/certbot: `infra/certbot/README.md`.

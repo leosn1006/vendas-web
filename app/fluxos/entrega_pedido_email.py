@@ -24,15 +24,30 @@ from fluxos._gmail_labels import rotular_enviado
 logger = logging.getLogger(__name__)
 
 
-def executar(pedido_id: int) -> None:
+def executar(pedido_id: int, reenvio: bool = False) -> None:
+    """reenvio=True: botão "Reenviar o e-mail" da Estante (web/estante_acesso.py) — manda de novo mesmo já
+    entregue, sem mexer em data_envio_ebook nem na conversa de atendimento já ligada ao pedido."""
     import database as db
 
     pedido  = db.get_pedido(pedido_id)
     produto = db.get_produto_disponivel_web(pedido['produto_id'])
 
+    # Reenvio antes da primeira entrega ter saído. Pagamento recente (< 10 min): a entrega original ainda está
+    # rodando ou em retry — não manda (senão ela recebe duas iguais). Mais antigo: a original falhou de vez, e o
+    # reenvio vira a entrega normal (marca data_envio_ebook).
+    if reenvio and not pedido.get('data_envio_ebook'):
+        # Conta no relógio do banco (o mesmo que gravou data_pagamento), não no do container.
+        recente = db.db.execute_query(
+            "SELECT data_pagamento > NOW() - INTERVAL 10 MINUTE AS recente FROM pedidos WHERE id = %s",
+            (pedido_id,), fetch_one=True) or {}
+        if recente.get('recente'):
+            logger.info(f'[EMAIL] Pedido #{pedido_id}: reenvio ignorado, a entrega original ainda está em andamento')
+            return
+        reenvio = False
+
     # Idempotência: se a task for reexecutada (ex: retry do Celery depois de uma falha
     # ocorrida DEPOIS do e-mail já ter sido enviado), não manda de novo.
-    if pedido.get('data_envio_ebook'):
+    if pedido.get('data_envio_ebook') and not reenvio:
         logger.info(f'[EMAIL] Pedido #{pedido_id} já entregue em {pedido["data_envio_ebook"]} — ignorando reenvio')
         return
 
@@ -71,7 +86,8 @@ def executar(pedido_id: int) -> None:
     musica = None
     try:
         from musica.integracao import musica_do_pedido_pago
-        # Sem exigir a liberação: este e-mail não é reenviado, e sem a música ele cairia na Estante vazia.
+        # Sem exigir a liberação: sem a música ele cairia na Estante vazia (no reenvio pela Estante ela já está
+        # liberada — o e-mail é o mesmo).
         musica = musica_do_pedido_pago({'id': pedido_id, 'guid': guid}, exigir_liberada=False)
     except Exception as e:
         logger.error(f'[EMAIL] Erro ao buscar a música do pedido #{pedido_id}: {e}')
@@ -89,11 +105,12 @@ def executar(pedido_id: int) -> None:
         subject=subject,
         html=html_entrega,
     ) or {}
-    db.marcar_ebook_enviado(pedido_id)
+    if not reenvio:
+        db.marcar_ebook_enviado(pedido_id)
     rotular_enviado(resultado.get('id'), nome_produto)
 
     thread_id = resultado.get('threadId')
-    if thread_id:
+    if thread_id and not (reenvio and pedido.get('gmail_thread_id')):
         db.definir_gmail_thread_pedido(pedido_id, thread_id)
 
     # Registra o próprio e-mail de entrega na timeline de conversas — sem isso a tela "Conversa
@@ -112,7 +129,8 @@ def executar(pedido_id: int) -> None:
         # agente (buscar_historico_email_conversa prefere corpo_texto quando presente); a
         # moldura da marca com botões/instruções de download não é conversa, é ruído e gasta
         # tokens à toa. O HTML completo continua guardado em corpo_html pra exibição na tela.
-        corpo_texto=f'[E-book entregue: {nome_produto} — link de download enviado por e-mail]',
+        corpo_texto=(f'[E-book reenviado pela Estante: {nome_produto}]' if reenvio
+                     else f'[E-book entregue: {nome_produto} — link de download enviado por e-mail]'),
         corpo_html=html_entrega,
         data_mensagem=datetime.now(),
     )

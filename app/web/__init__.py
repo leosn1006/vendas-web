@@ -188,6 +188,20 @@ def _aparencia_checkout(produto, plano, email_do_quiz=''):
     }
 
 
+def _ligar_contribuicao(pedido_origem_id, pedido_id):
+    """Checkout da contribuição (docs/CONTRIBUICAO_WEB.md): o pedido do checkout fica vinculado à entrega (libera os
+    bônus dela e sai do follow-up do checkout), herda o clique do anúncio (só nos campos vazios — um clique novo na URL
+    vale mais) e o marco "abriu o checkout" entra no funil do A/B. Nunca derruba o checkout."""
+    try:
+        from database import gravar_vinculo_pedido, copiar_atribuicao_pedido, marcar_marco_contribuicao
+        gravar_vinculo_pedido(pedido_origem_id, pedido_id)
+        copiar_atribuicao_pedido(pedido_origem_id, pedido_id)
+        marcar_marco_contribuicao(pedido_origem_id, 'checkout_em')
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"[CONTRIBUICAO] Erro ao ligar a entrega {pedido_origem_id} ao pedido {pedido_id}: {e}")
+
+
 @web_bp.get('/pay2/<int:produto_id>')
 def checkout_v2(produto_id):
     """Variante v2 do checkout (piloto de cross-sell), ver plano peaceful-seeking-pizza.md.
@@ -224,6 +238,7 @@ def checkout_v2(produto_id):
     bonus = itens_do_plano(plano, 'bonus')
     bumps = itens_do_plano(plano, 'bump')
     pedido_origem_id = None
+    modo_contribuicao = False
     ref_guid = request.args.get('ref')
     if ref_guid:
         # resolver_pedido_por_guid (não get_pedido_by_guid puro) — mesmo gate de acesso usado
@@ -234,6 +249,8 @@ def checkout_v2(produto_id):
         pedido_origem, _, erro_origem = resolver_pedido_por_guid(ref_guid)
         if pedido_origem and not erro_origem:
             pedido_origem_id = pedido_origem['id']
+            from web.contribuicao import eh_origem_contribuicao
+            modo_contribuicao = eh_origem_contribuicao(pedido_origem, produto_id)
             prefill = {
                 'nome': pedido_origem.get('contact_name') or '',
                 'email': pedido_origem.get('email') or '',
@@ -255,6 +272,16 @@ def checkout_v2(produto_id):
         pedido_id_retomar = _retomar_sem_perder_oferta(
             get_pedido_finalizado_via_cookie(request, produto_id, cookie_prefixo='pedido_web_v2'), oferta, plano)
         if pedido_id_retomar is not None:
+            if modo_contribuicao:
+                # Retomada NÃO cria vínculo: o cookie do rascunho é só um número (qualquer um edita) — ligar a entrega
+                # a um pedido pago de outra cliente liberaria os bônus e os livros dela. O vínculo nasce quando o
+                # rascunho é criado a partir desta Estante (abaixo); aqui só o marco do funil.
+                try:
+                    from database import marcar_marco_contribuicao
+                    marcar_marco_contribuicao(pedido_origem_id, 'checkout_em')
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"[CONTRIBUICAO] Erro no marco checkout_em da entrega {pedido_origem_id}: {e}")
             from web.links import link_checkout
             resp = redirect(link_checkout(produto_id, plano, v2=True, pedido=pedido_id_retomar, ref=ref_guid,
                                           oferta=oferta, musica=request.args.get('musica')))
@@ -262,7 +289,7 @@ def checkout_v2(produto_id):
             return resp
         pedido_id_inicial = rastrear_visita_funil(request, produto_id, estado_novo=1003, cookie_prefixo='pedido_web_v2')
         marcar_variante_pedido(pedido_id_inicial, 'v2')
-        if pedido_origem_id is not None:
+        if pedido_origem_id is not None and not modo_contribuicao:  # contribuição: _ligar_contribuicao grava
             try:
                 gravar_vinculo_pedido(pedido_origem_id, pedido_id_inicial)
             except Exception as e:
@@ -270,6 +297,8 @@ def checkout_v2(produto_id):
                 logging.getLogger(__name__).error(
                     f"[ESTANTE] Erro ao gravar vínculo pedido {pedido_origem_id}→{pedido_id_inicial}: {e}"
                 )
+        if modo_contribuicao:
+            _ligar_contribuicao(pedido_origem_id, pedido_id_inicial)
 
     prefill_musica = _prefill_musica(plano)
     prefill = {**prefill_musica, **{k: v for k, v in prefill.items() if v}}
@@ -284,6 +313,7 @@ def checkout_v2(produto_id):
         prefill=prefill,
         oferta=oferta,
         desconto=desconto,
+        modo_contribuicao=modo_contribuicao,
         # O e-mail do quiz só dispensa a confirmação se continuou o do formulário (a Estante não o sobrescreveu).
         **_aparencia_checkout(produto, plano, email_do_quiz=(
             prefill_musica.get('email') if prefill.get('email') == prefill_musica.get('email') else '')),
@@ -485,7 +515,10 @@ def pedido_publico_v2(guid):
     # "Meus apps": apps (ex.: App Fatias) da cliente deste pedido. Extra da página — não pode derrubá-la.
     try:
         from apps._nucleo.estante import apps_da_estante
-        meus_apps, apps_ofertas = apps_da_estante(pedido)
+        # Entrega da contribuição: e-mail não verificado (ver listar_itens_ebook_do_cliente) — não lista os apps
+        # de quem tem esse e-mail.
+        from web.checkout import _entrega_contribuicao
+        meus_apps, apps_ofertas = apps_da_estante({**pedido, 'email': None} if _entrega_contribuicao(pedido) else pedido)
         cross_sell = apps_ofertas + cross_sell
     except Exception as e:
         import logging
@@ -507,8 +540,21 @@ def pedido_publico_v2(guid):
         c['href'] = link_checkout(c['produto_id'], {'slug': c['plano_slug'], 'padrao': c['plano_padrao']},
                                   v2=True, ref=guid, oferta=c.get('oferta'))
 
+    # Entrega da contribuição ainda não paga (1009): áudio da persona + botão da contribuição, sem cross-sell (o
+    # foco é a contribuição). Depois de pagar, contexto_estante devolve None e a Estante volta ao normal.
+    from web.contribuicao import contexto_estante
+    contribuicao = contexto_estante(pedido, lembrete=request.args.get('lembrete') == '1')
+    if contribuicao:
+        cross_sell = []
+
+    # "Guarde seu livro" (web/estante_acesso.py): baixar, mandar o link pro próprio WhatsApp, reenviar o e-mail.
+    from web.estante_acesso import contexto_guardar
+    esquema = request.headers.get('X-Forwarded-Proto') or request.scheme
+    guardar = contexto_guardar(pedido, itens, guid, f'{esquema}://{request.host}')
+
     return render_template('pedido-2.html', primeiro_nome=primeiro_nome, itens=itens,
-                            cross_sell=cross_sell, guid=guid, meus_apps=meus_apps, minha_musica=minha_musica)
+                            cross_sell=cross_sell, guid=guid, meus_apps=meus_apps, minha_musica=minha_musica,
+                            contribuicao=contribuicao, guardar=guardar)
 
 
 @web_bp.get('/pedido/<guid>/ler/<int:item_id>')
@@ -519,7 +565,8 @@ def pedido_leitor(guid, item_id):
     if erro in ('nao_encontrado', 'item_invalido'):
         return render_template('pedido_indisponivel.html', motivo='nao_encontrado'), 404
     if erro == 'aguardando_pagamento':
-        canal = 'web' if pedido['estado_id'] >= 1000 else 'whatsapp'
+        canal = ('contribuicao' if pedido['estado_id'] == 1009
+                 else 'web' if pedido['estado_id'] >= 1000 else 'whatsapp')
         return render_template('pedido_indisponivel.html', motivo='aguardando_pagamento', canal=canal, pedido=pedido)
     if erro == 'ainda_nao_entregue':
         return render_template('pedido_indisponivel.html', motivo='ainda_nao_entregue', pedido=pedido)
@@ -549,3 +596,6 @@ def pedido_arquivo(guid, item_id):
     inline = request.args.get('download') != '1'
     return send_file(caminho, mimetype='application/pdf',
                      as_attachment=not inline, download_name=item['nome_arquivo'])
+
+from web import contribuicao  # noqa: E402,F401  (rotas /api/v1/contribuicao/* — ver docs/CONTRIBUICAO_WEB.md)
+from web import estante_acesso  # noqa: E402,F401  (reenvio do e-mail da Estante — "Guarde seu livro")

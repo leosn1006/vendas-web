@@ -1,0 +1,138 @@
+{# Camada de contribuição da Estante 2 (docs/CONTRIBUICAO_WEB.md): entrega por contribuição (estado 1009) ainda não
+   paga. Áudio da persona (toque para ouvir, como no WhatsApp — o navegador não toca som sozinho numa página nova),
+   o texto do áudio e o botão da contribuição, que leva ao checkout v2 com ?ref=<guid>. Contexto: web/contribuicao.py
+   contexto_estante. #}
+<style>
+    .contrib { position: relative; background: #fff; color: #1a1a2e; border-radius: 18px; padding: 18px 16px 16px;
+        margin: -6px 0 26px; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+    .contrib-persona { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .contrib-persona img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 3px solid #1967D2; }
+    .contrib-persona strong { display: block; font-size: 17px; }
+    .contrib-persona span { font-size: 13px; color: #5f6b7a; }
+    .contrib-audio { display: flex; align-items: center; gap: 12px; background: #f1f3f7; border-radius: 999px; padding: 8px 14px 8px 8px; }
+    .contrib-play { flex: 0 0 auto; width: 48px; height: 48px; border-radius: 50%; border: 0; background: #1967D2; color: #fff;
+        font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .contrib-play.pulsando { animation: contribPulsoAudio 1.4s ease-in-out infinite; }
+    @keyframes contribPulso { 0%,100% { box-shadow: 0 0 0 0 rgba(37,163,90,.55); } 50% { box-shadow: 0 0 0 12px rgba(37,163,90,0); } }
+    @keyframes contribPulsoAudio { 0%,100% { box-shadow: 0 0 0 0 rgba(25,103,210,.5); } 50% { box-shadow: 0 0 0 12px rgba(25,103,210,0); } }
+    .contrib-busca { flex: 1; position: relative; height: 40px; display: flex; align-items: center; cursor: pointer; touch-action: none; }
+    .contrib-bolinha { position: absolute; top: 50%; left: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+        background: #1967D2; transition: left .25s linear; }
+    .contrib-busca.arrastando .contrib-trilha i, .contrib-busca.arrastando .contrib-bolinha { transition: none; }
+    .contrib-trilha { flex: 1; height: 6px; background: #d5dbe5; border-radius: 3px; overflow: hidden; }
+    .contrib-trilha i { display: block; height: 100%; width: 0; background: #1967D2; transition: width .25s linear; }
+    .contrib-tempo { font-size: 13px; color: #4a5568; font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
+    .contrib-ler { background: none; border: 0; color: #1967D2; font: inherit; font-size: 14px; font-weight: 700;
+        padding: 10px 0 0; cursor: pointer; }
+    .contrib-texto { font-size: 15px; line-height: 1.5; color: #333; padding-top: 8px; }
+    .contrib-btn { display: block; margin-top: 16px; padding: 17px 14px; text-align: center; background: #25a35a; color: #fff;
+        font-size: 18px; font-weight: 900; text-decoration: none; border-radius: 14px; box-shadow: 0 6px 16px rgba(37,163,90,.4); }
+    .contrib-btn.pulsando { animation: contribPulso 1.4s ease-in-out infinite; }
+    .contrib-nota { text-align: center; font-size: 13px; color: #5f6b7a; margin-top: 8px; }
+    .contrib-barra { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+        background: rgba(11,17,32,.94); border-top: 1px solid #24304a; transform: translateY(110%); transition: transform .25s ease; }
+    .contrib-barra.visivel { transform: none; }
+    .contrib-barra a { display: block; max-width: 480px; margin: 0 auto; padding: 14px; text-align: center; background: #25a35a;
+        color: #fff; font-size: 17px; font-weight: 900; text-decoration: none; border-radius: 12px; }
+    body { padding-bottom: 84px; }
+    @media (prefers-reduced-motion: reduce) { .contrib-play.pulsando, .contrib-btn.pulsando { animation: none; } }
+</style>
+
+<section class="contrib" id="contribuicao" data-guid="{{ contribuicao.guid }}">
+    <div class="contrib-persona">
+        {% if contribuicao.persona_foto %}<img src="{{ contribuicao.persona_foto }}" alt="{{ contribuicao.persona_nome }}">{% endif %}
+        <div><strong>{{ contribuicao.persona_nome }}</strong><span>te mandou um recado 🎙️</span></div>
+    </div>
+    <div class="contrib-audio">
+        <button type="button" class="contrib-play pulsando" id="contribPlay" aria-label="Ouvir o recado">▶</button>
+        <div class="contrib-busca" id="contribBusca" role="slider" tabindex="0" aria-label="Posição do recado">
+            <div class="contrib-trilha"><i id="contribBarra"></i></div><b class="contrib-bolinha" id="contribBolinha"></b>
+        </div>
+        <span class="contrib-tempo" id="contribTempo">0:00</span>
+    </div>
+    <audio id="contribAudio" preload="metadata" src="{{ contribuicao.audio }}"></audio>
+    {% if contribuicao.texto %}
+    <button type="button" class="contrib-ler" id="contribLer">📝 Ler o recado</button>
+    <div class="contrib-texto" id="contribTexto" hidden>{{ contribuicao.texto }}</div>
+    {% endif %}
+    <a class="contrib-btn" id="contribBtn" href="{{ contribuicao.link }}">💛 Fazer minha contribuição de R$&nbsp;{{ contribuicao.preco }}</a>
+    <p class="contrib-nota">Pix ou cartão · seus bônus aparecem aqui na hora 🎁</p>
+</section>
+
+<div class="contrib-barra" id="contribBarraFixa"><a href="{{ contribuicao.link }}">💛 Fazer minha contribuição de R$&nbsp;{{ contribuicao.preco }}</a></div>
+
+{% include '_audio_busca.html' %}
+<script>
+(function () {
+    var secao = document.getElementById('contribuicao');
+    var guid = secao.getAttribute('data-guid');
+    var audio = document.getElementById('contribAudio');
+    var play = document.getElementById('contribPlay');
+    var barra = document.getElementById('contribBarra');
+    var tempo = document.getElementById('contribTempo');
+    var btn = document.getElementById('contribBtn');
+    var marcado = false;
+
+    function evento(marco) {
+        try {
+            var dados = JSON.stringify({ guid: guid, marco: marco });
+            if (navigator.sendBeacon) navigator.sendBeacon('/api/v1/contribuicao/evento', new Blob([dados], { type: 'application/json' }));
+            else fetch('/api/v1/contribuicao/evento', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: dados, keepalive: true });
+        } catch (e) {}
+    }
+    function mmss(s) { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+
+    play.addEventListener('click', function () {
+        if (audio.paused) audio.play().catch(function () {}); else audio.pause();
+    });
+    audio.addEventListener('play', function () {
+        play.textContent = '❚❚'; play.classList.remove('pulsando');
+        if (!marcado) { marcado = true; evento('audio2_play_em'); }
+    });
+    audio.addEventListener('pause', function () { play.textContent = '▶'; });
+    var bolinha = document.getElementById('contribBolinha');
+    function atualizarPlayer() {
+        var d = audio.duration && isFinite(audio.duration) ? audio.duration : 0;
+        var pct = (d ? 100 * audio.currentTime / d : 0) + '%';
+        barra.style.width = pct; bolinha.style.left = pct;
+        tempo.textContent = mmss(d ? d - audio.currentTime : audio.currentTime);
+    }
+    audio.addEventListener('loadedmetadata', atualizarPlayer);
+    audio.addEventListener('timeupdate', atualizarPlayer);
+    window.ligarBuscaAudio(audio, document.getElementById('contribBusca'), atualizarPlayer);
+    // Fim: volta ao começo mostrando a duração (como o WhatsApp) — barra cheia em 0:00 parece "travou"/"já tocou".
+    audio.addEventListener('ended', function () {
+        play.textContent = '▶'; btn.classList.add('pulsando');
+        audio.currentTime = 0; atualizarPlayer();
+    });
+
+    var ler = document.getElementById('contribLer');
+    if (ler) ler.addEventListener('click', function () {
+        var t = document.getElementById('contribTexto');
+        t.hidden = !t.hidden;
+        ler.textContent = t.hidden ? '📝 Ler o recado' : '🔼 Esconder o texto';
+    });
+
+    // Bônus com cadeado: tocar leva ao recado/botão da contribuição (em vez de uma página de "indisponível").
+    // Delegação: este script roda antes da grade de livros existir na página.
+    document.addEventListener('click', function (ev) {
+        if (!ev.target.closest || !ev.target.closest('.item-ebook.bloqueado')) return;
+        ev.preventDefault();
+        secao.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        btn.classList.add('pulsando');
+    });
+
+    // Barra fixa com o botão quando o recado sai da tela.
+    var fixa = document.getElementById('contribBarraFixa');
+    if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (e) { fixa.classList.toggle('visivel', !e[0].isIntersecting); }).observe(btn);
+    } else { fixa.classList.add('visivel'); }
+
+    // Acabou de chegar da tela do áudio 1 (toque recente nesta aba): tenta tocar sozinho; se o navegador não
+    // deixar, o botão de play fica pulsando.
+    if (/[?&]chegou=1/.test(location.search)) {
+        audio.play().catch(function () {});
+        if (history.replaceState) history.replaceState(null, '', location.pathname);
+    }
+})();
+</script>

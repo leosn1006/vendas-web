@@ -29,25 +29,40 @@ def _gravar_clique_lead(pedido_id, fbc):
         logger.error(f"[LEAD] ❌ Erro ao gravar o clique do pedido #{pedido_id}: {e}")
 
 
+def atribuicao_do_clique(body: dict) -> dict:
+    """De onde veio o clique em "Quero receber": url da landing, domínio, gclid/wbraid/gbraid, campanha e o
+    clique da Meta (`clique`: None ou {'campaignid', 'fbclid', 'fbc'}). Usado pelo lead do WhatsApp e pelo
+    pedido da contribuição no site (web/contribuicao.py) — o mesmo clique, a mesma atribuição."""
+    gclid = body.get('gclid', "") or ""
+    url = body.get('url', "") or request.referrer or ""
+    _qparams = parse_qs(urlparse(url).query)
+    campaignid = body.get('campaignid', "") or ""
+    clique = clique_meta({**{k: v[0] for k, v in _qparams.items()}, **({'gclid': gclid} if gclid else {})})
+    if clique:
+        campaignid = clique['campaignid']
+    return {
+        'url': url,
+        'dns_origem': urlparse(url).netloc or None,
+        'gclid': gclid,
+        'wbraid': _qparams.get('wbraid', [''])[0],
+        'gbraid': _qparams.get('gbraid', [''])[0],
+        'campaignid': campaignid,
+        'adgroupid': body.get('adgroupid', "") or "",
+        'creative': body.get('creative', "") or "",
+        'matchtype': body.get('matchtype', "") or "",
+        'device': body.get('device', "") or "",
+        'placement': body.get('placement', "") or "",
+        'video_id': body.get('video_id', "") or "",
+        'clique': clique,
+    }
+
+
 def persistir_lead(body):
     try:
         logger.info(f"[LEAD] 📦 Dados recebidos para criar lead: {body}")
-        gclid = body.get('gclid', "")
-        url = body.get('url', "") or request.referrer or ""
-        dns_origem = urlparse(url).netloc or None
-        _qparams = parse_qs(urlparse(url).query)
-        wbraid = _qparams.get('wbraid', [''])[0]
-        gbraid = _qparams.get('gbraid', [''])[0]
-        campaignid = body.get('campaignid', "")
-        clique = clique_meta({**{k: v[0] for k, v in _qparams.items()}, **({'gclid': gclid} if gclid else {})})
-        if clique:
-            campaignid = clique['campaignid']
-        adgroupid = body.get('adgroupid', "")
-        creative = body.get('creative', "")
-        matchtype = body.get('matchtype', "")
-        device = body.get('device', "")
-        placement = body.get('placement', "")
-        video_id = body.get('video_id', "")
+        atrib = atribuicao_do_clique(body)
+        url = atrib['url']
+        clique = atrib['clique']
         if "paes-sem-gluten" in url:
             produto = 1
         elif "pascoa-lucrativa" in url:
@@ -81,9 +96,9 @@ def persistir_lead(body):
             produto_id=produto,
             valor_pago=0.00,
             estado_id=1,  # Estado Iniciado
-            gclid=gclid,
-            wbraid=wbraid,
-            gbraid=gbraid,
+            gclid=atrib['gclid'],
+            wbraid=atrib['wbraid'],
+            gbraid=atrib['gbraid'],
             data_ultima_atualizacao=None,
             mensagem_sugerida=texto,
             emoji_sugerida="",
@@ -91,17 +106,19 @@ def persistir_lead(body):
             contact_phone=None,
             contact_name=None,
             data_pedido=None,
-            campaignid=campaignid,
-            adgroupid=adgroupid,
-            creative=creative,
-            matchtype=matchtype,
-            device=device,
-            placement=placement,
-            video_id=video_id,
-            dns_origem=dns_origem,
+            campaignid=atrib['campaignid'],
+            adgroupid=atrib['adgroupid'],
+            creative=atrib['creative'],
+            matchtype=atrib['matchtype'],
+            device=atrib['device'],
+            placement=atrib['placement'],
+            video_id=atrib['video_id'],
+            dns_origem=atrib['dns_origem'],
         )
         pedido_id = criar_pedido(pedido)
         _gravar_clique_lead(pedido_id, clique['fbc'] if clique else None)
+        from web.contribuicao import registrar_braco_wpp  # A/B da contribuição: este lead é do braço WhatsApp
+        registrar_braco_wpp(pedido_id, produto)
         if clique:
             registrar_campanha_meta(produto, clique['campaignid'], venda_web=False)
         # logger.info(f"[LEAD] ✅ Lead gravado com gclid: {gclid}")

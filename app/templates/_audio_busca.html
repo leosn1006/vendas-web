@@ -1,0 +1,31 @@
+{# Barra do áudio tocável e arrastável, como no WhatsApp (gesto que o público já conhece). Usado pelos players da
+   contribuição (_contribuicao_entrada.html e _contribuicao_estante.html). A área de toque é maior que a barra
+   visível (dedo, não mouse); setas do teclado andam 5 s. Quem chama atualiza a barra/bolinha em `aoMover`. #}
+<script>
+window.ligarBuscaAudio = window.ligarBuscaAudio || function (audio, area, aoMover) {
+    function duracao() { var d = audio.duration; return d && isFinite(d) ? d : 0; }
+    function ir(ev) {
+        var d = duracao(); if (!d) return;  // metadados ainda não carregaram
+        var r = area.getBoundingClientRect();
+        audio.currentTime = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)) * d;
+        aoMover();
+    }
+    var arrastando = false;
+    area.addEventListener('pointerdown', function (ev) {
+        arrastando = true; area.classList.add('arrastando');
+        try { area.setPointerCapture(ev.pointerId); } catch (e) {}
+        ir(ev);
+    });
+    area.addEventListener('pointermove', function (ev) { if (arrastando) ir(ev); });
+    function soltar() { arrastando = false; area.classList.remove('arrastando'); }
+    area.addEventListener('pointerup', soltar);
+    area.addEventListener('pointercancel', soltar);
+    area.addEventListener('keydown', function (ev) {
+        var d = duracao(); if (!d) return;
+        if (ev.key === 'ArrowRight') audio.currentTime = Math.min(d, audio.currentTime + 5);
+        else if (ev.key === 'ArrowLeft') audio.currentTime = Math.max(0, audio.currentTime - 5);
+        else return;
+        ev.preventDefault(); aoMover();
+    });
+};
+</script>

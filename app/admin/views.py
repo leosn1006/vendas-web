@@ -3248,8 +3248,18 @@ def roi_produto(produto_id):
         logger.error(f"[ADMIN] ❌ Erro nas vendas por plano do produto #{produto_id}: {e}")
         vendas_planos = []
 
+    # A/B da contribuição no site (docs/CONTRIBUICAO_WEB.md): funil e receita por braço dos cliques do período.
+    try:
+        from database import busca_teste_contribuicao, get_contribuicao_config
+        config_contribuicao = get_contribuicao_config(produto_id)
+        teste_contribuicao = busca_teste_contribuicao(produto_id, data_ini, data_fim) if config_contribuicao else []
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro no teste de contribuição do produto #{produto_id}: {e}")
+        config_contribuicao, teste_contribuicao = None, []
+
     return render_template('admin/roi_produto.html',
-        produto=produto, rows=rows, vendas_planos=vendas_planos,
+        produto=produto, rows=rows, vendas_planos=vendas_planos, teste_contribuicao=teste_contribuicao,
+        config_contribuicao=config_contribuicao,
         roi_real=roi_real, roi_real_erro=roi_real_erro,
         roi_real_web=roi_real_web, roi_real_web_erro=roi_real_web_erro,
         taxa_imposto=taxa_imposto, custo_wpp=custo_wpp,

@@ -436,7 +436,7 @@
                      onerror="this.style.display='none'">
                 {% endif %}
                 <div class="resumo-hero-texto">
-                    <div class="resumo-label">Detalhes da sua compra:{% if desconto %} <span class="selo-oferta">🎁 Oferta aplicada</span>{% endif %}</div>
+                    <div class="resumo-label">{{ 'Sua contribuição 💛' if modo_contribuicao else 'Detalhes da sua compra:' }}{% if desconto %} <span class="selo-oferta">🎁 Oferta aplicada</span>{% endif %}</div>
                     <div id="resumoItens" class="resumo-itens">
                         <div class="linha-item linha-item-principal">
                             <span>{{ plano.nome }}</span>
@@ -476,7 +476,7 @@
         {% if bonus %}
         <!-- Bônus incluídos -->
         <div class="bonus-box">
-            <div class="bonus-titulo">🎁 Você também recebe de bônus</div>
+            <div class="bonus-titulo">{{ '🎁 Seus bônus, liberados na hora' if modo_contribuicao else '🎁 Você também recebe de bônus' }}</div>
             {% for b in bonus %}
             <div class="bonus-item">
                 <span class="check">✓</span>
@@ -634,7 +634,7 @@
             <strong id="totalDisplay">{{ ((plano.preco_promocional|float) - (desconto or 0))|brl }}</strong>
         </div>
 
-        <button class="btn-finalizar" id="btnFinalizar">{{ texto_botao }}</button>
+        <button class="btn-finalizar" id="btnFinalizar">{{ 'FAZER MINHA CONTRIBUIÇÃO' if modo_contribuicao else texto_botao }}</button>
         <div class="btn-sub-seguro" id="btnSubSeguro">🔒 Pagamento 100% seguro</div>
 
     </div><!-- /estado-form -->
@@ -706,7 +706,7 @@
     data-desconto="{{ '%.2f'|format(desconto or 0) }}"
     data-oferta="{{ oferta or '' }}"
     data-plano="{{ plano.slug }}"
-    data-texto-botao="{{ texto_botao }}"
+    data-texto-botao="{{ 'FAZER MINHA CONTRIBUIÇÃO' if modo_contribuicao else texto_botao }}"
     data-email-do-quiz="{{ '1' if email_do_quiz else '' }}"
     data-tem-cartao="{{ '1' if config_cartao else '' }}"
     id="checkout-config">

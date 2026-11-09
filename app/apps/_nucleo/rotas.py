@@ -122,7 +122,8 @@ def abrir_app_da_estante(guid, slug):
     from web.checkout import resolver_pedido_por_guid
     estante = f'/pedido2/{guid}'
     pedido, _, erro_pedido = resolver_pedido_por_guid(guid)
-    if erro_pedido:
+    # Entrega da contribuição (1009): e-mail digitado sem verificação nem pagamento — nunca vira acesso a app.
+    if erro_pedido or pedido.get('estado_id') == 1009:
         return redirect(estante)
     try:
         lic.liberar_licencas_do_pedido(pedido['id'])

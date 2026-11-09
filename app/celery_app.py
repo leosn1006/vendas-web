@@ -163,6 +163,12 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute='*/5'),   # 15 min / 3 h / 24 h por etapa; o horário (8h–22h) fica no código
         'options': {'queue': 'normal'},
     },
+    # Contribuição no site (docs/CONTRIBUICAO_WEB.md): lembretes por e-mail; o horário (8h–22h) fica no código.
+    'contribuicao-lembretes': {
+        'task': 'tasks.lembretes_contribuicao',
+        'schedule': crontab(minute='3-59/10'),  # :03, :13, :23...
+        'options': {'queue': 'normal'},
+    },
     'musica-limpeza': {
         'task': 'musica.limpeza',
         'schedule': crontab(hour=4, minute=13),
@@ -215,6 +221,9 @@ celery_app.conf.update(
         "tasks.enviar_resposta_cliente":            {"queue": "normal"},
         "tasks.enviar_confirmacao_web":             {"queue": "normal"},
         "tasks.enviar_email_entrega":               {"queue": "normal"},
+        "tasks.enviar_email_contribuicao_entrega":  {"queue": "normal"},
+        "tasks.lembretes_contribuicao":             {"queue": "normal"},
+        "tasks.reenviar_email_estante":             {"queue": "normal"},
         "tasks.followup_interesse_dinamico":             {"queue": "normal"},
         "tasks.processar_evento_conta_whatsapp":         {"queue": "normal"},
         # BAIXA — background/agendados

@@ -118,3 +118,27 @@ ORDER BY id;"'
 
 Pedidos com data futura e dia > 12 não são troca de dia/mês (PIX agendado ou leitura errada): revisar
 à mão.
+
+## 8. A/B da contribuição no site × WhatsApp (docs/CONTRIBUICAO_WEB.md)
+
+Cliques por braço desde `INTERVAL 7 DAY`, sem os de QA (`teste = 0`). Pago no braço estante = pedido 0/1000 vinculado
+à entrega (`pedidos_vinculados`) ou com o mesmo e-mail e pago depois do clique; no braço wpp = o próprio lead em estado 0
+(comprovante aceito pela IA). A métrica é `receita / cliques`. O mesmo dado aparece no admin (ROI do produto).
+
+```bash
+docker compose exec -T db sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" -e "
+SELECT braco, SUM(cliques) AS cliques, COUNT(nome_em) AS nome, COUNT(audio1_play_em) AS audio1, COUNT(email_em) AS email,
+       COUNT(estante_em) AS estante, COUNT(audio2_play_em) AS audio2, COUNT(checkout_em) AS checkout,
+       COUNT(valor) AS pagos, COALESCE(SUM(valor), 0) AS receita, ROUND(COALESCE(SUM(valor), 0) / SUM(cliques), 2) AS receita_clique
+FROM (
+    SELECT cp.*, CASE WHEN cp.braco = \"wpp\" THEN IF(p.estado_id = 0, p.valor_pago, NULL)
+           ELSE (SELECT pg.valor_pago FROM pedidos pg
+                 WHERE pg.produto_id = cp.produto_id AND pg.estado_id IN (0, 1000) AND pg.id <> p.id
+                   AND (pg.id IN (SELECT pv.pedido_id_adquirido FROM pedidos_vinculados pv WHERE pv.pedido_id_origem = cp.pedido_id)
+                        OR (COALESCE(p.email, \"\") <> \"\" AND pg.email = p.email AND pg.data_pagamento >= cp.criado_em))
+                 ORDER BY pg.id LIMIT 1) END AS valor
+    FROM contribuicao_pedidos cp JOIN pedidos p ON p.id = cp.pedido_id
+    WHERE cp.produto_id = 11 AND cp.teste = 0 AND cp.criado_em >= CURDATE() - INTERVAL 7 DAY
+) x
+GROUP BY braco;"'
+```
