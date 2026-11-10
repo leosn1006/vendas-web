@@ -101,7 +101,7 @@
 
             <div class="form-group" id="field-mensagem" style="display:none;">
                 <label>Mensagem</label>
-                <textarea name="mensagem" rows="4">{{ acao.mensagem or '' }}</textarea>
+                <textarea name="mensagem" id="mensagem-input" rows="4">{{ acao.mensagem or '' }}</textarea>
                 <small class="form-text text-muted" id="mensagem-hint">Use @nome_cliente para inserir o primeiro nome do cliente automaticamente.</small>
             </div>
 
@@ -158,7 +158,8 @@ function toggleContentFields() {
     const isProduto  = (acao === 'enviar_produto');
 
     url.style.display      = (acao === 'enviar_audio' || acao === 'enviar_imagem' || acao === 'enviar_arquivo' || isTemplate || isProduto) ? '' : 'none';
-    mensagem.style.display = (acao === 'enviar_mensagem' || isTemplate || isProduto) ? '' : 'none';
+    const isImagem   = (acao === 'enviar_imagem');
+    mensagem.style.display = (acao === 'enviar_mensagem' || isImagem || isTemplate || isProduto) ? '' : 'none';
     caption.style.display  = (acao === 'enviar_arquivo' || isTemplate || isProduto) ? '' : 'none';
     nomearq.style.display  = (acao === 'enviar_arquivo' || isTemplate) ? '' : 'none';
     param1.style.display   = isTemplate ? '' : 'none';
@@ -189,7 +190,8 @@ function toggleContentFields() {
         url.querySelector('label').textContent = 'Versão da Estante';
         urlInput.placeholder = "deixe vazio para v1, ou escreva 'v2' pro piloto de cross-sell";
     } else {
-        mensagem.querySelector('label').textContent = 'Mensagem';
+        // Imagem: o campo Mensagem vira a legenda (vai na mesma mensagem da imagem)
+        mensagem.querySelector('label').textContent = isImagem ? 'Legenda (opcional)' : 'Mensagem';
         caption.querySelector('label').textContent  = 'Caption';
         captionInput.removeAttribute('maxlength');
         mensagemHint.hidden = false;
@@ -197,6 +199,13 @@ function toggleContentFields() {
         url.querySelector('label').textContent = 'URL';
         urlInput.placeholder = 'https://…';
     }
+
+    const mensagemInput = document.getElementById('mensagem-input');
+    if (isImagem) mensagemInput.setAttribute('maxlength', '1024');
+    else mensagemInput.removeAttribute('maxlength');
+    mensagemHint.textContent = isImagem
+        ? 'Até 1024 caracteres. Junte aqui o texto que hoje vai numa mensagem separada: sai uma mensagem só (mais barato). Use @nome_cliente para o primeiro nome.'
+        : 'Use @nome_cliente para inserir o primeiro nome do cliente automaticamente.';
 }
 // init on page load
 toggleContentFields();

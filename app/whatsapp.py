@@ -514,7 +514,18 @@ def enviar_documento(pedido: Pedido, url_documento: str, caption: str, filename:
         raise ErroTransienteWhatsApp(msg)
     raise ValueError(msg)
 
-def enviar_imagem(pedido: Pedido, url_imagem: str):
+LIMITE_LEGENDA_IMAGEM = 1024  # Meta e gateway (api-wpp-web) recusam legenda maior
+
+
+def normalizar_legenda(texto: str | None) -> str:
+    """Legenda como o WhatsApp conta: sem espaços nas pontas e quebra de linha '\\n' (formulário manda '\\r\\n')."""
+    return (texto or '').replace('\r\n', '\n').strip()
+
+
+def enviar_imagem(pedido: Pedido, url_imagem: str, caption: str = ''):
+    """Envia uma imagem; `caption` (opcional) vai como legenda na MESMA mensagem — Meta e gateway
+    aceitam. Juntar imagem + texto numa mensagem só reduz o custo. Legenda acima do limite é cortada
+    (com log) em vez de derrubar o envio: a cliente recebe a imagem de qualquer jeito."""
     if pedido is None:
         raise ValueError("[IMAGEM-ENVIAR] Não é possível enviar mensagem sem um pedido associado.")
 
@@ -539,6 +550,13 @@ def enviar_imagem(pedido: Pedido, url_imagem: str):
             "link": url_imagem
         }
     }
+    legenda = normalizar_legenda(caption)
+    if len(legenda) > LIMITE_LEGENDA_IMAGEM:
+        logger.warning(f"[IMAGEM-ENVIAR] ⚠️ Legenda com {len(legenda)} caracteres cortada em "
+                       f"{LIMITE_LEGENDA_IMAGEM} (pedido #{pedido.get('id')}).")
+        legenda = legenda[:LIMITE_LEGENDA_IMAGEM - 1].rstrip() + '…'
+    if legenda:
+        dados["image"]["caption"] = legenda
 
     logger.info(f"[IMAGEM-ENVIAR] Enviando mensagem para {numero_remetente} com o seguinte payload:")
     logger.info(f"[IMAGEM-ENVIAR] dados: {dados}")

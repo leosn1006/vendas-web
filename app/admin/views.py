@@ -829,7 +829,8 @@ def bloquear_conversa(produto_id, pedido_id):
 @admin_bp.route('/produto/<int:produto_id>/conversas/<int:pedido_id>/enviar', methods=['POST'])
 @requer_acesso_produto
 def conversa_enviar_mensagem(produto_id, pedido_id):
-    from whatsapp import enviar_mensagem as wpp_enviar, enviar_audio as wpp_audio, enviar_documento as wpp_doc
+    from whatsapp import (enviar_mensagem as wpp_enviar, enviar_audio as wpp_audio,
+                          enviar_documento as wpp_doc, enviar_imagem as wpp_imagem, normalizar_legenda)
     pedido = get_pedido(pedido_id)
     if not pedido or pedido.get('produto_id') != produto_id:
         flash('Pedido não encontrado.', 'danger')
@@ -863,6 +864,21 @@ def conversa_enviar_mensagem(produto_id, pedido_id):
                 return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
             mid = wpp_audio(pedido, url_audio)
             salvar_mensagem_pedido(mid, pedido_id, f'[Áudio: {url_audio}]', tipo_mensagem='enviada')
+
+        elif tipo == 'imagem':
+            url_imagem = (request.form.get('url_imagem') or '').strip()
+            legenda    = normalizar_legenda(request.form.get('legenda_imagem'))
+            if not url_imagem:
+                flash('URL da imagem não pode ser vazia.', 'danger')
+                return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
+            try:
+                _validar_legenda_imagem('enviar_imagem', legenda)
+            except ValueError as e:
+                flash(str(e), 'danger')
+                return redirect(url_for('admin.conversa_pedido', produto_id=produto_id, pedido_id=pedido_id))
+            mid = wpp_imagem(pedido, url_imagem, caption=legenda)
+            registro = f'[Imagem: {url_imagem} — {legenda}]' if legenda else f'[Imagem: {url_imagem}]'
+            salvar_mensagem_pedido(mid, pedido_id, registro, tipo_mensagem='enviada')
 
         elif tipo == 'arquivo':
             url_arquivo  = (request.form.get('url_arquivo') or '').strip()
@@ -1517,6 +1533,14 @@ def fluxo_acoes(produto_id, fluxo):
                            readonly=fluxo in _FLUXOS_READONLY)
 
 
+def _validar_legenda_imagem(tipo_acao: str, mensagem: str | None) -> None:
+    """Legenda de imagem acima do limite do WhatsApp seria cortada no envio — recusamos já ao salvar."""
+    from whatsapp import LIMITE_LEGENDA_IMAGEM, normalizar_legenda
+    tamanho = len(normalizar_legenda(mensagem))
+    if tipo_acao == 'enviar_imagem' and tamanho > LIMITE_LEGENDA_IMAGEM:
+        raise ValueError(f"A legenda da imagem tem {tamanho} caracteres; o WhatsApp aceita até {LIMITE_LEGENDA_IMAGEM}.")
+
+
 @admin_bp.route('/produto/<int:produto_id>/fluxos/<fluxo>/adicionar', methods=['POST'])
 @requer_admin
 def adicionar_acao_fluxo_view(produto_id, fluxo):
@@ -1528,6 +1552,7 @@ def adicionar_acao_fluxo_view(produto_id, fluxo):
         condicao = request.form['condicao']
         tipo_acao = request.form['acao']
         variante = max(1, int(request.form.get('variante') or 1))
+        _validar_legenda_imagem(tipo_acao, request.form.get('mensagem'))
 
         tipo_existente = tipo_acao_variantes_existentes(produto_id, fluxo, condicao, ordem)
         if tipo_existente and tipo_existente != tipo_acao:
@@ -1581,6 +1606,7 @@ def editar_acao_fluxo(produto_id, fluxo, acao_id):
             condicao = request.form['condicao']
             tipo_acao = request.form['acao']
             variante = max(1, int(request.form.get('variante') or 1))
+            _validar_legenda_imagem(tipo_acao, request.form.get('mensagem'))
 
             tipo_existente = tipo_acao_variantes_existentes(produto_id, fluxo, condicao, ordem, excluir_acao_id=acao_id)
             if tipo_existente and tipo_existente != tipo_acao:

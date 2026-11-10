@@ -55,7 +55,7 @@ Todas as chamadas usam `Authorization: Bearer <GATEWAY_TOKEN>`. Base: `<WPP_WEB_
 |---|---|---|
 | `enviar_mensagem` | `POST /{id}/messages` `type:text` | Texto, com "digitando" e atraso humanizados. Responde `messages[0].id` (wamid) |
 | `enviar_audio` | `type:audio` `{link, voice:true}` | Baixa o `link` e envia como nota de voz (PTT). ogg/opus validado |
-| `enviar_imagem` | `type:image` `{link}` | Baixa o link e envia |
+| `enviar_imagem` | `type:image` `{link, caption?}` | Baixa o link e envia; legenda opcional (até 1024) na mesma mensagem |
 | `enviar_documento` | `type:document` `{link, filename, caption}` | Baixa o link e envia como arquivo (PDF de 25 MB validado) |
 | `enviar_botao_link` | `interactive/cta_url` | **Vira texto**: corpo, `👉 <botão>` e o link |
 | `enviar_mensagem_digitando`, `marcar_como_lida` | `status:read` (+ `typing_indicator`) | "Lida" + "digitando…" (some em 25 s). Confirmados no celular |

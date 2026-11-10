@@ -170,13 +170,17 @@
                     {% if a.acao == 'marcar_lida' %}<span class="badge badge-blue">👁 marcar lida</span>
                     {% elif a.acao == 'digitando' %}<span class="badge badge-yellow">⌨️ digitando</span>
                     {% elif a.acao == 'enviar_audio' %}<span class="badge badge-green">🎵 áudio</span>
-                    {% elif a.acao == 'enviar_imagem' %}<span class="badge badge-green">🖼 imagem</span>
+                    {% elif a.acao == 'enviar_imagem' %}<span class="badge badge-green">🖼 imagem{% if a.mensagem %} + legenda{% endif %}</span>
                     {% elif a.acao == 'enviar_arquivo' %}<span class="badge badge-green">📄 arquivo</span>
                     {% elif a.acao == 'enviar_mensagem' %}<span class="badge badge-blue">💬 mensagem</span>
                     {% endif %}
                 </td>
                 <td>
-                    {% if a.mensagem %}
+                    {% if a.acao == 'enviar_imagem' and a.url %}
+                        {# imagem: a URL sempre aparece (distingue variantes); a legenda, se houver, embaixo #}
+                        <div class="campo-preview" title="{{ a.url }}" style="font-family: var(--mono); font-size: 12px; color: var(--muted);">{{ a.url }}</div>
+                        {% if a.mensagem %}<div class="campo-preview" title="{{ a.mensagem }}">{{ a.mensagem }}</div>{% endif %}
+                    {% elif a.mensagem %}
                         <div class="campo-preview" title="{{ a.mensagem }}">{{ a.mensagem }}</div>
                     {% elif a.url %}
                         <div class="campo-preview" title="{{ a.url }}" style="font-family: var(--mono); font-size: 12px; color: var(--muted);">{{ a.url }}</div>
@@ -284,8 +288,8 @@
                 <input type="text" name="url" placeholder="https://…">
             </div>
             <div class="field-group span-full" id="field-mensagem" style="display:none;">
-                <span class="field-label">Mensagem</span>
-                <textarea name="mensagem" rows="3" placeholder="Texto da mensagem…"></textarea>
+                <span class="field-label" id="mensagem-label">Mensagem</span>
+                <textarea name="mensagem" id="mensagem-input" rows="3" placeholder="Texto da mensagem…"></textarea>
                 <small class="form-text text-muted" id="mensagem-hint">Use @nome_cliente para inserir o primeiro nome do cliente automaticamente.</small>
             </div>
             <div class="field-group" id="field-caption" style="display:none;">
@@ -324,9 +328,20 @@ function toggleContentFields() {
     const isProduto  = (acao === 'enviar_produto');
 
     url.style.display      = (acao === 'enviar_audio' || acao === 'enviar_imagem' || acao === 'enviar_arquivo' || isTemplate || isProduto) ? '' : 'none';
-    mensagem.style.display = (acao === 'enviar_mensagem' || isTemplate || isProduto) ? '' : 'none';
+    const isImagem   = (acao === 'enviar_imagem');
+    mensagem.style.display = (acao === 'enviar_mensagem' || isImagem || isTemplate || isProduto) ? '' : 'none';
     caption.style.display  = (acao === 'enviar_arquivo' || isTemplate || isProduto) ? '' : 'none';
     nomearq.style.display  = (acao === 'enviar_arquivo' || isTemplate) ? '' : 'none';
+
+    // Imagem: o campo Mensagem vira a legenda (vai na mesma mensagem da imagem)
+    const mensagemInput = document.getElementById('mensagem-input');
+    document.getElementById('mensagem-label').textContent = isImagem ? 'Legenda (opcional)' : 'Mensagem';
+    mensagemInput.placeholder = isImagem ? 'Texto que vai junto com a imagem…' : 'Texto da mensagem…';
+    if (isImagem) mensagemInput.setAttribute('maxlength', '1024');
+    else mensagemInput.removeAttribute('maxlength');
+    document.getElementById('mensagem-hint').textContent = isImagem
+        ? 'Até 1024 caracteres. Junte aqui o texto que hoje vai numa mensagem separada: sai uma mensagem só (mais barato). Use @nome_cliente para o primeiro nome.'
+        : 'Use @nome_cliente para inserir o primeiro nome do cliente automaticamente.';
 
     const captionInput = document.getElementById('caption-input');
     const urlInput = url.querySelector('input');

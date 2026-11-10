@@ -287,6 +287,7 @@
             <div class="send-tabs">
                 <button type="button" class="tab-btn active" data-tab="texto">💬 Texto</button>
                 <button type="button" class="tab-btn" data-tab="audio">🎵 Áudio</button>
+                <button type="button" class="tab-btn" data-tab="imagem">🖼 Imagem</button>
                 <button type="button" class="tab-btn" data-tab="arquivo">📎 Arquivo</button>
             </div>
 
@@ -296,6 +297,12 @@
 
             <div class="tab-panel hidden" id="panel-audio">
                 <input type="url" name="url_audio" placeholder="URL do áudio (mp3, ogg, m4a…)">
+            </div>
+
+            <div class="tab-panel hidden" id="panel-imagem">
+                <input type="url" name="url_imagem" placeholder="URL da imagem (jpg, png)">
+                <textarea name="legenda_imagem" maxlength="1024"
+                          placeholder="Legenda (opcional) — vai junto com a imagem, numa mensagem só"></textarea>
             </div>
 
             <div class="tab-panel hidden" id="panel-arquivo">

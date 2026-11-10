@@ -16,7 +16,7 @@ from whatsapp import (
     marcar_como_lida, enviar_mensagem_digitando,
     enviar_audio, enviar_imagem, enviar_mensagem, enviar_documento,
     enviar_produto_whatsapp, enviar_botao_link, montar_link_estante,
-    ErroTransienteWhatsApp, ChipForaDoArWhatsApp, exigir_numero_operacional,
+    ErroTransienteWhatsApp, ChipForaDoArWhatsApp, exigir_numero_operacional, normalizar_legenda,
 )
 from database import salvar_mensagem_pedido, selecionar_e_avancar_variante
 
@@ -145,8 +145,11 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
 
     elif tipo == 'enviar_imagem':
         _exige_campo(acao, 'url', tag)
-        mid = _executar_com_retry(lambda: enviar_imagem(pedido, acao['url']), tag)
-        salvar_mensagem_pedido(mid, pedido_id, "[imagem enviada]", tipo_mensagem='enviada')
+        # Legenda da imagem fica em 'mensagem' (TEXT, várias linhas; @nome_cliente já trocado acima)
+        legenda = normalizar_legenda(acao.get('mensagem'))
+        mid = _executar_com_retry(lambda: enviar_imagem(pedido, acao['url'], caption=legenda), tag)
+        salvar_mensagem_pedido(mid, pedido_id, f"[imagem] {legenda}" if legenda else "[imagem enviada]",
+                               tipo_mensagem='enviada')
         logger.debug(f"[{tag}] 🖼 Imagem enviada.")
 
     elif tipo == 'enviar_arquivo':
