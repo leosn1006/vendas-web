@@ -1,7 +1,6 @@
 import logging
 import random
-from whatsapp import (marcar_como_lida, enviar_mensagem, enviar_mensagem_digitando, criar_notificacao_admin,
-                      exigir_numero_operacional)
+from whatsapp import enviar_mensagem, criar_notificacao_admin, exigir_numero_operacional
 from database import (salvar_mensagem_pedido, buscar_historico_conversa, get_produto_by_id,
                       tem_notificacao_em_analise, contar_total_mensagens_pedido,
                       buscar_ultima_mensagem_recebida_por_pedido)
@@ -29,18 +28,12 @@ def executar(pedido, mensagem_whatsapp):
         logger.info("=" * 120)
         logger.info(f"[FLUXO-RESPONDER-MENSAGEM] 📦 Dados recebidos: \n Pedido: {pedido}")
         # ============================================================================================
-        # extrai dados da mensagem primeiro — necessário para marcar como lida e para o early-exit,
-        # independente da config do produto
+        # extrai dados da mensagem primeiro — necessário para o early-exit, independente da config do produto.
+        # De propósito NÃO marcamos como lida nem mostramos "digitando": quando a IA escala (ex.: estorno) e
+        # ninguém respondeu ainda, os tiques azuis faziam a cliente achar que estávamos ignorando o pedido.
         pedido_id = pedido['id']
         mensagem_cliente = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
         message_id = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['id']
-        # ============================================================================================
-        # marcar mensagem como lida imediatamente, independente de validações posteriores
-        logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] 📥 Marcando mensagem como lida...")
-        try:
-            marcar_como_lida(message_id, pedido.get('phone_number_id'))
-        except Exception as exc_lida:
-            logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] ⚠️ Falha ao marcar como lida (não crítico): {exc_lida}")
         # ============================================================================================
         # se pedido já está em análise pelo admin, salva a mensagem e silencia a IA
         # (não precisa carregar produto nem histórico)
@@ -96,11 +89,7 @@ def executar(pedido, mensagem_whatsapp):
             logger.info(f"[FLUXO-RESPONDER-MENSAGEM] 🔕 Pedido #{pedido_id}: IA escalou ou falhou. Admin notificado, sem resposta ao cliente.")
             return
         # ============================================================================================
-        # envia digitando e agenda envio da resposta com delay humanizado (worker liberado durante a espera)
-        try:
-            enviar_mensagem_digitando(message_id, pedido.get('phone_number_id'))
-        except Exception as exc_digitando:
-            logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] ⚠️ Falha ao enviar digitando (não crítico): {exc_digitando}")
+        # agenda envio da resposta com delay humanizado (worker liberado durante a espera)
         delay = random.uniform(5.0, 8.0)
         logger.debug(f"[FLUXO-RESPONDER-MENSAGEM] ⏳ Enviando resposta em {delay:.1f}s via task...")
         celery_app.send_task(

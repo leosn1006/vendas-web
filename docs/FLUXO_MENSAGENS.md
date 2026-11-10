@@ -51,7 +51,8 @@ Só chega aqui após o roteamento do webhook.
 Mensagem chega via Celery
         │
         ▼
-   Marca como lida no WhatsApp (best-effort, não bloqueia)
+   NÃO marca como lida nem mostra "digitando" (de propósito, migration 103):
+   se a IA escala (estorno) e ninguém respondeu, tique azul parecia descaso
         │
         ▼
 ┌─────────────────────────────────────────────────────┐
