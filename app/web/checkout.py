@@ -571,14 +571,104 @@ def categorizar_erro_cielo(status, return_code, return_message) -> tuple:
 
     Códigos vistos nos cartões de teste do sandbox (scripts/testar_cielo_sandbox.py):
     05=negada, 57=expirado, 78=bloqueado, 77=cancelado, 70=problema, 99=timeout.
+    Produção (11/11/2026, teste do SOP): 54 = validade errada/cartão vencido.
     """
     if status is None:
         return 'instabilidade', 'Tivemos uma instabilidade ao confirmar seu pagamento. Tente novamente ou pague com Pix.'
     if str(return_code) == '99':
         return 'instabilidade', 'Tivemos uma instabilidade ao confirmar seu pagamento. Tente novamente ou pague com Pix.'
-    if str(return_code) in ('57', '78', '77', '70'):
+    if str(return_code) in ('54', '57', '78', '77', '70'):
         return 'cartao_problema', 'Não conseguimos processar esse cartão. Confira os dados e a validade, ou tente outro.'
     return 'recusa_generica', 'Seu banco não autorizou a compra agora. Tente outro cartão ou pague com Pix.'
+
+
+# Campos de cartão aberto que o checkout mandava antes do SOP. O backend não pode mais
+# recebê-los (PCI SAQ A-EP): se aparecerem, a compra é recusada e o valor é descartado sem log.
+_CAMPOS_CARTAO_ABERTO = ('numero_cartao', 'cvv', 'card_number', 'security_code')
+_RE_PAYMENT_TOKEN = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+_MSG_INSTABILIDADE_CARTAO = 'Tivemos uma instabilidade ao confirmar seu pagamento. Tente novamente ou pague com Pix.'
+# Aba aberta antes do deploy do SOP ainda roda o JS antigo (manda o cartão aberto): só recarregando.
+_MSG_RECARREGAR_CARTAO = 'Atualize a página (puxe a tela para baixo ou aperte F5) e tente de novo. Nada foi cobrado.'
+
+
+def _descartar_cartao_aberto(body: dict) -> list:
+    """Remove do corpo qualquer campo de cartão aberto e devolve os NOMES encontrados
+    (nunca os valores — não podem ir para log)."""
+    achados = [c for c in _CAMPOS_CARTAO_ABERTO if c in body]
+    for c in achados:
+        body.pop(c, None)
+    return achados
+
+
+def _credencial_do_corpo(body: dict):
+    """Credencial do cartão vinda do checkout: {'tipo': 'sop', 'payment_token', 'bin', 'bandeira'}.
+    Devolve None se faltar ou estiver malformada."""
+    from web.cielo import TIPOS_CREDENCIAL
+    credencial = body.get('credencial')
+    if not isinstance(credencial, dict) or credencial.get('tipo') not in TIPOS_CREDENCIAL:
+        return None
+    token = str(credencial.get('payment_token') or '')
+    if not _RE_PAYMENT_TOKEN.match(token):
+        return None
+    bin_numero = re.sub(r'\D', '', str(credencial.get('bin') or ''))[:6]
+    return {'tipo': credencial['tipo'], 'payment_token': token,
+            'bin': bin_numero if len(bin_numero) == 6 else '',
+            'bandeira': str(credencial.get('bandeira') or '')[:20]}
+
+
+def _cartao_mascarado_da_resposta(payment: dict):
+    """A Cielo devolve o número já mascarado (ex.: 453211******3703) — com o SOP é a única
+    fonte dos 4 últimos dígitos. Só aceita se vier de fato mascarado."""
+    numero = str((payment.get('CreditCard') or {}).get('CardNumber') or '')
+    return numero[:20] if '*' in numero else None
+
+
+def _resposta_para_auditoria(resposta: dict) -> dict:
+    """Cópia da resposta da Cielo sem o PaymentToken (a Cielo pode ecoá-lo em CreditCard)."""
+    import copy
+    limpa = copy.deepcopy(resposta or {})
+    cartao = (limpa.get('Payment') or {}).get('CreditCard')
+    if isinstance(cartao, dict) and cartao.get('PaymentToken'):
+        cartao['PaymentToken'] = '<omitido>'
+    return limpa
+
+
+def gerar_access_token_sop(produto_id: int, ip: str) -> dict:
+    """AccessToken do Silent Order Post para o navegador tokenizar UM cartão (vale ~20 min).
+    Só para produto com cartão ativo, e com limite por IP (cada chamada custa uma requisição à
+    Cielo; também freia quem testa cartões em série)."""
+    from database import get_config_cartao_produto, get_produto_disponivel_web
+    from web import cielo
+
+    if not get_config_cartao_produto(produto_id) or not get_produto_disponivel_web(produto_id):
+        return {'erro': 'indisponivel', '_status': 404}
+    # 30/10 min: folga para várias clientes atrás do mesmo IP de operadora (CGNAT) e novas tentativas.
+    if _excedeu_limite_ip('sop_token', ip, maximo=30, janela_segundos=600):
+        logger.warning(f'[WEB-CHECKOUT] Limite de AccessToken SOP excedido — IP {ip}')
+        return {'erro': 'limite', 'mensagem': 'Muitas tentativas seguidas. Aguarde alguns minutos ou pague com Pix.',
+                '_status': 429}
+    try:
+        return {'access_token': cielo.gerar_access_token_sop(), 'ambiente': cielo.SOP_AMBIENTE}
+    except Exception as e:
+        logger.error(f'[WEB-CHECKOUT] Erro ao gerar AccessToken SOP (produto #{produto_id}): {e}')
+        return {'erro': 'instabilidade', 'mensagem': _MSG_INSTABILIDADE_CARTAO, '_status': 503}
+
+
+def _excedeu_limite_ip(acao: str, ip: str, maximo: int, janela_segundos: int) -> bool:
+    """Contador por IP no Redis (INCR + EXPIRE). Redis fora do ar = sem limite (não bloqueia venda)."""
+    if not ip:
+        return False
+    try:
+        from web.cielo import _redis
+        r = _redis()
+        chave = f'limite:{acao}:{ip}'
+        # A chave nasce já com prazo (SET NX EX); o INCR só soma. Assim nunca fica uma chave sem
+        # expiração (que bloquearia o IP para sempre) se algo falhar entre as duas chamadas.
+        r.set(chave, 0, ex=janela_segundos, nx=True)
+        return r.incr(chave) > maximo
+    except Exception as e:
+        logger.warning(f'[WEB-CHECKOUT] Redis indisponível no limite por IP ({acao}): {e}')
+        return False
 
 
 def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
@@ -591,7 +681,20 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
     Retorna dict pronto para jsonify:
       aprovado=True: {aprovado, pedido_id, itens}
       aprovado=False: {aprovado, pedido_id, mensagem (amena), permite_retry}
+
+    O cartão chega TOKENIZADO (`credencial`, Silent Order Post): número e CVV nunca passam por
+    aqui. Corpo com cartão aberto é recusado antes de qualquer outra coisa.
     """
+    achados = _descartar_cartao_aberto(body)
+    if achados:
+        logger.warning(f'[WEB-CHECKOUT] Corpo com cartão aberto recusado (campos: {achados}) — '
+                       f'página antiga do checkout ou chamada direta à API')
+        return {'aprovado': False, 'permite_retry': True, 'mensagem': _MSG_RECARREGAR_CARTAO}
+    credencial = _credencial_do_corpo(body)
+    if not credencial:
+        logger.warning('[WEB-CHECKOUT] Cartão sem credencial válida (PaymentToken ausente ou malformado)')
+        return {'aprovado': False, 'permite_retry': True, 'mensagem': _MSG_INSTABILIDADE_CARTAO}
+
     from web import cielo
     from web.parcelamento_cartao import calcular_total, parcelas_maximas_efetivas
     from database import (get_produto_disponivel_web, get_config_cartao_produto,
@@ -704,48 +807,43 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
             logger.error(f'[WEB-CHECKOUT] Erro ao gravar itens do pedido cartão #{pedido_id}: {e}')
     _vincular_musica(plano, body, pedido_id, produto_id)
 
-    numero_cartao = re.sub(r'\D', '', body.get('numero_cartao', ''))
     cpf = re.sub(r'\D', '', body.get('cpf', ''))
-    mes = re.sub(r'\D', '', str(body.get('mes', '')))
-    ano = re.sub(r'\D', '', str(body.get('ano', '')))
-    validade = f'{mes.zfill(2)}/{ano}' if mes and ano else ''
-    cvv = re.sub(r'\D', '', body.get('cvv', ''))
-    titular = body.get('titular') or body.get('nome', '')
-    # Resolve a bandeira real (cache/Consulta BIN Cielo) antes de montar o payload — só cai
-    # pro palpite do cliente (ou vazio) se a resolução falhar; nunca bloqueia a autorização.
+    titular = str(body.get('titular') or body.get('nome') or '')[:100]
+    # Resolve a bandeira real pelo BIN (cache/Consulta BIN Cielo) antes de montar o payload — só
+    # cai pro palpite do front (ou vazio) se a resolução falhar; nunca bloqueia a autorização.
     from web.bandeira_bin import resolver_bandeira
-    bandeira = resolver_bandeira(numero_cartao) or body.get('bandeira', '')
-    merchant_order_id = str(pedido_id)
-    cartao_mascarado = f'{numero_cartao[:6]}{"*" * 6}{numero_cartao[-4:]}' if len(numero_cartao) >= 10 else ''
+    bandeira = (resolver_bandeira(credencial['bin']) if credencial['bin'] else None) or credencial['bandeira']
+    credencial['bandeira'] = bandeira
+    merchant_order_id = cielo.merchant_order_id(pedido_id)
+    # Antes da resposta só conhecemos o BIN; os 4 últimos dígitos vêm mascarados pela Cielo.
+    cartao_mascarado = f'{credencial["bin"]}******' if credencial['bin'] else ''
 
     avancar_pedido_cartao_aguardando(pedido_id)
 
-    # Auditoria: NUNCA gravar CardNumber/SecurityCode crus.
+    # Auditoria: NUNCA gravar número, CVV nem o PaymentToken.
     request_para_auditoria = {
         'MerchantOrderId': merchant_order_id, 'Amount': valor_centavos, 'Installments': parcelas,
-        'CreditCard': {'CardNumber': cartao_mascarado, 'Holder': titular, 'ExpirationDate': validade, 'Brand': bandeira},
+        'Credencial': credencial['tipo'],
+        'CreditCard': {'Bin': credencial['bin'], 'Holder': titular, 'Brand': bandeira},
     }
     tentativa_id = criar_tentativa_pagamento_cartao(
         pedido_id=pedido_id, merchant_order_id=merchant_order_id,
         valor_original=valor_original, valor=valor_total, parcelas=parcelas,
         bandeira=bandeira, cartao_mascarado=cartao_mascarado, nome_titular=titular,
-        request_json=request_para_auditoria,
+        request_json=request_para_auditoria, origem=credencial['tipo'],
     )
 
     try:
         resposta = cielo.criar_transacao(
             merchant_order_id=merchant_order_id, valor_centavos=valor_centavos, parcelas=parcelas,
             soft_descriptor=config_cartao['soft_descriptor'], nome=body.get('nome', ''), cpf=cpf,
-            numero_cartao=numero_cartao, titular=titular, validade=validade, cvv=cvv, bandeira=bandeira,
+            credencial=credencial,
         )
     except Exception as e:
         # Timeout/erro de rede: pedido fica em 1005 (sinal pro sweep de reconciliação),
         # a tentativa de auditoria fica sem payment_id.
         logger.error(f'[WEB-CHECKOUT] Erro de rede/timeout na autorização Cielo — pedido #{pedido_id}: {e}')
-        return {
-            'aprovado': False, 'pedido_id': pedido_id, 'permite_retry': True,
-            'mensagem': 'Tivemos uma instabilidade ao confirmar seu pagamento. Tente novamente ou pague com Pix.',
-        }
+        return {'aprovado': False, 'pedido_id': pedido_id, 'permite_retry': True, 'mensagem': _MSG_INSTABILIDADE_CARTAO}
 
     payment = resposta.get('Payment', {})
     status = payment.get('Status')
@@ -765,7 +863,8 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
             tentativa_id, payment_id=payment.get('PaymentId'), tid=payment.get('Tid'),
             authorization_code=payment.get('AuthorizationCode'), status_cielo=status,
             return_code=payment.get('ReturnCode'), return_message=payment.get('ReturnMessage'),
-            response_json=resposta, bandeira=bandeira_confirmada,
+            response_json=_resposta_para_auditoria(resposta), bandeira=bandeira_confirmada,
+            cartao_mascarado=_cartao_mascarado_da_resposta(payment),
         )
         confirmou_agora = confirmar_pagamento_web(
             pedido_id=pedido_id, valor=valor_total, nome_pagador=body.get('nome', ''),
@@ -787,7 +886,8 @@ def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:
         tentativa_id, payment_id=payment.get('PaymentId'), tid=payment.get('Tid'),
         authorization_code=payment.get('AuthorizationCode'), status_cielo=status,
         return_code=payment.get('ReturnCode'), return_message=payment.get('ReturnMessage'),
-        categoria_erro=categoria, response_json=resposta, bandeira=bandeira_confirmada,
+        categoria_erro=categoria, response_json=_resposta_para_auditoria(resposta), bandeira=bandeira_confirmada,
+        cartao_mascarado=_cartao_mascarado_da_resposta(payment),
     )
     marcar_pedido_cartao_negado(pedido_id)
     return {'aprovado': False, 'pedido_id': pedido_id, 'mensagem': mensagem, 'permite_retry': True}
@@ -813,12 +913,17 @@ def reconciliar_cartao(pedido_id: int) -> dict:
     tentativa = get_ultima_tentativa_pagamento_cartao(pedido_id)
     if not tentativa:
         return {'pago': False}
+    # Com prefixo (dev apontando para a Cielo de produção), só reconcilia tentativas feitas com ele:
+    # as antigas (sandbox, sem prefixo) têm números que na produção são de vendas de outras pessoas.
+    if cielo.PREFIXO_PEDIDO and not str(tentativa.get('merchant_order_id') or '').startswith(cielo.PREFIXO_PEDIDO):
+        return {'pago': False}
 
     if tentativa.get('payment_id'):
         payment_ids = [tentativa['payment_id']]
     else:
         try:
-            resultado = cielo.consultar_por_merchant_order_id(str(pedido_id))
+            resultado = cielo.consultar_por_merchant_order_id(
+                tentativa.get('merchant_order_id') or cielo.merchant_order_id(pedido_id))
         except Exception as e:
             logger.error(f'[WEB-CHECKOUT] Erro ao consultar MerchantOrderId #{pedido_id} na Cielo: {e}')
             return {'pago': False}
@@ -850,6 +955,7 @@ def reconciliar_cartao(pedido_id: int) -> dict:
             tentativa['id'], payment_id=aprovado.get('PaymentId'), tid=aprovado.get('Tid'),
             authorization_code=aprovado.get('AuthorizationCode'), status_cielo=2,
             return_code=aprovado.get('ReturnCode'), return_message=aprovado.get('ReturnMessage'),
+            cartao_mascarado=_cartao_mascarado_da_resposta(aprovado),
         )
         confirmou_agora = confirmar_pagamento_web(pedido_id=pedido_id, valor=float(tentativa['valor']))
         if confirmou_agora:

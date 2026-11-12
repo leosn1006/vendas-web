@@ -3189,17 +3189,18 @@ def marcar_pedido_cartao_negado(pedido_id: int) -> bool:
 def criar_tentativa_pagamento_cartao(pedido_id: int, merchant_order_id: str,
                                      valor_original: float, valor: float, parcelas: int,
                                      bandeira: str, cartao_mascarado: str, nome_titular: str,
-                                     request_json: dict) -> int:
+                                     request_json: dict, origem: str = 'sop') -> int:
     """Grava a tentativa ANTES de chamar a Cielo (payment_id ainda NULL) — garante rastro de
     auditoria mesmo se a chamada HTTP nunca responder. `request_json` já deve vir SEM
-    CardNumber/SecurityCode. Retorna o id da linha."""
+    CardNumber/SecurityCode/PaymentToken. `origem` = tipo da credencial (migration 105).
+    Retorna o id da linha."""
     import json as _json
     return db.execute_query(
         """INSERT INTO pagamento_cartao
-               (pedido_id, merchant_order_id, valor_original, valor, parcelas,
+               (pedido_id, merchant_order_id, valor_original, valor, parcelas, origem,
                 bandeira, cartao_mascarado, nome_titular, request_json)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-        (pedido_id, merchant_order_id, valor_original, valor, parcelas,
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+        (pedido_id, merchant_order_id, valor_original, valor, parcelas, origem,
          bandeira, cartao_mascarado, nome_titular,
          _json.dumps(request_json, ensure_ascii=False))
     )
@@ -3209,23 +3210,26 @@ def atualizar_tentativa_pagamento_cartao(tentativa_id: int, payment_id: str = No
                                          tid: str = None, authorization_code: str = None,
                                          status_cielo: int = None, return_code: str = None,
                                          return_message: str = None, categoria_erro: str = None,
-                                         response_json: dict = None, bandeira: str = None) -> None:
+                                         response_json: dict = None, bandeira: str = None,
+                                         cartao_mascarado: str = None) -> None:
     """Completa a linha de auditoria com o resultado da chamada à Cielo (aprovado ou negado).
     `return_code`/`return_message` são o dado técnico — nunca exibidos ao cliente, só usados
     aqui e no log. `bandeira` é opcional (Payment.CreditCard.Brand da própria resposta da
     Cielo, já em lowercase) — sobrescreve o palpite pré-envio com a fonte definitiva;
-    `COALESCE` mantém o valor já gravado quando não vier nada aqui (nunca reseta pra NULL)."""
+    `COALESCE` mantém o valor já gravado quando não vier nada aqui (nunca reseta pra NULL).
+    `cartao_mascarado` idem: com o SOP o número só existe na Cielo, que o devolve mascarado."""
     import json as _json
     db.execute_query(
         """UPDATE pagamento_cartao
            SET payment_id = %s, tid = %s, authorization_code = %s, status_cielo = %s,
                return_code = %s, return_message = %s, categoria_erro = %s, response_json = %s,
-               bandeira = COALESCE(%s, bandeira)
+               bandeira = COALESCE(%s, bandeira),
+               cartao_mascarado = COALESCE(%s, cartao_mascarado)
            WHERE id = %s""",
         (payment_id, tid, authorization_code, status_cielo, return_code, return_message,
          categoria_erro,
          _json.dumps(response_json, ensure_ascii=False) if response_json is not None else None,
-         bandeira,
+         bandeira, cartao_mascarado,
          tentativa_id)
     )
 

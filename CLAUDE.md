@@ -21,6 +21,8 @@
 - Produto que virou plano de outro (o antigo 16 "Plano Guiado" → Completo do 12, migration 087) fica em `produtos_redirecionados`: `/pay/<antigo>` redireciona para o plano.
 - Admin: produto → "Planos e entregáveis"; menu geral → "Catálogo de entregáveis" e "Apps das clientes". ROI do produto tem "Vendas por plano"; Financeiro filtra por plano.
 
+**Cartão no site** (Cielo, `docs/CARTAO.md`): o cartão é tokenizado no navegador pelo Silent Order Post — **número e CVV nunca podem passar pelo nosso backend** (PCI); `gerar_cartao` só aceita a `credencial` com o PaymentToken.
+
 Conversões voltam pro Google Ads via Google Sheets (GCLID) — venda do site com o valor real pago, WhatsApp com R$ 10 fixo; mexer em atribuição/GCLID afeta o ROI das campanhas.
 
 **Meta (Instagram)** segue o mesmo caminho (`docs/META_CONVERSOES.md`): o clique fica no pedido (`fbc`), `campanhas.plataforma = 'meta'` diz o canal, a venda vai pela API de Conversões para o dataset da campanha, descoberto pelo token `META_TOKEN_<BM>` nos conjuntos dela, e o investimento entra em `orcamento_campanha`.
@@ -58,4 +60,4 @@ Hooks em `.claude/hooks/` automatizam duas dessas regras: no dev, negam por padr
 
 ## Documentação
 
-`docs/` — `CONTRIBUICAO_WEB.md`, `PLANOS.md` (produto → planos → entregáveis), `APPS.md`, `MUSICA.md`, `META_CONVERSOES.md`, `FLUXO_MENSAGENS.md`, `WEBHOOK_WHATSAPP.md`, `PLAYBOOK_SITE_VENDA_WEB.md`, `INTEGRACAO.md` (gateway WhatsApp Web), `ATENDIMENTO_EMAIL.md` (fila de e-mail, Gmail, DKIM/DMARC), `SEGURANCA*.md`. SSL/certbot: `infra/certbot/README.md`.
+`docs/` — `CARTAO.md` (cartão, Cielo, Silent Order Post), `CONTRIBUICAO_WEB.md`, `PLANOS.md` (produto → planos → entregáveis), `APPS.md`, `MUSICA.md`, `META_CONVERSOES.md`, `FLUXO_MENSAGENS.md`, `WEBHOOK_WHATSAPP.md`, `PLAYBOOK_SITE_VENDA_WEB.md`, `INTEGRACAO.md` (gateway WhatsApp Web), `ATENDIMENTO_EMAIL.md` (fila de e-mail, Gmail, DKIM/DMARC), `SEGURANCA*.md`. SSL/certbot: `infra/certbot/README.md`.

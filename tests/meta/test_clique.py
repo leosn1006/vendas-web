@@ -239,12 +239,15 @@ def checkout_simulado(monkeypatch, banco):
 CORPO = {'produto_id': 1, 'nome': 'Maria', 'email': 'maria@gmail.com', 'whatsapp': '61981163324', 'gclid': '',
          'campaignid': '123', 'utm_source': 'meta', 'fbclid': 'AbC', 'adgroupid': '9'}
 CABECALHOS = {'X-Real-IP': '200.1.2.3', 'User-Agent': 'Mozilla/5.0'}
+# Cartão chega tokenizado pelo Silent Order Post (nunca número/CVV).
+CREDENCIAL_SOP = {'tipo': 'sop', 'payment_token': '0b9f3c1e-2d4a-4f6b-8c7d-9e0f1a2b3c4d', 'bin': '453211'}
 
 
 @pytest.mark.parametrize('funcao', ['gerar_pix', 'gerar_cartao'])
 def test_corpo_captura_clique_ip_e_navegador(banco, checkout_simulado, funcao):
     with _APP.test_request_context('/', headers=CABECALHOS):
-        resposta = getattr(checkout_simulado, funcao)(dict(CORPO), dns_origem='site.com')
+        corpo = {**CORPO, 'credencial': CREDENCIAL_SOP} if funcao == 'gerar_cartao' else dict(CORPO)
+        resposta = getattr(checkout_simulado, funcao)(corpo, dns_origem='site.com')
     p = banco.ler_pedido(resposta['pedido_id'])
     assert fbclid_do_fbc(p['fbc']) == 'AbC' and p['client_ip'] == '200.1.2.3' and p['client_user_agent'] == 'Mozilla/5.0'
     assert banco.ler_campanha('123')['plataforma'] == 'meta' and banco.ler_campanha('123')['venda_web'] == 1

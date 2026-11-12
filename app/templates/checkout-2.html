@@ -588,6 +588,13 @@
                     <label for="selectParcelas">Parcelas</label>
                     <select id="selectParcelas"><option value="1">1x</option></select>
                 </div>
+                <!-- Silent Order Post: cópia no formato que o script da Cielo lê (só dígitos, MM/AAAA,
+                     nome sem acento). Sem `name`: nunca vão no nosso POST. Preenchidos e limpos por
+                     static/js/checkout-cartao.js só durante a tokenização. -->
+                <input type="hidden" id="sopNumero" class="bp-sop-cardnumber">
+                <input type="hidden" id="sopValidade" class="bp-sop-cardexpirationdate">
+                <input type="hidden" id="sopCvv" class="bp-sop-cardcvv">
+                <input type="hidden" id="sopTitular" class="bp-sop-cardholdername">
                 <div class="msg-erro" id="msgErroCartao"></div>
             </div>
             {% endif %}
@@ -698,6 +705,9 @@
 
 </div><!-- /container -->
 
+{% if config_cartao %}
+<script src="{{ url_for('static', filename='js/checkout-cartao.js') }}"></script>
+{% endif %}
 <script
     data-produto-id="{{ produto.id }}"
     data-preco="{{ '%.2f'|format(plano.preco_promocional) }}"
@@ -1171,7 +1181,8 @@
             return null;
         }
         divErro.style.display = 'none';
-        return { cpf, numero_cartao: numero, mes, ano, cvv, titular, bandeira: bandeiraAtual, parcelas };
+        // Número e CVV NÃO vão para o nosso backend: viram PaymentToken no clique (CheckoutCartao).
+        return { cpf, titular, parcelas };
     }
 
     // ── Copiar código PIX ──
@@ -1342,6 +1353,22 @@
         this.disabled = true;
         this.textContent = 'Processando...';
 
+        if (dadosCartao) {
+            // Cartão → PaymentToken direto na Cielo (Silent Order Post), antes de falar com o nosso backend.
+            try {
+                dadosCartao.credencial = await CheckoutCartao.obterCredencial({ produtoId: PRODUTO_ID, bandeira: bandeiraAtual });
+            } catch (e) {
+                console.error('[CHECKOUT] cartão não tokenizado', e && e.detalhe);
+                const divErro = document.getElementById('msgErroCartao');
+                divErro.innerHTML = '<strong></strong>';
+                divErro.firstChild.textContent = (e && e.mensagemCliente) || CheckoutCartao.MSG_INSTABILIDADE;
+                divErro.style.display = 'block';
+                this.disabled = false;
+                this.textContent = TEXTO_BOTAO;
+                return;
+            }
+        }
+
         const bumpIds = bumpIdsSelecionados();
         const itensAntesDoEnvio = itensSelecionados();
         recalcularTotal();
@@ -1372,7 +1399,8 @@
                 window.location.href = MUSICA ? '/musica/p/' + encodeURIComponent(MUSICA) : '/musica/';
                 return;
             }
-            currentPedidoId = data.pedido_id;
+            // Recusa antes de criar/achar o pedido (ex.: credencial inválida) não traz pedido_id: mantém o atual.
+            if (data.pedido_id) currentPedidoId = data.pedido_id;
 
             if (data.erro_validacao) {
                 // Pro motivo 'dominio_inexistente' isso É o primeiro aviso que o cliente vê —

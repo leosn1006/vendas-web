@@ -379,6 +379,24 @@ def cartao_gerar():
     ))
 
 
+@web_bp.post('/api/v1/cartao/sop-token')
+def cartao_sop_token():
+    """AccessToken do Silent Order Post: o navegador usa para mandar o cartão direto à Cielo."""
+    from web.checkout import gerar_access_token_sop
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        produto_id = int(body.get('produto_id') or 0)
+    except (TypeError, ValueError):
+        produto_id = 0
+    ip = (request.headers.get('X-Real-IP') or request.remote_addr or '').strip()  # nginx manda X-Real-IP
+    resultado = gerar_access_token_sop(produto_id, ip)
+    status = resultado.pop('_status', 200)
+    resp = jsonify(resultado)
+    resp.status_code = status
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
+
 @web_bp.get('/api/v1/cartao/parcelas/<int:produto_id>')
 def cartao_parcelas(produto_id):
     from database import get_config_cartao_produto
