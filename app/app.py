@@ -45,6 +45,10 @@ apps_registrar(app)
 from musica import registrar as musica_registrar
 musica_registrar(app)
 
+# SMS (webhook de entrega da Comtele) e link curto /m/<codigo> — ver docs/SMS.md
+from sms import registrar as sms_registrar
+sms_registrar(app)
+
 
 @app.template_filter('brl')
 def formatar_brl(valor):

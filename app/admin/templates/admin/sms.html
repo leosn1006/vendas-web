@@ -1,0 +1,157 @@
+{% extends "admin/base.html" %}
+{% block title %}SMS enviados{% endblock %}
+
+{% macro pct(parte, total) -%}
+{#- SUM do MySQL vem como Decimal: |float antes da conta -#}
+{%- if total %}{{ '%.0f'|format(100.0 * ((parte or 0)|float) / (total|float)) }}%{% else %}—{% endif -%}
+{%- endmacro %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">SMS enviados</h1>
+        <p class="page-subtitle">Lembretes por SMS (Comtele) e se estão valendo a pena: quem recebeu, quem clicou no link e quem pagou depois.</p>
+    </div>
+</div>
+
+<div class="card">
+    <form method="get" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:6px;">
+        <select name="dias">
+            {% for d in periodos %}<option value="{{ d }}" {% if d == dias %}selected{% endif %}>{{ 'Últimas 24 h' if d == 1 else 'Últimos %d dias'|format(d) }}</option>{% endfor %}
+        </select>
+        <select name="produto_id">
+            <option value="">Todos os produtos</option>
+            {% for p in produtos %}<option value="{{ p.id }}" {% if p.id == produto_id %}selected{% endif %}>{{ p.nome }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+    </form>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card blue">
+        <div class="stat-label">Enviados</div>
+        <div class="stat-value">{{ resumo.enviados or 0 }}</div>
+        <div style="color: var(--muted); font-size: 13px;">{{ resumo.pessoas or 0 }} pessoa(s){% if resumo.ignorados_dev %} · {{ resumo.ignorados_dev }} só no log (dev){% endif %}</div>
+    </div>
+    <div class="stat-card green">
+        <div class="stat-label">Entregues</div>
+        <div class="stat-value">{{ resumo.entregues or 0 }}</div>
+        <div style="color: var(--muted); font-size: 13px;">{{ pct(resumo.entregues, resumo.enviados) }} dos enviados{% if resumo.falharam %} · {{ resumo.falharam }} falharam{% endif %}</div>
+    </div>
+    <div class="stat-card yellow">
+        <div class="stat-label">Clicaram</div>
+        <div class="stat-value">{{ resumo.clicaram or 0 }}</div>
+        <div style="color: var(--muted); font-size: 13px;">{{ pct(resumo.clicaram, resumo.pessoas) }} das pessoas (sem robôs)</div>
+    </div>
+    <div class="stat-card green">
+        <div class="stat-label">Pagaram depois</div>
+        <div class="stat-value">{{ resumo.musicas_pagas or 0 }}</div>
+        <div style="color: var(--muted); font-size: 13px;">{{ pct(resumo.musicas_pagas, resumo.musicas) }} das {{ resumo.musicas or 0 }} música(s) com SMS</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-label">Custo estimado</div>
+        <div class="stat-value">{{ custo|brl }}</div>
+        <div style="color: var(--muted); font-size: 13px;">{{ resumo.partes or 0 }} parte(s) × {{ custo_unitario|brl }}</div>
+    </div>
+</div>
+
+{% if comparacao %}
+<div class="card">
+    <h2 style="font-size: 17px; margin: 0 0 6px;">Música: com celular × sem celular</h2>
+    <p style="color: var(--muted); font-size: 13px; margin: 0 0 14px;">Músicas criadas no período que chegaram na prévia. Só quem deixou celular recebe SMS; a diferença na conversão é o melhor sinal de que o SMS ajuda.</p>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Grupo</th><th style="text-align:right;">Músicas</th><th style="text-align:right;">Pagaram</th><th style="text-align:right;">Conversão</th></tr></thead>
+            <tbody>
+                {% for c in comparacao %}
+                <tr>
+                    <td>{{ 'Com celular (recebe SMS)' if c.com_celular else 'Sem celular (só e-mail)' }}</td>
+                    <td style="text-align:right; font-family: var(--mono);">{{ c.musicas }}</td>
+                    <td style="text-align:right; font-family: var(--mono);">{{ c.pagas }}</td>
+                    <td style="text-align:right; font-family: var(--mono);">{{ pct(c.pagas, c.musicas) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2 style="font-size: 17px; margin: 0 0 14px;">Envios</h2>
+    {% if envios %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Quando</th><th>Celular</th><th>Etapa</th><th>Entrega</th><th>Clicou</th><th>Pagou</th><th>Texto</th></tr>
+            </thead>
+            <tbody>
+                {% for e in envios %}
+                <tr>
+                    <td style="font-size: 13px; white-space: nowrap;">{{ e.criado_em.strftime('%d/%m %H:%M') }}<br><span style="color: var(--muted); font-size: 12px;">{{ e.produto or '' }}{% if e.ref_tipo == 'musica' %} · música #{{ e.ref_id }}{% endif %}</span></td>
+                    <td style="font-family: var(--mono); font-size: 13px; white-space: nowrap;">{{ mascarar(e.telefone) }}</td>
+                    <td style="font-size: 13px;">{{ e.etapa or e.origem }}</td>
+                    <td style="font-size: 13px;">
+                        {% if e.status == 'entregue' %}<span class="badge badge-green">entregue</span>
+                        {% elif e.status == 'enviado' %}<span class="badge badge-blue">enviado</span>
+                        {% elif e.status == 'falhou' %}<span class="badge badge-red" title="{{ e.erro or '' }}">falhou</span>
+                        {% elif e.status == 'ignorado_dev' %}<span class="badge badge-yellow">só log (dev)</span>
+                        {% else %}<span class="badge badge-yellow">{{ e.status }}</span>{% endif %}
+                    </td>
+                    <td style="font-size: 13px;">{% if e.cliques_humanos %}✅ {{ e.primeiro_clique_em.strftime('%d/%m %H:%M') if e.primeiro_clique_em else '' }}{% if e.cliques_humanos > 1 %} ({{ e.cliques_humanos }}×){% endif %}{% else %}—{% endif %}</td>
+                    <td style="font-size: 13px;">{% if e.pagou %}💰 {{ e.liberada_em.strftime('%d/%m %H:%M') }}{% else %}—{% endif %}</td>
+                    <td style="font-size: 12px; color: var(--muted); max-width: 360px;">{{ e.texto }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--muted); font-size: 14px; padding: 8px 0 12px;">Nenhum SMS no período.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2 style="font-size: 17px; margin: 0 0 6px;">Acessos ao link curto</h2>
+    <p style="color: var(--muted); font-size: 13px; margin: 0 0 14px;">Cada acesso a <code>/m/…</code>. "Inexistentes" altos ou um IP tentando muitos códigos diferentes indicam alguém chutando links; robôs são as pré-visualizações (WhatsApp, iMessage) e os verificadores de e-mail.</p>
+    {% if acessos_dia %}
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Dia</th><th style="text-align:right;">Total</th><th style="text-align:right;">Pessoas (link válido)</th><th style="text-align:right;">Robôs</th><th style="text-align:right;">Código inexistente</th></tr></thead>
+            <tbody>
+                {% for a in acessos_dia %}
+                <tr>
+                    <td>{{ a.dia.strftime('%d/%m/%Y') }}</td>
+                    <td style="text-align:right; font-family: var(--mono);">{{ a.total }}</td>
+                    <td style="text-align:right; font-family: var(--mono);">{{ a.humanos }}</td>
+                    <td style="text-align:right; font-family: var(--mono);">{{ a.robos }}</td>
+                    <td style="text-align:right; font-family: var(--mono);">{% if a.inexistentes %}<b>{{ a.inexistentes }}</b>{% else %}0{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color: var(--muted); font-size: 14px;">Nenhum acesso no período.</p>
+    {% endif %}
+    {% if ips %}
+    <h3 style="font-size: 15px; margin: 20px 0 10px;">IPs que mais tentaram código inexistente</h3>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>IP</th><th style="text-align:right;">Tentativas</th><th style="text-align:right;">Códigos diferentes</th><th>Último</th><th>Navegador</th></tr></thead>
+            <tbody>
+                {% for i in ips %}
+                <tr>
+                    <td style="font-family: var(--mono); font-size: 13px;">{{ i.ip or '—' }}</td>
+                    <td style="text-align:right; font-family: var(--mono);">{{ i.inexistentes }}</td>
+                    <td style="text-align:right; font-family: var(--mono);">{{ i.codigos }}</td>
+                    <td style="font-size: 13px;">{{ i.ultimo.strftime('%d/%m %H:%M') }}</td>
+                    <td style="font-size: 12px; color: var(--muted); max-width: 320px;">{{ (i.user_agent or '')[:120] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

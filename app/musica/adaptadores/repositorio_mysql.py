@@ -213,9 +213,10 @@ class RepositorioMysql:
         música nem nas últimas 24 h. "Mesmo e-mail" = o e-mail como gravado: criar_musica o grava já em
         regras.chave_email (sem espaços, minúsculas) — e assim usa o índice idx_musicas_email.
         `em_checkout`: o checkout DESTA música abriu ou há pedido dela esperando pagamento (1002);
-        `pedido_aberto_id`/`_plano`: o pedido com o PIX ainda válido e o plano (fora o padrão), para o link reabri-lo."""
+        `pedido_aberto_id`/`_plano`: o pedido com o PIX ainda válido e o plano (fora o padrão), para o link reabri-lo.
+        `whatsapp`: o celular do SMS que acompanha o lembrete (docs/SMS.md)."""
         linhas = db.execute_query(
-            """SELECT m.id, m.token, m.produto_id, m.dominio, m.status, m.respostas, m.email, m.criado_em,
+            """SELECT m.id, m.token, m.produto_id, m.dominio, m.status, m.respostas, m.email, m.whatsapp, m.criado_em,
                       m.liberada_em, m.lembrete_etapa,
                       (m.checkout_aberto_em IS NOT NULL OR EXISTS (
                            SELECT 1 FROM musica_pedidos mp JOIN pedidos p ON p.id = mp.pedido_id

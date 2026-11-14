@@ -77,7 +77,10 @@ Regras em `regras.escolher_lembretes` / `proximo_lembrete`; textos em `mensagens
   rodapé (`/musica/p/<token>/sem-lembretes`: o link só pergunta, o botão confirma — leitores de e-mail abrem links
   sozinhos). O pedido de saída vale para a pessoa por 90 dias (`musica_lembretes_saida`).
 - Pedido de música **não** recebe o e-mail genérico de PIX não pago (`fluxo_followup_web`): a etapa `checkout` cuida.
-- Só e-mail por enquanto (falta um template de WhatsApp aprovado para isso). De `musicas` (095) continua valendo só
+- **SMS junto (desde 14/11/2026, `docs/SMS.md`):** cada e-mail das etapas `previa` e `checkout` também sai por SMS
+  para o celular do quiz/checkout. Texto sem acento em 1 parte, com link curto `/m/<codigo>` para o mesmo destino
+  do e-mail. A etapa `letra` não recebe. Resultado em Admin → SMS enviados.
+- WhatsApp não (falta um template aprovado, e follow-up pelo WhatsApp arrisca a BM). De `musicas` (095) continua valendo só
   `lembrete_etapa` (a marca acima); `lembrete_desde`, `lembretes_enviados`, `lembrete_ultimo_em` e `sem_lembretes`
   ficaram sem uso.
 

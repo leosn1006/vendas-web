@@ -13,7 +13,7 @@ celery_app = Celery(
     "vendas",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=["tasks", "musica.tarefas"]  # era "app.tasks", agora só "tasks"; musica.tarefas = produto Música
+    include=["tasks", "musica.tarefas", "sms.tarefas"]  # era "app.tasks", agora só "tasks"; musica.tarefas = produto Música; sms.tarefas = SMS (docs/SMS.md)
 )
 
 celery_app.conf.beat_schedule = {
@@ -169,6 +169,17 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute='3-59/10'),  # :03, :13, :23...
         'options': {'queue': 'normal'},
     },
+    # Link curto: apaga os acessos (IP) com mais de 90 dias (docs/SMS.md).
+    'sms-manutencao': {
+        'task': 'sms.manutencao',
+        'schedule': crontab(minute='7,37'),
+        'options': {'queue': 'baixa'},
+    },
+    'sms-limpeza': {
+        'task': 'sms.limpeza',
+        'schedule': crontab(hour=4, minute=23),
+        'options': {'queue': 'baixa'},
+    },
     'musica-limpeza': {
         'task': 'musica.limpeza',
         'schedule': crontab(hour=4, minute=13),
@@ -262,5 +273,9 @@ celery_app.conf.update(
         "musica.lembretes":                              {"queue": "normal"},
         "musica.fazer_video":                            {"queue": "baixa"},
         "musica.limpeza":                                {"queue": "baixa"},
+        # SMS (docs/SMS.md)
+        "sms.enviar":                                    {"queue": "normal"},
+        "sms.limpeza":                                   {"queue": "baixa"},
+        "sms.manutencao":                                {"queue": "baixa"},
     },
 )

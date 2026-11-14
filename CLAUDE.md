@@ -31,6 +31,10 @@ Conversões voltam pro Google Ads via Google Sheets (GCLID) — venda do site co
 
 **Contribuição no site** (`web/contribuicao.py`, `docs/CONTRIBUICAO_WEB.md`): A/B na landing do WhatsApp (começa no Tempero) — parte dos cliques recebe o livro na Estante 2 antes de pagar (estados 1008/1009, áudio da persona; e-mail opcional, na Estante, desde 14/11/2026) e paga a "contribuição" pelo checkout v2 (`?ref=`), um pedido web normal. Configuração em `contribuicao_config` (`percentual_estante = 0` desliga); resultado na Analytics Web do produto (o ROI só mostra o status).
 
+**SMS** (`app/sms/`, `docs/SMS.md`): genérico, pela Comtele; texto sem acento em 1 parte (≤ 160) com link curto
+`/m/<codigo>` (`app/links_curtos.py`, serve qualquer canal). Primeiro uso: lembretes da Música (etapas prévia e
+checkout, junto com o e-mail). No dev só envia para `SMS_DEV_PERMITIDOS`. Resultado em Admin → SMS enviados.
+
 **Atendimento por e-mail:** a caixa `admin@lsnlivros.com.br` é lida a cada 10 min (`app/fluxos/fluxo_email_conversas.py`); cada e-mail é ligado ao pedido e ganha resposta pronta na fila `/admin/atendimento-email`, que um humano aprova. Detalhes em `docs/ATENDIMENTO_EMAIL.md`.
 
 ## Stack

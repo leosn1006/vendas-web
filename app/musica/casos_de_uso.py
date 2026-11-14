@@ -683,16 +683,35 @@ def enviar_lembretes(s) -> int:
         if regras.ORDEM_ETAPAS[etapa] > regras.ORDEM_ETAPAS.get(musica.get('lembrete_etapa'), -1):
             s.repositorio.atualizar(musica['id'], lembrete_etapa=etapa)   # recebeu lembrete nesta etapa: não volta
         respostas = musica['respostas']
-        assunto, corpo = mensagens.lembrete(etapa, numero, regras.primeiro_nome(respostas.get('de')),
-                                            regras.para_quem(respostas),
-                                            links.checkout(musica) if etapa == 'checkout' else links.previa(musica),
+        de = regras.primeiro_nome(respostas.get('de'))
+        destino = links.checkout(musica) if etapa == 'checkout' else links.previa(musica)
+        assunto, corpo = mensagens.lembrete(etapa, numero, de, regras.para_quem(respostas), destino,
                                             links.sem_lembretes(musica))
         try:
             s.notificador.email(musica['produto_id'], musica['email'], assunto, corpo)
             enviados += 1
         except Exception:
             logger.exception(f"[MUSICA] Lembrete {numero} ({etapa}) da música #{musica['id']} falhou")
+        _lembrete_sms(s, musica, etapa, numero, de, destino)
     return enviados
+
+
+ETAPAS_SMS = ('previa', 'checkout')   # quem já ouviu a prévia e não pagou (pedido do Bruno, 14/11/2026)
+
+
+def _lembrete_sms(s, musica, etapa, numero, de, destino):
+    """O SMS que acompanha o e-mail do lembrete (docs/SMS.md): só nas etapas prévia e checkout e com celular
+    brasileiro (o WhatsApp do quiz ou do checkout). Uma falha aqui nunca afeta o e-mail."""
+    telefone = regras.celular_br(musica.get('whatsapp'))
+    if etapa not in ETAPAS_SMS or not telefone:
+        return
+    try:
+        marca = (s.repositorio.remetente_do_produto(musica['produto_id']) or {}).get('email_nome_remetente')
+        s.notificador.sms(musica['produto_id'], telefone,
+                          lambda link: mensagens.lembrete_sms(de, musica['respostas'], link, marca, numero),
+                          destino, links.base(musica.get('dominio')), f'{etapa} {numero}', musica['id'])
+    except Exception:
+        logger.exception(f"[MUSICA] SMS do lembrete {numero} ({etapa}) da música #{musica['id']} falhou")
 
 
 def checkout_aberto(s, token) -> None:

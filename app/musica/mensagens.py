@@ -100,6 +100,63 @@ def lembrete(etapa, numero, de, para, link, link_sair):
     return assunto.format(de=de or '', para=para or 'quem você ama'), corpo
 
 
+MARCA_SMS = 'Cancao de Presente'
+
+
+def _sms_frase(numero, inicio, musica, para_mim):
+    """O corpo de cada um dos 3 lembretes (1º avisa, 2º emociona, 3º último empurrão, sem urgência falsa)."""
+    if numero == 1:
+        return f'{_maiuscula(inicio + musica)} ficou pronta e esta guardada pra voce. Ouca de novo e finalize:'
+    if numero == 2:
+        final = 'pra ouvir inteira' if para_mim else 'pra emocionar quem voce ama'
+        return f'{_maiuscula(inicio + musica)} continua guardada. Falta so finalizar {final}:'
+    return f'{_maiuscula(inicio)}{"ainda" if inicio else "Ainda"} da tempo! {_maiuscula(musica)} esta esperando por voce. Finalize aqui:'
+
+
+def lembrete_sms(de, respostas, link, marca=None, numero=1):
+    """SMS que acompanha o lembrete `numero` (1, 2 ou 3) das etapas prévia e checkout (14/11/2026; o 1º texto veio do
+    Bruno). A marca vem primeiro (o remetente é um número curto compartilhado com outras empresas) e o link fica
+    sozinho no fim. Sem acento e com no máximo 160 caracteres (1 parte, docs/SMS.md): nomes longos são encurtados,
+    nunca vira 2 SMS. "a musica da Juliana" / "do Pedro" / "de Ana, Bia e Carla" (grupo ou outra pessoa) /
+    "a sua musica" (para mim)."""
+    from musica.dominio import quiz, regras
+    from sms.texto import LIMITE, sem_acento
+
+    respostas = respostas or {}
+    relacao = respostas.get('para_quem') or ''
+    genero = next((r['genero'] for r in quiz.RELACOES if r['valor'] == relacao), 'x')
+    marca = sem_acento(marca or MARCA_SMS)
+    nome, para = sem_acento(de or ''), sem_acento(regras.para_quem(respostas))
+    numero = numero if numero in (1, 2, 3) else 1
+
+    def montar(nome, para):
+        if relacao == quiz.PARA_MIM:
+            musica = 'a sua musica'
+        elif not para:
+            musica = 'a musica'
+        else:
+            musica = f"a musica {'da' if genero == 'f' else 'do' if genero == 'm' else 'de'} {para}"
+        frase = _sms_frase(numero, f'{nome}, ' if nome else '', musica, relacao == quiz.PARA_MIM)
+        return f"{f'{marca}: ' if marca else ''}{frase} {link}"
+
+    texto = montar(nome, para)
+    # Não cabe: quem recebe vira só o primeiro nome (grupo "Ana, Bia e Carla" → "Ana"); depois sai o nome de quem
+    # fez; depois a marca longa (nome do remetente do produto + domínio comprido); por último, corta quem recebe.
+    if len(texto) > LIMITE:
+        para = para.split(',')[0].split(' e ')[0].split(' ')[0].strip()
+        texto = montar(nome, para)
+    if len(texto) > LIMITE:
+        nome = ''
+        texto = montar(nome, para)
+    if len(texto) > LIMITE:
+        marca = ''
+        texto = montar(nome, para)
+    if len(texto) > LIMITE:
+        para = para[:max(0, len(para) - (len(texto) - LIMITE))]
+        texto = montar(nome, para)
+    return texto
+
+
 def presente_whatsapp_nao_chegou(nome_quem_recebe, link):
     """Para quem comprou: o WhatsApp do presente não chegou (número errado, sem WhatsApp, bloqueio da Meta)."""
     e = html.escape

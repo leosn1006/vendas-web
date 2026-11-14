@@ -234,6 +234,7 @@ function htmlContato(){
       <label for="whatsapp">Seu WhatsApp <span class="suave" style="font-weight:500">(se quiser)</span></label>
       <input class="campo" id="whatsapp" type="tel" inputmode="tel" autocomplete="tel-national" enterkeyhint="go" maxlength="20" placeholder="(11) 91234-5678" value="${esc(contato.whatsapp)}">
       <p class="ajuda" style="font-size:.95rem;margin-top:6px">Já vai preenchido no pagamento. Se você comprar, avisamos por lá quando a música completa for liberada.</p>
+      <p class="ajuda" style="font-size:.95rem;margin-top:4px"><i class="ti ti-message" aria-hidden="true"></i> Vamos te avisar por SMS quando sua música estiver pronta.</p>
       <p class="privacidade"><i class="ti ti-lock" aria-hidden="true"></i><span>Usamos só para entregar a sua música. Nada de spam. Veja a <a href="{{ url_for('musica.privacidade') }}" target="_blank" rel="noopener">política de privacidade</a>.</span></p>
       <div class="acoes"><button class="botao" id="avancar" type="button">Criar a letra da música</button></div>`;
 }

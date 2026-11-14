@@ -78,6 +78,16 @@ class Notificador:
         from whatsapp import enviar_mensagem
         return enviar_mensagem({'phone_number_id': self._numero(produto_id), 'contact_phone': telefone}, texto)
 
+    def sms(self, produto_id, telefone, montar_texto, url_destino, dominio_base, etapa, musica_id):
+        """SMS pelo módulo do sistema (Comtele; trava do dev e registro em sms_envios ficam lá — docs/SMS.md)."""
+        from musica import config as cfg
+        from sms import servico
+        # O intervalo mínimo dos e-mails (2 h) vale também por CELULAR: duas músicas com e-mails diferentes e o mesmo
+        # número não somam SMS.
+        return servico.enviar(produto_id, telefone, montar_texto, url_destino, dominio_base, 'musica_lembrete',
+                              etapa=etapa, ref_tipo='musica', ref_id=musica_id,
+                              minimo_minutos=cfg.LEMBRETES_INTERVALO_EMAIL)
+
     def equipe(self, mensagem):
         logger.error(f'[MUSICA][ALERTA] {mensagem}')
         try:

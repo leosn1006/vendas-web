@@ -5,7 +5,11 @@ from musica import config
 def base(dominio: str | None) -> str:
     if config.URL_PUBLICA:
         return config.URL_PUBLICA
-    return f'https://{dominio}' if dominio else ''
+    if not dominio:
+        return ''
+    # O dev (localhost) não tem https: o link do e-mail/SMS de teste não abriria.
+    local = dominio.split(':')[0] in ('localhost', '127.0.0.1')
+    return f"{'http' if local else 'https'}://{dominio}"
 
 
 def previa(musica: dict) -> str:

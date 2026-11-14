@@ -131,4 +131,9 @@ class Notificador(Protocol):
     def whatsapp_texto(self, telefone: str, texto: str, produto_id: int | None = None) -> str | None:
         """Texto livre (só dentro da janela de 24 h aberta pela pessoa, ex.: depois de tocar num botão)."""
 
+    def sms(self, produto_id: int, telefone: str, montar_texto, url_destino: str, dominio_base: str, etapa: str,
+            musica_id: int) -> int | None:
+        """SMS pelo módulo do sistema (sms.servico): `montar_texto(link_curto)` devolve o texto com o link. Devolve o
+        id do envio (None = não sai: SMS desligado, número inválido)."""
+
     def equipe(self, mensagem: str) -> None: ...

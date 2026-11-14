@@ -239,7 +239,8 @@ class AgendaMemoria:
 
 class NotificadorMemoria:
     def __init__(self):
-        self.emails, self.whatsapps, self.alertas = [], [], []
+        self.emails, self.whatsapps, self.alertas, self.smss = [], [], [], []
+        self.falhar_sms = False
 
     def email(self, produto_id, destino, assunto, html, cc=None):
         self.emails.append({'produto_id': produto_id, 'destino': destino, 'assunto': assunto, 'html': html, 'cc': cc})
@@ -252,6 +253,13 @@ class NotificadorMemoria:
     def whatsapp_texto(self, telefone, texto, produto_id=None):
         self.whatsapps.append((telefone, 'texto', [texto], None))
         return f'wamid-{len(self.whatsapps)}'
+
+    def sms(self, produto_id, telefone, montar_texto, url_destino, dominio_base, etapa, musica_id):
+        if self.falhar_sms:
+            raise RuntimeError('Comtele fora')
+        self.smss.append({'telefone': telefone, 'texto': montar_texto('lsnlivros.com.br/m/Ab3dEf9'),
+                          'destino': url_destino, 'etapa': etapa, 'musica_id': musica_id})
+        return len(self.smss)
 
     def equipe(self, mensagem):
         self.alertas.append(mensagem)
