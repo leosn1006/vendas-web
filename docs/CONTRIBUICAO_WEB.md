@@ -77,7 +77,8 @@ Para um produto novo:
 
 ## Acompanhamento
 
-No admin, em **ROI do produto**, o card **"Teste: contribuição no site × WhatsApp"** mostra, por braço:
+No admin, na **Analytics Web** do produto, o card **"Teste: contribuição no site × WhatsApp"** mostra, por braço (o
+ROI do produto mostra só se o teste está ligado e o link para ele):
 - cliques;
 - funil: nome → ouviu o áudio → e-mail → estante → áudio 2 → checkout;
 - pagos, receita e **receita por clique**, que é a métrica do teste.

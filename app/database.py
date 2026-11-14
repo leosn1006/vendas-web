@@ -2656,32 +2656,56 @@ def desfazer_envio_email(tipo: str, pedido_id: int) -> None:
 
 
 def busca_teste_contribuicao(produto_id: int, data_ini, data_fim) -> list:
-    """Resultado do A/B da contribuição (admin, ROI do produto): uma linha por braço com o funil e a receita dos
+    """Resultado do A/B da contribuição (admin, Analytics Web do produto): uma linha por braço com o funil e a receita dos
     cliques do período (contribuicao_pedidos.criado_em). Os cliques de QA/piloto (?contrib=, teste=1) vêm em linhas
     separadas (`teste` = True), depois das do A/B: acompanham o piloto sem entrar no resultado.
 
     Pago: braço estante = pedido 0/1000 do produto vinculado à entrega (checkout ?ref=) ou com o mesmo e-mail depois
     do clique; braço wpp = o próprio lead em estado 0 (comprovante aceito pela IA, não dinheiro recebido).
     Cada pagamento conta UMA vez por braço: a mesma cliente com duas entregas (celular e computador) e um pagamento
-    só não vira duas vendas. Por isso a soma é feita aqui, não no SQL."""
+    só não vira duas vendas. Por isso a soma é feita aqui, não no SQL.
+
+    Desempenho: o pagamento do braço estante sai de UMA consulta à parte, com duas buscas em UNION (pelo vínculo e
+    pelo e-mail), cada uma no seu índice. Com as duas num OR dentro de uma subconsulta por clique, o MySQL varria os
+    pedidos pagos do produto para cada clique (293 cliques × 9.341 pagos numa semana do Tempero → até 40 s, acima
+    do timeout de 30 s do gunicorn)."""
     linhas = db.execute_query(
-        """SELECT cp.braco, cp.teste, cp.cliques, cp.nome_em, cp.audio1_play_em, cp.audio1_fim_em, cp.email_em, cp.estante_em,
-                  cp.audio2_play_em, cp.checkout_em,
+        """SELECT cp.pedido_id, cp.braco, cp.teste, cp.cliques, cp.nome_em, cp.audio1_play_em, cp.audio1_fim_em,
+                  cp.email_em, cp.estante_em, cp.audio2_play_em, cp.checkout_em,
                   IF(cp.braco = 'wpp', p.data_pedido, NULL)       AS data_pedido,
                   IF(cp.braco = 'wpp', p.data_envio_pedido, NULL) AS data_envio_pedido,
-                  CASE WHEN cp.braco = 'wpp' THEN IF(p.estado_id = 0, p.id, NULL)
-                       ELSE (SELECT pg.id FROM pedidos pg
-                             WHERE pg.produto_id = cp.produto_id AND pg.estado_id IN (0, 1000) AND pg.id <> p.id
-                               AND (pg.id IN (SELECT pv.pedido_id_adquirido FROM pedidos_vinculados pv
-                                              WHERE pv.pedido_id_origem = cp.pedido_id)
-                                    OR (COALESCE(p.email, '') <> '' AND pg.email = p.email
-                                        AND pg.data_pagamento >= cp.criado_em))
-                             ORDER BY pg.id LIMIT 1)
-                  END AS pago_id
+                  IF(cp.braco = 'wpp' AND p.estado_id = 0, p.id, NULL) AS pago_id
            FROM contribuicao_pedidos cp
            JOIN pedidos p ON p.id = cp.pedido_id
            WHERE cp.produto_id = %s AND cp.criado_em BETWEEN %s AND %s""",
         (produto_id, data_ini, data_fim), fetch_all=True) or []
+    # Braço estante: o 1º pedido pago (menor id) entre os vinculados à entrega e os do mesmo e-mail pagos depois do
+    # clique — a mesma regra de antes, agora com cada busca no seu índice (pedidos_vinculados pela origem;
+    # idx_pedidos_email_estado pelo e-mail).
+    pagos_estante = {}
+    if any(l['braco'] == 'estante' for l in linhas):
+        for r in db.execute_query(
+                """SELECT origem, MIN(pago_id) AS pago_id FROM (
+                   SELECT cp.pedido_id AS origem, pg.id AS pago_id
+                   FROM contribuicao_pedidos cp
+                   JOIN pedidos_vinculados pv ON pv.pedido_id_origem = cp.pedido_id
+                   JOIN pedidos pg ON pg.id = pv.pedido_id_adquirido
+                   WHERE cp.produto_id = %s AND cp.criado_em BETWEEN %s AND %s AND cp.braco = 'estante'
+                     AND pg.produto_id = cp.produto_id AND pg.estado_id IN (0, 1000) AND pg.id <> cp.pedido_id
+                   UNION ALL
+                   SELECT cp.pedido_id, pg.id
+                   FROM contribuicao_pedidos cp
+                   JOIN pedidos p ON p.id = cp.pedido_id
+                   JOIN pedidos pg ON pg.email = p.email AND pg.estado_id IN (0, 1000)
+                   WHERE cp.produto_id = %s AND cp.criado_em BETWEEN %s AND %s AND cp.braco = 'estante'
+                     AND COALESCE(p.email, '') <> '' AND pg.produto_id = cp.produto_id AND pg.id <> p.id
+                     AND pg.data_pagamento >= cp.criado_em
+                   ) x GROUP BY origem""",
+                (produto_id, data_ini, data_fim, produto_id, data_ini, data_fim), fetch_all=True) or []:
+            pagos_estante[r['origem']] = r['pago_id']
+        for l in linhas:
+            if l['braco'] == 'estante':
+                l['pago_id'] = pagos_estante.get(l['pedido_id'])
     marcos = {'nome': 'nome_em', 'audio1': 'audio1_play_em', 'audio1_fim': 'audio1_fim_em', 'email': 'email_em',
               'estante': 'estante_em', 'audio2': 'audio2_play_em', 'checkout': 'checkout_em',
               'conversas': 'data_pedido', 'receberam_link': 'data_envio_pedido'}

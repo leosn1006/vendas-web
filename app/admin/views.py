@@ -2745,6 +2745,15 @@ def analytics_web_produto(produto_id):
         logger.error(f"[ADMIN] ❌ Erro no teste A/B das landings produto #{produto_id}: {e}")
         ab_landings, ab_desde = [], None
 
+    # A/B da contribuição no site (docs/CONTRIBUICAO_WEB.md): funil e receita por braço dos cliques do período.
+    try:
+        from database import busca_teste_contribuicao, get_contribuicao_config
+        config_contribuicao = get_contribuicao_config(produto_id)
+        teste_contribuicao = busca_teste_contribuicao(produto_id, data_ini, data_fim) if config_contribuicao else []
+    except Exception as e:
+        logger.error(f"[ADMIN] ❌ Erro no teste de contribuição do produto #{produto_id}: {e}")
+        config_contribuicao, teste_contribuicao = None, []
+
     conv_pedidos_pagos = 0.0
     conv_landing_checkout = 0.0
     conv_checkout_pedido = 0.0
@@ -2771,6 +2780,8 @@ def analytics_web_produto(produto_id):
         quizzes               = quizzes,
         ab_landings           = ab_landings,
         ab_desde              = ab_desde,
+        config_contribuicao   = config_contribuicao,
+        teste_contribuicao    = teste_contribuicao,
         cliques_google_ads    = cliques_google_ads,
         conv_landing_checkout = conv_landing_checkout,
         conv_checkout_pedido  = conv_checkout_pedido,
@@ -3274,17 +3285,17 @@ def roi_produto(produto_id):
         logger.error(f"[ADMIN] ❌ Erro nas vendas por plano do produto #{produto_id}: {e}")
         vendas_planos = []
 
-    # A/B da contribuição no site (docs/CONTRIBUICAO_WEB.md): funil e receita por braço dos cliques do período.
+    # A/B da contribuição no site: aqui só o status (leitura de 1 linha) e o link; o resultado fica na Analytics Web,
+    # para o ROI, aberto várias vezes por dia, não pagar a análise do teste.
     try:
-        from database import busca_teste_contribuicao, get_contribuicao_config
+        from database import get_contribuicao_config
         config_contribuicao = get_contribuicao_config(produto_id)
-        teste_contribuicao = busca_teste_contribuicao(produto_id, data_ini, data_fim) if config_contribuicao else []
     except Exception as e:
-        logger.error(f"[ADMIN] ❌ Erro no teste de contribuição do produto #{produto_id}: {e}")
-        config_contribuicao, teste_contribuicao = None, []
+        logger.error(f"[ADMIN] ❌ Erro na configuração da contribuição do produto #{produto_id}: {e}")
+        config_contribuicao = None
 
     return render_template('admin/roi_produto.html',
-        produto=produto, rows=rows, vendas_planos=vendas_planos, teste_contribuicao=teste_contribuicao,
+        produto=produto, rows=rows, vendas_planos=vendas_planos,
         config_contribuicao=config_contribuicao,
         roi_real=roi_real, roi_real_erro=roi_real_erro,
         roi_real_web=roi_real_web, roi_real_web_erro=roi_real_web_erro,
