@@ -1,6 +1,7 @@
 {# "Guarde seu livro" (web/estante_acesso.py): para ela não perder o livro se fechar a aba e o e-mail não chegar.
    Ações em vez de instrução (quem já perdeu a aba não lê o que está nela): baixar, mandar o link para o próprio
-   WhatsApp ("(Você)", o "Conversar comigo") e ver/reenviar o e-mail. Azul e contorno: o verde cheio da página é só
+   WhatsApp ("(Você)", o "Conversar comigo") e ver/reenviar o e-mail — ou, na entrega da contribuição sem e-mail,
+   informar um (opcional, uma vez só). Azul e contorno: o verde cheio da página é só
    da contribuição. #}
 <style>
     .guardar { background: #fff; color: #1a1a2e; border-radius: 18px; padding: 18px 16px; margin-top: 26px;
@@ -19,6 +20,11 @@
     .guardar-reenviar:disabled { opacity: .55; cursor: default; }
     .guardar-msg { display: block; margin-top: 8px; font-size: 13px; color: #3c5a48; }
     .guardar-msg.erro { color: #b42318; }
+    .guardar-msg[hidden] { display: none; }
+    .guardar-input { width: 100%; margin-top: 8px; font: inherit; font-size: 17px; padding: 12px; border-radius: 10px;
+        border: 2px solid #c9d2e0; color: #1a1a2e; background: #fff; }
+    .guardar-input:focus { outline: none; border-color: #1967D2; }
+    .guardar-msg a { color: inherit; font-weight: 700; }
 </style>
 
 <section class="guardar" id="guardar">
@@ -42,6 +48,14 @@
         <br><button type="button" class="guardar-reenviar" id="guardarReenviar">Reenviar o e-mail</button>
         <span class="guardar-msg" id="guardarMsg" hidden></span>
     </div>
+    {% elif guardar.pedir_email %}
+    <form class="guardar-email" id="guardarFormEmail" novalidate>
+        <label for="guardarEmail">📧 Quer receber o link no seu e-mail? <span style="color:#5f6b7a">(opcional)</span></label>
+        <input class="guardar-input" id="guardarEmail" type="email" inputmode="email" autocomplete="email"
+               autocapitalize="off" spellcheck="false" placeholder="seuemail@gmail.com">
+        <button type="submit" class="guardar-reenviar" id="guardarEnviarEmail">Receber no meu e-mail</button>
+        <span class="guardar-msg" id="guardarMsgEmail" hidden></span>
+    </form>
     {% endif %}
 
     <p class="guardar-dica" style="margin-top:14px">⭐ Ou salve esta página nos favoritos do navegador.</p>
@@ -55,6 +69,47 @@
         var link = ev.target.closest && ev.target.closest('a[download]');
         if (link && iphone) document.getElementById('guardarDicaIphone').hidden = false;
     });
+
+    // E-mail opcional (entrega da contribuição sem e-mail): grava uma vez e manda o link.
+    var formEmail = document.getElementById('guardarFormEmail');
+    if (formEmail) {
+        var campo = document.getElementById('guardarEmail'), enviar = document.getElementById('guardarEnviarEmail');
+        var aviso = document.getElementById('guardarMsgEmail');
+        var avisar = function (texto, erro) { aviso.textContent = texto; aviso.className = 'guardar-msg' + (erro ? ' erro' : ''); aviso.hidden = false; };
+        formEmail.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            var email = campo.value.trim();
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { avisar('Confere o e-mail? Ele precisa ter @ e terminar com .com ou .com.br', true); return; }
+            enviar.disabled = true; enviar.textContent = 'Enviando…';
+            fetch('/api/v1/estante/{{ guid }}/email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) })
+                .then(function (r) { return r.json().then(function (j) { return { status: r.status, j: j }; }); })
+                .then(function (res) {
+                    if (res.status === 200) {
+                        campo.hidden = true; enviar.hidden = true;
+                        avisar(res.j.enviado
+                            ? '✓ Prontinho! Mandamos o link para ' + res.j.email + '. Se não achar, olhe em Promoções ou Spam.'
+                            : '✓ Guardamos o seu e-mail (' + res.j.email + '). O link pode demorar um pouco; enquanto isso, use os botões aqui em cima.', false);
+                        return;
+                    }
+                    enviar.disabled = false; enviar.textContent = 'Receber no meu e-mail';
+                    if (res.j && res.j.erro === 'email' && res.j.sugestao) {
+                        var usuario = email.split('@')[0], link = document.createElement('a');
+                        link.href = '#'; link.textContent = usuario + '@' + res.j.sugestao;
+                        link.addEventListener('click', function (e) { e.preventDefault(); campo.value = usuario + '@' + res.j.sugestao; aviso.hidden = true; });
+                        avisar('Você quis dizer ', true); aviso.appendChild(link); aviso.appendChild(document.createTextNode('?'));
+                    } else if (res.j && res.j.erro === 'email') {
+                        avisar('Esse e-mail não parece certo. Confere pra mim?', true);
+                    } else { avisar('Não consegui guardar agora. Tenta de novo mais tarde, por favor.', true); }
+                })
+                .catch(function () {
+                    enviar.disabled = false; enviar.textContent = 'Receber no meu e-mail';
+                    avisar('Sem conexão agora. Tenta de novo, por favor.', true);
+                });
+        });
+        window.addEventListener('pageshow', function (ev) {
+            if (ev.persisted && enviar.textContent === 'Enviando…') { enviar.disabled = false; enviar.textContent = 'Receber no meu e-mail'; }
+        });
+    }
 
     var btn = document.getElementById('guardarReenviar');
     if (!btn) return;

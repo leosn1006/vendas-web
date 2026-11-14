@@ -3,7 +3,10 @@
    DENTRO da página (nada abre em janela nova: bloqueador de popup não pega). Passos:
      1. "Como posso te chamar?" — o toque em Continuar também libera o som do áudio 1;
      2. tela de chegada: áudio da persona com o livro "sendo separado" (barra e checklist seguem o áudio);
-     3. depois de 15 s (ou no fim do áudio): e-mail obrigatório + "Abrir meu livro" → Estante 2.
+     3. depois de 15 s (ou no fim do áudio): "Abrir meu livro" → Estante 2. Sem e-mail desde 14/11/2026 (a
+        obrigatoriedade derrubava metade de quem já tinha dado o nome); ele é opcional, na Estante.
+   Celular compartilhado: quem digita o nome de uma entrega que este navegador já recebeu vai direto para a Estante
+   dela (/nome devolve a url); outro nome segue com o pedido novo.
    Se o servidor falhar ao criar o pedido, cai no fluxo do WhatsApp de sempre. Contexto: web/contribuicao.py. #}
 <style>
     .ctb-camada { position: fixed; inset: 0; z-index: 9999; background: #0c0a09; color: #f5f5f4; overflow-y: auto;
@@ -27,8 +30,6 @@
     .ctb-btn.pulsando { animation: ctbPulso 1.4s ease-in-out infinite; }
     @keyframes ctbPulso { 0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,.6); } 50% { box-shadow: 0 0 0 14px rgba(16,185,129,0); } }
     .ctb-erro { color: #fca5a5; font-size: 15px; margin-top: 8px; }
-    .ctb-dica { color: #fcd34d; font-size: 15px; margin-top: 8px; }
-    .ctb-dica a { color: #fcd34d; font-weight: 700; }
     .ctb-falando { font-size: 14px; color: #10b981; font-weight: 700; }
     .ctb-player { display: flex; align-items: center; gap: 12px; background: #1c1917; border-radius: 999px; padding: 8px 16px 8px 8px; }
     .ctb-play { flex: 0 0 auto; width: 52px; height: 52px; border-radius: 50%; border: 0; background: #10b981; color: #fff;
@@ -56,7 +57,6 @@
     .ctb-prog-txt { font-size: 13px; color: #57534e; margin-top: 6px; }
     .ctb-entrega { margin-top: 18px; }
     .ctb-entrega[hidden] { display: none; }
-    .ctb-consent { font-size: 13px; color: #a8a29e; margin-top: 8px; }
     .ctb-preco { font-size: 14px; color: #a8a29e; text-align: center; margin-top: 12px; }
     @media (prefers-reduced-motion: reduce) { .ctb-btn.pulsando { animation: none; } }
 </style>
@@ -81,7 +81,7 @@
             </form>
         </div>
 
-        {# Passo 2: áudio + livro chegando + e-mail #}
+        {# Passo 2: áudio + livro chegando + botão do livro #}
         <div id="ctbPassoChegada" hidden>
             <div class="ctb-falando">🎙️ <span id="ctbFalando">{{ contribuicao.persona_nome }} está falando com você…</span></div>
             <div class="ctb-player" style="margin-top:10px">
@@ -108,15 +108,9 @@
                 </div>
             </div>
 
-            <form class="ctb-entrega" id="ctbFormEmail" novalidate hidden>
-                <div class="ctb-balao" style="font-size:17px">Pra você não perder seu livro, me diz seu e-mail que eu te mando o link 💛</div>
-                <label class="ctb-label" for="ctbEmail">Seu e-mail</label>
-                <input class="ctb-input" id="ctbEmail" name="email" type="email" inputmode="email" autocomplete="email"
-                       autocapitalize="off" spellcheck="false" placeholder="seuemail@gmail.com" required>
-                <div class="ctb-dica" id="ctbDica" hidden></div>
-                <div class="ctb-erro" id="ctbErroEmail" hidden></div>
+            <form class="ctb-entrega" id="ctbFormAbrir" novalidate hidden>
+                <div class="ctb-erro" id="ctbErroAbrir" hidden></div>
                 <button class="ctb-btn" id="ctbAbrir" type="submit">📖 Abrir meu livro agora</button>
-                <p class="ctb-consent">Vou te mandar o link do livro e no máximo 2 lembretes.</p>
                 <p class="ctb-preco">Você recebe agora e, se gostar, contribui com R$&nbsp;{{ contribuicao.preco }} 💛</p>
             </form>
         </div>
@@ -135,8 +129,8 @@
 
     function lerGuid() { try { return localStorage.getItem(CHAVE_GUID); } catch (e) { return null; } }
     function salvarGuid(g) { try { localStorage.setItem(CHAVE_GUID, g); } catch (e) {} }
-    // Entregas já feitas neste navegador (até 5): celular compartilhado (mãe e filho) — quem volta e digita o mesmo
-    // e-mail de uma delas cai na própria Estante (ver /entregar).
+    // Entregas já feitas neste navegador (até 5): celular compartilhado (mãe e filho) — quem volta e digita o nome
+    // de uma delas cai na própria Estante (ver /nome).
     var CHAVE_ENTREGAS = 'contrib_entregas_' + PRODUTO_ID;
     function lerEntregas() { try { return JSON.parse(localStorage.getItem(CHAVE_ENTREGAS) || '[]').slice(0, 5); } catch (e) { return []; } }
     function lembrarEntrega(g) {
@@ -197,7 +191,19 @@
         audio.play().catch(function () { audioFalhou = true; mostrarTexto(); });
         campo.blur();
         mostrarChegada();
-        pedidoPromessa.then(function () { return post('/api/v1/contribuicao/nome', { guid: guid, nome: nome }); })
+        pedidoPromessa.then(function () { return post('/api/v1/contribuicao/nome', { guid: guid, nome: nome, anteriores: lerEntregas() }); })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                // Mesma pessoa voltando (nome de uma entrega deste navegador): direto para a Estante dela.
+                if (j && j.url) {
+                    audio.pause();
+                    liberado = true;  // o botão "Abrir" deste pedido não aparece (ele foi juntado ao dela)
+                    document.getElementById('ctbFormAbrir').hidden = true;
+                    document.getElementById('ctbFalando').textContent = 'Abrindo a sua Estante, ' + primeiro + '…';
+                    if (j.guid) salvarGuid(j.guid);
+                    location.href = j.url;
+                }
+            })
             .catch(function () {});
     });
 
@@ -261,71 +267,27 @@
         if (p >= 1 && liberado) { clearInterval(relogio); document.getElementById('ctbProg').style.width = '100%'; }
     }
     function liberar(fimDoAudio) {
-        var form = document.getElementById('ctbFormEmail');
+        var form = document.getElementById('ctbFormAbrir');
         if (!liberado) { liberado = true; form.hidden = false; }
         if (fimDoAudio) document.getElementById('ctbAbrir').classList.add('pulsando');
     }
 
-    // ── E-mail: mesma sugestão de domínio do checkout (MANTER SINCRONIZADO com web/email_validacao.py) ──
-    var DOMINIOS = ['gmail.com', 'hotmail.com', 'outlook.com', 'hotmail.com.br', 'outlook.com.br', 'yahoo.com.br',
-        'yahoo.com', 'icloud.com', 'bol.com.br', 'uol.com.br', 'terra.com.br', 'ig.com.br', 'live.com', 'msn.com',
-        'oi.com.br', 'globo.com', 'globo.com.br'];
-    function dist(a, b) {
-        var ant = [], i, j;
-        for (j = 0; j <= b.length; j++) ant[j] = j;
-        for (i = 1; i <= a.length; i++) {
-            var at = [i];
-            for (j = 1; j <= b.length; j++) at[j] = Math.min(ant[j] + 1, at[j - 1] + 1, ant[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-            ant = at;
-        }
-        return ant[b.length];
-    }
-    function sugestao(email) {
-        var d = (email.split('@')[1] || '').toLowerCase();
-        if (!d || DOMINIOS.indexOf(d) >= 0) return null;
-        for (var k = 0; k < DOMINIOS.length; k++) if (d.indexOf(DOMINIOS[k]) === 0) return DOMINIOS[k];
-        var melhor = null, md = 3;
-        for (k = 0; k < DOMINIOS.length; k++) { var x = dist(d, DOMINIOS[k]); if (x > 0 && x < md) { md = x; melhor = DOMINIOS[k]; } }
-        return melhor;
-    }
-    var campoEmail = document.getElementById('ctbEmail'), dica = document.getElementById('ctbDica');
-    function mostrarDica(dom) {
-        var usuario = campoEmail.value.trim().split('@')[0];
-        var link = document.createElement('a');
-        link.href = '#';
-        link.textContent = usuario + '@' + dom;
-        link.addEventListener('click', function (e) {
-            e.preventDefault(); campoEmail.value = usuario + '@' + dom; dica.hidden = true;
-        });
-        dica.textContent = 'Você quis dizer ';
-        dica.appendChild(link);
-        dica.appendChild(document.createTextNode('?'));
-        dica.hidden = false;
-    }
-    campoEmail.addEventListener('blur', function () { var s = sugestao(campoEmail.value.trim()); if (s) mostrarDica(s); else dica.hidden = true; });
-    campoEmail.addEventListener('input', function () { dica.hidden = true; document.getElementById('ctbErroEmail').hidden = true; });
-
-    document.getElementById('ctbFormEmail').addEventListener('submit', function (ev) {
+    document.getElementById('ctbFormAbrir').addEventListener('submit', function (ev) {
         ev.preventDefault();
-        var email = campoEmail.value.trim(), erro = document.getElementById('ctbErroEmail'), btn = document.getElementById('ctbAbrir');
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-            erro.textContent = 'Confere o e-mail? Ele precisa ter @ e terminar com .com ou .com.br'; erro.hidden = false; return;
-        }
+        var erro = document.getElementById('ctbErroAbrir'), btn = document.getElementById('ctbAbrir');
+        erro.hidden = true;
         btn.disabled = true; btn.textContent = 'Abrindo seu livro…';
-        pedidoPromessa.then(function () { return post('/api/v1/contribuicao/entregar', { guid: guid, nome: nome, email: email, anteriores: lerEntregas() }); })
+        pedidoPromessa.then(function () { return post('/api/v1/contribuicao/entregar', { guid: guid, nome: nome }); })
             .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
             .then(function (res) {
                 if (res.ok && res.j.url) {
                     if (res.j.guid) { salvarGuid(res.j.guid); lembrarEntrega(res.j.guid); }
                     location.href = res.j.url; return;
                 }
-                // Este pedido já foi entregue a outro e-mail (voltou na página e trocou): recomeça com um pedido novo.
+                // O pedido desta página já foi entregue a outra pessoa (voltou do cache): recomeça com um novo.
                 if (res.j.erro === 'ja_entregue') { location.reload(); return; }
                 btn.disabled = false; btn.textContent = '📖 Abrir meu livro agora';
-                if (res.j.erro === 'email') {
-                    erro.textContent = 'Esse e-mail não parece certo. Confere pra mim?'; erro.hidden = false;
-                    if (res.j.sugestao) mostrarDica(res.j.sugestao);
-                } else { erro.textContent = 'Não consegui abrir agora. Tenta de novo, por favor?'; erro.hidden = false; }
+                erro.textContent = 'Não consegui abrir agora. Tenta de novo, por favor?'; erro.hidden = false;
             })
             .catch(function () {
                 btn.disabled = false; btn.textContent = '📖 Abrir meu livro agora';

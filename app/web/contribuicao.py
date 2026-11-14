@@ -2,7 +2,7 @@
 
 A/B na landing do WhatsApp: no clique em "Quero receber", o braço sorteado (cookie fixo por produto) decide se a
 cliente vai pro WhatsApp (braço `wpp`, como sempre) ou fica no site (braço `estante`): informa o nome, ouve o áudio
-da persona, informa o e-mail e recebe o livro na Estante 2 (estado 1009), que pede a contribuição — o preço do plano
+da persona e recebe o livro na Estante 2 (estado 1009; o e-mail é opcional, na Estante), que pede a contribuição — o preço do plano
 padrão, pago pelo checkout v2 (/pay2?ref=<guid>), que libera os bônus.
 
 Configuração por produto em `contribuicao_config` (percentual 0 = desligado). `?contrib=estante|wpp` força o braço
@@ -13,6 +13,7 @@ import os
 import random
 import re
 import time
+import unicodedata
 
 from flask import jsonify, request
 
@@ -169,10 +170,10 @@ def contribuicao_iniciar():
     """Clique em "Quero receber" no braço estante: cria o pedido da entrega (1008) com a atribuição do anúncio —
     o clique conta aqui, igual ao lead do WhatsApp, antes de ela digitar qualquer coisa.
 
-    O guid que o navegador guardou só é reaproveitado se aquela entrega ainda NÃO aconteceu (1008: desistiu antes do
-    e-mail). Entregue (1009), o clique cria um pedido novo: pode ser outra pessoa no mesmo celular (mãe e filho), e
-    reaproveitar trocaria o nome e o e-mail do pedido do outro. Se for a mesma pessoa, o /entregar a devolve para a
-    Estante dela (mesmo e-mail da entrega anterior deste navegador)."""
+    O guid que o navegador guardou só é reaproveitado se aquela entrega ainda NÃO aconteceu (1008: desistiu antes de
+    abrir o livro). Entregue (1009), o clique cria um pedido novo: pode ser outra pessoa no mesmo celular (mãe e
+    filho), e reaproveitar trocaria o nome do pedido do outro. Se for a mesma pessoa, o /nome a devolve para a
+    Estante dela (mesmo nome de uma entrega anterior deste navegador)."""
     from database import (get_contribuicao_config, get_plano_venda, criar_pedido_contribuicao,
                           registrar_contribuicao_pedido, gravar_clique_pedido, ESTADO_CONTRIBUICAO_CLICOU)
     from lead_incluir import atribuicao_do_clique
@@ -228,70 +229,81 @@ def contribuicao_iniciar():
 
 @web_bp.post('/api/v1/contribuicao/nome')
 def contribuicao_nome():
-    from database import definir_nome_contribuicao
+    """Informou o nome. Celular compartilhado (mãe e filho): se o nome for o de uma entrega que ESTE navegador já
+    recebeu (os guids que a página guardou, até 5 — nunca uma busca no banco), é a mesma pessoa voltando: o clique
+    novo soma na entrega dela e a página a leva direto para a Estante (devolve `url`). Outro nome segue o fluxo
+    com o pedido novo."""
+    from database import definir_nome_contribuicao, juntar_clique_na_entrega_anterior, ESTADO_CONTRIBUICAO_CLICOU
     body = request.get_json(force=True, silent=True) or {}
     pedido = _pedido_contribuicao_por_guid(body.get('guid'))
     nome = _nome_valido(body.get('nome'))
     if not pedido or not nome:
         return jsonify({'erro': 'nome'}), 400
-    definir_nome_contribuicao(pedido['id'], nome)
-    return jsonify({'ok': True}), 200
-
-
-@web_bp.post('/api/v1/contribuicao/entregar')
-def contribuicao_entregar():
-    """Informou o e-mail: entrega o livro (1008 → 1009), manda o e-mail com o link da Estante e devolve a URL dela.
-
-    O e-mail é digitado sem verificação, então este é um jeito de fazer o Gmail do admin@ mandar e-mail para qualquer
-    endereço: o "seu livro chegou" sai só na PRIMEIRA entrega do pedido (corrigiu o e-mail depois → "Reenviar o
-    e-mail" da Estante, que tem limite; o e-mail de uma entrega feita não muda) e passa pelos limites por IP e global
-    (envios_email_site). Barrado, ela
-    recebe o livro na tela do mesmo jeito; só o e-mail não sai."""
-    from database import (entregar_pedido_contribuicao, reservar_envio_email, juntar_clique_na_entrega_anterior,
-                          ESTADO_CONTRIBUICAO_ENTREGUE)
-    from web.email_validacao import validar_email
-
-    body = request.get_json(force=True, silent=True) or {}
-    pedido = _pedido_contribuicao_por_guid(body.get('guid'))
-    if not pedido:
-        return jsonify({'erro': 'pedido'}), 404
-    email = str(body.get('email') or '').strip().lower()
-    checagem = validar_email(email)
-    if not checagem['valido']:
-        return jsonify({'erro': 'email', 'motivo': checagem['motivo'], 'sugestao': checagem.get('sugestao')}), 400
-    nome = _nome_valido(body.get('nome'))
-    # Mesma pessoa voltando: uma das entregas anteriores DESTE navegador (os guids que a página guardou, nunca uma
-    # busca pelo e-mail no banco — e-mail digitado não prova nada) tem o mesmo e-mail → volta para a Estante dela.
-    anterior = _entrega_anterior_com_email(body.get('anteriores'), pedido, email)
+    # Só um clique ainda não entregue (1008) pode ser juntado a outro: juntar apaga a linha dele no A/B.
+    anterior = (_entrega_anterior_com_nome(body.get('anteriores'), pedido, nome)
+                if pedido['estado_id'] == ESTADO_CONTRIBUICAO_CLICOU else None)
     if anterior:
         try:
             juntar_clique_na_entrega_anterior(pedido['id'], anterior['id'])
         except Exception as e:
             logger.error(f"{_TAG} Erro ao juntar o clique {pedido['id']} na entrega {anterior['id']}: {e}")
         return jsonify({'url': f"/pedido2/{anterior['guid']}", 'guid': anterior['guid']}), 200
-    url = {'url': f"/pedido2/{pedido['guid']}?chegou=1", 'guid': pedido['guid']}
-    if not entregar_pedido_contribuicao(pedido['id'], nome, email):
-        # Já entregue (voltou nesta página, ou dois toques): mesmo e-mail → a Estante; outro e-mail → a página
-        # recomeça com um pedido novo (o e-mail de uma entrega feita nunca muda: ver entregar_pedido_contribuicao).
-        atual = _pedido_contribuicao_por_guid(pedido['guid'])
-        if atual and atual['estado_id'] == ESTADO_CONTRIBUICAO_ENTREGUE and (atual.get('email') or '').lower() == email:
-            return jsonify(url), 200
-        return jsonify({'erro': 'ja_entregue'}), 409
-    _enviar_email_entrega(pedido['id'], reservar_envio_email)  # só quem fez a entrega (1008 → 1009) manda
-    return jsonify(url), 200
+    definir_nome_contribuicao(pedido['id'], nome)
+    return jsonify({'ok': True}), 200
 
 
-def _entrega_anterior_com_email(guids, pedido: dict, email: str):
-    """A entrega (1009) do mesmo produto, entre as que este navegador já recebeu (até 5), feita com este e-mail."""
+def _nome_comparavel(nome) -> str:
+    """'  María   Silva ' → 'maria silva' (comparação de quem volta: sem acento, maiúscula ou espaço sobrando). O nome
+    INTEIRO: só o primeiro juntaria a mãe "Maria Silva" com a filha "Maria Clara" no mesmo celular — e a filha
+    cairia na Estante da mãe. Quem volta digitando diferente ("Maria" e depois "Maria Silva") só ganha um pedido novo."""
+    sem_acento = unicodedata.normalize('NFKD', ' '.join(str(nome or '').split())).encode('ascii', 'ignore').decode()
+    return sem_acento.casefold()
+
+
+def _entrega_anterior_com_nome(guids, pedido: dict, nome: str):
+    """A entrega (1009) do mesmo produto, entre as que este navegador já recebeu (até 5), com o mesmo nome."""
     from database import ESTADO_CONTRIBUICAO_ENTREGUE
-    if not isinstance(guids, list):
+    alvo = _nome_comparavel(nome)
+    if not alvo or not isinstance(guids, list):
         return None
     for g in guids[:5]:
         anterior = _pedido_contribuicao_por_guid(g)
         if (anterior and anterior['id'] != pedido['id'] and anterior['estado_id'] == ESTADO_CONTRIBUICAO_ENTREGUE
-                and anterior['produto_id'] == pedido['produto_id'] and (anterior.get('email') or '').lower() == email):
+                and anterior['produto_id'] == pedido['produto_id']
+                and _nome_comparavel(anterior.get('contact_name')) == alvo):
             return anterior
     return None
+
+
+@web_bp.post('/api/v1/contribuicao/entregar')
+def contribuicao_entregar():
+    """Tocou em "Abrir meu livro": entrega o livro (1008 → 1009) e devolve a URL da Estante. Sem e-mail desde
+    14/11/2026 (a obrigatoriedade derrubava metade de quem já tinha dado o nome); o e-mail é opcional, na Estante
+    ("Guarde seu livro", web/estante_acesso.py), e o checkout pede o dele."""
+    from database import (entregar_pedido_contribuicao, get_contribuicao_pedido, ESTADO_CONTRIBUICAO_CLICOU,
+                          ESTADO_CONTRIBUICAO_ENTREGUE)
+
+    body = request.get_json(force=True, silent=True) or {}
+    pedido = _pedido_contribuicao_por_guid(body.get('guid'))
+    if not pedido:
+        return jsonify({'erro': 'pedido'}), 404
+    nome = _nome_valido(body.get('nome'))
+    # Clique juntado a uma entrega anterior pelo /nome (a linha dele no A/B foi apagada): era a mesma pessoa, que já
+    # tem a Estante. Se a página voltar do cache e ela tocar em "Abrir", recomeça — nunca uma segunda Estante dela.
+    if pedido['estado_id'] == ESTADO_CONTRIBUICAO_CLICOU and not get_contribuicao_pedido(pedido['id']):
+        return jsonify({'erro': 'ja_entregue'}), 409
+    url = {'url': f"/pedido2/{pedido['guid']}?chegou=1", 'guid': pedido['guid']}
+    if entregar_pedido_contribuicao(pedido['id'], nome):
+        return jsonify(url), 200
+    # Já entregue (dois toques, ou a página voltou do cache com o pedido de antes): com o mesmo nome é a mesma
+    # Estante; com outro nome é outra pessoa no mesmo celular — a página recomeça com um pedido novo (senão ela
+    # cairia na Estante da outra).
+    atual = _pedido_contribuicao_por_guid(pedido['guid'])
+    if atual and atual['estado_id'] == ESTADO_CONTRIBUICAO_ENTREGUE:
+        if _nome_comparavel(atual.get('contact_name')) == _nome_comparavel(nome):
+            return jsonify(url), 200
+        return jsonify({'erro': 'ja_entregue'}), 409
+    return jsonify({'erro': 'pedido'}), 404
 
 
 def _limite_entrega_hora() -> int:
@@ -301,24 +313,28 @@ def _limite_entrega_hora() -> int:
         return 200
 
 
-def _enviar_email_entrega(pedido_id: int, reservar) -> None:
-    from database import desfazer_envio_email
+def enviar_email_entrega(pedido_id: int) -> bool:
+    """Agenda o "seu livro chegou" passando pelos limites (envios_email_site; usado pelo e-mail opcional da Estante,
+    web/estante_acesso.py). True = foi para a fila."""
+    from database import desfazer_envio_email, reservar_envio_email as reservar
     from meta_clique import ip_e_navegador
     try:
         motivo = reservar('entrega_contribuicao', pedido_id, ip_e_navegador(request)[0], _limite_entrega_hora())
     except Exception as e:
         logger.error(f'{_TAG} Erro ao checar o limite do e-mail de entrega do pedido #{pedido_id}: {e}')
-        return
+        return False
     if motivo != 'ok':
         nivel = logger.error if motivo == 'global' else logger.warning
         nivel(f'{_TAG} E-mail de entrega do pedido #{pedido_id} não enviado (limite: {motivo})')
-        return
+        return False
     try:
         import tasks
         tasks.enviar_email_contribuicao_entrega.delay(pedido_id)
+        return True
     except Exception as e:
         logger.error(f"{_TAG} Erro ao agendar o e-mail de entrega do pedido #{pedido_id}: {e}")
         desfazer_envio_email('entrega_contribuicao', pedido_id)
+        return False
 
 
 @web_bp.post('/api/v1/contribuicao/evento')

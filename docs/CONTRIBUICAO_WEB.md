@@ -9,8 +9,13 @@ Dados de produção, links enviados entre 08/10 e 05/11:
 - **70% dos pagamentos chegam em até 30 min**: a cobrança vem junto com a entrega, não "depois de ler".
 - **23% pagam só depois do follow-up de 2h**.
 
-Por isso, no site, o pedido de contribuição aparece assim que a Estante abre, e o e-mail para os lembretes é
-obrigatório.
+Por isso, no site, o pedido de contribuição aparece assim que a Estante abre.
+
+**14/11/2026: o e-mail deixou de ser obrigatório.** De 11 a 14/11 (20% dos cliques), só 48% de quem deu o nome
+informava o e-mail, inclusive 41 pessoas que ouviram o áudio inteiro; e de 14 vendas, 13 saíram antes de qualquer
+lembrete (1 depois do de 2h, nenhuma depois do de 24h). Agora o livro abre sem e-mail, o e-mail é opcional na
+Estante ("Guarde seu livro") e o checkout pede o dele. Para comparar, filtre a Analytics Web a partir de 15/11
+(antes: R$ 0,81 por clique no site × R$ 1,54 no WhatsApp).
 
 ## Como funciona
 
@@ -24,22 +29,24 @@ obrigatório.
    conta aqui, antes de ela digitar qualquer coisa. Clicar de novo no mesmo aparelho reaproveita o pedido e soma em
    `cliques`, **mas só se ele ainda não foi entregue** (1008). Entregue, o clique cria um pedido novo, porque pode ser
    outra pessoa no mesmo celular (mãe e filho). O navegador guarda as últimas 5 entregas (`contrib_entregas_<id>` no
-   localStorage); no e-mail, se ele for igual ao de uma delas, ela volta para a própria Estante e o clique novo é
-   somado ao pedido dela. A comparação é só com as entregas deste navegador, nunca com o banco, porque o e-mail
-   digitado não prova nada. No braço `wpp`, cada lead do `gravar-lide` entra em `contribuicao_pedidos`, porque lá cada clique vira um
+   localStorage); no nome (`/nome`), se o nome for igual ao de uma delas (o nome inteiro, sem acento nem maiúscula: só o
+   primeiro juntaria a mãe "Maria Silva" com a filha "Maria Clara"), ela vai direto para a própria Estante e o clique novo é somado ao pedido dela. A comparação é só com as entregas deste
+   navegador, nunca com o banco. No braço `wpp`, cada lead do `gravar-lide` entra em `contribuicao_pedidos`, porque lá cada clique vira um
    lead. Assim os dois braços contam cliques do mesmo jeito. Só cria pedido quem tem o cookie do braço estante com o
    teste ligado (ou de QA); qualquer outro caso recebe 409 e a página segue para o WhatsApp.
 3. **Nome**: "Como posso te chamar?". O toque em Continuar também libera o som do áudio 1.
 4. **Tela de chegada**:
    - o áudio 1 da persona toca enquanto o livro está "sendo separado" (a barra e o checklist seguem o áudio);
    - há o botão "ler em vez de ouvir";
-   - depois de 15 s, aparecem o e-mail (obrigatório, com sugestão de domínio digitado errado) e o botão "Abrir meu livro".
-5. **Entrega** (`POST /api/v1/contribuicao/entregar`): o pedido vai para **1009**, o e-mail "seu livro chegou" é enviado
-   e ela vai para a **Estante 2** (`/pedido2/<guid>`). Na Estante:
+   - depois de 15 s aparece o botão "Abrir meu livro", que pulsa no fim do áudio. Não pede e-mail.
+5. **Entrega** (`POST /api/v1/contribuicao/entregar`): o pedido vai para **1009** e ela vai para a **Estante 2**
+   (`/pedido2/<guid>`). Na Estante:
    - o livro principal libera e o PDF baixa, como no WhatsApp;
    - os bônus ficam com cadeado;
    - o cross-sell fica escondido;
-   - aparece o recado da persona (áudio 2) com o botão **"Fazer minha contribuição de R$ X"**.
+   - aparece o recado da persona (áudio 2) com o botão **"Fazer minha contribuição de R$ X"**;
+   - no "Guarde seu livro", enquanto ela não contribuiu, o campo opcional "Quer receber o link no seu e-mail?" (`POST /api/v1/estante/<guid>/email`):
+     grava uma vez, manda o "seu livro chegou" e liga os lembretes.
 6. **Contribuição**: o botão leva ao checkout v2 (`/pay2/<produto>?ref=<guid>`). É uma **venda normal do site**:
    - o preço é o do plano padrão, com order bumps, no Pix ou no cartão;
    - os dados vêm preenchidos e os textos falam em "contribuição";
@@ -47,10 +54,13 @@ obrigatório.
    - o pedido vai para 1000, e NF-e, e-mail de entrega, ROI web, Financeiro e conversão (valor real) seguem como sempre;
    - os bônus da Estante de origem liberam pelo vínculo (`pedidos_vinculados`) e pela regra "liberado prevalece".
 7. **Lembretes por e-mail** (`fluxos/fluxo_contribuicao_email.py`, beat a cada 10 min):
-   - saem 2h e 24h depois do e-mail informado, das 8h às 22h;
+   - só para quem informou o e-mail na Estante; saem 2h e 24h depois dele, das 8h às 22h;
    - não saem para quem já pagou o produto (pelo vínculo ou pelo mesmo e-mail);
    - o link `?lembrete=1` faz a Estante tocar o áudio de lembrete;
-   - o follow-up do checkout (`fluxo_followup_web`) ignora esses pedidos, para ela não receber duas cobranças.
+   - o follow-up do checkout (`fluxo_followup_web`, Pix gerado e não pago) ignora o checkout de uma entrega COM e-mail,
+     para ela não receber duas cobranças; sem e-mail na entrega (sem lembretes), ele cobra no e-mail do checkout.
+     Se ela informar o e-mail na Estante depois que esse follow-up já cobrou, os lembretes não saem (seria a
+     segunda cobrança).
 
 Não há conversão dupla: o pedido da entrega (1008/1009) nunca é pago, então nunca vai para o Google Ads nem para a Meta.
 
@@ -80,7 +90,7 @@ Para um produto novo:
 No admin, na **Analytics Web** do produto, o card **"Teste: contribuição no site × WhatsApp"** mostra, por braço (o
 ROI do produto mostra só se o teste está ligado e o link para ele):
 - cliques;
-- funil: nome → ouviu o áudio → e-mail → estante → áudio 2 → checkout;
+- funil: nome → ouviu o áudio → recebeu o livro (abriu a Estante) → deu e-mail (opcional) → áudio 2 → checkout;
 - pagos, receita e **receita por clique**, que é a métrica do teste.
 
 O custo por clique é o mesmo nos dois braços, porque é a mesma campanha. Um cuidado: no WhatsApp, "pago" é o
@@ -100,12 +110,12 @@ Para ela não perder o livro se fechar a aba e o e-mail não chegar. Fica abaixo
   (padrão 60), que protege a cota de envio do Gmail do `admin@`. Quando o teto global estoura, o log registra um erro
   `[ESTANTE-REENVIO]`.
 
-**E-mail da entrega da contribuição**: o e-mail é digitado sem verificação, então o "seu livro chegou" sai só na
-primeira entrega do pedido e passa pela mesma tabela (20 por IP por hora, teto global em
+**E-mail da entrega da contribuição**: o e-mail é digitado sem verificação, então ele é gravado uma vez só (na
+Estante) e o "seu livro chegou" passa pela mesma tabela (20 por IP por hora, teto global em
 `CONTRIBUICAO_ENTREGA_LIMITE_HORA`, padrão 200). Os lembretes também passam por ela (teto em
-`CONTRIBUICAO_LEMBRETE_LIMITE_HORA`, padrão 200; o que passar fica para a próxima varredura). Depois de entregue, o
-e-mail do pedido não muda: outro e-mail na mesma página recomeça com um pedido novo. Se um limite barrar, ela recebe o livro na tela do mesmo jeito; só o
-e-mail não sai. Pelo mesmo motivo, a Estante da entrega (1009) **não junta pedidos pelo e-mail** (só pelo vínculo do
+`CONTRIBUICAO_LEMBRETE_LIMITE_HORA`, padrão 200; o que passar fica para a próxima varredura). Depois de gravado, o
+e-mail do pedido não muda. Se um limite barrar, o e-mail fica gravado (vale para os lembretes); só o "seu livro
+chegou" não sai. Pelo mesmo motivo, a Estante da entrega (1009) **não junta pedidos pelo e-mail** (só pelo vínculo do
 checkout), não lista apps e não abre app.
 
 Os players de áudio (chegada e Estante) têm barra tocável e arrastável, como no WhatsApp (`_audio_busca.html`).

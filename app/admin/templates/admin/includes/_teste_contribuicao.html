@@ -37,7 +37,7 @@
                     <td style="font-size:12px;line-height:1.6;">
                         {% if t.braco == 'estante' %}
                         nome {{ pct(t.nome, t.cliques) }} · ouviu o áudio {{ pct(t.audio1, t.cliques) }} (até o fim {{ t.audio1_fim }})<br>
-                        e-mail/livro {{ pct(t.email, t.cliques) }} · estante {{ pct(t.estante, t.cliques) }} · áudio 2 {{ pct(t.audio2, t.cliques) }} · checkout {{ pct(t.checkout, t.cliques) }}
+                        recebeu o livro {{ pct(t.estante, t.cliques) }} · deu e-mail {{ pct(t.email, t.cliques) }} · áudio 2 {{ pct(t.audio2, t.cliques) }} · checkout {{ pct(t.checkout, t.cliques) }}
                         {% else %}
                         conversaram {{ pct(t.conversas, t.cliques) }} · receberam o link {{ pct(t.receberam_link, t.cliques) }}
                         {% endif %}
@@ -52,6 +52,6 @@
         </table>
     </div>
     {% endif %}
-    <p style="font-size:12px;color:var(--muted);margin-top:8px">Site: pago = pedido do checkout (Pix/cartão confirmado pelo banco), vinculado à estante ou com o mesmo e-mail. WhatsApp: pago = comprovante aceito pela IA (não é dinheiro recebido — compare também o Financeiro). Pagamentos de cliques do fim do período ainda podem chegar.</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px">Site: pago = pedido do checkout (Pix/cartão confirmado pelo banco), vinculado à estante ou com o mesmo e-mail. WhatsApp: pago = comprovante aceito pela IA (não é dinheiro recebido — compare também o Financeiro). Pagamentos de cliques do fim do período ainda podem chegar. Recebeu o livro = abriu a Estante; o e-mail é opcional (na Estante) desde 14/11/2026 — antes era obrigatório para receber.</p>
 </div>
 {% endif %}

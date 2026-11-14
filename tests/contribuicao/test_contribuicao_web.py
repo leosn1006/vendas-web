@@ -80,14 +80,16 @@ def http(monkeypatch):
     estado['cliques_repetidos'] = []
     monkeypatch.setattr(database, 'contar_clique_contribuicao', lambda pid: estado['cliques_repetidos'].append(pid))
 
-    def entregar(pid, nome, email):  # como o banco: só entrega a partir de 1008, e o e-mail não muda depois
+    def entregar(pid, nome):  # como o banco: só entrega a partir de 1008
         p = next(p for p in estado['pedidos'].values() if p['id'] == pid)
         if p['estado_id'] != 1008:
             return False
-        p.update(estado_id=1009, email=email)
-        estado['entregues'].append((pid, nome, email))
+        p.update(estado_id=1009, contact_name=nome)
+        estado['entregues'].append((pid, nome))
         return True
     monkeypatch.setattr(database, 'entregar_pedido_contribuicao', entregar)
+    estado['nomes'] = []
+    monkeypatch.setattr(database, 'definir_nome_contribuicao', lambda pid, nome: estado['nomes'].append((pid, nome)))
     tarefa = types.SimpleNamespace(delay=lambda pid: estado['emails'].append(pid))
     monkeypatch.setitem(sys.modules, 'tasks', types.SimpleNamespace(enviar_email_contribuicao_entrega=tarefa))
     estado['limite'] = 'ok'
@@ -101,6 +103,9 @@ def http(monkeypatch):
     estado['juntados'] = []
     monkeypatch.setattr(database, 'juntar_clique_na_entrega_anterior',
                         lambda novo, anterior: estado['juntados'].append((novo, anterior)))
+    # Como o banco: juntar apaga a linha do clique novo no A/B.
+    monkeypatch.setattr(database, 'get_contribuicao_pedido',
+                        lambda pid: None if any(n == pid for n, _ in estado['juntados']) else {'pedido_id': pid})
     estado['cliques_novos'] = []
     monkeypatch.setattr(database, 'atualizar_clique_contribuicao',
                         lambda pid, atrib: estado['cliques_novos'].append((pid, atrib['gclid'])))
@@ -151,39 +156,24 @@ def test_iniciar_sem_configuracao_devolve_erro_e_a_pagina_cai_pro_whatsapp(http)
     assert c.post('/api/v1/contribuicao/iniciar', json={'produto_id': 12}).status_code == 409
 
 
-def test_entregar_valida_o_email_e_manda_a_entrega(http):
+def test_entregar_sem_email_entrega_o_livro_e_nao_manda_email(http):
+    """Desde 14/11/2026 a entrega não pede e-mail (ele é opcional, na Estante)."""
     c, estado = http
     c.post('/api/v1/contribuicao/iniciar', json={'produto_id': 11})
-    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Maria', 'email': 'maria@gmail.comm'})
-    assert r.status_code == 400 and r.get_json()['erro'] == 'email'
-    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Maria', 'email': ' Maria@Gmail.com '})
-    assert r.status_code == 200 and r.get_json()['url'] == '/pedido2/gnovo001?chegou=1'
-    assert estado['entregues'] == [(501, 'Maria', 'maria@gmail.com')]
-    assert estado['emails'] == [501]
+    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Maria'})
+    assert r.status_code == 200 and r.get_json() == {'url': '/pedido2/gnovo001?chegou=1', 'guid': 'gnovo001'}
+    assert estado['entregues'] == [(501, 'Maria')]
+    assert not estado['emails'] and not estado['reservas_envio']
+    assert estado['pedidos']['gnovo001']['email'] is None
 
 
-def test_email_da_entrega_sai_so_na_primeira_vez(http):
+def test_entregar_de_novo_devolve_a_mesma_estante(http):
     c, estado = http
     c.post('/api/v1/contribuicao/iniciar', json={'produto_id': 11})
-    c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Maria', 'email': 'maria@gmail.com'})
-    # De novo com o mesmo e-mail (voltou na página / dois toques): a Estante, sem outro e-mail.
-    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Maria', 'email': 'maria@gmail.com'})
+    c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Maria'})
+    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Maria'})  # voltou / dois toques
     assert r.status_code == 200 and r.get_json()['guid'] == 'gnovo001'
-    # Outro e-mail numa entrega feita: não muda o pedido (seria um jeito de mandar o reenvio a qualquer endereço);
-    # a página recomeça com um pedido novo.
-    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Ana', 'email': 'outra@gmail.com'})
-    assert r.status_code == 409 and r.get_json() == {'erro': 'ja_entregue'}
-    assert estado['pedidos']['gnovo001']['email'] == 'maria@gmail.com'
-    assert estado['emails'] == [501] and estado['reservas_envio'] == [('entrega_contribuicao', 501)]
-
-
-def test_limite_barra_o_email_mas_nao_a_entrega(http):
-    c, estado = http
-    estado['limite'] = 'ip'
-    c.post('/api/v1/contribuicao/iniciar', json={'produto_id': 11})
-    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Maria', 'email': 'maria@gmail.com'})
-    assert r.status_code == 200 and r.get_json()['url'] == '/pedido2/gnovo001?chegou=1'
-    assert estado['entregues'] and not estado['emails']
+    assert estado['entregues'] == [(501, 'Maria')]
 
 
 def test_clique_novo_de_anuncio_no_mesmo_aparelho_vale_o_ultimo(http):
@@ -194,58 +184,59 @@ def test_clique_novo_de_anuncio_no_mesmo_aparelho_vale_o_ultimo(http):
     assert estado['cliques_novos'] == [(501, 'B')] and estado['criados'] == 1
 
 
-def _entregue(estado, guid, email, produto_id=11):
-    estado['pedidos'][guid] = {'id': 400, 'guid': guid, 'estado_id': 1009, 'produto_id': produto_id, 'email': email}
+def _entregue(estado, guid, nome, produto_id=11, pid=400):
+    estado['pedidos'][guid] = {'id': pid, 'guid': guid, 'estado_id': 1009, 'produto_id': produto_id,
+                               'contact_name': nome, 'email': None}
 
 
 def test_entrega_feita_nao_e_reaproveitada_por_outra_pessoa_no_mesmo_navegador(http):
-    """Mãe e filho no mesmo celular: o guid guardado é de uma entrega já feita → pedido novo (senão o nome e o
-    e-mail dela sobrescreveriam os do pedido dele)."""
+    """Mãe e filho no mesmo celular: o guid guardado é de uma entrega já feita → pedido novo, e o nome diferente
+    segue o fluxo normal (senão o nome dela sobrescreveria o do pedido dele)."""
     c, estado = http
-    _entregue(estado, 'gdudu001', 'dudu@gmail.com')
+    _entregue(estado, 'gdudu001', 'Dudu')
     r = c.post('/api/v1/contribuicao/iniciar', json={'produto_id': 11, 'guid': 'gdudu001'})
     assert r.get_json()['guid'] == 'gnovo001' and estado['criados'] == 1 and not estado['cliques_repetidos']
-    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Ana', 'email': 'ana@gmail.com',
-                                                      'anteriores': ['gdudu001']})
-    assert r.get_json() == {'url': '/pedido2/gnovo001?chegou=1', 'guid': 'gnovo001'}
-    assert estado['entregues'] == [(501, 'Ana', 'ana@gmail.com')] and not estado['juntados']
+    r = c.post('/api/v1/contribuicao/nome', json={'guid': 'gnovo001', 'nome': 'Ana', 'anteriores': ['gdudu001']})
+    assert r.get_json() == {'ok': True}
+    assert estado['nomes'] == [(501, 'Ana')] and not estado['juntados']
 
 
-def test_mesma_pessoa_voltando_cai_na_propria_estante(http):
+def test_mesmo_nome_voltando_cai_na_propria_estante(http):
+    """Nome igual, sem diferença de acento, maiúscula ou espaço sobrando."""
     c, estado = http
-    _entregue(estado, 'gdudu001', 'dudu@gmail.com')
-    c.post('/api/v1/contribuicao/iniciar', json={'produto_id': 11, 'guid': 'gdudu001'})
-    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Dudu', 'email': ' Dudu@Gmail.com',
-                                                      'anteriores': ['gdudu001']})
-    assert r.get_json() == {'url': '/pedido2/gdudu001', 'guid': 'gdudu001'}
-    assert estado['juntados'] == [(501, 400)] and not estado['entregues'] and not estado['emails']
+    _entregue(estado, 'gmaria01', 'María Silva')
+    c.post('/api/v1/contribuicao/iniciar', json={'produto_id': 11, 'guid': 'gmaria01'})
+    r = c.post('/api/v1/contribuicao/nome', json={'guid': 'gnovo001', 'nome': '  maria  SILVA ', 'anteriores': ['gmaria01']})
+    assert r.get_json() == {'url': '/pedido2/gmaria01', 'guid': 'gmaria01'}
+    assert estado['juntados'] == [(501, 400)] and not estado['nomes']
 
 
 def test_reconhece_qualquer_uma_das_entregas_do_navegador(http):
     """Dudu, depois a mãe, depois o Dudu de novo: ele cai na Estante dele, não na dela nem num pedido novo."""
     c, estado = http
-    _entregue(estado, 'gdudu001', 'dudu@gmail.com')
-    estado['pedidos']['gmae0001'] = {'id': 401, 'guid': 'gmae0001', 'estado_id': 1009, 'produto_id': 11,
-                                     'email': 'mae@gmail.com'}
+    _entregue(estado, 'gdudu001', 'Dudu')
+    _entregue(estado, 'gmae0001', 'Mariana', pid=401)
     c.post('/api/v1/contribuicao/iniciar', json={'produto_id': 11, 'guid': 'gmae0001'})
-    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Dudu', 'email': 'dudu@gmail.com',
-                                                      'anteriores': ['gmae0001', 'gdudu001', 123, None]})
+    r = c.post('/api/v1/contribuicao/nome', json={'guid': 'gnovo001', 'nome': 'Dudu',
+                                                  'anteriores': ['gmae0001', 'gdudu001', 123, None]})
     assert r.get_json()['guid'] == 'gdudu001' and estado['juntados'] == [(501, 400)]
 
 
-def test_anterior_de_outro_produto_nao_conta(http):
+def test_anterior_de_outro_produto_ou_nao_entregue_nao_conta(http):
     c, estado = http
-    _entregue(estado, 'goutro01', 'dudu@gmail.com', produto_id=12)
+    _entregue(estado, 'goutro01', 'Dudu', produto_id=12)
+    estado['pedidos']['gclicou1'] = {'id': 402, 'guid': 'gclicou1', 'estado_id': 1008, 'produto_id': 11,
+                                     'contact_name': 'Dudu', 'email': None}
     c.post('/api/v1/contribuicao/iniciar', json={'produto_id': 11})
-    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Dudu', 'email': 'dudu@gmail.com',
-                                                      'anteriores': ['goutro01']})
-    assert r.get_json()['guid'] == 'gnovo001' and not estado['juntados']
+    r = c.post('/api/v1/contribuicao/nome', json={'guid': 'gnovo001', 'nome': 'Dudu',
+                                                  'anteriores': ['goutro01', 'gclicou1']})
+    assert r.get_json() == {'ok': True} and not estado['juntados']
 
 
 def test_entregar_guid_que_nao_e_de_contribuicao_e_recusado(http):
     c, estado = http
     estado['pedidos']['gpago0001'] = {'id': 9, 'guid': 'gpago0001', 'estado_id': 1000}
-    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gpago0001', 'email': 'maria@gmail.com'})
+    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gpago0001', 'nome': 'Maria'})
     assert r.status_code == 404 and not estado['entregues']
 
 
@@ -320,3 +311,43 @@ def test_checkout_da_contribuicao_fica_fora_do_followup_web():
     sql = inspect.getsource(database.buscar_pedidos_followup_pagamento_web)
     assert 'contribuicao_pedidos' in sql and 'pedidos_vinculados' in sql
     assert "cp.braco = 'estante'" in sql and 'cp.produto_id = p.produto_id' in sql
+
+
+def test_mae_e_filha_com_o_mesmo_primeiro_nome_nao_se_misturam(http):
+    """Mãe "Maria Silva" e filha "Maria Clara" no mesmo celular: a filha segue com um pedido novo, nunca cai na
+    Estante da mãe."""
+    c, estado = http
+    _entregue(estado, 'gmaria01', 'Maria Silva')
+    c.post('/api/v1/contribuicao/iniciar', json={'produto_id': 11, 'guid': 'gmaria01'})
+    r = c.post('/api/v1/contribuicao/nome', json={'guid': 'gnovo001', 'nome': 'Maria Clara', 'anteriores': ['gmaria01']})
+    assert r.get_json() == {'ok': True} and not estado['juntados']
+
+
+def test_nome_em_pedido_ja_entregue_nao_junta_nada(http):
+    """Só um clique ainda não entregue (1008) pode ser juntado: juntar apaga a linha dele no A/B."""
+    c, estado = http
+    _entregue(estado, 'gmaria01', 'Maria')
+    _entregue(estado, 'gmaria02', 'Maria', pid=401)
+    r = c.post('/api/v1/contribuicao/nome', json={'guid': 'gmaria02', 'nome': 'Maria', 'anteriores': ['gmaria01']})
+    assert r.get_json() == {'ok': True} and not estado['juntados']
+
+
+def test_pagina_do_cache_com_pedido_de_outra_pessoa_recomeca(http):
+    """Voltar restaura a landing com o pedido já entregue: outro nome não abre a Estante da outra pessoa."""
+    c, estado = http
+    c.post('/api/v1/contribuicao/iniciar', json={'produto_id': 11})
+    c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Maria'})
+    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Dudu'})
+    assert r.status_code == 409 and r.get_json() == {'erro': 'ja_entregue'}
+    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': ' maria '})
+    assert r.status_code == 200 and r.get_json()['guid'] == 'gnovo001'
+
+
+def test_clique_juntado_pelo_nome_nao_vira_segunda_estante(http):
+    """Voltou pelo nome (clique juntado à entrega dela) e a página voltou do cache: "Abrir" recomeça, não entrega."""
+    c, estado = http
+    _entregue(estado, 'gmaria01', 'Maria')
+    c.post('/api/v1/contribuicao/iniciar', json={'produto_id': 11, 'guid': 'gmaria01'})
+    c.post('/api/v1/contribuicao/nome', json={'guid': 'gnovo001', 'nome': 'Maria', 'anteriores': ['gmaria01']})
+    r = c.post('/api/v1/contribuicao/entregar', json={'guid': 'gnovo001', 'nome': 'Maria'})
+    assert r.status_code == 409 and r.get_json() == {'erro': 'ja_entregue'} and not estado['entregues']

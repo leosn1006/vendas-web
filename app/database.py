@@ -862,12 +862,17 @@ def buscar_pedidos_followup_pagamento_web(minutos_sem_atualizacao: int = 60) -> 
             SELECT 1 FROM pedidos pn
             WHERE pn.email = p.email AND pn.produto_id = p.produto_id
               AND pn.estado_id = 1002 AND pn.id > p.id)
-        -- Checkout da contribuição (veio da Estante de uma entrega do braço estante, mesmo produto): quem cobra são
-        -- os lembretes da própria contribuição (fluxo_contribuicao_email), senão ela recebe dois e-mails de cobrança.
+        -- Checkout da contribuição (veio da Estante de uma entrega do braço estante, mesmo produto) cuja entrega TEM
+        -- e-mail: quem cobra são os lembretes da própria contribuição (fluxo_contribuicao_email), senão ela recebe
+        -- dois e-mails de cobrança. Entrega sem e-mail (o e-mail é opcional desde 14/11/2026) não tem lembrete:
+        -- o Pix gerado e não pago é cobrado aqui, no e-mail digitado no checkout.
         -- Cross-sell de outro produto e lead do braço wpp continuam no follow-up normal.
         AND NOT EXISTS (
-            SELECT 1 FROM pedidos_vinculados pv JOIN contribuicao_pedidos cp ON cp.pedido_id = pv.pedido_id_origem
-            WHERE pv.pedido_id_adquirido = p.id AND cp.braco = 'estante' AND cp.produto_id = p.produto_id)
+            SELECT 1 FROM pedidos_vinculados pv
+            JOIN contribuicao_pedidos cp ON cp.pedido_id = pv.pedido_id_origem
+            JOIN pedidos po ON po.id = pv.pedido_id_origem
+            WHERE pv.pedido_id_adquirido = p.id AND cp.braco = 'estante' AND cp.produto_id = p.produto_id
+              AND COALESCE(po.email, '') <> '')
     """
     return db.execute_query(query, (minutos_sem_atualizacao,), fetch_all=True)
 
@@ -2496,7 +2501,7 @@ def contar_clique_contribuicao(pedido_id: int) -> None:
 
 
 def juntar_clique_na_entrega_anterior(novo_id: int, anterior_id: int) -> None:
-    """Era a mesma pessoa voltando (mesmo navegador, mesmo e-mail da entrega anterior): o clique novo vira mais um
+    """Era a mesma pessoa voltando (mesmo navegador, mesmo nome da entrega anterior): o clique novo vira mais um
     clique da entrega anterior e sai da conta do A/B (senão o funil contaria duas vezes a mesma pessoa). O pedido
     novo fica em 1008, como qualquer clique que não chegou à entrega."""
     contar_clique_contribuicao(anterior_id)
@@ -2507,17 +2512,28 @@ def get_contribuicao_pedido(pedido_id: int):
     return db.execute_query("SELECT * FROM contribuicao_pedidos WHERE pedido_id = %s", (pedido_id,), fetch_one=True)
 
 
-def entregar_pedido_contribuicao(pedido_id: int, nome: str, email: str) -> bool:
-    """Informou o e-mail: o livro é entregue (1008 → 1009). Só a partir de 1008: depois de entregue, o e-mail (não
-    verificado) nunca muda — senão o guid viraria um jeito de mandar o "Reenviar o e-mail" para qualquer endereço.
-    Retorna True só para quem fez a transição (dois toques simultâneos: só um entrega e manda o e-mail)."""
+def entregar_pedido_contribuicao(pedido_id: int, nome: str) -> bool:
+    """Tocou em "Abrir meu livro": o livro é entregue (1008 → 1009), sem e-mail — desde 14/11/2026 o e-mail é
+    opcional e informado na Estante (definir_email_entrega_contribuicao). O marco "recebeu o livro" do funil é a
+    abertura da Estante (estante_em). Retorna True só para quem fez a transição (dois toques: só um entrega)."""
     alterados = db.execute_query(
-        """UPDATE pedidos SET email = %s, contact_name = COALESCE(NULLIF(%s, ''), contact_name),
+        """UPDATE pedidos SET contact_name = COALESCE(NULLIF(%s, ''), contact_name),
                   estado_id = %s, data_ultima_atualizacao = CURRENT_TIMESTAMP,
-                  data_pedido = COALESCE(data_pedido, CURRENT_TIMESTAMP)  -- buscas por e-mail ordenam por ela
+                  data_pedido = COALESCE(data_pedido, CURRENT_TIMESTAMP)
            WHERE id = %s AND estado_id = %s""",
-        (email, (nome or '')[:100], ESTADO_CONTRIBUICAO_ENTREGUE, pedido_id, ESTADO_CONTRIBUICAO_CLICOU),
+        ((nome or '')[:100], ESTADO_CONTRIBUICAO_ENTREGUE, pedido_id, ESTADO_CONTRIBUICAO_CLICOU),
         return_rowcount=True)
+    return bool(alterados)
+
+
+def definir_email_entrega_contribuicao(pedido_id: int, email: str) -> bool:
+    """E-mail opcional informado na Estante da entrega (1009): grava UMA vez — o e-mail não é verificado, e trocá-lo
+    faria do guid um jeito de mandar o "seu livro chegou" e o "Reenviar o e-mail" para qualquer endereço. Marca
+    email_em, que é o ponto de partida dos lembretes. True só para quem gravou."""
+    alterados = db.execute_query(
+        """UPDATE pedidos SET email = %s, data_ultima_atualizacao = CURRENT_TIMESTAMP
+           WHERE id = %s AND estado_id = %s AND COALESCE(email, '') = ''""",
+        (email, pedido_id, ESTADO_CONTRIBUICAO_ENTREGUE), return_rowcount=True)
     if not alterados:
         return False
     marcar_marco_contribuicao(pedido_id, 'email_em')
@@ -2584,6 +2600,10 @@ def buscar_contribuicoes_para_lembrete() -> list:
              AND NOT EXISTS (SELECT 1 FROM contribuicao_pedidos cp2 JOIN pedidos p2 ON p2.id = cp2.pedido_id
                              WHERE cp2.produto_id = cp.produto_id AND cp2.braco = 'estante' AND p2.estado_id = 1009
                                AND p2.email = p.email AND cp2.email_em > cp.email_em)
+             -- E-mail informado na Estante DEPOIS de o follow-up do checkout (Pix não pago) já ter cobrado o checkout
+             -- desta entrega: ela já recebeu a cobrança; os lembretes seriam a segunda.
+             AND NOT EXISTS (SELECT 1 FROM pedidos_vinculados pv JOIN pedidos pc ON pc.id = pv.pedido_id_adquirido
+                             WHERE pv.pedido_id_origem = p.id AND pc.data_followup_pagamento_web IS NOT NULL)
              AND ((cp.lembrete1_em IS NULL AND cp.email_em <= NOW() - INTERVAL cc.lembrete1_minutos MINUTE)
                OR (cp.lembrete1_em IS NOT NULL AND cp.lembrete2_em IS NULL
                    AND cp.email_em <= NOW() - INTERVAL cc.lembrete2_minutos MINUTE

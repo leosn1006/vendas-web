@@ -1085,7 +1085,7 @@ def resolver_pedido_por_guid(guid: str, item_id: int = None):
       - Pedido web (estado_id >= 1000): tudo (principal/bônus/bump) só fica acessível com
         estado_id == 1000 (pago) — igual sempre funcionou. Exceção: a entrega da contribuição
         (1009, ver _entrega_contribuicao) segue a regra do WhatsApp (principal livre, bônus com
-        cadeado); antes do e-mail (1008) ainda não foi entregue.
+        cadeado); antes de abrir o livro (1008) ainda não foi entregue.
       - Pedido WhatsApp (estado_id < 1000): o principal só fica acessível depois que o produto
         foi de fato entregue por mensagem OU o cliente já respondeu a introdução (estado_id >= 2,
         ver _produto_ja_entregue_whatsapp) — um lead recém-criado (acabou de clicar no anúncio,
