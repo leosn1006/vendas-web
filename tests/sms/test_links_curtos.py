@@ -24,8 +24,14 @@ def test_codigo():
     assert not any(links_curtos._PROIBIDOS.search(c) for c in codigos)
 
 
-def test_endereco_sem_https():
-    assert links_curtos.endereco('https://lsnlivros.com.br/', 'Ab3dEf9') == 'lsnlivros.com.br/m/Ab3dEf9'
+def test_endereco_com_protocolo():
+    """Com https:// o celular sempre faz o link clicável (sem ele, o teste de 14/11 não virou link)."""
+    assert links_curtos.endereco('https://lsnlivros.com.br/', 'Ab3dEf9') == 'https://lsnlivros.com.br/m/Ab3dEf9'
+    assert links_curtos.endereco('lsnlivros.com.br', 'Ab3dEf9') == 'https://lsnlivros.com.br/m/Ab3dEf9'
+    assert links_curtos.endereco('http://localhost', 'Ab3dEf9') == 'http://localhost/m/Ab3dEf9'
+    for vazio in ('', None, 'https://', 'https:///'):
+        with pytest.raises(ValueError):
+            links_curtos.endereco(vazio, 'Ab3dEf9')
 
 
 def test_redireciona_e_conta_o_clique(banco, cliente):

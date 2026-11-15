@@ -20,7 +20,7 @@ def enviar(telefone: str, texto: str, tag: str, custom: str) -> str:
     """Envia um SMS; devolve o requestId da Comtele. `tag` = origem (aparece no relatório deles) e `custom` = id do
     nosso envio (para casar o relatório de entrega)."""
     if not config.COMTELE_CHAVE:
-        raise ErroSms('CONTENT_SMS_API (chave da Comtele) não configurada')
+        raise ErroSms('CONTELE_SMS_API (chave da Comtele) não configurada')
     corpo = {'receivers': [telefone], 'contactGroups': [], 'message': texto, 'route': config.COMTELE_ROTA,
              'tag': tag[:40], 'custom': custom[:40], 'scheduleDate': None}
     # Nova tentativa só quando é certo que a Comtele NÃO aceitou (sem conexão, 429, 503). Resposta que não chegou

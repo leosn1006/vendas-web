@@ -58,8 +58,14 @@ def criar(url_destino: str, origem: str, ref_tipo: str | None = None, ref_id: in
 
 
 def endereco(dominio_base: str, codigo: str) -> str:
-    """Como o link vai no texto: sem https:// (os celulares reconhecem 'dominio.com.br/m/abc' como link)."""
-    return f"{re.sub(r'^https?://', '', dominio_base or '').rstrip('/')}/m/{codigo}"
+    """Como o link vai no texto: COM o protocolo (https:// em produção). Sem ele, nem todo celular transforma o texto
+    em link clicável (teste de 14/11/2026). Domínio sem protocolo ganha https://."""
+    base = (dominio_base or '').strip().rstrip('/')
+    if not re.sub(r'^https?://', '', base):
+        raise ValueError('link curto sem domínio')   # sairia "https:///m/..." (sms.servico já barra antes)
+    if not re.match(r'^https?://', base):
+        base = f'https://{base}'
+    return f'{base}/m/{codigo}'
 
 
 def _registrar(codigo, link, robo):

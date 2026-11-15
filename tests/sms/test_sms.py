@@ -41,7 +41,7 @@ def test_producao_grava_e_agenda(banco, agendados, monkeypatch):
     envio = banco.envios[envio_id]
     link = banco.links[envio['link_id']]
     assert agendados == [envio_id] and envio['status'] == 'pendente' and envio['telefone'] == CELULAR
-    assert envio['texto'] == f"Ouca ja: lsnlivros.com.br/m/{link['codigo']} Cancao"
+    assert envio['texto'] == f"Ouca ja: https://lsnlivros.com.br/m/{link['codigo']} Cancao"
     assert link['url_destino'] == 'https://lsnlivros.com.br/musica/p/tok' and len(link['codigo']) == 7
     assert (envio['ref_tipo'], envio['ref_id'], envio['etapa']) == ('musica', 9, 'previa 1')
 

@@ -7,7 +7,7 @@ import pytest
 from musica import mensagens
 from tests.musica.test_lembretes import DIA, _na_etapa, _rodar, relogio  # noqa: F401 (relógio dos testes, autouse)
 
-LINK = 'lsnlivros.com.br/m/Ab3dEf9'
+LINK = 'https://lsnlivros.com.br/m/Ab3dEf9'
 
 
 @pytest.mark.parametrize('etapa', ['previa', 'checkout'])
@@ -103,14 +103,14 @@ def test_sem_acento_e_sem_emoji():
 ])
 def test_nunca_passa_de_160(de, respostas):
     for numero in (1, 2, 3):
-        texto = mensagens.lembrete_sms(de, respostas, 'umdominiobemcomprido.com.br/m/Ab3dEf9', numero=numero)
-        assert len(texto) <= 160 and texto.endswith('umdominiobemcomprido.com.br/m/Ab3dEf9')
+        texto = mensagens.lembrete_sms(de, respostas, 'https://umdominiobemcomprido.com.br/m/Ab3dEf9', numero=numero)
+        assert len(texto) <= 160 and texto.endswith('https://umdominiobemcomprido.com.br/m/Ab3dEf9')
 
 
 def test_marca_longa_sai_antes_de_estourar():
     texto = mensagens.lembrete_sms('Patricia', {'para_quem': 'Mãe', 'nome': 'Juliana'},
-                                   'barreiroslivros.com.br/m/Ab3dEf9', 'Canção de Presente - LSN Livros Oficial do Brasil')
-    assert len(texto) <= 160 and 'barreiroslivros.com.br/m/Ab3dEf9' in texto and 'Juliana' in texto
+                                   'https://barreiroslivros.com.br/m/Ab3dEf9', 'Canção de Presente - LSN Livros Oficial do Brasil')
+    assert len(texto) <= 160 and 'https://barreiroslivros.com.br/m/Ab3dEf9' in texto and 'Juliana' in texto
 
 
 def test_texto_padrao_cabe_com_folga():

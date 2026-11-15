@@ -257,7 +257,7 @@ class NotificadorMemoria:
     def sms(self, produto_id, telefone, montar_texto, url_destino, dominio_base, etapa, musica_id):
         if self.falhar_sms:
             raise RuntimeError('Comtele fora')
-        self.smss.append({'telefone': telefone, 'texto': montar_texto('lsnlivros.com.br/m/Ab3dEf9'),
+        self.smss.append({'telefone': telefone, 'texto': montar_texto('https://lsnlivros.com.br/m/Ab3dEf9'),
                           'destino': url_destino, 'etapa': etapa, 'musica_id': musica_id})
         return len(self.smss)
 

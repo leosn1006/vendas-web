@@ -8,8 +8,8 @@ def _lista(nome):
 
 
 ATIVO = os.getenv('SMS_ATIVO', '1') == '1'
-# Chave da API nova da Comtele (header x-api-key). O nome da variável é o que já estava no .env.
-COMTELE_CHAVE = os.getenv('CONTENT_SMS_API', '')
+# Chave da API nova da Comtele (header x-api-key).
+COMTELE_CHAVE = os.getenv('CONTELE_SMS_API', '')
 COMTELE_URL = os.getenv('SMS_COMTELE_URL', 'https://api.comtele.com.br/messages/sms/send')
 COMTELE_ROTA = int(os.getenv('SMS_COMTELE_ROTA', '17') or 17)
 # Segredo no caminho do webhook de entrega (a Comtele não assina o aviso). Vazio = webhook desligado.

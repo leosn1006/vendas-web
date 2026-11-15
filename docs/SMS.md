@@ -51,7 +51,8 @@ Comtele a cada 15 min.
   1,9 trilhão de códigos.
   - Maiúscula ≠ minúscula (`codigo` em `utf8mb4_bin`).
   - O código nunca forma `aws`, `dump`, `backup` nem `config`, que o nginx derruba (444) como robô.
-- **No texto vai sem `https://`**, por exemplo `lsnlivros.com.br/m/k7Hq2Rx`. O celular reconhece como link.
+- **No texto vai com `https://`**, por exemplo `https://lsnlivros.com.br/m/k7Hq2Rx`. Sem o protocolo, o teste de
+  14/11 mostrou que o iPhone não fez o link clicável. Custa 8 caracteres, e os textos ainda cabem em 1 SMS.
 - **Cada acesso fica em `links_curtos_acessos`** (código tentado, se existe, IP, navegador, robô).
   - Robôs (pré-visualização do WhatsApp/iMessage, verificadores de e-mail, curl) não contam como clique.
   - Código inexistente ou expirado leva à página inicial do domínio.
@@ -94,7 +95,7 @@ Comtele a cada 15 min.
 
 | variável | uso |
 |---|---|
-| `CONTENT_SMS_API` | chave da API nova da Comtele (Configurações → Chaves de API) |
+| `CONTELE_SMS_API` | chave da API nova da Comtele (Configurações → Chaves de API) |
 | `SMS_ATIVO` | `1` liga, `0` desliga tudo |
 | `SMS_COMTELE_ROTA` | id da rota da Comtele (padrão 17, o do exemplo deles; conferir no painel) |
 | `SMS_WEBHOOK_SEGREDO` | segredo no caminho do webhook de entrega |
@@ -104,7 +105,7 @@ Comtele a cada 15 min.
 ## Colocar no ar
 
 1. Migration `106_sms_links_curtos.sql`.
-2. `.env` de produção: `CONTENT_SMS_API`, `SMS_WEBHOOK_SEGREDO` (gerar um novo) e conferir `SMS_COMTELE_ROTA`.
+2. `.env` de produção: `CONTELE_SMS_API`, `SMS_WEBHOOK_SEGREDO` (gerar um novo) e conferir `SMS_COMTELE_ROTA`.
 3. `docker compose up -d --build app worker-urgente worker-normal worker-baixa beat` e `make reload-nginx`.
 4. Painel da Comtele: URL de callback de status =
    `https://<domínio>/sms/comtele/status/<SMS_WEBHOOK_SEGREDO>`.
