@@ -61,7 +61,7 @@ def endereco(dominio_base: str, codigo: str) -> str:
     """Como o link vai no texto: COM o protocolo (https:// em produção). Sem ele, nem todo celular transforma o texto
     em link clicável (teste de 14/11/2026). Domínio sem protocolo ganha https://."""
     base = (dominio_base or '').strip().rstrip('/')
-    if not re.sub(r'^https?://', '', base):
+    if not re.sub(r'^https?:/*', '', base).strip('/'):
         raise ValueError('link curto sem domínio')   # sairia "https:///m/..." (sms.servico já barra antes)
     if not re.match(r'^https?://', base):
         base = f'https://{base}'
