@@ -30,7 +30,7 @@ from database import (db,
     pedido_dentro_da_janela_24h, buscar_data_ultima_mensagem_recebida_pedido,
     numero_empresa_operacional, buscar_status_numero_empresa, get_provedor_numero, atualizar_status_api_numero,
     buscar_pedido_por_nome, acertar_valor_pedido,
-    listar_chaves_pix_produto, adicionar_chave_pix_produto, desativar_chave_pix_produto,
+    listar_chaves_pix_produto, adicionar_chave_pix_produto, desativar_chave_pix_produto, ChavePixEmOutroProduto,
     get_config_cartao_produto_admin, salvar_config_cartao_produto,
     busca_financeiro_produto, buscar_tenant_slug_produto,
     listar_planilhas_dns_produto, adicionar_planilha_dns, atualizar_planilha_dns, remover_planilha_dns,
@@ -3394,9 +3394,16 @@ def adicionar_chave_pix(produto_id):
         flash('Informe a chave PIX.', 'warning')
         return redirect(url_for('admin.chaves_pix_produto', produto_id=produto_id))
     try:
-        adicionar_chave_pix_produto(produto_id, chave, tenant_slug=tenant)
-        flash(f'Chave PIX "{chave}" adicionada com sucesso!', 'success')
-        logger.info(f"[ADMIN] ✅ Chave PIX '{chave}' ({tenant}) associada ao produto #{produto_id} por {current_user.email}")
+        resultado = adicionar_chave_pix_produto(produto_id, chave, tenant_slug=tenant)
+        if resultado == 'ja_ativa':
+            flash(f'Chave PIX "{chave}" já está ativa neste produto — nada mudou.', 'warning')
+        elif resultado == 'reativada':
+            flash(f'Chave PIX "{chave}" já existia desativada e foi reativada (conta {tenant}).', 'success')
+        else:
+            flash(f'Chave PIX "{chave}" adicionada com sucesso!', 'success')
+        logger.info(f"[ADMIN] ✅ Chave PIX '{chave}' ({tenant}) no produto #{produto_id}: {resultado} por {current_user.email}")
+    except ChavePixEmOutroProduto as e:
+        flash(f'Chave PIX "{chave}" não cadastrada: {e}.', 'warning')
     except Exception as e:
         logger.error(f"[ADMIN] ❌ Erro ao adicionar chave PIX: {e}")
         flash(f'Erro ao adicionar chave PIX: {e}', 'danger')

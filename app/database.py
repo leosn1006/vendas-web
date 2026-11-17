@@ -3353,12 +3353,46 @@ def listar_chaves_pix_produto(produto_id) -> list:
     ) or []
 
 
-def adicionar_chave_pix_produto(produto_id, chave_pix: str, tenant_slug: str = 'lsn-livros') -> int:
-    """Insere uma chave PIX para o produto. INSERT IGNORE evita duplicata."""
-    return db.execute_query(
-        "INSERT IGNORE INTO chaves_pix_produto (produto_id, chave_pix, tenant_slug) VALUES (%s, %s, %s)",
-        (produto_id, chave_pix.strip(), tenant_slug),
+class ChavePixEmOutroProduto(Exception):
+    """A chave já está ativa em outro produto — o PIX recebido seria atribuído ao produto errado."""
+
+
+def adicionar_chave_pix_produto(produto_id, chave_pix: str, tenant_slug: str = 'lsn-livros') -> str:
+    """
+    Cadastra uma chave PIX no produto e diz o que aconteceu:
+      'adicionada' — chave nova no produto;
+      'reativada'  — já existia desativada (UNIQUE produto+chave): volta ativa, com a conta BB
+                     escolhida e sem a marca de QR web (quem decide isso é o botão "Usar no QR web");
+      'ja_ativa'   — já estava ativa: nada muda (nem a conta BB, que confirma os pedidos web).
+    Levanta ChavePixEmOutroProduto se a chave está ativa em outro produto: o PIX recebido é ligado
+    ao produto pela chave (busca_chaves_pix_produtos), e duas ativas deixam a atribuição ao acaso.
+    Antes era INSERT IGNORE: a chave desativada era ignorada em silêncio e o admin dizia "sucesso".
+    """
+    chave_pix = chave_pix.strip()
+    atual = db.execute_query(
+        "SELECT id, ativo FROM chaves_pix_produto WHERE produto_id = %s AND chave_pix = %s",
+        (produto_id, chave_pix), fetch_one=True,
     )
+    if atual and atual['ativo']:
+        return 'ja_ativa'
+    outro = db.execute_query(
+        "SELECT produto_id FROM chaves_pix_produto WHERE chave_pix = %s AND ativo = 1 AND produto_id <> %s LIMIT 1",
+        (chave_pix, produto_id), fetch_one=True,
+    )
+    if outro:
+        raise ChavePixEmOutroProduto(
+            f'a chave já está ativa no produto #{outro["produto_id"]} — desative-a lá antes')
+    if atual:
+        db.execute_query(
+            "UPDATE chaves_pix_produto SET ativo = 1, tenant_slug = %s, para_venda_web = 0 WHERE id = %s",
+            (tenant_slug, atual['id']),
+        )
+        return 'reativada'
+    db.execute_query(
+        "INSERT INTO chaves_pix_produto (produto_id, chave_pix, tenant_slug) VALUES (%s, %s, %s)",
+        (produto_id, chave_pix, tenant_slug),
+    )
+    return 'adicionada'
 
 
 def desativar_chave_pix_produto(chave_id: int):
