@@ -12,6 +12,7 @@ import logging
 import random
 import re
 import time
+from urllib.parse import unquote, urlparse
 from whatsapp import (
     marcar_como_lida, enviar_mensagem_digitando,
     enviar_audio, enviar_imagem, enviar_mensagem, enviar_documento,
@@ -21,6 +22,15 @@ from whatsapp import (
 from database import salvar_mensagem_pedido, selecionar_e_avancar_variante
 
 logger = logging.getLogger(__name__)
+
+
+def _nome_arquivo(acao: dict) -> str:
+    """Nome com que o documento chega à cliente. Sem `nome_arquivo` configurado na ação, usa o nome do arquivo na
+    URL (antes ia "arquivo", sem extensão, e o histórico gravava "[arquivo] None")."""
+    if (acao.get('nome_arquivo') or '').strip():
+        return acao['nome_arquivo'].strip()
+    nome_url = unquote(urlparse(str(acao.get('url') or '')).path.rsplit('/', 1)[-1]).strip()
+    return nome_url if '.' in nome_url else 'arquivo'
 
 
 def _executar_com_retry(fn, tag: str, max_tentativas: int = 2, delay_s: float = 8.0):
@@ -154,14 +164,15 @@ def executar_acao(acao: dict, pedido: dict, message_id_original: str, pedido_id:
 
     elif tipo == 'enviar_arquivo':
         _exige_campo(acao, 'url', tag)
+        nome_arquivo = _nome_arquivo(acao)
         mid = _executar_com_retry(lambda: enviar_documento(
             pedido,
             url_documento=acao['url'],
             caption=acao.get('caption') or '',
-            filename=acao.get('nome_arquivo') or 'arquivo',
+            filename=nome_arquivo,
         ), tag)
-        salvar_mensagem_pedido(mid, pedido_id, f"[arquivo] {acao.get('nome_arquivo')}", tipo_mensagem='enviada')
-        logger.debug(f"[{tag}] 📄 Arquivo enviado: {acao.get('nome_arquivo')}")
+        salvar_mensagem_pedido(mid, pedido_id, f"[arquivo] {nome_arquivo}", tipo_mensagem='enviada')
+        logger.debug(f"[{tag}] 📄 Arquivo enviado: {nome_arquivo}")
 
     elif tipo == 'enviar_mensagem':
         _exige_campo(acao, 'mensagem', tag)

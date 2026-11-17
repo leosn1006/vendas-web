@@ -206,12 +206,12 @@ def fluxo_enviar_pedido_dinamico(self, pedido, mensagem_whatsapp=None, ordem=1, 
 
 
 @shared_task(name="tasks.responder_mensagem", bind=True, max_retries=2)
-def fluxo_responder_mensagem(self, pedido, mensagem_whatsapp):
+def fluxo_responder_mensagem(self, pedido, mensagem_whatsapp, tentativa_espera=0):
     logger.info("=" * 120)
     logger.info(f"[TASK-RESPONDER-MENSAGEM] 📦 Dados recebidos para responder mensagem: \n Pedido: {pedido},  \n Mensagem WhatsApp: {mensagem_whatsapp}")
     from fluxos.fluxo_responder import executar
     try:
-        executar(pedido, mensagem_whatsapp)
+        executar(pedido, mensagem_whatsapp, tentativa_espera=tentativa_espera)
         logger.info(f"[TASK-RESPONDER-MENSAGEM] ✅ Mensagem processada com sucesso!")
         logger.info("=" * 120)
     except Exception as exc:
@@ -248,13 +248,26 @@ def fluxo_conferir_comprovante_dinamico(self, pedido, mensagem_whatsapp):
         logger.info("=" * 120)
     except Exception as exc:
         if self.request.retries >= self.max_retries:
-            from database import atualizar_estado_pedido
-            atualizar_estado_pedido(pedido.get('id'), 3)
-            logger.warning(f"[TASK-COMPROVANTE-DIN] 🔓 Estado revertido → 3 para pedido #{pedido.get('id')} após erro")
+            # pedido['estado_id'] é o estado lido pelo orquestrador ANTES de travar no 13
+            from fluxos.fluxo_comprovante_dinamico import destravar_apos_erro
+            destravar_apos_erro(pedido.get('id'), pedido.get('estado_id'))
         msg_txt = mensagem_whatsapp.get('entry', [{}])[0].get('changes', [{}])[0].get('value', {}).get('messages', [{}])[0].get('text', {}).get('body', '(sem texto)')
         logger.exception(f"[TASK-COMPROVANTE-DIN] ❌ pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | msg: {str(msg_txt)[:500]} | Erro: {exc}. Tentativa {self.request.retries + 1} de {self.max_retries + 1}")
         notificar_admin_erro_sistema(f"TASK-COMPROVANTE-DIN | pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")
         raise self.retry(exc=exc, countdown=30)
+
+
+@shared_task(name="tasks.confirmar_pagamento_informado", bind=True, max_retries=0)
+def fluxo_confirmar_pagamento_informado(self, pedido, message_id, valor=None):
+    logger.info(f"[TASK-PAGAMENTO-INFORMADO] 📦 pedido #{pedido.get('id')} | valor citado: {valor}")
+    from fluxos.fluxo_comprovante_dinamico import executar_pagamento_informado
+    try:
+        executar_pagamento_informado(pedido, message_id, valor)
+    except Exception as exc:
+        # o destravamento (0 se já pago, senão o estado anterior) é feito em executar_pagamento_informado
+        logger.exception(f"[TASK-PAGAMENTO-INFORMADO] ❌ pedido #{pedido.get('id')} | Erro: {exc}")
+        notificar_admin_erro_sistema(f"TASK-PAGAMENTO-INFORMADO | pedido #{pedido.get('id')} | tel: {pedido.get('contact_phone')} | {type(exc).__name__}")
+        raise
 
 
 @shared_task(name="tasks.transcrever_audio", bind=True, max_retries=0)

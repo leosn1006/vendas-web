@@ -3663,11 +3663,20 @@ def salvar_devolucao_pix(devolucao: dict, tenant_slug: str = 'lsn-livros', chave
 # Notificações de pedido (substitui WhatsApp ao admin)
 # ============================================================
 
-def criar_notificacao_pedido(pedido_id: int, produto_id: int, motivo: str, mensagem: str = '') -> bool:
+def criar_notificacao_pedido(pedido_id: int, produto_id: int, motivo: str, mensagem: str = '',
+                             mesmo_em_analise: bool = False) -> bool:
     """Cria notificação se não houver uma em_analise para o pedido. Retorna True se inseriu.
     Ignora notificações com motivo='sugestao_resposta_email' na checagem de duplicidade — um
     rascunho de e-mail aguardando aprovação não é um alerta que deva bloquear uma escalação
-    (WhatsApp ou e-mail) nova para o mesmo pedido."""
+    (WhatsApp ou e-mail) nova para o mesmo pedido.
+    `mesmo_em_analise=True` insere sem essa checagem (risco à vida não pode sumir atrás de outra notificação)."""
+    if mesmo_em_analise:
+        with db.get_cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO notificacoes_pedido (pedido_id, produto_id, motivo, mensagem) VALUES (%s, %s, %s, %s)",
+                (pedido_id, produto_id, motivo, mensagem),
+            )
+            return cursor.rowcount > 0
     with db.get_cursor() as cursor:
         cursor.execute(
             """INSERT INTO notificacoes_pedido (pedido_id, produto_id, motivo, mensagem)
@@ -3679,6 +3688,16 @@ def criar_notificacao_pedido(pedido_id: int, produto_id: int, motivo: str, mensa
             (pedido_id, produto_id, motivo, mensagem, pedido_id),
         )
         return cursor.rowcount > 0
+
+
+def tem_notificacao_em_analise_por_motivo(pedido_id: int, motivo: str) -> bool:
+    """True se há notificação em_analise com este motivo no pedido (ex.: não repetir o alerta de risco à vida)."""
+    row = db.execute_query(
+        "SELECT 1 FROM notificacoes_pedido WHERE pedido_id = %s AND estado = 'em_analise' AND motivo = %s LIMIT 1",
+        (pedido_id, motivo),
+        fetch_one=True,
+    )
+    return row is not None
 
 
 def tem_notificacao_em_analise(pedido_id: int) -> bool:

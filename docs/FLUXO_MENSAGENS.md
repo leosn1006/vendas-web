@@ -55,6 +55,16 @@ Mensagem chega via Celery
    se a IA escala (estorno) e ninguém respondeu, tique azul parecia descaso
         │
         ▼
+   Relê o pedido no banco (a task traz a foto do webhook: 13 e não pago
+   enquanto o comprovante é processado)
+        │
+        ▼
+┌─────────────────────────────────────────────────────┐
+│  Estado 13 (comprovante em análise)?                │  texto que chegou junto com a imagem
+│  SIM → reagenda em 20 s (até 5 vezes) e sai        │
+└────────────────────────┬────────────────────────────┘
+                         │ NÃO (ou passou do limite)
+                         ▼
 ┌─────────────────────────────────────────────────────┐
 │  Pedido tem notificação em_analise?                 │  admin está atendendo manualmente
 │  SIM → SALVA mensagem + silencia IA (sem OpenAI)   │
@@ -75,14 +85,35 @@ Mensagem chega via Celery
 └────────────────────────┬────────────────────────────┘
                          │ NÃO
                          ▼
-              Carrega produto + histórico (últimas 10 msgs)
+┌─────────────────────────────────────────────────────┐
+│  Mensagem não pede resposta? (_mensagem_sem_resposta)│  emoji, ok, obrigada, amém,
+│  SIM → SALVA + silencia (sem OpenAI, sem WhatsApp)  │  saudação sozinha NÃO; "segue o
+└────────────────────────┬────────────────────────────┘  comprovante"/"já paguei" só se pago
+                         │ NÃO
+                         ▼
+              Carrega produto + histórico (últimas 10 msgs,
+              linhas técnicas traduzidas para "(Registro: ...)")
                          │
                          ▼
-                  Chama OpenAI → gera resposta
+     Chama OpenAI (prompt + FAQ + PDF + regras + SITUAÇÃO DO PEDIDO)
                          │
-                         ▼
-              Agenda envio com delay humanizado (5–8s)
+     ┌──────────────┬────┴─────────┬───────────────────┬──────────────────────┐
+     ▼              ▼              ▼                   ▼                      ▼
+  responder    nao_responder   notificar_admin    risco_vida         registrar_pagamento_informado
+  agenda envio  só salva       escala, sem        escala E envia     task confirmar_pagamento_informado
+  (5–8 s)                      resposta           mensagem do CVV    em 30 s: relê, trava 3/4 → 13 e roda
+                                                  (188)              o fluxo do comprovante sem arquivo
 ```
+
+Regras de pagamento (nov/2026): a IA **nunca pede comprovante** nem nome do pagador/valor/horário (o bloco de
+regras vem depois do FAQ e prevalece sobre ele). Pedido pago: comentário sobre o pagamento, valor ou chave Pix →
+`nao_responder`. Pedido do WhatsApp aguardando pagamento (3/4): "já paguei" vale como comprovante (valor citado ou
+preço do produto), com as mesmas ações do fluxo Comprovante (`confirmar_pagamento` em
+`fluxo_comprovante_dinamico.py`). A trava é feita só na task, depois de 30 s: se a imagem do comprovante chegar
+nesse meio-tempo, ela tem prioridade. Pedidos do site (100x) nunca recebem essa ferramenta.
+
+Risco à vida com pedido já em análise (IA silenciada): a checagem determinística `fala_em_risco_a_vida` envia o
+CVV mesmo assim.
 
 ---
 
@@ -107,4 +138,5 @@ Mensagem chega via Celery
 | `loop_autoresponder` | webhook | 3+ comprovantes em 5 min |
 | `loop_excesso_msg` | fluxo_responder | pedido atingiu 40 mensagens |
 | `loop_repetidas_msg` | fluxo_responder | texto idêntico repetido em 10 min (> 10 chars) |
-| `escalonamento` | agente OpenAI | cliente pediu estorno, insatisfação etc. |
+| `estorno` / `insatisfacao` / `ajuda_pagamento` / `pergunta_sem_resposta` | agente OpenAI | escalação; a IA não responde |
+| `risco_vida` | agente OpenAI | fala em suicídio/se machucar/violência; a IA responde com o CVV (188) e escala |

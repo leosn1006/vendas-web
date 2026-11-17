@@ -226,6 +226,7 @@ celery_app.conf.update(
         "tasks.enviar_introducao_dinamico":         {"queue": "urgente"},
         "tasks.enviar_pedido_dinamico":             {"queue": "urgente"},
         "tasks.conferir_comprovante_dinamico":      {"queue": "urgente"},
+        "tasks.confirmar_pagamento_informado":      {"queue": "urgente"},
         "tasks.transcrever_audio":                  {"queue": "urgente"},
         # NORMAL — conversas e entrega
         "tasks.responder_mensagem":                 {"queue": "normal"},

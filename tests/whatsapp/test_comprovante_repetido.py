@@ -77,3 +77,11 @@ def test_primeiro_comprovante_segue_o_caminho_normal_sem_devolver_estado_antigo(
     assert len(pagamentos) == 1     # gravou o pagamento (é ele que leva o pedido a estado 0)
     assert len(acoes) == 1          # e enviou as mensagens de confirmação
     assert estados == []            # e NÃO restaurou o estado antigo por cima
+
+
+def test_midia_nao_suportada_sem_estado_anterior_e_nao_paga_volta_para_3(ambiente):
+    """Antes caía em 0 ("pago") mesmo sem pagamento; a regra única de saída do 13 olha se está pago."""
+    estados, _, _ = ambiente
+    msg = {'entry': [{'changes': [{'value': {'messages': [{'type': 'video', 'id': 'w'}]}}]}]}
+    fluxo.executar({'id': 5, 'produto_id': 11, 'estado_id': None, 'valor_pago': 0.0}, msg)
+    assert estados == [(5, 3)]
