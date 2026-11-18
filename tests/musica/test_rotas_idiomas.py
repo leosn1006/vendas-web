@@ -43,7 +43,8 @@ def test_landing_e_quiz_do_mexico_em_espanhol(cliente):
     html = r.get_data(as_text=True)
     assert r.status_code == 200 and 'lang="es-MX"' in html and '¿Para quién es la canción?' in html
     assert 'href="/mx/cancion/crear"' in html and 'Canción de Regalo' in html
-    assert 'id="exemplos"' not in html   # sem exemplos gravados em espanhol, o carrossel some
+    assert 'id="exemplos"' in html and '/musica/static/exemplos/es-MX/mama-lupita.mp3' in html   # exemplos em espanhol
+    assert 'Lupita, mi raíz' in html and 'mae-rosa.mp3' not in html   # nenhum exemplo do Brasil no México
     assert 'La historia de tu mamá' in cliente.get('/mx/cancion/?ocasion=mama').get_data(as_text=True)
     quiz = cliente.get('/mx/cancion/crear').get_data(as_text=True)
     assert '"chave_rascunho": "cancion_quiz_mx"' in quiz and 'Mariachi / Ranchera' in quiz and 'musica-mx' in quiz

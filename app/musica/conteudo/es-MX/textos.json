@@ -162,7 +162,17 @@
       "hijo": {"titulo": "Una canción para que tu hijo la guarde para siempre", "sub": "Todo lo que sientes desde el primer día, en una canción con el nombre de quien más amas.", "img": "familia-final.jpg", "alt": "Papás besando a su hija", "quiz": "", "quem": ["Hijo", "Hija"]},
       "navidad": {"titulo": "Esta Navidad, regala una canción", "sub": "Con la familia reunida, una canción con sus nombres y sus recuerdos. El regalo que nadie se espera.", "img": "familia-final.jpg", "alt": "Familia reunida", "quiz": "Navidad"}
     },
-    "exemplos": []
+    "_exemplos": "Gerados em 18/11/2026 com musica.ferramentas.gerar_exemplos (2ª versão de cada, trecho de 40 s; letras em storage/musica/exemplos/es-MX/exemplos.json). Aguardando a escuta de um mexicano.",
+    "exemplos": [
+      {"nome": "10 de mayo", "slug": "10 de mayo (Día de las Madres)", "img": "mae-filha.jpg", "audio": "es-MX/mama-lupita.mp3", "musica": "Lupita, mi raíz"},
+      {"nome": "Cumpleaños", "slug": "Cumpleaños", "img": "avo-aniversario.jpg", "audio": "es-MX/abuelito-chuy.mp3", "musica": "¡Felices ochenta, Chuy!"},
+      {"nome": "14 de febrero", "slug": "14 de febrero (Amor y Amistad)", "img": "casal.jpg", "audio": "es-MX/novia-fer.mp3", "musica": "Mi vida contigo, Fer"},
+      {"nome": "Día del Padre", "slug": "Día del Padre", "img": "pai-filha.jpg", "audio": "es-MX/papa-tono.mp3", "musica": "Toño, gracias por estar"},
+      {"nome": "Boda", "slug": "Boda", "img": "casamento.jpg", "audio": "es-MX/boda-ana-luis.mp3", "musica": "Luis, mil veces tú"},
+      {"nome": "XV años", "slug": "XV años", "img": "quinze-anos.jpg", "audio": "es-MX/xv-sofi.mp3", "musica": "Sofi, siempre mi niña"},
+      {"nome": "Graduación", "slug": "Graduación", "img": "formatura.jpg", "audio": "es-MX/graduacion-dani.mp3", "musica": "Dani, orgullo de la familia"},
+      {"nome": "En memoria", "slug": "En memoria de quien ya partió", "img": "ouvindo.jpg", "audio": "es-MX/abuelita-carmen.mp3", "musica": "Carmen, entre hilos y canciones"}
+    ]
   },
 
   "quiz": {

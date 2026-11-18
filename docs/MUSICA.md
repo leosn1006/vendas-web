@@ -247,8 +247,13 @@ Cada idioma = idioma + país (`pt-BR`, `es-MX`; depois `es-US`, `en-US`), regist
   que quiz, estilos e landing combinam), `templates/musica/legal/<idioma>.html`, uma linha em `IDIOMAS`, as etapas
   da página da Analytics em `admin/views.py` e o produto no banco.
 - **Amostras:** `gerar_amostras --idioma es-MX --estilos mariachi,banda` grava em `storage/musica/amostras/es-MX/`; a
-  escolhida vai para `app/musica/static/estilos/es-MX/<estilo>.mp3`. Os exemplos da landing (`landing.exemplos`)
-  começam vazios no México e o carrossel some.
+  escolhida vai para `app/musica/static/estilos/es-MX/<estilo>.mp3`.
+- **Exemplos da landing** ("Para cada momento importante"): `docker compose run --rm app python -m
+  musica.ferramentas.gerar_exemplos --idioma es-MX [--so slug]` faz quiz fictício → letra → música com o fluxo de
+  verdade e grava em `storage/musica/exemplos/<idioma>/` (trecho de 40 s, `exemplos.json` com as letras). O México
+  tem 8 (18/11/2026, 2ª versão de cada, conferidos por transcrição: espanhol, volume e letra), em
+  `static/exemplos/es-MX/` e `textos.json` → `landing.exemplos`. Lista vazia = o carrossel some.
+- **Pendente da Fase 2:** o transcritor da legenda do videoclipe está fixo em português (`language='pt'`).
 
 **Para pôr o México no ar:** migration 107 → produto novo da Música com `UPDATE produtos SET idioma = 'es-MX'`
 (o admin ainda não tem o campo), planos e entregáveis como no Brasil, `nfe_automatica = 0`, marca em espanhol
