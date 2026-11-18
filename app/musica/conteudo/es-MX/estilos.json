@@ -1,0 +1,76 @@
+{
+  "_como_usar": "Som da Música do México (es-MX). O campo 'style' do Suno é montado nesta ordem: estilo (o gênero vem primeiro e manda) + clima (só o sentimento, nunca um gênero) + voz. 'negativo' (geral) + 'negativo_estilo' do estilo vão em 'Etiquetas negativas'. Instrumentos com nome (o Suno obedece mais a instrumentos que a adjetivos) e 'Mexican Spanish' em todo estilo. O acordeão do norteño e da cumbia tende a virar forró/sertanejo/vallenato e a voz pode sair com sotaque da Espanha: por isso os negativos. Para mudar o som, mude aqui e gere as amostras de novo (musica.ferramentas.gerar_amostras --idioma es-MX). PRIMEIRA VERSÃO (18/11/2026): ainda sem escuta de um mexicano.",
+
+  "estilos": {
+    "mariachi":  "Mexican mariachi ranchera, trumpets and violins section, vihuela and guitarrón rhythm, guitar, traditional serenata feel, trumpets answering the vocal lines, emotional build to a big final chorus, Mexican Spanish",
+    "banda":     "Mexican banda sinaloense romántica, brass band with clarinets, trumpets and trombones, tuba bass, tarola snare and tambora, romantic ballad tempo, heartfelt sing-along chorus, Mexican Spanish",
+    "grupera":   "Mexican grupera romántica, 90s style, electric keyboard and synth strings, clean electric guitar melodies, soft bass and drums, slow romantic tempo, nostalgic and tender, Mexican Spanish",
+    "balada":    "Latin romantic ballad (balada romántica), piano and strings, slow tempo, lush arrangement, emotional key change in the final chorus, Mexican Spanish",
+    "norteno":   "Mexican norteño, button accordion lead, bajo sexto rhythm, upright or electric bass, light drums, polka-ranchera groove, warm storytelling feel, Mexican Spanish",
+    "bolero":    "Mexican bolero, romantic trio with requinto guitar lead, two acoustic guitars, soft maracas and bongos, slow and intimate, close vocal harmonies, classic 50s style, Mexican Spanish",
+    "cumbia":    "Mexican cumbia, accordion and keyboard melody, güiro scraper, cumbia bass and congas, danceable festive party groove, Mexican Spanish",
+    "corrido":   "modern corrido tumbado and sierreño, requinto guitar lead, acoustic twelve-string guitar, tuba bass, laid-back rhythmic groove, warm narrative song, Mexican Spanish",
+    "pop":       "Latin pop, catchy melody, modern polished production, bright guitars and drums, radio-friendly chorus, Mexican Spanish",
+    "rock":      "Mexican rock en español, 90s pop rock, electric and acoustic guitars, driving drums, anthemic sing-along chorus, Mexican Spanish",
+    "bachata":   "romantic bachata, requinto guitar arpeggios, bongos and güira, bass, smooth sensual groove, Spanish lyrics",
+    "reggaeton": "romantic reggaetón, dembow beat, smooth melodic vocals, modern Latin production, catchy hook, clean family-friendly lyrics, Spanish lyrics",
+    "cristiana": "Latin Christian worship (alabanza y adoración), piano-led, atmospheric pads, ambient electric guitars, big build to an anthemic chorus, worship leader vocals with congregation, spiritual and uplifting, Mexican Spanish",
+    "infantil":  "Mexican children's party song, ukulele, marimba, claps, bright and playful, simple melody, kids choir backing, Mexican Spanish",
+    "vals":      "romantic waltz for quinceañera, 3/4 time, strings and piano, elegant and classic, emotional, Mexican Spanish"
+  },
+
+  "negativo_estilo": {
+    "mariachi":  "country, American western, flamenco, Spanish guitar flamenco, rock, electronic, accordion",
+    "banda":     "rock, electric guitar, synth, reggaeton, country, ska",
+    "grupera":   "brass band, tuba, mariachi trumpets, rock, reggaeton, trap",
+    "balada":    "rock, distorted guitar, reggaeton, mariachi trumpets, accordion",
+    "norteno":   "American country, bluegrass, banjo, forró, sertanejo, vallenato, rock",
+    "bolero":    "drum kit, electric guitar, electronic, mariachi trumpets, flamenco",
+    "cumbia":    "Colombian vallenato, forró, salsa, reggaeton, rock",
+    "corrido":   "gunshots, aggressive, trap ad-libs, explicit, rock, country",
+    "pop":       "reggaeton, accordion, mariachi trumpets",
+    "rock":      "heavy metal, screaming, ballad, accordion",
+    "bachata":   "reggaeton, salsa, rock, accordion",
+    "reggaeton": "explicit, aggressive, trap ad-libs, ballad",
+    "cristiana": "mariachi, accordion, country, reggaeton",
+    "infantil":  "sad, slow, ballad, explicit",
+    "vals":      "drums, electronic, rock, mariachi trumpets, reggaeton"
+  },
+
+  "clima": {
+    "romantica":   "romantic, tender, loving",
+    "animada":     "upbeat, joyful, festive, celebratory",
+    "emocionante": "emotional, heartfelt, moving",
+    "inspiradora": "inspiring, hopeful, uplifting, triumphant",
+    "engracado":   "playful, fun, humorous, lighthearted",
+    "reflexiva":   "nostalgic, gentle, reflective, calm"
+  },
+
+  "voz": {
+    "femenina":  { "genero_vocal": "f", "texto": "warm female vocals" },
+    "masculina": { "genero_vocal": "m", "texto": "warm male vocals" },
+    "dueto":     { "genero_vocal": "m", "texto": "male duo singing in harmony" },
+    "trio":      { "genero_vocal": "m", "texto": "male vocal trio singing in close three-part harmony" },
+    "coro":      { "genero_vocal": "f", "texto": "female lead vocals with a full worship choir" }
+  },
+
+  "voz_estilo": {
+    "_como_usar": "Texto da voz próprio de um estilo (substitui o de 'voz' para aquele estilo).",
+    "mariachi":  { "femenina": "powerful female ranchera vocals with vibrato and passionate sustained notes",
+                   "masculina": "powerful male ranchera vocals with vibrato, passionate sustained notes and a joyful grito" },
+    "banda":     { "masculina": "romantic male banda vocals, heartfelt and slightly raspy" },
+    "grupera":   { "femenina": "soft romantic female vocals, 90s grupera style",
+                   "masculina": "soft romantic male vocals, 90s grupera style" },
+    "corrido":   { "masculina": "relaxed young male vocals, smooth and slightly nasal" },
+    "cristiana": { "femenina": "powerful female worship vocals", "masculina": "powerful male worship leader vocals" }
+  },
+
+  "negativo": "Portuguese, Brazilian Portuguese, English, Spain Spanish accent, Castilian lisp, explicit lyrics",
+
+  "suno": {
+    "model_version": "V5_5",
+    "modo_personalizado": true,
+    "letras_automaticas": false,
+    "instrumental": false
+  }
+}

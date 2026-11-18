@@ -1,6 +1,5 @@
 """Quiz da Música: as opções combinam entre si, os dados batem com o estilos.json e as respostas são montadas certo."""
 import json
-import re
 from pathlib import Path
 
 import pytest
@@ -8,9 +7,10 @@ import pytest
 from musica.dominio import quiz, regras
 
 CONTEUDO = Path(__file__).resolve().parents[2] / 'app' / 'musica' / 'conteudo'
-TABELA = json.loads((CONTEUDO / 'estilos.json').read_text(encoding='utf-8'))
-LANDING = (Path(__file__).resolve().parents[2] / 'app' / 'musica' / 'templates' / 'musica' / 'inicio.html').read_text(
-    encoding='utf-8')
+TABELA = json.loads((CONTEUDO / 'pt-BR' / 'estilos.json').read_text(encoding='utf-8'))
+# As páginas de ocasião da landing ficam no textos.json do idioma (antes, no inicio.html)
+LANDING = json.loads((CONTEUDO / 'pt-BR' / 'textos.json').read_text(encoding='utf-8'))['landing']
+PAGINAS = list(LANDING['paginas'].values())
 
 
 # --------------------------------------------------------- dados coerentes
@@ -45,22 +45,24 @@ def test_toda_ocasiao_e_tom_aparecem_para_alguem():
 def test_botoes_do_topo_da_landing_sao_relacoes_do_quiz():
     """Os botões "Pra quem é a música?" do topo levam ?para_quem=...; valor fora do quiz abriria a 1ª tela."""
     relacoes = {r['valor'] for r in quiz.RELACOES}
-    for lista in re.findall(r'"quem": \[([^\]]+)\]', LANDING) + re.findall(r'pg\.quem or \[([^\]]+)\]', LANDING):
-        for quem in re.findall(r'"([^"]+)"', lista):
+    listas = [pg['quem'] for pg in PAGINAS if pg.get('quem')] + [LANDING['principais']]
+    assert len(listas) >= 9
+    for lista in listas:
+        for quem in lista:
             assert quem in relacoes, quem
 
 
 def test_botoes_de_cada_pagina_combinam_com_a_ocasiao_dela():
     """Na página do Dia das Mães, o botão "Pai" levaria a uma combinação que o quiz recusa."""
-    for quiz_ocasiao, lista in re.findall(r'"quiz": "([^"]*)", "quem": \[([^\]]+)\]', LANDING):
-        for quem in re.findall(r'"([^"]+)"', lista):
-            assert not quiz_ocasiao or quiz_ocasiao in quiz.ocasioes_para(quem), (quiz_ocasiao, quem)
+    for pg in PAGINAS:
+        for quem in pg.get('quem', []):
+            assert not pg['quiz'] or pg['quiz'] in quiz.ocasioes_para(quem), (pg['quiz'], quem)
 
 
 def test_toda_pagina_de_ocasiao_tem_botoes():
     """A página de uma ocasião usa relacoes_por_ocasiao()[ocasião] (sem ela, o topo da página ficaria vazio)."""
     por_ocasiao = quiz.relacoes_por_ocasiao()
-    for usada in set(re.findall(r'"quiz": "([^"]+)"', LANDING)):
+    for usada in {pg['quiz'] for pg in PAGINAS if pg['quiz']}:
         assert por_ocasiao.get(usada), usada
     assert 'Pai' not in por_ocasiao['Dia das Mães'] and 'Minha ex' in por_ocasiao['Dia dos Namorados']
 
@@ -74,7 +76,9 @@ def test_ex_tem_tom_romantico_e_perguntas_proprias():
 
 def test_ocasioes_das_paginas_da_landing_existem():
     valores = {o['valor'] for o in quiz.OCASIOES}
-    for usada in set(re.findall(r'"quiz": "([^"]+)"', LANDING)) | set(re.findall(r'"slug": "([^"]+)"', LANDING)):
+    usadas = {pg['quiz'] for pg in PAGINAS if pg['quiz']} | {ex['slug'] for ex in LANDING['exemplos']}
+    assert usadas
+    for usada in usadas:
         assert usada in valores, usada
 
 
@@ -207,7 +211,7 @@ def test_todo_estilo_do_quiz_tem_texto_no_gerador_e_amostra():
     import json
     from pathlib import Path
     pasta = Path(__file__).resolve().parents[2] / 'app' / 'musica'
-    tabela = json.loads((pasta / 'conteudo' / 'estilos.json').read_text(encoding='utf-8'))
+    tabela = json.loads((pasta / 'conteudo' / 'pt-BR' / 'estilos.json').read_text(encoding='utf-8'))
     estilos = {e for e, _ in quiz.ESTILOS}
     assert estilos == set(tabela['estilos'])
     assert estilos == {a.stem for a in (pasta / 'static' / 'estilos').glob('*.mp3')}

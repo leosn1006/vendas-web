@@ -3,17 +3,24 @@ import re
 from datetime import datetime, timedelta
 
 from musica.dominio.modelos import PedidoGeracao
-from musica.dominio.quiz import MAIS_DE_UMA, PARA_MIM, RELACOES, estilo_atual, rotulo, vozes_para
+from musica.dominio import quiz as _quiz
+from musica.dominio.quiz import MAIS_DE_UMA, PARA_MIM, RELACOES, rotulo
 
 
-def montar_geracao(respostas: dict, titulo: str, letra_suno: str, tabela_estilos: dict) -> PedidoGeracao:
+def _q(quiz):
+    """O quiz do idioma (dominio/quiz.Quiz); None = o do Brasil."""
+    return quiz or _quiz.do_idioma()
+
+
+def montar_geracao(respostas: dict, titulo: str, letra_suno: str, tabela_estilos: dict, quiz=None) -> PedidoGeracao:
     """Junta estilo + clima + voz (conteudo/estilos.json) no pedido para o gerador. O gênero vem primeiro (é o que
     mais pesa no Suno); o clima só descreve o sentimento. A voz precisa combinar com o estilo (quiz.VOZES_POR_ESTILO):
-    uma resposta incoerente (ex.: dupla num samba, de antes dessa regra) vira a primeira voz permitida."""
+    uma resposta incoerente (ex.: dupla num samba, de antes dessa regra) vira a primeira voz permitida. `quiz`: o do
+    idioma da música (a tabela também é a do idioma: conteudo/<idioma>/estilos.json)."""
     estilo = respostas.get('estilo') if respostas.get('estilo') in tabela_estilos['estilos'] else 'pop'
-    permitidas = vozes_para(estilo)
+    permitidas = _q(quiz).vozes_para(estilo)
     chave_voz = respostas.get('voz') if respostas.get('voz') in permitidas else permitidas[0]
-    voz = tabela_estilos['voz'].get(chave_voz, tabela_estilos['voz']['feminina'])
+    voz = tabela_estilos['voz'].get(chave_voz) or next(iter(tabela_estilos['voz'].values()))
     texto_voz = tabela_estilos.get('voz_estilo', {}).get(estilo, {}).get(chave_voz) or voz['texto']
     partes = [
         tabela_estilos['estilos'][estilo],
@@ -26,17 +33,19 @@ def montar_geracao(respostas: dict, titulo: str, letra_suno: str, tabela_estilos
                          genero_vocal=voz['genero_vocal'], negativo=negativo)
 
 
-def juntar_nomes(nomes: list[str]) -> str:
-    """['Ana', 'Bia', 'Carla'] → 'Ana, Bia e Carla'."""
+def juntar_nomes(nomes: list[str], e: str = ' e ') -> str:
+    """['Ana', 'Bia', 'Carla'] → 'Ana, Bia e Carla' (no espanhol, e = ' y ')."""
     nomes = [n for n in nomes if n]
-    return nomes[0] if len(nomes) == 1 else (', '.join(nomes[:-1]) + ' e ' + nomes[-1] if nomes else '')
+    return nomes[0] if len(nomes) == 1 else (', '.join(nomes[:-1]) + e + nomes[-1] if nomes else '')
 
 
-def montar_respostas(bruto: dict, chaves_validas: set, max_pessoas: int) -> dict:
+def montar_respostas(bruto: dict, chaves_validas: set, max_pessoas: int, quiz=None, e: str = ' e ',
+                     se_fala: str = ' se fala ') -> dict:
     """Respostas do quiz como a IA e o resto do sistema esperam, a partir do que o navegador mandou:
     `pessoas` (1 a max_pessoas, cada uma com nome/apelido/pronuncia) vira nome, apelido e pronuncia juntos
     ("Ana, Bia e Carla"), e a lista fica para a IA tratar o plural; `lembrancas_partes` (pergunta guiada + resposta)
-    vira o texto de `lembrancas`. "Para mim": quem dá o presente é a própria pessoa."""
+    vira o texto de `lembrancas`. "Para mim": quem dá o presente é a própria pessoa. `quiz`, `e` (" e " / " y ") e
+    `se_fala` (" se fala " / " se dice ", a pronúncia que a IA lê): os do idioma."""
     respostas = {k: str(v).strip()[:1500] for k, v in bruto.items() if k in chaves_validas and isinstance(v, (str, int))}
     pessoas = []
     lista_pessoas = bruto.get('pessoas') if isinstance(bruto.get('pessoas'), list) else []
@@ -44,11 +53,11 @@ def montar_respostas(bruto: dict, chaves_validas: set, max_pessoas: int) -> dict
         if isinstance(p, dict) and str(p.get('nome') or '').strip():
             pessoas.append({k: str(p.get(k) or '').strip()[:80] for k in ('nome', 'apelido', 'pronuncia')})
     if pessoas:
-        respostas['nome'] = juntar_nomes([p['nome'] for p in pessoas])
+        respostas['nome'] = juntar_nomes([p['nome'] for p in pessoas], e)
         if any(p['apelido'] for p in pessoas):
-            respostas['apelido'] = juntar_nomes([p['apelido'] or p['nome'] for p in pessoas])
+            respostas['apelido'] = juntar_nomes([p['apelido'] or p['nome'] for p in pessoas], e)
         if any(p['pronuncia'] for p in pessoas):
-            respostas['pronuncia'] = '; '.join(f"{p['nome']} se fala {p['pronuncia']}" for p in pessoas if p['pronuncia'])
+            respostas['pronuncia'] = '; '.join(f"{p['nome']}{se_fala}{p['pronuncia']}" for p in pessoas if p['pronuncia'])
         if len(pessoas) > 1:
             respostas['pessoas'] = pessoas
     lista_partes = bruto.get('lembrancas_partes') if isinstance(bruto.get('lembrancas_partes'), list) else []
@@ -57,33 +66,35 @@ def montar_respostas(bruto: dict, chaves_validas: set, max_pessoas: int) -> dict
               for p in partes if str(p.get('resposta') or '').strip()]
     if textos:
         respostas['lembrancas'] = '\n'.join(textos)
-    if respostas.get('para_quem') == PARA_MIM and not respostas.get('de'):
+    if respostas.get('para_quem') == _q(quiz).PARA_MIM and not respostas.get('de'):
         respostas['de'] = respostas.get('nome', '')
-    return respostas_atuais(respostas)
+    return respostas_atuais(respostas, quiz)
 
 
-def respostas_atuais(respostas: dict) -> dict:
+def respostas_atuais(respostas: dict, quiz=None) -> dict:
     """Respostas com valores que saíram do quiz trocados pelos de hoje (ex.: estilo "arrocha" → "sertanejo"). Roda
     na criação (montar_respostas) e na leitura do banco (repositório): letra, música e admin veem o mesmo estilo."""
     if isinstance(respostas, dict) and respostas.get('estilo'):
-        respostas['estilo'] = estilo_atual(respostas['estilo'])
+        respostas['estilo'] = _q(quiz).estilo_atual(respostas['estilo'])
     return respostas
 
 
-def para_quem(respostas: dict) -> str:
-    """Como chamar quem recebe: o apelido, se tiver; senão o nome (em grupo, os nomes juntos: "Ana, Bia e Carla")."""
-    return (respostas or {}).get('apelido') or (respostas or {}).get('nome') or 'quem você ama'
+def para_quem(respostas: dict, sem_nome: str = 'quem você ama') -> str:
+    """Como chamar quem recebe: o apelido, se tiver; senão o nome (em grupo, os nomes juntos: "Ana, Bia e Carla").
+    `sem_nome`: o texto do idioma para quando não há nome."""
+    return (respostas or {}).get('apelido') or (respostas or {}).get('nome') or sem_nome
 
 
-def para_leitura(letra_texto: str) -> str:
-    """Tira as marcações do Suno ([Verse 1], [Chorus]...) para a cliente ler; o refrão vira a linha '(Refrão)'."""
+def para_leitura(letra_texto: str, refrao: str = '(Refrão)') -> str:
+    """Tira as marcações do Suno ([Verse 1], [Chorus]...) para a cliente ler; o refrão vira a linha '(Refrão)' (no
+    espanhol, '(Coro)': o texto do idioma, que a tela usa para destacar o refrão)."""
     linhas = []
     for linha in (letra_texto or '').splitlines():
         marcacao = re.fullmatch(r'\s*\[([^\]]+)\]\s*', linha)
         if not marcacao:
             linhas.append(linha)
         elif 'chorus' in marcacao.group(1).lower() and 'pre' not in marcacao.group(1).lower():
-            linhas.append('(Refrão)')
+            linhas.append(refrao)
     return re.sub(r'\n{3,}', '\n\n', '\n'.join(linhas)).strip()
 
 
@@ -145,6 +156,22 @@ def celular_br(texto) -> str:
     campo do checkout abre com o +55. '' para fixo, número de fora ou inválido."""
     numero = telefone_whatsapp(texto)
     return numero if len(numero) == 13 and numero.startswith('55') else ''
+
+
+def celular_mx(texto) -> str:
+    """Celular do México com o DDI 52 e 10 dígitos ('52' + 10), como a Meta pede. Aceita os 10 dígitos, com +52 e
+    com o "1" antigo de celular (52 1 + 10, como o WhatsApp ainda mostra alguns números). '' se não servir."""
+    digitos = re.sub(r'\D', '', str(texto or '')).lstrip('0')
+    if len(digitos) == 13 and digitos.startswith('521'):
+        digitos = digitos[3:]
+    elif len(digitos) == 12 and digitos.startswith('52'):
+        digitos = digitos[2:]
+    return '52' + digitos if len(digitos) == 10 else ''
+
+
+def celular_do_idioma(texto, telefone: str) -> str:
+    """O celular do quiz conforme o país do idioma (musica/idiomas.py: 'br' ou 'mx')."""
+    return celular_mx(texto) if telefone == 'mx' else celular_br(texto)
 
 
 def mesmo_telefone(a: str, b: str) -> bool:
@@ -249,14 +276,16 @@ def escolher_lembretes(musicas: list[dict], series: dict, agora: datetime, minut
 
 
 def proximo_lembrete(serie: dict | None, ultimo_da_pessoa, agora: datetime, minutos: tuple, janela: tuple, dias: int,
-                     intervalo_email: int = 0):
+                     intervalo_email: int = 0, hora_local: int | None = None):
     """O que fazer agora com a série escolhida: ('zerar', 0) quando ela ainda não existe (o relógio começa agora);
     ('enviar', n) com n = o lembrete mais recente já vencido (1, 2 ou 3 — se dois venceram fora do horário, sai só o
     último, nunca dois seguidos); (None, 0) para esperar. `intervalo_email`: minutos mínimos desde o último lembrete
-    para esta pessoa, de qualquer etapa."""
+    para esta pessoa, de qualquer etapa. `hora_local`: a hora no país da música (a janela de horário é a dela; o
+    resto das contas usa `agora`, o relógio do servidor); None = a de `agora` (Brasil)."""
     if not serie:
         return 'zerar', 0
-    if serie_acabou(serie, agora, minutos, dias) or not janela[0] <= agora.hour < janela[1]:
+    hora = agora.hour if hora_local is None else hora_local
+    if serie_acabou(serie, agora, minutos, dias) or not janela[0] <= hora < janela[1]:
         return None, 0
     vencidos = sum(1 for m in minutos if agora - serie['desde'] >= timedelta(minutes=m))
     if vencidos <= serie['enviados']:

@@ -28,10 +28,10 @@ class RepositorioMemoria:
         self.series, self.lembretes_saida = {}, {}   # lembretes por pessoa (musica_lembretes / _saida: chave -> quando)
         self.agora = None   # relógio dos testes (None = o de verdade): criado_em e a janela de 24 h da compra
 
-    def criar(self, produto_id, respostas, email, whatsapp, ip, pedido_origem_id, dominio):
+    def criar(self, produto_id, respostas, email, whatsapp, ip, pedido_origem_id, dominio, idioma='pt-BR'):
         mid = len(self.musicas) + 1
         self.musicas[mid] = {
-            'id': mid, 'token': f'{mid:032x}', 'produto_id': produto_id, 'pedido_id': None,
+            'id': mid, 'token': f'{mid:032x}', 'produto_id': produto_id, 'idioma': idioma, 'pedido_id': None,
             'pedido_origem_id': pedido_origem_id, 'dominio': dominio, 'status': 'escrevendo',
             'respostas': respostas, 'email': email, 'whatsapp': whatsapp, 'ip': ip, 'titulo': None,
             'letra_exibicao': None, 'letra_suno': None, 'modelo_letra': None, 'ajustes_letra': 0, 'provedor': None,
@@ -309,7 +309,7 @@ def s(tmp_path):
         agenda=AgendaMemoria(),
         arquivos=Arquivos(tmp_path),
         instrucoes_letra='instruções',
-        estilos=json.loads((PASTA_CONTEUDO / 'estilos.json').read_text(encoding='utf-8')),
+        estilos=json.loads((PASTA_CONTEUDO / 'pt-BR' / 'estilos.json').read_text(encoding='utf-8')),
     )
 
 

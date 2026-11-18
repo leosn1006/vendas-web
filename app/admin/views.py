@@ -2026,8 +2026,10 @@ _DEPOIS_DA_PREVIA = {
                   (44, 'fechou e depois foi ao checkout'), (41, 'saiu sem escolher')],
     },
 }
+_DEPOIS_DA_PREVIA['musica-mx'] = _DEPOIS_DA_PREVIA['musica-v2']   # a Música do México: as mesmas etapas
 _ETAPAS_QUIZ = {
     'musica-v2': _ETAPAS_MUSICA,
+    'musica-mx': _ETAPAS_MUSICA,
     'fatia2-e': [
         'Abriu a página', 'Sua situação', 'Seu sonho', 'Dias por semana',
         'O que você já tentou', 'O que te trava', 'Sua experiência', 'Uma possibilidade',
@@ -2049,7 +2051,7 @@ _ETAPAS_QUIZ = {
 # Música: 40 = checkout direto; 42 = recusou o popup e foi; 43 = aceitou; 44 = fechou o popup e depois foi
 # (41 = viu o popup e saiu: abandono).
 _ETAPAS_CHECKOUT_QUIZ = {'fatia2-e': {17, 19, 20, 21}, 'fatia1-e': {2, 4, 5, 6},
-                         'musica-v2': {40, 42, 43, 44}}
+                         'musica-v2': {40, 42, 43, 44}, 'musica-mx': {40, 42, 43, 44}}
 
 # Teste A/B das landings: por página, visitas, quem foi ao checkout, pagos e receita, com os pagos
 # separados por plano (pedido sem plano = de antes dos planos = plano padrão).

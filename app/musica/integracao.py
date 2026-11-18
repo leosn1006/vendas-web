@@ -12,8 +12,13 @@ __all__ = ['Recusa', 'plano_vende_musica', 'conferir_para_checkout', 'vincular_a
 
 
 def conferir_para_checkout(token: str, produto_id: int) -> None:
-    """Recusa (com a mensagem para a tela) se a música do link não pode ser comprada neste produto."""
-    casos_de_uso.musica_para_checkout(servicos(), token, produto_id)
+    """Recusa (com a mensagem para a tela) se a música do link não pode ser comprada neste produto. O nosso
+    checkout (/pay, em reais) só vende música do Brasil: a de outro idioma é vendida pela Hotmart (um link montado à
+    mão não pode cobrar em reais quem está no México)."""
+    musica = casos_de_uso.musica_para_checkout(servicos(), token, produto_id)
+    from musica import idiomas
+    if idiomas.valido(musica.get('idioma')) != idiomas.IDIOMA_PADRAO:
+        raise Recusa('Esta música não é vendida neste checkout. Volte para a página da prévia.')
 
 
 def vincular_ao_pedido(token: str, pedido_id: int, produto_id: int, whatsapp: str | None = None, ddi: str = '55') -> None:

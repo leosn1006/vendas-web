@@ -149,13 +149,13 @@ Quando a cliente pede mudança depois de pagar (letra, nome, pronúncia, voz…)
 - **Dev:** o hook `.claude/hooks/bloquear_api_meta_dev.sh` libera só consultas de leitura (templates, números,
   debug_token, contas da empresa, objeto por ID) — nunca envio.
 
-## O quiz (9 telas, `app/musica/dominio/quiz.py`)
+## O quiz (9 telas, `app/musica/conteudo/<idioma>/quiz.py`; as regras em `dominio/quiz.py`)
 
 1. Para quem é (inclui Neto(a), Sogra/Sogro, **Mais de uma pessoa** e **Para mim**) · 2. Nome(s), apelido e
 pronúncia (até 4 pessoas) · 3. Ocasião · 4. Lembranças (3 perguntas guiadas + medidor) · 5. Frase que não pode faltar
 (opcional) · 6. Tom · 7. Estilo (com amostra) · 8. Voz · 9. Seu nome, e-mail e WhatsApp (opcional).
 
-- **As opções dependem das anteriores**, tudo em dados no `quiz.py`: cada relação tem marcadores (`RELACOES`); cada
+- **As opções dependem das anteriores**, tudo em dados no `conteudo/<idioma>/quiz.py`: cada relação tem marcadores (`RELACOES`); cada
   ocasião e tom diz para quem aparece (`para`/`exceto`, tons também `exceto_ocasioes`); as vozes dependem do estilo
   (`VOZES_POR_ESTILO`: dupla só no sertanejo, "com coral" no gospel). Voltar e trocar uma resposta apaga as
   escolhas seguintes que deixaram de combinar. Página de ocasião da landing (`?ocasiao=`) pula a tela 3 só se a
@@ -163,7 +163,7 @@ pronúncia (até 4 pessoas) · 3. Ocasião · 4. Lembranças (3 perguntas guiada
 - **O navegador manda** `pessoas` e `lembrancas_partes`; o servidor monta `nome`/`apelido`/`pronuncia`/`lembrancas`
   como antes (`regras.montar_respostas`) e guarda `pessoas` para a IA tratar o plural. "Para mim": `de` = o nome.
 - Progresso guardado no navegador por 24 h (`localStorage`); o checkout da Música abre com o nome e o e-mail do quiz.
-- **Som** (`conteudo/estilos.json`): o gênero vem primeiro; o tom (`clima`) só descreve o sentimento — nunca um gênero
+- **Som** (`conteudo/<idioma>/estilos.json`): o gênero vem primeiro; o tom (`clima`) só descreve o sentimento — nunca um gênero
   ("ballad" no tom puxava tudo para balada); `negativo_estilo` (o que o Suno deve evitar em cada estilo) e
   `voz_estilo` (voz própria de um estilo, ex.: gospel = "powerful female worship vocals").
 - **Amostras do "aperte o play"**: `docker compose exec app python -m musica.ferramentas.gerar_amostras --estilos
@@ -184,6 +184,9 @@ fabrica.py      escolhe os adaptadores pelo .env — único lugar que conhece os
 casos_de_uso.py o fluxo inteiro; só fala com as portas
 rotas.py        HTTP fino (erros jsonify 4xx, POST com origem_confiavel); tarefas.py: Celery fino
 integracao.py   o que checkout, tasks, e-mail e Estante usam daqui
+idiomas.py      os idiomas (prefixo, fuso, telefone, página da Analytics) e o conteúdo de cada um
+conteudo/<idioma>/  estilos.json · instrucoes_letra.md · quiz.py (dados) · textos.json (frases do site e e-mails)
+templates/musica/legal/<idioma>.html   termos e privacidade (texto jurídico, revisado inteiro)
 ```
 
 **Trocar a Apiframe por uma conta própria do Suno:** implementar os 3 métodos de `adaptadores/gerador_suno.py`
@@ -192,7 +195,8 @@ Nada mais muda. Antes, confirmar se existe acesso oficial do Suno por API para u
 
 **Letra:** a nossa integração OpenAI (`OPENAI_API_KEY`, `chat.completions`, saída `json_schema`), modelo em
 `MUSICA_MODELO_LETRA` (padrão `gpt-6.1-sol`, o que venceu o teste do Bruno; testado em 17/10/2026 com o
-`openai==1.59.7` atual). Regras de composição em `conteudo/instrucoes_letra.md`, estilos em `conteudo/estilos.json`.
+`openai==1.59.7` atual). Regras de composição em `conteudo/<idioma>/instrucoes_letra.md`, estilos em
+`conteudo/<idioma>/estilos.json`.
 
 **Filas:** letra na `urgente` (a cliente espera na tela); gerar/consultar (a cada 10 s, ou pelo webhook com
 `MUSICA_URL_PUBLICA`), presentes e lembretes na `normal`; videoclipe e limpeza na `baixa` (concorrência 2 segura
@@ -215,6 +219,45 @@ e limites.
 
 **Videoclipe:** o navegador reduz e envia **uma foto por vez** (cada uma < 900 KB), abaixo do limite de 1 MB do nginx
 — não precisa mexer no nginx. Montagem perdida (worker reiniciado) é retomada uma vez pela manutenção.
+
+## Idiomas (desde 18/11/2026; Fase 1 = o site do México)
+
+Cada idioma = idioma + país (`pt-BR`, `es-MX`; depois `es-US`, `en-US`), registrado em `app/musica/idiomas.py`:
+
+| | Brasil | México |
+|---|---|---|
+| Endereço | `/musica/...` | `/mx/cancion/...` (`/crear`, `/terminos`, `/privacidad`; o resto igual) |
+| Conteúdo | `conteudo/pt-BR/` | `conteudo/es-MX/` |
+| Produto | `produtos.idioma = 'pt-BR'` (padrão) | um produto próprio com `idioma = 'es-MX'` |
+| Celular do quiz | `55` + DDD + 9 + 8 | `52` + 10 (aceita `+52` e `52 1`) |
+| Lembretes | 8h–22h de Brasília, com SMS | nenhum até ter checkout (`'vende': False` em `idiomas.py`); depois, 8h–22h da Cidade do México, só e-mail, sem a etapa checkout |
+| Analytics Web | `musica-v2` | `musica-mx` (mesmas etapas) |
+| Checkout | o nosso (`/pay`, PIX/cartão) | Hotmart (em outra frente). Até lá a prévia mostra "venda fechada" |
+
+- **A música grava o idioma** (`musicas.idioma`, migration 107) e tudo depois sai dele, não da URL: letra (instruções
+  e o texto em volta do JSON), som (`estilos.json` e vozes), prévia, links dos e-mails (`links.py`), lembretes e erros.
+  Uma música do México aberta por `/musica/p/<token>` continua em espanhol.
+- **O mesmo blueprint** é registrado uma vez por idioma (`musica/__init__.py`); `rotas._rota()` monta os links no
+  blueprint do idioma, `t()` (templates) e `T` (JavaScript) trazem as frases do `textos.json`. As mensagens de erro
+  dos casos de uso ficam em português no código; a tradução fica em `textos.json` → `recusas`.
+- **Seletor de país** no rodapé da landing: só aparece um idioma que tem produto à venda.
+- **Encaixe da Hotmart:** `rotas._planos_e_oferta_da_previa` (os 3 links: só a música, música + videoclipe cheio,
+  música + videoclipe com desconto = o popup "última chance").
+- **Idioma novo:** pasta em `conteudo/<idioma>/` (o teste `test_idiomas` confere que tem todas as frases do Brasil e
+  que quiz, estilos e landing combinam), `templates/musica/legal/<idioma>.html`, uma linha em `IDIOMAS`, as etapas
+  da página da Analytics em `admin/views.py` e o produto no banco.
+- **Amostras:** `gerar_amostras --idioma es-MX --estilos mariachi,banda` grava em `storage/musica/amostras/es-MX/`; a
+  escolhida vai para `app/musica/static/estilos/es-MX/<estilo>.mp3`. Os exemplos da landing (`landing.exemplos`)
+  começam vazios no México e o carrossel some.
+
+**Para pôr o México no ar:** migration 107 → produto novo da Música com `UPDATE produtos SET idioma = 'es-MX'`
+(o admin ainda não tem o campo), planos e entregáveis como no Brasil, `nfe_automatica = 0`, marca em espanhol
+(`email_nome_remetente`, ex.: "Canción de Regalo") e um e-mail remetente → revisão dos textos, das letras e das
+amostras por um mexicano → termos e aviso de privacidade revisados por advogado → checkout da Hotmart → só então
+`disponivel_web = 1`.
+
+**Fase 2 (depois):** área da compra, página do presente, QR, videoclipe, e-mails de entrega e WhatsApp em espanhol
+(hoje essas telas saem com o corpo em português).
 
 ## Rodar no dev
 

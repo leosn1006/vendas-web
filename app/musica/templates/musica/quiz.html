@@ -1,5 +1,5 @@
 {% extends "musica/musica_base.html" %}
-{% block titulo %}Criar minha música · {{ marca }}{% endblock %}
+{% block titulo %}{{ t('quiz.titulo_pagina') }} · {{ marca }}{% endblock %}
 {% block estilo %}
 <style>
 .funil{max-width:680px;margin:0 auto;padding:0 20px 64px}
@@ -59,11 +59,11 @@ label + .campo{margin-top:8px}
 {% block pagina %}
 <div class="funil">
   <header class="funil-topo">
-    <a class="marca" href="{{ url_for('musica.inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a>
-    <a class="sair" href="{{ url_for('musica.inicio') }}">Sair</a>
+    <a class="marca" href="{{ rota('inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a>
+    <a class="sair" href="{{ rota('inicio') }}">{{ t('quiz.sair') }}</a>
   </header>
   <div id="quiz">
-    <div class="status"><button class="voltar" id="voltar" type="button"><i class="ti ti-arrow-left" aria-hidden="true"></i>Voltar</button><span id="contador"></span></div>
+    <div class="status"><button class="voltar" id="voltar" type="button"><i class="ti ti-arrow-left" aria-hidden="true"></i>{{ t('quiz.voltar') }}</button><span id="contador"></span></div>
     <div class="progresso"><div id="barra"></div></div>
     <div id="passo" class="passo"></div>
     <div class="erro" id="erro" role="alert"></div>
@@ -74,8 +74,8 @@ label + .campo{margin-top:8px}
   </div>
   <div id="enviando" class="enviando" style="display:none">
     <div class="equalizador" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-    <h2 id="tituloEnviando">Escrevendo a letra</h2>
-    <p class="suave">Estamos transformando a sua história em versos. Leva menos de um minuto.</p>
+    <h2 id="tituloEnviando">{{ t('quiz.escrevendo') }}</h2>
+    <p class="suave">{{ t('quiz.escrevendo_sub') }}</p>
   </div>
 </div>
 {% endblock %}
@@ -84,8 +84,10 @@ label + .campo{margin-top:8px}
 const PERGUNTAS = {{ perguntas|tojson }};
 const AMOSTRAS = {{ amostras|tojson }};
 const REGRAS = {{ regras_quiz|tojson }};
-const URL_CRIAR = "{{ url_for('musica.api_criar') }}";
-const GUARDAR = "musica_quiz_v2", GUARDAR_HORAS = 6;   // pouco tempo: o celular pode ser de outra pessoa da família
+const URL_CRIAR = "{{ rota('api_criar') }}";
+// As frases do idioma (conteudo/<idioma>/textos.json, quiz.js) e o país do celular (idiomas.py)
+const T = {{ textos.quiz.js|tojson }}, TEL = {{ idioma_cfg.telefone|tojson }}, URL_PRIVACIDADE = "{{ rota('privacidade') }}";
+const GUARDAR = T.chave_rascunho, GUARDAR_HORAS = 6;   // pouco tempo: o celular pode ser de outra pessoa da família
 
 let respostas = {}, pessoas = [{nome: "", apelido: "", pronuncia: ""}], lembrancas = ["", "", ""];
 let contato = {de: "", email: "", whatsapp: ""}, atual = PERGUNTAS[0].chave, tokenRobo = "";
@@ -99,20 +101,22 @@ const pergunta = chave => PERGUNTAS.find(p => p.chave === chave);
 // ---------------------------------------------------------- quem recebe ---
 const ehGrupo = () => respostas.para_quem === REGRAS.mais_de_uma;
 const ehEu = () => respostas.para_quem === REGRAS.para_mim;
-function juntar(nomes){ nomes = nomes.filter(Boolean); return nomes.length < 2 ? (nomes[0] || "") : nomes.slice(0, -1).join(", ") + " e " + nomes.at(-1); }
+function juntar(nomes){ nomes = nomes.filter(Boolean); return nomes.length < 2 ? (nomes[0] || "") : nomes.slice(0, -1).join(", ") + T.e + nomes.at(-1); }
 const nomeQuemRecebe = () => juntar(pessoas.map(p => (p.apelido || p.nome || "").trim()));
 
-// Troca {nome}, {da_sua_pessoa}, {ela}... pelas respostas já dadas (ver quiz.py).
+// Troca {nome}, {da_sua_pessoa}, {ela}... pelas respostas já dadas (ver quiz.py). A gramática é a do idioma
+// (textos.json, quiz.js.gramatica): f/m pelo gênero da relação, g = grupo, x = indefinido.
 function personalizar(texto){
   if (!texto) return texto;
   const rel = respostas.para_quem || "", genero = REGRAS.genero[rel];
-  const fem = genero === "f", masc = genero === "m", grupo = ehGrupo();
+  const fem = genero === "f", masc = genero === "m", grupo = ehGrupo(), G = T.gramatica;
+  const quem = fem ? "f" : masc ? "m" : "x", pronome = grupo ? "g" : quem;
   const trocas = {
-    nome: nomeQuemRecebe() || (grupo ? "vocês" : "essa pessoa"), de: contato.de || "",
-    da_sua_pessoa: fem ? "da sua " + (REGRAS.rotulo[rel] || rel.toLowerCase()) : masc ? "do seu " + (REGRAS.rotulo[rel] || rel.toLowerCase()) : "de quem vai receber",
+    nome: nomeQuemRecebe() || (grupo ? G.nome_grupo : G.nome_indefinido), de: contato.de || "",
+    da_sua_pessoa: G.da_sua_pessoa[quem].replace("{rotulo}", REGRAS.rotulo[rel] || rel.toLowerCase()),
     // Grupo: o sistema não sabe se são homens ou mulheres (3 irmãs ≠ 3 irmãos) — as frases do grupo evitam pronome.
-    ela: grupo ? "cada pessoa" : fem ? "ela" : masc ? "ele" : "essa pessoa",
-    dela: grupo ? "de cada pessoa" : fem ? "dela" : masc ? "dele" : "dessa pessoa",
+    ela: G.ela[pronome],
+    dela: G.dela[pronome],
   };
   return texto.replace(/\{(\w+)\}/g, (m, k) => k in trocas ? trocas[k] : m);
 }
@@ -120,9 +124,9 @@ const textoDe = (p, campo) => personalizar((ehEu() && p[campo + "_eu"]) || (ehGr
 
 // ------------------------------------------- opções que combinam entre si ---
 // As listas vêm prontas do servidor (quiz.py é a fonte única; o servidor confere de novo ao receber).
-const ocasioesPermitidas = () => REGRAS.ocasioes_por_relacao[respostas.para_quem] || REGRAS.ocasioes_por_relacao["Outra pessoa"];
-const tonsPermitidos = () => ((REGRAS.tons_por_relacao[respostas.para_quem] || REGRAS.tons_por_relacao["Outra pessoa"])[respostas.ocasiao]) || [];
-const vozesPermitidas = () => REGRAS.vozes_por_estilo[respostas.estilo] || ["feminina", "masculina"];
+const ocasioesPermitidas = () => REGRAS.ocasioes_por_relacao[respostas.para_quem] || REGRAS.ocasioes_por_relacao[REGRAS.outra_pessoa];
+const tonsPermitidos = () => ((REGRAS.tons_por_relacao[respostas.para_quem] || REGRAS.tons_por_relacao[REGRAS.outra_pessoa])[respostas.ocasiao]) || [];
+const vozesPermitidas = () => REGRAS.vozes_por_estilo[respostas.estilo] || REGRAS.vozes_padrao;
 function permitidas(chave){
   if (chave === "ocasiao") return ocasioesPermitidas();
   if (chave === "clima") return tonsPermitidos();
@@ -175,14 +179,14 @@ function htmlOpcoes(p){
     if (ok && !ok.includes(valor)) return "";
     const marcada = respostas[p.chave] === valor ? "marcada" : "";
     const amostra = p.chave === "estilo" && AMOSTRAS[valor];
-    if (amostra) return `<div class="opcao com-som ${marcada}" role="button" tabindex="0" data-valor="${esc(valor)}"><span>${esc(texto)}</span><button type="button" class="ouvir" data-som="${esc(amostra)}" aria-label="Ouvir ${esc(texto)}"><i class="ti ti-player-play" aria-hidden="true"></i></button></div>`;
+    if (amostra) return `<div class="opcao com-som ${marcada}" role="button" tabindex="0" data-valor="${esc(valor)}"><span>${esc(texto)}</span><button type="button" class="ouvir" data-som="${esc(amostra)}" aria-label="${esc(T.ouvir)} ${esc(texto)}"><i class="ti ti-player-play" aria-hidden="true"></i></button></div>`;
     return `<button type="button" class="opcao ${marcada}" data-valor="${esc(valor)}">${esc(texto)}</button>`;
   }).join("") + `</div>`;
-  if (p.chave === "estilo") html += `<p class="ajuda" style="margin-top:14px;font-size:.95rem">Aperte o play para ouvir um trecho de cada estilo.</p>`;
-  if (p.chave === "ocasiao") html += `<div id="caixaOutra" style="display:${respostas.ocasiao === "Outra ocasião" ? "block" : "none"}">
-      <label for="ocasiaoOutra">Qual é a ocasião?</label>
-      <input class="campo" id="ocasiaoOutra" maxlength="120" placeholder="Ex.: Bodas de prata dos meus pais" value="${esc(respostas.ocasiao_outra)}">
-      <div class="acoes"><button class="botao" id="avancar" type="button">Continuar</button></div></div>`;
+  if (p.chave === "estilo") html += `<p class="ajuda" style="margin-top:14px;font-size:.95rem">${T.aperte_play}</p>`;
+  if (p.chave === "ocasiao") html += `<div id="caixaOutra" style="display:${respostas.ocasiao === REGRAS.outra_ocasiao ? "block" : "none"}">
+      <label for="ocasiaoOutra">${T.qual_ocasiao}</label>
+      <input class="campo" id="ocasiaoOutra" maxlength="120" placeholder="${esc(T.qual_ocasiao_exemplo)}" value="${esc(respostas.ocasiao_outra)}">
+      <div class="acoes"><button class="botao" id="avancar" type="button">${T.continuar}</button></div></div>`;
   return html;
 }
 
@@ -191,52 +195,53 @@ function htmlPessoas(){
   comPronuncia = comPronuncia || pessoas.some(p => p.pronuncia);
   comApelido = comApelido || pessoas.some(p => p.apelido);   // só o nome à vista; apelido e pronúncia por link
   return pessoas.map((p, i) => `<div class="${grupo ? "pessoa" : ""}" data-i="${i}">
-      ${grupo ? `<p class="pessoa-titulo">Pessoa ${i + 1}</p>${pessoas.length > 2 ? `<button type="button" class="remover" data-remover="${i}" aria-label="Tirar">×</button>` : ""}` : ""}
-      <label for="nome${i}">${grupo ? "Nome" : eu ? "Seu nome" : "Nome"}</label>
-      <input class="campo" id="nome${i}" data-campo="nome" maxlength="80" autocomplete="off" enterkeyhint="next" placeholder="Ex.: ${["Helena", "Beatriz", "Carla", "Luiza"][i]}" value="${esc(p.nome)}">
+      ${grupo ? `<p class="pessoa-titulo">${T.pessoa} ${i + 1}</p>${pessoas.length > 2 ? `<button type="button" class="remover" data-remover="${i}" aria-label="${esc(T.tirar)}">×</button>` : ""}` : ""}
+      <label for="nome${i}">${grupo ? T.nome : eu ? T.seu_nome : T.nome}</label>
+      <input class="campo" id="nome${i}" data-campo="nome" maxlength="80" autocomplete="off" enterkeyhint="next" placeholder="${esc(T.exemplos_nomes[i])}" value="${esc(p.nome)}">
       <div class="apelido" style="display:${comApelido ? "block" : "none"}">
-        <label for="apelido${i}">${eu ? "Como gosta de ser chamada (opcional)" : "Apelido carinhoso (opcional)"}</label>
-        <input class="campo" id="apelido${i}" data-campo="apelido" maxlength="80" autocomplete="off" enterkeyhint="next" placeholder="Ex.: Lena, Bia, Mozão" value="${esc(p.apelido)}">
+        <label for="apelido${i}">${eu ? T.apelido_eu : T.apelido}</label>
+        <input class="campo" id="apelido${i}" data-campo="apelido" maxlength="80" autocomplete="off" enterkeyhint="next" placeholder="${esc(T.apelido_exemplo)}" value="${esc(p.apelido)}">
       </div>
       <div class="pronuncia" style="display:${comPronuncia ? "block" : "none"}">
-        <label for="pronuncia${i}">Como se fala (se for diferente da escrita)</label>
-        <input class="campo" id="pronuncia${i}" data-campo="pronuncia" maxlength="80" autocomplete="off" enterkeyhint="next" placeholder="Ex.: Theo → Téo" value="${esc(p.pronuncia)}">
+        <label for="pronuncia${i}">${T.pronuncia}</label>
+        <input class="campo" id="pronuncia${i}" data-campo="pronuncia" maxlength="80" autocomplete="off" enterkeyhint="next" placeholder="${esc(T.pronuncia_exemplo)}" value="${esc(p.pronuncia)}">
       </div></div>`).join("")
-    + (comApelido ? "" : `<div><button type="button" class="link-simples" id="mostrarApelido">${eu ? "Gosta de ser chamada de outro jeito?" : grupo ? "Têm apelido?" : "Tem apelido?"}</button></div>`)
-    + (comPronuncia ? "" : `<div><button type="button" class="link-simples" id="mostrarPronuncia">O nome se fala diferente de como se escreve?</button></div>`)
-    + (grupo && pessoas.length < REGRAS.max_pessoas ? `<button type="button" class="adicionar" id="adicionar"><i class="ti ti-plus" aria-hidden="true"></i> Adicionar mais uma pessoa</button>` : "")
-    + `<p class="garantia-quiz"><i class="ti ti-headphones" aria-hidden="true"></i><span>Você ouve a música antes e só paga se gostar</span></p>`
-    + `<div class="acoes"><button class="botao" id="avancar" type="button">Continuar, falta pouco</button></div>`;
+    + (comApelido ? "" : `<div><button type="button" class="link-simples" id="mostrarApelido">${eu ? T.mostrar_apelido_eu : grupo ? T.mostrar_apelido_grupo : T.mostrar_apelido}</button></div>`)
+    + (comPronuncia ? "" : `<div><button type="button" class="link-simples" id="mostrarPronuncia">${T.mostrar_pronuncia}</button></div>`)
+    + (grupo && pessoas.length < REGRAS.max_pessoas ? `<button type="button" class="adicionar" id="adicionar"><i class="ti ti-plus" aria-hidden="true"></i> ${T.adicionar}</button>` : "")
+    + `<p class="garantia-quiz"><i class="ti ti-headphones" aria-hidden="true"></i><span>${T.garantia}</span></p>`
+    + `<div class="acoes"><button class="botao" id="avancar" type="button">${T.continuar_falta_pouco}</button></div>`;
 }
 
 const guiasLembrancas = () => REGRAS.lembrancas[REGRAS.guia_lembrancas[respostas.para_quem] || "padrao"];
 function htmlLembrancas(){
   return guiasLembrancas().map((g, i) => `<div class="lembranca">
-      <label for="lembranca${i}">${esc(personalizar(g.pergunta))}${i ? ' <span class="suave" style="font-weight:500">(se quiser)</span>' : ""}</label>
+      <label for="lembranca${i}">${esc(personalizar(g.pergunta))}${i ? ` <span class="suave" style="font-weight:500">${T.se_quiser}</span>` : ""}</label>
       <textarea class="campo" id="lembranca${i}" data-i="${i}" placeholder="${esc(g.exemplo)}">${esc(lembrancas[i])}</textarea></div>`).join("")
     + `<div class="medidor" aria-live="polite"><div class="medidor-barra"><div id="medidorBarra"></div></div><div class="medidor-texto" id="medidorTexto"></div></div>
-       <p class="dica-mic"><i class="ti ti-microphone" aria-hidden="true"></i><span>Prefere falar? Toque no microfone do teclado do celular e conte do seu jeito.</span></p>
-       <div class="acoes"><button class="botao" id="avancar" type="button">Continuar</button></div>`;
+       <p class="dica-mic"><i class="ti ti-microphone" aria-hidden="true"></i><span>${T.dica_mic}</span></p>
+       <div class="acoes"><button class="botao" id="avancar" type="button">${T.continuar}</button></div>`;
 }
 function atualizarMedidor(){
   const total = lembrancas.join("").trim().length;
-  const [txt, pct] = total < REGRAS.min_letras_lembrancas ? ["Comece contando uma lembrança", total / REGRAS.min_letras_lembrancas * 25]
-    : total < 150 ? ["Boa! Mais um detalhe deixa a música mais sua", 45] : total < 350 ? ["Ótima! 👏", 75] : ["Perfeita 💛", 100];
+  const M = T.medidor;
+  const [txt, pct] = total < REGRAS.min_letras_lembrancas ? [M[0], total / REGRAS.min_letras_lembrancas * 25]
+    : total < 150 ? [M[1], 45] : total < 350 ? [M[2], 75] : [M[3], 100];
   if (el("medidorBarra")) { el("medidorBarra").style.width = pct + "%"; el("medidorTexto").textContent = txt; }
 }
 
 function htmlContato(){
-  return (ehEu() ? "" : `<label for="de">Seu nome</label>
-      <input class="campo" id="de" maxlength="80" autocomplete="given-name" placeholder="Ex.: Patrícia" value="${esc(contato.de)}">
-      <p class="ajuda" style="font-size:.95rem;margin-top:6px">Vai na dedicatória da música 💛</p>`)
-    + `<label for="email">Seu e-mail (é por ele que a música chega)</label>
-      <input class="campo" id="email" type="email" inputmode="email" autocomplete="email" enterkeyhint="next" placeholder="seuemail@exemplo.com" value="${esc(contato.email)}">
-      <label for="whatsapp">Seu WhatsApp <span class="suave" style="font-weight:500">(se quiser)</span></label>
-      <input class="campo" id="whatsapp" type="tel" inputmode="tel" autocomplete="tel-national" enterkeyhint="go" maxlength="20" placeholder="(11) 91234-5678" value="${esc(contato.whatsapp)}">
-      <p class="ajuda" style="font-size:.95rem;margin-top:6px">Já vai preenchido no pagamento. Se você comprar, avisamos por lá quando a música completa for liberada.</p>
-      <p class="ajuda" style="font-size:.95rem;margin-top:4px"><i class="ti ti-message" aria-hidden="true"></i> Vamos te avisar por SMS quando sua música estiver pronta.</p>
-      <p class="privacidade"><i class="ti ti-lock" aria-hidden="true"></i><span>Usamos só para entregar a sua música. Nada de spam. Veja a <a href="{{ url_for('musica.privacidade') }}" target="_blank" rel="noopener">política de privacidade</a>.</span></p>
-      <div class="acoes"><button class="botao" id="avancar" type="button">Criar a letra da música</button></div>`;
+  return (ehEu() ? "" : `<label for="de">${T.seu_nome}</label>
+      <input class="campo" id="de" maxlength="80" autocomplete="given-name" placeholder="${esc(T.de_exemplo)}" value="${esc(contato.de)}">
+      <p class="ajuda" style="font-size:.95rem;margin-top:6px">${T.dedicatoria}</p>`)
+    + `<label for="email">${T.email}</label>
+      <input class="campo" id="email" type="email" inputmode="email" autocomplete="email" enterkeyhint="next" placeholder="${esc(T.email_exemplo)}" value="${esc(contato.email)}">
+      <label for="whatsapp">${T.whatsapp} <span class="suave" style="font-weight:500">${T.se_quiser}</span></label>
+      <input class="campo" id="whatsapp" type="tel" inputmode="tel" autocomplete="tel-national" enterkeyhint="go" maxlength="20" placeholder="${esc(T.whatsapp_exemplo)}" value="${esc(contato.whatsapp)}">
+      <p class="ajuda" style="font-size:.95rem;margin-top:6px">${T.whatsapp_ajuda}</p>
+      ${T.aviso_sms ? `<p class="ajuda" style="font-size:.95rem;margin-top:4px"><i class="ti ti-message" aria-hidden="true"></i> ${T.aviso_sms}</p>` : ""}
+      <p class="privacidade"><i class="ti ti-lock" aria-hidden="true"></i><span>${T.privacidade.replace("{link}", URL_PRIVACIDADE)}</span></p>
+      <div class="acoes"><button class="botao" id="avancar" type="button">${T.criar_letra}</button></div>`;
 }
 
 function desenhar(){
@@ -247,7 +252,7 @@ function desenhar(){
   if (ultimaEtapa !== p.chave) { etapaFunil(PERGUNTAS.indexOf(p) + 1, p.chave); ultimaEtapa = p.chave; }   // 1 vez por tela
   el("barra").style.width = ((posicao - 1) / lista.length * 100) + "%";
   // Em vez de "1 de 9" (assusta), uma frase leve: começo, meio e reta final.
-  el("contador").textContent = posicao <= 2 ? "Leva só 2 minutos ⏱" : posicao >= lista.length - 2 ? "Falta pouco! 💛" : "Você está indo bem ✨";
+  el("contador").textContent = posicao <= 2 ? T.contador[0] : posicao >= lista.length - 2 ? T.contador[1] : T.contador[2];
   el("voltar").style.visibility = posicao > 1 ? "visible" : "hidden";
   mostrarErro("");
 
@@ -259,7 +264,7 @@ function desenhar(){
   else if (p.tipo === "lembrancas") html += htmlLembrancas();
   else if (p.tipo === "contato") html += htmlContato();
   else html += `<input class="campo" id="resposta" placeholder="${esc(p.exemplo)}" value="${esc(respostas[p.chave])}" autocomplete="off" maxlength="300">
-      <div class="acoes"><button class="botao" id="avancar" type="button">Continuar</button></div>`;
+      <div class="acoes"><button class="botao" id="avancar" type="button">${T.continuar}</button></div>`;
   const passo = el("passo");
   passo.innerHTML = html;
   passo.classList.remove("entrar"); void passo.offsetWidth; passo.classList.add("entrar");
@@ -273,7 +278,7 @@ function ligar(p, passo){
       respostas[p.chave] = b.dataset.valor; b.classList.add("marcada");
       passo.querySelectorAll(".opcao").forEach(x => x !== b && x.classList.remove("marcada"));
       limparIncoerentes();
-      if (p.chave === "ocasiao" && b.dataset.valor === "Outra ocasião") { el("caixaOutra").style.display = "block"; el("ocasiaoOutra").focus(); return; }
+      if (p.chave === "ocasiao" && b.dataset.valor === REGRAS.outra_ocasiao) { el("caixaOutra").style.display = "block"; el("ocasiaoOutra").focus(); return; }
       if (p.chave === "ocasiao") delete respostas.ocasiao_outra;
       setTimeout(proximo, 160);
     };
@@ -323,19 +328,19 @@ function avancarDe(p){
   if (p.tipo === "pessoas") {
     pessoas = pessoas.map(x => ({nome: x.nome.trim(), apelido: x.apelido.trim(), pronuncia: x.pronuncia.trim()}));
     const preenchidas = pessoas.filter(x => x.nome);
-    if (ehGrupo() && preenchidas.length < 2) return mostrarErro("Coloque pelo menos dois nomes (ou volte e escolha uma pessoa só).");
-    if (!preenchidas.length) return mostrarErro(ehEu() ? "Coloque o seu nome." : "Coloque o nome de quem vai receber.");
+    if (ehGrupo() && preenchidas.length < 2) return mostrarErro(T.erro_grupo);
+    if (!preenchidas.length) return mostrarErro(ehEu() ? T.erro_nome_eu : T.erro_nome);
     pessoas = preenchidas;
     return proximo();
   }
   if (p.tipo === "lembrancas") {
     if (lembrancas.join("").trim().length < REGRAS.min_letras_lembrancas)
-      return mostrarErro("Conte um pouco mais. Quanto mais detalhes, mais emocionante fica a música.");
+      return mostrarErro(T.erro_lembrancas);
     return proximo();
   }
   if (p.chave === "ocasiao") {
     const outra = el("ocasiaoOutra").value.trim();
-    if (!outra) return mostrarErro("Conte qual é a ocasião.");
+    if (!outra) return mostrarErro(T.erro_ocasiao);
     respostas.ocasiao_outra = outra; return proximo();
   }
   respostas[p.chave] = el("resposta").value.trim();
@@ -350,13 +355,19 @@ function irPara(delta){
 const proximo = () => irPara(1);
 el("voltar").onclick = () => irPara(-1);
 
+// Só celular, a mesma regra do servidor (regras.celular_br / celular_mx). Brasil: DDD + 9 + 8 dígitos (aceita +55 e o 0
+// da operadora). México: 10 dígitos (aceita +52 e o "1" antigo de celular: 52 1 ...).
+function celularOk(texto){
+  const d = texto.replace(/\D/g, "").replace(/^0+/, "");
+  if (TEL === "mx") return /^\d{10}$/.test(d.replace(/^521(?=\d{10}$)/, "").replace(/^52(?=\d{10}$)/, ""));
+  return /^\d{2}9\d{8}$/.test(d.replace(/^55(?=\d{11}$)/, ""));
+}
+
 async function enviar(){
   contato = {de: ehEu() ? "" : (el("de").value || "").trim(), email: el("email").value.trim(), whatsapp: el("whatsapp").value.trim()};
-  if (!ehEu() && !contato.de) return mostrarErro("Coloque o seu nome.");
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contato.email)) return mostrarErro("Confira o e-mail.");
-  // só celular (DDD + 9 + 8 dígitos; aceita +55 e o 0 da operadora), a mesma regra do servidor (regras.celular_br)
-  const digitosWhats = contato.whatsapp.replace(/\D/g, "").replace(/^0+/, "").replace(/^55(?=\d{11}$)/, "");
-  if (contato.whatsapp && !/^\d{2}9\d{8}$/.test(digitosWhats)) return mostrarErro("Confira o celular com DDD (ex.: 11 91234-5678) ou deixe em branco.");
+  if (!ehEu() && !contato.de) return mostrarErro(T.erro_de);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contato.email)) return mostrarErro(T.erro_email);
+  if (contato.whatsapp && !celularOk(contato.whatsapp)) return mostrarErro(T.erro_celular);
   guardar();
   if (ocasiaoDaUrlVale()) respostas.ocasiao = ocasiaoUrl;
   const guias = guiasLembrancas();
@@ -364,18 +375,18 @@ async function enviar(){
     ...respostas, de: contato.de, pessoas,
     lembrancas_partes: lembrancas.map((r, i) => ({pergunta: personalizar(guias[i].pergunta), resposta: r.trim()})).filter(x => x.resposta),
   };
-  el("tituloEnviando").textContent = ehEu() ? "Escrevendo a sua letra" : personalizar("Escrevendo a letra de {nome}");
+  el("tituloEnviando").textContent = ehEu() ? T.escrevendo_eu : personalizar(T.escrevendo_de);
   el("quiz").style.display = "none"; el("enviando").style.display = "block"; window.scrollTo({top: 0});
   try {
     const r = await fetch(URL_CRIAR, {method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify({respostas: corpo, email: contato.email, whatsapp: contato.whatsapp, turnstile: tokenRobo})});
     const dados = await r.json();
-    if (!r.ok) throw new Error(dados.erro || "Algo deu errado.");
+    if (!r.ok) throw new Error(dados.erro || T.erro_generico);
     esquecer();
     location.href = dados.link;
   } catch (e) {
     el("enviando").style.display = "none"; el("quiz").style.display = "block";
-    mostrarErro(e.message || "Sem conexão. Tente de novo.");
+    mostrarErro(e.message || T.sem_conexao);
   }
 }
 

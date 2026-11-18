@@ -38,7 +38,8 @@ def musicas_vendidas():
 @requer_admin
 def musica_detalhe(musica_id):
     from musica import links
-    from musica.dominio import quiz, regras
+    from musica.dominio import quiz as _quiz
+    from musica.dominio import regras
     from musica.dominio.recursos import RECURSOS
     s = _s()
     musica = s.repositorio.por_id(musica_id)
@@ -49,6 +50,7 @@ def musica_detalhe(musica_id):
         flash('Música paga não encontrada.', 'error')
         return redirect(url_for('admin.musicas_vendidas'))
     recursos = s.repositorio.recursos_do_pedido(venda['pedido_id'])
+    quiz = _quiz.do_idioma(musica.get('idioma'))   # as opções do quiz do idioma dela (México: "Mamá", "Mariachi"...)
     return render_template(
         'admin/musica_detalhe.html', musica=musica, venda=venda, recursos=recursos,
         nomes_itens=[RECURSOS.get(r, {}).get('nome', r) for r in sorted(recursos)],

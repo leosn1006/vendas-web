@@ -1,27 +1,11 @@
 {% extends "musica/musica_base.html" %}
-{# Páginas por ocasião para os anúncios: /musica/?ocasiao=mae (título, texto e foto da abertura mudam) #}
-{% set paginas = {
-  "mae": {"titulo": "A história da sua mãe virou música", "sub": "O cheiro do café, o colo, as broncas que hoje dão saudade. Tudo numa música com o nome dela.", "img": "mae-filha.jpg", "alt": "Mãe e filha abraçadas na praia", "quiz": "Dia das Mães", "quem": ["Mãe", "Avó", "Esposa", "Sogra"]},
-  "pai": {"titulo": "A história do seu pai virou música", "sub": "Aquele homem que fala pouco e sente muito vai ouvir o próprio nome numa música feita só pra ele.", "img": "pai-filha.jpg", "alt": "Pai sorrindo com a filha no colo", "quiz": "Dia dos Pais", "quem": ["Pai", "Avô", "Marido", "Sogro"]},
-  "namorados": {"titulo": "A história de vocês virou música", "sub": "Do primeiro encontro até hoje, numa música com o nome de quem você ama.", "img": "casal.jpg", "alt": "Casal sorrindo juntos", "quiz": "Dia dos Namorados", "quem": ["Namorada", "Namorado", "Esposa", "Marido", "Minha ex", "Meu ex"]},
-  "casamento": {"titulo": "A música do casamento de vocês", "sub": "Para a entrada, a festa ou as bodas: a história de vocês cantada do jeito que aconteceu.", "img": "casamento.jpg", "alt": "Noivos sorrindo no casamento", "quiz": "Casamento", "quem": ["Esposa", "Marido", "Namorada", "Namorado"]},
-  "desculpas": {"titulo": "Às vezes, uma música diz o que a gente não consegue", "sub": "Quando as palavras não chegam, a música chega. Conte o que vocês viveram e diga o que está no seu coração.", "img": "casal.jpg", "alt": "Casal abraçado", "quiz": "Pedido de desculpas", "quem": ["Minha ex", "Meu ex", "Esposa", "Marido", "Namorada", "Namorado"]},
-  "aniversario": {"titulo": "Um parabéns que ninguém vai esquecer", "sub": "Em vez de mais um presente que vai pra gaveta, uma música com o nome e a história de quem faz aniversário.", "img": "avo-aniversario.jpg", "alt": "Senhor sorrindo diante do bolo de aniversário", "quiz": "Aniversário"},
-  "formatura": {"titulo": "Uma música para celebrar essa conquista", "sub": "Cada noite de estudo e cada sacrifício até aqui, numa música com o nome de quem se formou.", "img": "formatura.jpg", "alt": "Formanda abraçada com a mãe", "quiz": "Formatura", "quem": ["Filha", "Filho", "Neta", "Neto", "Irmã", "Irmão", "Amiga", "Amigo"]},
-  "15anos": {"titulo": "Uma música para os 15 anos dela", "sub": "A menina que cresceu rápido demais vai ouvir a própria história numa música feita só pra ela.", "img": "quinze-anos.jpg", "alt": "Debutante no vestido de festa", "quiz": "Aniversário", "quem": ["Filha", "Neta", "Irmã", "Amiga"]},
-  "filho": {"titulo": "Uma música para o seu filho guardar pra sempre", "sub": "Tudo o que você sente desde o primeiro dia, numa música com o nome de quem você mais ama.", "img": "familia-final.jpg", "alt": "Pais beijando a filha", "quiz": "", "quem": ["Filho", "Filha"]},
-} %}
-{% set pg = paginas.get(ocasiao, {"titulo": "Uma música feita só para quem você ama", "sub": "Com o nome, as lembranças e aquele jeitinho que só essa pessoa tem. Um presente que ela vai ouvir de novo e de novo.", "img": "capa-fone.jpg", "alt": "Mãe e filha dividindo o fone de ouvido e sorrindo", "quiz": ""}) %}
-{% set ocasioes = [
-  {"nome": "Dia das Mães", "slug": "Dia das Mães", "img": "mae-filha.jpg", "audio": "mae-rosa.mp3", "musica": "Dona Rosa, Meu Abraço"},
-  {"nome": "Casamento", "slug": "Casamento", "img": "casamento.jpg", "audio": "casal-mi.mp3", "musica": "Mi, Meu Sim É Seu"},
-  {"nome": "Aniversário", "slug": "Aniversário", "img": "avo-aniversario.jpg", "audio": "avo-ze.mp3", "musica": "O Forró do Vô Zé"},
-  {"nome": "Dia dos Pais", "slug": "Dia dos Pais", "img": "pai-filha.jpg", "audio": "pai-carlos.mp3", "musica": "Painho, Meu Lugar"},
-  {"nome": "Dia dos Namorados", "slug": "Dia dos Namorados", "img": "casal.jpg", "audio": "namorados-bia.mp3", "musica": "Bia, É Só Você Sorrir"},
-  {"nome": "15 anos", "slug": "Aniversário", "img": "quinze-anos.jpg", "audio": "quinze-sofi.mp3", "musica": "Sofi, Pode Sonhar"},
-  {"nome": "Formatura", "slug": "Formatura", "img": "formatura.jpg", "audio": "formatura-je.mp3", "musica": "Jé, Pode Comemorar"},
-  {"nome": "Só porque eu amo", "slug": "Só porque eu amo", "img": "amigos.jpg", "audio": "amigos-celo.mp3", "musica": "Celo, Meu Bom Amigo"},
-] %}
+{# Páginas por ocasião para os anúncios: /musica/?ocasiao=mae (título, texto e foto da abertura mudam). Os textos, as
+   páginas de ocasião e os exemplos do carrossel são do idioma: conteudo/<idioma>/textos.json, "landing". #}
+{% set L = textos.landing %}
+{% set paginas = L.paginas %}
+{% set pg = paginas.get(ocasiao, L.pagina_padrao) %}
+{% set ocasioes = L.exemplos %}
+{% set wpp = L.whatsapp_se_quiser if whatsapp_ativo else "" %}
 {% block estilo %}
 <style>
 .largura{max-width:1180px;margin:0 auto;padding:0 24px}
@@ -134,12 +118,12 @@ footer .largura{display:flex;justify-content:space-between;gap:16px;flex-wrap:wr
 {% block pagina %}
 <header class="nav" id="nav">
   <div class="largura">
-    <a class="marca" href="{{ url_for('musica.inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a>
+    <a class="marca" href="{{ rota('inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a>
     <nav>
-      <a href="#exemplos">Exemplos</a>
-      <a href="#como-funciona">Como funciona</a>
-      <a href="#duvidas">Dúvidas</a>
-      <a class="botao" href="{{ url_for('musica.criar') }}">Criar minha música</a>
+      {% if ocasioes %}<a href="#exemplos">{{ L.nav_exemplos }}</a>{% endif %}
+      <a href="#como-funciona">{{ L.nav_como }}</a>
+      <a href="#duvidas">{{ L.nav_duvidas }}</a>
+      <a class="botao" href="{{ rota('criar') }}">{{ L.criar_minha }}</a>
     </nav>
   </div>
 </header>
@@ -152,31 +136,31 @@ footer .largura{display:flex;justify-content:space-between;gap:16px;flex-wrap:wr
         <p class="sub">{{ pg.sub }}</p>
         {# A 1ª pergunta do quiz já aqui no topo: um toque e a pessoa está dentro, sem clique extra. #}
         <div class="comecar">
-          <p class="comecar-titulo">Pra quem é a música?</p>
+          <p class="comecar-titulo">{{ L.pra_quem }}</p>
           <div class="comecar-opcoes">
-            {% set principais = pg.quem or ["Mãe", "Pai", "Esposa", "Marido", "Filho", "Filha", "Namorada", "Namorado"] %}
+            {% set principais = pg.quem or L.principais %}
             {# Página de uma ocasião: só quem combina com ela (no quiz, "Pai" + "Dia das Mães" não existe) #}
             {% set combinam = relacoes_por_ocasiao.get(pg.quiz, []) if pg.quiz else opcoes_quem %}
             {% set principais = principais | select("in", combinam) | list %}
             {% set mais = combinam | reject("in", principais) | list %}
             {% for quem in principais %}
-            <a class="comecar-opcao" href="{{ url_for('musica.criar', para_quem=quem, ocasiao=pg.quiz or None) }}">{{ quem }}</a>
+            <a class="comecar-opcao" href="{{ rota('criar', para_quem=quem, ocasiao=pg.quiz or None) }}">{{ quem }}</a>
             {% endfor %}
           </div>
           {# O resto da lista abre aqui mesmo, sem sair da página (some quando todas já estão no topo). #}
           {% if mais %}
           <details class="mais-opcoes">
-            <summary>Mais opções <i class="ti ti-chevron-down" aria-hidden="true"></i></summary>
+            <summary>{{ L.mais_opcoes }} <i class="ti ti-chevron-down" aria-hidden="true"></i></summary>
             <div class="comecar-opcoes">
               {% for quem in mais %}
-              <a class="comecar-opcao secundaria" href="{{ url_for('musica.criar', para_quem=quem, ocasiao=pg.quiz or None) }}">{{ quem }}</a>
+              <a class="comecar-opcao secundaria" href="{{ rota('criar', para_quem=quem, ocasiao=pg.quiz or None) }}">{{ quem }}</a>
               {% endfor %}
             </div>
           </details>
           {% endif %}
-          <p class="comecar-nota"><i class="ti ti-clock" aria-hidden="true"></i> Leva só 2 minutos · você ouve antes e só paga se gostar</p>
+          <p class="comecar-nota"><i class="ti ti-clock" aria-hidden="true"></i> {{ L.nota_topo }}</p>
         </div>
-        <a class="link-exemplos" href="#exemplos"><i class="ti ti-player-play" aria-hidden="true"></i> Ouvir exemplos antes</a>
+        {% if ocasioes %}<a class="link-exemplos" href="#exemplos"><i class="ti ti-player-play" aria-hidden="true"></i> {{ L.ouvir_exemplos }}</a>{% endif %}
       </div>
       <div class="foto-hero">
         <img src="{{ url_for('musica.static', filename='img/' ~ pg.img) }}" alt="{{ pg.alt }}" fetchpriority="high" width="900" height="1100">
@@ -184,83 +168,83 @@ footer .largura{display:flex;justify-content:space-between;gap:16px;flex-wrap:wr
     </section>
 
     <div class="garantias surgir">
-      <div><i class="ti ti-headphones" aria-hidden="true"></i>Você ouve antes e só paga se gostar</div>
-      <div><i class="ti ti-clock" aria-hidden="true"></i>Pronta em poucos minutos</div>
-      <div><i class="ti ti-mail" aria-hidden="true"></i>Chega na hora, no seu e-mail{% if whatsapp_ativo %} e, se quiser, no WhatsApp{% endif %}</div>
+      <div><i class="ti ti-headphones" aria-hidden="true"></i>{{ L.garantia_ouve }}</div>
+      <div><i class="ti ti-clock" aria-hidden="true"></i>{{ L.garantia_pronta }}</div>
+      <div><i class="ti ti-mail" aria-hidden="true"></i>{{ L.garantia_chega | replace("{whatsapp}", wpp) }}</div>
     </div>
 
+    {# Sem exemplos gravados no idioma (o México começa sem), o carrossel some. #}
+    {% if ocasioes %}
     <section class="bloco" id="exemplos">
       <div class="trilho-topo surgir">
         <div>
-          <h2>Para cada momento importante</h2>
-          <p class="suave" style="margin:0">Aperte o play e ouça músicas criadas aqui. Depois, é só contar a sua história.</p>
+          <h2>{{ L.exemplos_titulo }}</h2>
+          <p class="suave" style="margin:0">{{ L.exemplos_sub }}</p>
         </div>
-        <div class="setas"><button type="button" data-dir="-1" aria-label="Voltar"><i class="ti ti-arrow-left" aria-hidden="true"></i></button><button type="button" data-dir="1" aria-label="Avançar"><i class="ti ti-arrow-right" aria-hidden="true"></i></button></div>
+        <div class="setas"><button type="button" data-dir="-1" aria-label="{{ L.voltar }}"><i class="ti ti-arrow-left" aria-hidden="true"></i></button><button type="button" data-dir="1" aria-label="{{ L.avancar }}"><i class="ti ti-arrow-right" aria-hidden="true"></i></button></div>
       </div>
       <div class="trilho" id="trilho">
         {% for o in ocasioes %}
-        <a class="ex" href="{{ url_for('musica.criar', ocasiao=o.slug) }}">
+        <a class="ex" href="{{ rota('criar', ocasiao=o.slug) }}">
           <img src="{{ url_for('musica.static', filename='img/' ~ o.img) }}" alt="" loading="lazy" width="800" height="1000">
           <div class="info">
-            <button class="tocar" type="button" data-audio="{{ url_for('musica.static', filename='exemplos/' ~ o.audio) }}" aria-label="Ouvir {{ o.musica }}"><i class="ti ti-player-play" aria-hidden="true"></i></button>
+            <button class="tocar" type="button" data-audio="{{ url_for('musica.static', filename='exemplos/' ~ o.audio) }}" aria-label="{{ L.ouvir | replace("{musica}", o.musica) }}"><i class="ti ti-player-play" aria-hidden="true"></i></button>
             <strong>{{ o.nome }}</strong><span>{{ o.musica }}</span>
           </div>
         </a>
         {% endfor %}
         <div class="ex-cta">
-          <h3>Agora é a vez da sua história</h3>
-          <a class="botao" href="{{ url_for('musica.criar') }}">Criar minha música</a>
+          <h3>{{ L.sua_vez }}</h3>
+          <a class="botao" href="{{ rota('criar') }}">{{ L.criar_minha }}</a>
         </div>
       </div>
     </section>
+    {% endif %}
 
     <section class="bloco como" id="como-funciona">
-      <div class="foto surgir"><img src="{{ url_for('musica.static', filename='img/ouvindo.jpg') }}" alt="Mulher de olhos fechados ouvindo música com fones" loading="lazy" width="900" height="1100"></div>
+      <div class="foto surgir"><img src="{{ url_for('musica.static', filename='img/ouvindo.jpg') }}" alt="{{ L.como_foto_alt }}" loading="lazy" width="900" height="1100"></div>
       <div class="surgir">
-        <h2>Do seu jeito, em poucos minutos</h2>
+        <h2>{{ L.como_titulo }}</h2>
         <ol class="passos">
-          <li><div><h3>Conte a história</h3><p>Responda umas perguntas rápidas: o nome, o apelido e as lembranças que só vocês têm.</p></div></li>
-          <li><div><h3>Ouça antes de pagar</h3><p>Você lê a letra, pode pedir ajustes e ouve um trecho das duas versões da música.</p></div></li>
-          <li><div><h3>Entregue o presente</h3><p>Receba a música completa no seu e-mail{% if whatsapp_ativo %} e, se quiser, no WhatsApp{% endif %}, pronta para enviar e emocionar.</p></div></li>
+          {% for passo in L.passos %}
+          <li><div><h3>{{ passo.titulo }}</h3><p>{{ passo.texto | replace("{whatsapp}", wpp) }}</p></div></li>
+          {% endfor %}
         </ol>
       </div>
     </section>
 
     <section class="bloco oferta" id="preco">
-      <h2 class="surgir">Um presente que ninguém esquece</h2>
+      <h2 class="surgir">{{ L.oferta_titulo }}</h2>
       <div class="cartao surgir">
         {# TESTE desde o deploy do commit 728c172 (feito em 25/10/2026; deploy previsto para 26/10): preço fora da
            landing (ela vê o valor na prévia, depois de ouvir). Para voltar,
            descomente as 3 linhas abaixo e apague o parágrafo "Você ouve antes..." e a regra .sub-oferta. Ver docs/MUSICA.md.
-        <p class="suave" style="margin:0">Música completa</p>
+        <p class="suave" style="margin:0">{{ L.oferta_completa }}</p>
         <p class="preco">{{ preco_texto }}</p>
-        <p class="suave" style="margin:0">Pagamento único, no PIX ou no cartão</p>
+        <p class="suave" style="margin:0">{{ L.oferta_pagamento }}</p>
         #}
-        <p class="sub-oferta">Você ouve antes e só paga se gostar</p>
+        <p class="sub-oferta">{{ L.garantia_ouve }}</p>
         <ul class="inclui">
-          <li><i class="ti ti-check" aria-hidden="true"></i>Duas versões completas da música para você escolher</li>
-          <li><i class="ti ti-check" aria-hidden="true"></i>Letra escrita a partir da história de vocês</li>
-          <li><i class="ti ti-check" aria-hidden="true"></i>Arquivo MP3 para guardar e compartilhar</li>
-          <li><i class="ti ti-check" aria-hidden="true"></i>Entrega na hora, no seu e-mail{% if whatsapp_ativo %} e, se quiser, no WhatsApp{% endif %}</li>
+          {% for item in L.oferta_inclui %}
+          <li><i class="ti ti-check" aria-hidden="true"></i>{{ item | replace("{whatsapp}", wpp) }}</li>
+          {% endfor %}
         </ul>
-        <a class="botao" href="{{ url_for('musica.criar') }}">Criar minha música</a>
+        <a class="botao" href="{{ rota('criar') }}">{{ L.criar_minha }}</a>
       </div>
     </section>
 
     <section class="bloco duvidas" id="duvidas" style="padding-top:0">
-      <h2 class="surgir">Dúvidas frequentes</h2>
-      <details><summary>Preciso pagar antes de ouvir?</summary><p>Não. Você ouve um trecho da música pronta e só paga se gostar.</p></details>
-      <details><summary>Posso mudar a letra?</summary><p>Pode. Antes de criar a música, você lê a letra e pede os ajustes que quiser.</p></details>
-      <details><summary>Quanto tempo demora?</summary><p>A letra fica pronta em menos de um minuto e a música, em poucos minutos.</p></details>
-      <details><summary>O que eu recebo?</summary><p>Duas versões completas da música em MP3, com a letra, no seu e-mail{% if whatsapp_ativo %} e, se você informar o número, no seu WhatsApp{% endif %}. Também dá para levar o videoclipe com as suas fotos, o cartão com QR code e a entrega por e-mail para quem vai receber.</p></details>
-      <details><summary>Quais estilos posso escolher?</summary><p>Sertanejo, rock, gospel, MPB, pagode, forró, samba, pop, valsa, infantil e vários outros.</p></details>
+      <h2 class="surgir">{{ L.duvidas_titulo }}</h2>
+      {% for d in L.duvidas %}
+      <details><summary>{{ d.p }}</summary><p>{{ d.r | replace("{whatsapp}", d.whatsapp if (whatsapp_ativo and d.whatsapp) else "") }}</p></details>
+      {% endfor %}
     </section>
 
     <section class="final surgir">
-      <img src="{{ url_for('musica.static', filename='img/familia-final.jpg') }}" alt="Pai e mãe beijando a filha" loading="lazy" width="1600" height="900">
+      <img src="{{ url_for('musica.static', filename='img/familia-final.jpg') }}" alt="{{ L.final_foto_alt }}" loading="lazy" width="1600" height="900">
       <div class="txt">
-        <h2>Tem alguém que merece ouvir isso hoje</h2>
-        <a class="botao" href="{{ url_for('musica.criar') }}">Criar minha música</a>
+        <h2>{{ L.final_titulo }}</h2>
+        <a class="botao" href="{{ rota('criar') }}">{{ L.criar_minha }}</a>
       </div>
     </section>
   </div>
@@ -268,8 +252,8 @@ footer .largura{display:flex;justify-content:space-between;gap:16px;flex-wrap:wr
 
 <footer>
   <div class="largura">
-    <span>{{ marca }} · <a href="{{ url_for('musica.termos') }}" style="color:inherit">Termos de uso</a> · <a href="{{ url_for('musica.privacidade') }}" style="color:inherit">Privacidade</a></span>
-    <span>Música criada com ajuda de inteligência artificial. Fotos ilustrativas.</span>
+    <span>{{ marca }} · <a href="{{ rota('termos') }}" style="color:inherit">{{ L.termos }}</a> · <a href="{{ rota('privacidade') }}" style="color:inherit">{{ L.privacidade }}</a>{% for o in outros_idiomas() %} · <a href="{{ o.link }}" style="color:inherit" lang="{{ o.lang }}">{{ o.bandeira }} {{ o.pais }}</a>{% endfor %}</span>
+    <span>{{ L.rodape_ia }}</span>
   </div>
 </footer>
 {% endblock %}

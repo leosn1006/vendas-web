@@ -1,5 +1,6 @@
-"""Endereços das páginas da Música (para e-mails, QR code e tarefas, que rodam sem requisição)."""
-from musica import config
+"""Endereços das páginas da Música (para e-mails, QR code e tarefas, que rodam sem requisição). O prefixo é o do
+idioma da música (musica/idiomas.py: /musica, /mx/cancion)."""
+from musica import config, idiomas
 
 
 def base(dominio: str | None) -> str:
@@ -12,9 +13,13 @@ def base(dominio: str | None) -> str:
     return f"{'http' if local else 'https'}://{dominio}"
 
 
+def _prefixo(musica: dict) -> str:
+    return idiomas.cfg(musica.get('idioma'))['prefixo']
+
+
 def previa(musica: dict) -> str:
     """Prévia (antes de pagar): o funil da música."""
-    return f"{base(musica.get('dominio'))}/musica/p/{musica['token']}"
+    return f"{base(musica.get('dominio'))}{_prefixo(musica)}/p/{musica['token']}"
 
 
 def checkout(musica: dict) -> str:
@@ -28,12 +33,12 @@ def checkout(musica: dict) -> str:
 
 def sem_lembretes(musica: dict) -> str:
     """Link do rodapé dos lembretes: "não quero mais receber"."""
-    return f"{base(musica.get('dominio'))}/musica/p/{musica['token']}/sem-lembretes"
+    return f"{base(musica.get('dominio'))}{_prefixo(musica)}/p/{musica['token']}/sem-lembretes"
 
 
 def presente(musica: dict) -> str:
     """Página do presente (QR code e e-mail para quem recebe): só a música, sem dados de quem comprou."""
-    return f"{base(musica.get('dominio'))}/musica/m/{musica['token']}"
+    return f"{base(musica.get('dominio'))}{_prefixo(musica)}/m/{musica['token']}"
 
 
 def compra(guid: str, dominio: str | None) -> str:

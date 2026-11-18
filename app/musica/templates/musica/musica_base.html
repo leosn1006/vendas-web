@@ -1,15 +1,15 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="{{ idioma_cfg.html_lang }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block titulo %}{{ marca }}{% endblock %}</title>
-<meta name="description" content="Conte a história de quem você ama e receba uma música feita só para essa pessoa. Ouça antes de pagar.">
+<meta name="description" content="{{ t('geral.descricao') }}">
 <meta name="theme-color" content="#0F0E0D">
 {% block og %}
 <meta property="og:type" content="website">
-<meta property="og:title" content="{{ marca }}: uma música feita só para quem você ama">
-<meta property="og:description" content="Conte a história de vocês e receba uma música com o nome e as lembranças de quem vai ganhar. Ouça antes de pagar.">
+<meta property="og:title" content="{{ t('geral.og_titulo', marca=marca|e) }}">
+<meta property="og:description" content="{{ t('geral.og_descricao') }}">
 <meta property="og:image" content="{{ url_for('musica.static', filename='img/capa-fone.jpg', _external=True) }}">
 {% endblock %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -69,6 +69,7 @@ audio{width:100%;margin:8px 0}
 .rodape{text-align:center;font-size:.85rem;color:var(--suave);margin-top:40px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
+{# A página da Analytics Web é a do idioma (idiomas.py: pt-BR "musica-v2", es-MX "musica-mx"), com as mesmas etapas. #}
 <script>
 // Até onde a visita chegou (admin → Analytics Web, página "musica-v2" = quiz de 9 telas de 22/10/2026; o antigo, de
 // 12 telas, ficou como "musica"): quiz 1–9, letra 20, prévia 30, comprar 40; popup "última chance" (pedido.html):
@@ -77,7 +78,7 @@ audio{width:100%;margin:8px 0}
 // sendBeacon sobrevive à troca de página; falha aqui nunca atrapalha o funil.
 function etapaFunil(n, nome){
   try {
-    const body = JSON.stringify({produto_id: {{ produto_id|int }}, pagina: "musica-v2", etapa: n, nome: nome});
+    const body = JSON.stringify({produto_id: {{ produto_id|int }}, pagina: "{{ idioma_cfg.pagina_analytics }}", etapa: n, nome: nome});
     if (!(navigator.sendBeacon && navigator.sendBeacon("/api/v1/quiz/progresso", new Blob([body], {type: "application/json"}))))
       fetch("/api/v1/quiz/progresso", {method: "POST", headers: {"Content-Type": "application/json"}, body, keepalive: true}).catch(() => {});
   } catch (e) {}
@@ -89,9 +90,9 @@ function etapaFunil(n, nome){
 <body>
 {% block pagina %}
 <main class="pagina">
-<header class="topo"><a class="marca" href="{{ url_for('musica.inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a></header>
+<header class="topo"><a class="marca" href="{{ rota('inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a></header>
 {% block conteudo %}{% endblock %}
-<p class="rodape">Música criada com ajuda de inteligência artificial</p>
+<p class="rodape">{{ t('geral.rodape_ia') }}</p>
 </main>
 {% endblock %}
 {% block script %}{% endblock %}

@@ -88,16 +88,25 @@ def _maiuscula(texto):
     return texto[:1].upper() + texto[1:]
 
 
-def lembrete(etapa, numero, de, para, link, link_sair):
-    """Lembrete `numero` (1, 2 ou 3) da `etapa` (letra, previa, checkout), com o link de sair no rodapé."""
+def lembrete(etapa, numero, de, para, link, link_sair, idioma=None):
+    """Lembrete `numero` (1, 2 ou 3) da `etapa` (letra, previa, checkout), com o link de sair no rodapé. Brasil: os
+    textos daqui (_LEMBRETES); outro idioma: os do textos.json dele ("lembretes", mesma estrutura)."""
+    from musica import idiomas
     e = html.escape
-    assunto, paragrafos, botao = _LEMBRETES[etapa][numero - 1]
+    if idiomas.valido(idioma) == idiomas.IDIOMA_PADRAO:
+        assunto, paragrafos, botao = _LEMBRETES[etapa][numero - 1]
+        oi, oi_nome, sem_nome = 'Oi!', 'Oi, {de}!', 'quem você ama'
+        rodape = 'Não quer mais estes lembretes? <a href="{link}" style="color:#888;">Clique aqui</a>.'
+    else:
+        L = idiomas.textos(idioma)['lembretes']
+        assunto, paragrafos, botao = L[etapa][numero - 1]
+        oi, oi_nome, sem_nome, rodape = L['oi'], L['oi_nome'], idiomas.texto(idioma, 'geral.sem_nome'), L['rodape']
     # {oi} = "Oi, Leo!" ou "Oi!"; {de_} = "Leo, " ou nada (sem nome, a frase começa direto, com maiúscula)
-    trocas = {'oi': f'Oi, {e(de)}!' if de else 'Oi!', 'de_': f'{e(de)}, ' if de else '', 'para': e(para or 'quem você ama')}
+    trocas = {'oi': oi_nome.format(de=e(de)) if de else oi, 'de_': f'{e(de)}, ' if de else '', 'para': e(para or sem_nome)}
     corpo = ''.join(_p(_maiuscula(t.format(**trocas))) for t in paragrafos) + _botao(botao, link)
-    corpo += (f'<p style="font-size:13px; color:#888; margin:24px 0 0; text-align:center;">Não quer mais estes lembretes? '
-              f'<a href="{e(link_sair)}" style="color:#888;">Clique aqui</a>.</p>')
-    return assunto.format(de=de or '', para=para or 'quem você ama'), corpo
+    corpo += (f'<p style="font-size:13px; color:#888; margin:24px 0 0; text-align:center;">'
+              f'{rodape.format(link=e(link_sair))}</p>')
+    return assunto.format(de=de or '', para=para or sem_nome), corpo
 
 
 MARCA_SMS = 'Cancao de Presente'

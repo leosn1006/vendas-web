@@ -47,7 +47,7 @@ video{width:100%;max-height:70vh;border-radius:16px;background:#000}
 {% block pagina %}
 <div class="funil">
   <header class="funil-topo">
-    <a class="marca" href="{{ url_for('musica.inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a>
+    <a class="marca" href="{{ rota('inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a>
   </header>
 
   <section class="capa">
@@ -58,12 +58,12 @@ video{width:100%;max-height:70vh;border-radius:16px;background:#000}
 
   <div class="lista">
     {% for faixa in musica.faixas %}
-    <div class="player" data-src="{{ url_for('musica.musica_completa', token=musica.token, numero=faixa.numero) }}" data-titulo="Versão {{ faixa.numero }}"></div>
+    <div class="player" data-src="{{ rota('musica_completa', token=musica.token, numero=faixa.numero) }}" data-titulo="Versão {{ faixa.numero }}"></div>
     {% endfor %}
   </div>
   <div class="baixar">
     {% for faixa in musica.faixas %}
-    <a class="botao secundario" href="{{ url_for('musica.musica_completa', token=musica.token, numero=faixa.numero, baixar=1) }}"><i class="ti ti-download" aria-hidden="true"></i> Baixar versão {{ faixa.numero }}</a>
+    <a class="botao secundario" href="{{ rota('musica_completa', token=musica.token, numero=faixa.numero, baixar=1) }}"><i class="ti ti-download" aria-hidden="true"></i> Baixar versão {{ faixa.numero }}</a>
     {% endfor %}
   </div>
 
@@ -97,7 +97,7 @@ video{width:100%;max-height:70vh;border-radius:16px;background:#000}
       {% endif %}
       {% if wa_falhou %}
       <div class="agendado" style="margin-bottom:16px"><i class="ti ti-alert-circle" aria-hidden="true" style="color:var(--cor)"></i><span>Não conseguimos entregar no WhatsApp de <b>{{ musica.presente_nome }}</b>. Pode ser o número ou alguma configuração do WhatsApp da pessoa. Mande pelo seu WhatsApp, a mensagem e o link já vão prontos — ou corrija o número abaixo.</span></div>
-      <a class="botao whats" href="{{ url_for('musica.enviar_pelo_whatsapp', guid=guid) }}"><i class="ti ti-brand-whatsapp" aria-hidden="true"></i> Enviar para {{ musica.presente_nome }} pelo meu WhatsApp</a>
+      <a class="botao whats" href="{{ rota('enviar_pelo_whatsapp', guid=guid) }}"><i class="ti ti-brand-whatsapp" aria-hidden="true"></i> Enviar para {{ musica.presente_nome }} pelo meu WhatsApp</a>
       {% else %}
       <p>A gente manda a música para quem vai receber{% if whatsapp_ativo %} por e-mail e/ou WhatsApp{% else %} por e-mail{% endif %}, agora ou no dia e horário que você escolher (horário de Brasília). Você recebe um aviso.</p>
       {% if musica.presente_email or musica.presente_whatsapp %}
@@ -132,7 +132,7 @@ video{width:100%;max-height:70vh;border-radius:16px;background:#000}
   <section class="extra-bloco">
     <h2>Cartão com QR code</h2>
     <p>Imprima e entregue junto com o presente. A pessoa aponta a câmera do celular e a música toca.</p>
-    <a class="botao secundario" href="{{ url_for('musica.cartao_qrcode', guid=guid) }}" target="_blank" rel="noopener"><i class="ti ti-printer" aria-hidden="true"></i> Abrir o cartão para imprimir</a>
+    <a class="botao secundario" href="{{ rota('cartao_qrcode', guid=guid) }}" target="_blank" rel="noopener"><i class="ti ti-printer" aria-hidden="true"></i> Abrir o cartão para imprimir</a>
   </section>
   {% endif %}
 
@@ -140,8 +140,8 @@ video{width:100%;max-height:70vh;border-radius:16px;background:#000}
   <section class="extra-bloco" id="video">
     <h2>Videoclipe com as suas fotos</h2>
     {% if musica.video_status == "pronto" %}
-      <video controls playsinline preload="metadata" poster="{{ url_for('musica.capa_video', token=musica.token) }}" src="{{ url_for('musica.videoclipe', token=musica.token) }}"></video>
-      <a class="botao secundario" style="margin-top:12px" href="{{ url_for('musica.videoclipe', token=musica.token, baixar=1) }}"><i class="ti ti-download" aria-hidden="true"></i> Baixar o vídeo</a>
+      <video controls playsinline preload="metadata" poster="{{ rota('capa_video', token=musica.token) }}" src="{{ rota('videoclipe', token=musica.token) }}"></video>
+      <a class="botao secundario" style="margin-top:12px" href="{{ rota('videoclipe', token=musica.token, baixar=1) }}"><i class="ti ti-download" aria-hidden="true"></i> Baixar o vídeo</a>
       <p style="margin-top:12px">Quer trocar as fotos? <a href="#" id="refazer">Fazer de novo</a>.</p>
     {% endif %}
     <div id="video-fazendo" style="display:{{ 'block' if musica.video_status == 'fazendo' else 'none' }}">
@@ -186,8 +186,8 @@ if (copiar) copiar.addEventListener("click", async () => {
 const campoFotos = document.getElementById("fotos");
 const MAX_FOTOS = {{ max_fotos }};
 if (campoFotos) {
-  const URL_VIDEO = "{{ url_for('musica.api_video', guid=guid) }}";
-  const URL_FOTO = "{{ url_for('musica.api_foto', guid=guid) }}";
+  const URL_VIDEO = "{{ rota('api_video', guid=guid) }}";
+  const URL_FOTO = "{{ rota('api_foto', guid=guid) }}";
   let escolhidas = [];
   // Reduz no celular antes de enviar: cada foto vai sozinha e precisa ficar abaixo de ~900 KB (o servidor
   // aceita até 1 MB por envio). Se ainda ficar grande, reduz mais.
@@ -236,7 +236,7 @@ if (campoFotos) {
   if (refazer) refazer.addEventListener("click", e => { e.preventDefault(); document.getElementById("video-form").style.display = "block"; });
 }
 async function esperarVideo(){
-  const r = await fetch("{{ url_for('musica.api_status_video', guid=guid) }}").then(r => r.json()).catch(() => ({}));
+  const r = await fetch("{{ rota('api_status_video', guid=guid) }}").then(r => r.json()).catch(() => ({}));
   if (r.status === "fazendo" || !r.status) { setTimeout(esperarVideo, 5000); return; }
   location.hash = "video"; location.reload();
 }
@@ -252,7 +252,7 @@ async function enviarPresente(agora){
   botoes.forEach(b => b.disabled = true);
   botao.textContent = agora ? "Enviando..." : "Agendando...";
   const voltar = () => { botoes.forEach(b => b.disabled = false); botao.innerHTML = rotulo; };
-  const r = await fetch("{{ url_for('musica.api_presente', guid=guid) }}", {method: "POST", headers: {"Content-Type": "application/json"},
+  const r = await fetch("{{ rota('api_presente', guid=guid) }}", {method: "POST", headers: {"Content-Type": "application/json"},
     body: JSON.stringify({nome: document.getElementById("pr-nome").value, email: document.getElementById("pr-email").value,
                           whatsapp: (document.getElementById("pr-whats") || {}).value || "",
                           confirmo: !!(document.getElementById("pr-confirmo") || {}).checked,

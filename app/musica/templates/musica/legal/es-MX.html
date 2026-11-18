@@ -1,0 +1,75 @@
+{# Términos de uso y aviso de privacidad de México (incluido por legal.html).
+   BORRADOR (18/11/2026): NO publicar sin revisión de un abogado. En México el aviso de privacidad tiene contenido
+   mínimo obligatorio (ley de protección de datos personales en posesión de particulares: responsable, finalidades,
+   transferencias, derechos ARCO y cómo ejercerlos). La venta pasa por Hotmart (que cobra y emite el comprobante):
+   confirmar con el abogado cómo describir el papel de cada quien. Usa empresa, cnpj, email, marca y atualizado de
+   legal.html. #}
+{% if pagina == "termos" %}
+  <h1>Términos de uso</h1>
+  <p class="atualizado">Última actualización: {{ atualizado }}</p>
+  <p>Estos términos aplican al uso del sitio {{ marca }}, ofrecido por {{ empresa }} (empresa de Brasil, CNPJ {{ cnpj }}). Al crear una canción, aceptas estos términos.</p>
+
+  <h2>1. Qué ofrecemos</h2>
+  <p>Contestas algunas preguntas sobre una persona especial y creamos una canción personalizada. La letra y la música se crean con ayuda de inteligencia artificial, a partir de la información que nos das.</p>
+
+  <h2>2. Adelanto y pago</h2>
+  <ul>
+    <li>Antes de pagar, lees la letra, puedes pedir cambios y escuchas un adelanto de la canción.</li>
+    <li>El pago es único, sin suscripción. El precio aparece antes de la compra.</li>
+    <li>El pago lo procesa Hotmart, con tarjeta, OXXO o SPEI. Cuando se confirma, la canción completa se libera en el sitio y el enlace te llega a tu correo.</li>
+  </ul>
+
+  <h2>3. Uso de la canción</h2>
+  <p>La canción es para uso personal: puedes escucharla, guardarla, compartirla con tu familia y amigos y usarla en fiestas, videos personales y redes sociales. No incluye el uso comercial (anuncios, venta, distribución en plataformas de streaming).</p>
+
+  <h2>4. Lo que no puedes pedir</h2>
+  <p>No creamos canciones con ofensas, discriminación, contenido sexual explícito, amenazas ni nada que exponga o humille a alguien. Tampoco copiamos letras de canciones existentes. Cuando un pedido trae algo así, la letra se escribe sin ese contenido.</p>
+
+  <h2>5. Sobre la inteligencia artificial</h2>
+  <p>Como la canción la crea una inteligencia artificial, cada resultado es único y puede tener pequeñas variaciones de pronunciación o interpretación. Por eso escuchas el adelanto antes de pagar y puedes crear otra versión.</p>
+
+  <h2>6. Cancelación y reembolso</h2>
+  <p>Puedes pedir la cancelación y el reembolso dentro de los 7 días siguientes a la compra. Si hay cualquier problema con la entrega o el archivo, escríbenos y lo resolvemos.</p>
+
+  <h2>7. Atención</h2>
+  <p>Escríbenos al correo <a href="mailto:{{ email }}">{{ email }}</a>.</p>
+{% else %}
+  <h1>Aviso de privacidad</h1>
+  <p class="atualizado">Última actualización: {{ atualizado }}</p>
+  <p>{{ empresa }} (empresa de Brasil, CNPJ {{ cnpj }}) es responsable de los datos personales que nos das en el sitio {{ marca }}. Este aviso explica qué datos usamos, para qué y cómo puedes ejercer tus derechos.</p>
+
+  <h2>1. Qué datos recabamos</h2>
+  <ul>
+    <li>Las respuestas del cuestionario: nombres, apodos, ocasión, recuerdos y preferencias musicales.</li>
+    <li>Tus datos de contacto: correo y, si lo das, tu WhatsApp.</li>
+    <li>Datos técnicos: dirección IP e información de navegación, para seguridad y para medir nuestros anuncios.</li>
+    <li>Si compras el videoclip: las fotos que nos mandes, usadas solo para armar el video.</li>
+  </ul>
+  <p>No recabamos datos sensibles. Los datos de pago (tarjeta, OXXO, SPEI) los trata directamente Hotmart; nosotros no los guardamos.</p>
+
+  <h2>2. Para qué los usamos</h2>
+  <ul>
+    <li>Crear la letra y la canción que pediste y entregártela.</li>
+    <li>Avisarte por correo cuando tu canción está lista y recordarte una canción que quedó lista y no se liberó.</li>
+    <li>Evitar abusos y fraudes.</li>
+    <li>Medir el resultado de nuestros anuncios (finalidad secundaria: puedes pedirnos que no usemos tus datos para esto).</li>
+  </ul>
+
+  <h2>3. Con quién los compartimos</h2>
+  <ul>
+    <li>Empresas de inteligencia artificial que escriben la letra (OpenAI) y crean la música (Apiframe y Suno). Reciben las respuestas del cuestionario y la letra, no tu correo ni tu WhatsApp.</li>
+    <li>Hotmart, para procesar el pago.</li>
+    <li>El servicio de correo (Google), para mandarte los mensajes.</li>
+    <li>Google, por medio de cookies de medición de anuncios.</li>
+  </ul>
+  <p>Algunas de estas empresas están fuera de México. Las transferencias son necesarias para darte el servicio que contrataste.</p>
+
+  <h2>4. Cuánto tiempo los guardamos</h2>
+  <p>Guardamos la canción y los datos del pedido para que puedas abrir el enlace cuando quieras. Los pedidos sin compra se borran después de 90 días.</p>
+
+  <h2>5. Tus derechos (ARCO)</h2>
+  <p>Puedes pedir el acceso, la rectificación o la cancelación de tus datos, oponerte a su uso o retirar tu consentimiento, y dejar de recibir mensajes. Solo escribe a <a href="mailto:{{ email }}">{{ email }}</a> con tu nombre, tu correo y lo que pides; te respondemos en un máximo de 20 días hábiles.</p>
+
+  <h2>6. Cambios a este aviso</h2>
+  <p>Si cambiamos este aviso, publicaremos la nueva versión en esta página con su fecha de actualización.</p>
+{% endif %}

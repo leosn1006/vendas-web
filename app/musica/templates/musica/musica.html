@@ -50,7 +50,7 @@ video{width:100%;max-height:70vh;border-radius:16px;background:#000}
 {% block pagina %}
 <div class="funil">
   <header class="funil-topo">
-    <a class="marca" href="{{ url_for('musica.inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a>
+    <a class="marca" href="{{ rota('inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a>
   </header>
 
   <section class="capa">
@@ -61,25 +61,25 @@ video{width:100%;max-height:70vh;border-radius:16px;background:#000}
 
   {% if video %}
   <section class="extra-bloco" id="video">
-    <video controls playsinline preload="metadata" poster="{{ url_for('musica.capa_video', token=musica.token) }}" src="{{ url_for('musica.videoclipe', token=musica.token) }}"></video>
-    <a class="botao secundario" style="margin-top:12px" href="{{ url_for('musica.videoclipe', token=musica.token, baixar=1) }}"><i class="ti ti-download" aria-hidden="true"></i> Baixar o vídeo</a>
+    <video controls playsinline preload="metadata" poster="{{ rota('capa_video', token=musica.token) }}" src="{{ rota('videoclipe', token=musica.token) }}"></video>
+    <a class="botao secundario" style="margin-top:12px" href="{{ rota('videoclipe', token=musica.token, baixar=1) }}"><i class="ti ti-download" aria-hidden="true"></i> Baixar o vídeo</a>
   </section>
   {% endif %}
 
   <div class="lista">
     {% for faixa in musica.faixas %}
-    <div class="player" data-src="{{ url_for('musica.musica_completa', token=musica.token, numero=faixa.numero) }}" data-titulo="Versão {{ faixa.numero }}"></div>
+    <div class="player" data-src="{{ rota('musica_completa', token=musica.token, numero=faixa.numero) }}" data-titulo="Versão {{ faixa.numero }}"></div>
     {% endfor %}
   </div>
   <div class="baixar">
     {% for faixa in musica.faixas %}
-    <a class="botao secundario" href="{{ url_for('musica.musica_completa', token=musica.token, numero=faixa.numero, baixar=1) }}"><i class="ti ti-download" aria-hidden="true"></i> Baixar versão {{ faixa.numero }}</a>
+    <a class="botao secundario" href="{{ rota('musica_completa', token=musica.token, numero=faixa.numero, baixar=1) }}"><i class="ti ti-download" aria-hidden="true"></i> Baixar versão {{ faixa.numero }}</a>
     {% endfor %}
   </div>
 
   <details class="letra-dobra"><summary>Ver a letra</summary>
     <div class="versos">{{ letra_texto }}</div>
   </details>
-  <div class="guardar"><i class="ti ti-heart" aria-hidden="true"></i><span>Quer fazer uma música para alguém especial também? <a href="{{ url_for('musica.inicio') }}">Criar a minha</a>.</span></div>
+  <div class="guardar"><i class="ti ti-heart" aria-hidden="true"></i><span>Quer fazer uma música para alguém especial também? <a href="{{ rota('inicio') }}">Criar a minha</a>.</span></div>
 </div>
 {% endblock %}

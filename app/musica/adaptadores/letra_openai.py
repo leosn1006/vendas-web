@@ -30,11 +30,14 @@ FORMATO = {
 }
 
 
-def mensagem_do_quiz(respostas: dict, letra_anterior: str | None, ajuste: str | None) -> str:
-    texto = 'Respostas do quiz:\n```json\n' + json.dumps(dict(respostas), ensure_ascii=False, indent=2) + '\n```'
+def mensagem_do_quiz(respostas: dict, letra_anterior: str | None, ajuste: str | None, idioma: str | None = None) -> str:
+    """O pedido para a IA: as respostas em JSON e, num ajuste, a letra anterior. O texto em volta é o do idioma
+    (textos.json: letra.*), o mesmo das instruções que ela recebe."""
+    from musica.idiomas import texto as t
+    texto = t(idioma, 'letra.respostas') + '\n```json\n' + json.dumps(dict(respostas), ensure_ascii=False, indent=2) + '\n```'
     if letra_anterior and ajuste:
-        texto += ('\n\nEsta é a letra que você escreveu antes:\n```\n' + letra_anterior + '\n```\n'
-                  'O cliente pediu este ajuste (mantenha o resto, mude só o necessário):\n' + ajuste)
+        texto += ('\n\n' + t(idioma, 'letra.anterior') + '\n```\n' + letra_anterior + '\n```\n'
+                  + t(idioma, 'letra.ajuste') + '\n' + ajuste)
     return texto
 
 
@@ -48,14 +51,14 @@ class LetraOpenAI:
             self._cliente = OpenAI(timeout=120.0)
         return self._cliente
 
-    def escrever(self, instrucoes, respostas, letra_anterior=None, ajuste=None) -> Letra:
+    def escrever(self, instrucoes, respostas, letra_anterior=None, ajuste=None, idioma=None) -> Letra:
         # Modelos antigos (gpt-4o, gpt-4.1...) não têm raciocínio e recusam o parâmetro.
         extras = {} if self.modelo.startswith('gpt-4') else {'reasoning_effort': self.esforco}
         try:
             resposta = self._openai().chat.completions.create(
                 model=self.modelo,
                 messages=[{'role': 'system', 'content': instrucoes},
-                          {'role': 'user', 'content': mensagem_do_quiz(respostas, letra_anterior, ajuste)}],
+                          {'role': 'user', 'content': mensagem_do_quiz(respostas, letra_anterior, ajuste, idioma)}],
                 response_format=FORMATO,
                 max_completion_tokens=16000,
                 **extras,
@@ -88,7 +91,7 @@ class LetraSimulada:
     """Para o dev sem chave da OpenAI (e os testes)."""
     modelo = 'simulado'
 
-    def escrever(self, instrucoes, respostas, letra_anterior=None, ajuste=None) -> Letra:
+    def escrever(self, instrucoes, respostas, letra_anterior=None, ajuste=None, idioma=None) -> Letra:
         nome = respostas.get('apelido') or respostas.get('nome') or 'você'
         letra = ('[Intro]\n(' + nome + '...)\n\n'
                  '[Verse 1]\nEsta é uma letra de teste\nFeita pra conferir o site\n'

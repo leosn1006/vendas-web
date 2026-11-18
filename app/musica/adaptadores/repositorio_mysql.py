@@ -3,7 +3,9 @@ import json
 import secrets
 
 from database import db
+from musica.dominio import quiz as _quiz
 from musica.dominio.regras import respostas_atuais
+from musica.idiomas import IDIOMA_PADRAO
 
 _CAMPOS_JSON = ('respostas', 'faixas')
 _ESTADO_PAGO = 1000   # pedido web pago
@@ -16,17 +18,19 @@ def _musica(linha):
     for campo in _CAMPOS_JSON:
         if isinstance(m.get(campo), (str, bytes)):
             m[campo] = json.loads(m[campo])
-    respostas_atuais(m.get('respostas'))   # estilo que saiu do quiz → o de hoje (letra e música iguais)
+    # estilo que saiu do quiz → o de hoje (letra e música iguais), no quiz do idioma da música
+    respostas_atuais(m.get('respostas'), _quiz.do_idioma(m.get('idioma')))
     return m
 
 
 class RepositorioMysql:
-    def criar(self, produto_id, respostas, email, whatsapp, ip, pedido_origem_id, dominio):
+    def criar(self, produto_id, respostas, email, whatsapp, ip, pedido_origem_id, dominio, idioma=IDIOMA_PADRAO):
         token = secrets.token_hex(16)
         musica_id = db.execute_query(
-            """INSERT INTO musicas (token, produto_id, pedido_origem_id, dominio, status, respostas, email, whatsapp, ip)
-               VALUES (%s, %s, %s, %s, 'escrevendo', %s, %s, %s, %s)""",
-            (token, produto_id, pedido_origem_id, dominio or None, json.dumps(respostas, ensure_ascii=False),
+            """INSERT INTO musicas (token, produto_id, idioma, pedido_origem_id, dominio, status, respostas, email,
+                                    whatsapp, ip)
+               VALUES (%s, %s, %s, %s, %s, 'escrevendo', %s, %s, %s, %s)""",
+            (token, produto_id, idioma, pedido_origem_id, dominio or None, json.dumps(respostas, ensure_ascii=False),
              email or None, whatsapp or None, ip or None))
         return self.por_id(musica_id)
 
@@ -214,10 +218,11 @@ class RepositorioMysql:
         regras.chave_email (sem espaços, minúsculas) — e assim usa o índice idx_musicas_email.
         `em_checkout`: o checkout DESTA música abriu ou há pedido dela esperando pagamento (1002);
         `pedido_aberto_id`/`_plano`: o pedido com o PIX ainda válido e o plano (fora o padrão), para o link reabri-lo.
-        `whatsapp`: o celular do SMS que acompanha o lembrete (docs/SMS.md)."""
+        `whatsapp`: o celular do SMS que acompanha o lembrete (docs/SMS.md). `idioma`: o dos textos, da hora e dos
+        links do lembrete (sem ele, a música do México receberia o lembrete do Brasil)."""
         linhas = db.execute_query(
-            """SELECT m.id, m.token, m.produto_id, m.dominio, m.status, m.respostas, m.email, m.whatsapp, m.criado_em,
-                      m.liberada_em, m.lembrete_etapa,
+            """SELECT m.id, m.token, m.produto_id, m.idioma, m.dominio, m.status, m.respostas, m.email, m.whatsapp,
+                      m.criado_em, m.liberada_em, m.lembrete_etapa,
                       (m.checkout_aberto_em IS NOT NULL OR EXISTS (
                            SELECT 1 FROM musica_pedidos mp JOIN pedidos p ON p.id = mp.pedido_id
                            WHERE mp.musica_id = m.id AND p.estado_id = 1002)) AS em_checkout,
@@ -327,17 +332,18 @@ class RepositorioMysql:
     def apagar(self, musica_id):
         db.execute_query("DELETE FROM musicas WHERE id = %s AND liberada_em IS NULL", (musica_id,))
 
-    def produto_musica(self):
-        """O produto que vende a Música: ativo, à venda no site e com plano padrão cujo principal é de música.
-        Configuração no banco (CLAUDE.md: nada hardcoded por produto). Mais de um: o de menor id."""
+    def produto_musica(self, idioma=IDIOMA_PADRAO):
+        """O produto que vende a Música no idioma: ativo, à venda no site, do idioma (produtos.idioma) e com plano
+        padrão cujo principal é de música. Configuração no banco (CLAUDE.md: nada hardcoded por produto). Mais de
+        um: o de menor id."""
         return db.execute_query(
             """SELECT p.* FROM produtos p
-               WHERE p.ativo = 1 AND p.disponivel_web = 1 AND EXISTS (
+               WHERE p.ativo = 1 AND p.disponivel_web = 1 AND p.idioma = %s AND EXISTS (
                    SELECT 1 FROM produto_planos pp
                    JOIN plano_entregaveis pe ON pe.plano_id = pp.id AND pe.papel = 'principal'
                    JOIN entregaveis e ON e.id = pe.entregavel_id AND e.tipo = 'musica'
                    WHERE pp.produto_id = p.id AND pp.padrao = 1 AND pp.ativo = 1)
-               ORDER BY p.id LIMIT 1""", fetch_one=True)
+               ORDER BY p.id LIMIT 1""", (idioma,), fetch_one=True)
 
     def empresa_do_produto(self, produto):
         """A empresa que vende (termos e privacidade): a configuração fiscal ligada ao produto (nfe_config_id;
@@ -346,6 +352,6 @@ class RepositorioMysql:
         return get_empresa_produto(produto)
 
     def remetente_do_produto(self, produto_id):
-        return db.execute_query("SELECT id, nome, email_remetente, email_nome_remetente, email_cor_primaria, email_cor_secundaria "
-                                "FROM produtos WHERE id = %s",
+        return db.execute_query("SELECT id, nome, idioma, email_remetente, email_nome_remetente, email_cor_primaria, "
+                                "email_cor_secundaria FROM produtos WHERE id = %s",
                                 (produto_id,), fetch_one=True) or {}

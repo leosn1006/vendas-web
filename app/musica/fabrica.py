@@ -2,11 +2,10 @@
 
 MUSICA_GERADOR=apiframe (MVP) | suno (conta própria, quando existir) | simulado (dev e testes).
 """
-import json
 from dataclasses import dataclass
 from functools import lru_cache
 
-from musica import config, portas
+from musica import config, idiomas, portas
 
 
 @dataclass
@@ -67,6 +66,7 @@ def servicos() -> Servicos:
         notificador=Notificador(repositorio, config.WHATSAPP_ATIVO),
         agenda=AgendaCelery(),
         arquivos=Arquivos(config.PASTA_ARQUIVOS),
-        instrucoes_letra=(config.PASTA_CONTEUDO / 'instrucoes_letra.md').read_text(encoding='utf-8'),
-        estilos=json.loads((config.PASTA_CONTEUDO / 'estilos.json').read_text(encoding='utf-8')),
+        # Conteúdo do Brasil (o padrão). Música de outro idioma lê o dela em musica/idiomas.py (casos_de_uso).
+        instrucoes_letra=idiomas.instrucoes_letra(idiomas.IDIOMA_PADRAO),
+        estilos=idiomas.estilos(idiomas.IDIOMA_PADRAO),
     )

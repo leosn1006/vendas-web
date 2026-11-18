@@ -12,10 +12,15 @@ import logging
 
 
 def registrar(flask_app):
-    """Registra /musica/... Um problema no módulo deixa só a Música fora do ar, nunca o resto do site."""
+    """Registra /musica/... (pt-BR) e o mesmo blueprint em cada outro idioma (musica/idiomas.py: /mx/cancion/...).
+    Um problema no módulo deixa só a Música fora do ar, nunca o resto do site."""
     try:
+        from musica import idiomas
         from musica.rotas import bp
         flask_app.register_blueprint(bp)
+        for cfg in idiomas.IDIOMAS.values():
+            if cfg['blueprint'] != bp.name:
+                flask_app.register_blueprint(bp, name=cfg['blueprint'], url_prefix=cfg['prefixo'])
         import config
         from musica import config as cfg_musica
         if config.EH_PRODUCAO and not cfg_musica.TURNSTILE_SECRET:

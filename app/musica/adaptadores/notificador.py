@@ -34,12 +34,14 @@ class Notificador:
             return 'dev-sem-envio'   # "enviado" no dev: a manutenção não o reenvia como envio interrompido
         from fluxos._email_gmail import enviar, wrapper_html
         produto = self.repositorio.remetente_do_produto(produto_id)
-        nome = produto.get('email_nome_remetente') or produto.get('nome') or 'Canção de Presente'
+        from musica.idiomas import texto
+        idioma = produto.get('idioma')   # o produto de cada idioma escreve no idioma dele (rodapé e marca padrão)
+        nome = produto.get('email_nome_remetente') or produto.get('nome') or texto(idioma, 'geral.marca_padrao')
         remetente = produto.get('email_remetente') or os.getenv('EMAIL_FROM', '')
         cor = produto.get('email_cor_primaria') or '#E11D48'
         pagina = wrapper_html(titulo_header=html.escape(nome), corpo_interno_html=html_corpo, nome_remetente=nome,
                               cor_primaria=cor, cor_secundaria=produto.get('email_cor_secundaria') or cor,
-                              rodape=f'Dúvidas? É só responder este e-mail. {html.escape(nome)}')
+                              rodape=texto(idioma, 'email.rodape', marca=html.escape(nome)))
         resultado = enviar(destinatario=destino, remetente=remetente, nome_remetente=nome, subject=assunto, html=pagina,
                            cc=cc) or {}
         return resultado.get('threadId')

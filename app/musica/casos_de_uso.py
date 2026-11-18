@@ -9,11 +9,11 @@ import logging
 import shutil
 from datetime import datetime, timedelta
 
-from musica import config, links, mensagens
+from musica import config, idiomas, links, mensagens
 from musica.portas import ErroPassageiro
 from musica.dominio import legenda, regras
 from musica.dominio import modelos as m_
-from musica.dominio.quiz import estilo_voz_invalido, relacao_invalida
+from musica.dominio import quiz as _quiz
 from musica.dominio.recursos import ENTREGA_EMAIL, MUSICA, QRCODE, VIDEOCLIPE
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,20 @@ def _agora():
     return datetime.now()   # o banco e os containers estão no horário de Brasília (TZ=America/Sao_Paulo)
 
 
+def _idioma(musica) -> str:
+    """O idioma da música (pt-BR quando não gravado: as de antes dos idiomas são do Brasil)."""
+    return idiomas.valido((musica or {}).get('idioma'))
+
+
+def _instrucoes_e_estilos(s, musica):
+    """O que a IA da letra e o gerador recebem, no idioma da música. O Brasil vem dos serviços (os testes trocam);
+    os outros idiomas, de conteudo/<idioma>/."""
+    idioma = _idioma(musica)
+    if idioma == idiomas.IDIOMA_PADRAO:
+        return s.instrucoes_letra, s.estilos
+    return idiomas.instrucoes_letra(idioma), idiomas.estilos(idioma)
+
+
 def _musica(s, token):
     musica = s.repositorio.por_token(token) if token else None
     if not musica:
@@ -45,7 +59,8 @@ def _bloquear_se_comprada(musica):
 
 # ============================================================== antes de pagar
 
-def criar_musica(s, produto_id, respostas, email, whatsapp, ip, pedido_origem_id=None, dominio=None):
+def criar_musica(s, produto_id, respostas, email, whatsapp, ip, pedido_origem_id=None, dominio=None,
+                 idioma=idiomas.IDIOMA_PADRAO):
     if not respostas.get('nome') or not respostas.get('lembrancas') or not respostas.get('de'):
         raise Recusa('Faltou preencher o nome, as lembranças ou o seu nome.')
     email = regras.chave_email(email)   # gravado já normalizado: os lembretes comparam o e-mail direto (com índice)
@@ -54,7 +69,8 @@ def criar_musica(s, produto_id, respostas, email, whatsapp, ip, pedido_origem_id
     # Cada quiz já custa uma letra na OpenAI: limite por e-mail/IP (o de gerar() só cobre a música).
     if s.repositorio.musicas_criadas_recentes(email, ip) >= config.LIMITE_LETRAS_DIA:
         raise Recusa('Você já criou várias músicas hoje. Volte amanhã para criar outra 💛', 429)
-    musica = s.repositorio.criar(produto_id, respostas, email, whatsapp, ip, pedido_origem_id, dominio)
+    musica = s.repositorio.criar(produto_id, respostas, email, whatsapp, ip, pedido_origem_id, dominio,
+                                 idiomas.valido(idioma))
     s.agenda.escrever_letra(musica['id'])
     return musica
 
@@ -66,7 +82,8 @@ def escrever_letra(s, musica_id, ajuste=None):
         return
     anterior = musica['letra_suno'] if ajuste else None
     try:
-        letra = s.escritor.escrever(s.instrucoes_letra, musica['respostas'], anterior, ajuste)
+        instrucoes, _ = _instrucoes_e_estilos(s, musica)
+        letra = s.escritor.escrever(instrucoes, musica['respostas'], anterior, ajuste, idioma=_idioma(musica))
     except m_.ErroLetra as erro:
         logger.error(f"[MUSICA] Letra da música #{musica_id} falhou: {erro}")
         if anterior:
@@ -96,7 +113,9 @@ def pedir_ajuste(s, token, ajuste):
 
 
 def _mandar_gerar(s, musica):
-    pedido = regras.montar_geracao(musica['respostas'], musica['titulo'], musica['letra_suno'], s.estilos)
+    _, estilos = _instrucoes_e_estilos(s, musica)
+    pedido = regras.montar_geracao(musica['respostas'], musica['titulo'], musica['letra_suno'], estilos,
+                                   _quiz.do_idioma(_idioma(musica)))
     job_id = s.gerador.criar(pedido, links.webhook(s.gerador.nome))
     s.repositorio.atualizar(musica['id'], status=m_.GERANDO, job_id=job_id, provedor=s.gerador.nome,
                             geracoes=musica['geracoes'] + 1, gerando_desde=_agora(), erro=None)
@@ -657,18 +676,34 @@ def manutencao(s) -> dict:
             'presentes': enviar_presentes(s)}
 
 
+def _hora_local(idioma, agora):
+    """A hora no país do idioma (a janela dos lembretes é a de quem recebe); None = Brasil, a do relógio do servidor."""
+    if idioma == idiomas.IDIOMA_PADRAO:
+        return None
+    from zoneinfo import ZoneInfo
+    servidor = agora.replace(tzinfo=ZoneInfo(idiomas.cfg(idiomas.IDIOMA_PADRAO)['fuso']))
+    return servidor.astimezone(ZoneInfo(idiomas.cfg(idioma)['fuso'])).hour
+
+
 def enviar_lembretes(s) -> int:
     """Tarefa (a cada 5 min): e-mails para quem parou na letra, na prévia ou no checkout, 15 min, 3 h e 24 h depois
     de a pessoa entrar na etapa — uma série por pessoa e etapa, de uma música só, no mínimo 2 h entre dois
     (regras.escolher_lembretes / proximo_lembrete; docs/MUSICA.md "Lembretes"). Grava antes de enviar: uma falha no
     Gmail não vira e-mail repetido na próxima rodada."""
     agora, enviados = _agora(), 0
-    escolhidas = regras.escolher_lembretes(s.repositorio.candidatas_lembrete(), s.repositorio.series_lembrete(), agora,
+    # Fora do Brasil o pagamento é na Hotmart (que tem a própria recuperação): lá não existe a etapa checkout — a
+    # música conta como prévia (o lembrete leva à prévia, nunca ao nosso checkout em reais). Idioma que ainda não
+    # vende (idiomas.py, 'vende'): nenhum lembrete.
+    candidatas = [m if _idioma(m) == idiomas.IDIOMA_PADRAO else dict(m, em_checkout=0)
+                  for m in s.repositorio.candidatas_lembrete() if idiomas.cfg(_idioma(m)).get('vende', True)]
+    escolhidas = regras.escolher_lembretes(candidatas, s.repositorio.series_lembrete(), agora,
                                            config.LEMBRETES_MINUTOS, config.LEMBRETES_DIAS)
     for musica, etapa, serie, ultimo in escolhidas:
+        idioma = _idioma(musica)
         chave = regras.chave_email(musica['email'])
         acao, numero = regras.proximo_lembrete(serie, ultimo, agora, config.LEMBRETES_MINUTOS, config.LEMBRETES_JANELA,
-                                               config.LEMBRETES_DIAS, config.LEMBRETES_INTERVALO_EMAIL)
+                                               config.LEMBRETES_DIAS, config.LEMBRETES_INTERVALO_EMAIL,
+                                               _hora_local(idioma, agora))
         if acao == 'zerar':
             s.repositorio.salvar_serie(chave, etapa, inicio=agora, desde=agora, enviados=0, ultimo_em=None,
                                        musica_id=musica['id'])
@@ -685,8 +720,8 @@ def enviar_lembretes(s) -> int:
         respostas = musica['respostas']
         de = regras.primeiro_nome(respostas.get('de'))
         destino = links.checkout(musica) if etapa == 'checkout' else links.previa(musica)
-        assunto, corpo = mensagens.lembrete(etapa, numero, de, regras.para_quem(respostas), destino,
-                                            links.sem_lembretes(musica))
+        assunto, corpo = mensagens.lembrete(etapa, numero, de, regras.para_quem(respostas, idiomas.texto(idioma, 'geral.sem_nome')),
+                                            destino, links.sem_lembretes(musica), idioma)
         try:
             s.notificador.email(musica['produto_id'], musica['email'], assunto, corpo)
             enviados += 1
@@ -769,9 +804,11 @@ def _rascunho(s, rascunho_id, livre=True):
     return rascunho
 
 
-def respostas_editadas(base: dict, formulario) -> dict:
+def respostas_editadas(base: dict, formulario, idioma=None) -> dict:
     """As escolhas do formulário do admin sobre as `base`: só CAMPOS_EDITAVEIS (qualquer outro campo enviado é
-    ignorado) e só combinações que o quiz aceita (mesmas regras da cliente: quiz.relacao_invalida e estilo_voz_invalido)."""
+    ignorado) e só combinações que o quiz aceita (mesmas regras da cliente: quiz.relacao_invalida e estilo_voz_invalido),
+    no quiz do idioma da música."""
+    quiz = _quiz.do_idioma(idioma)
     respostas = dict(base)
     for campo in CAMPOS_EDITAVEIS:
         if campo in formulario:
@@ -782,7 +819,7 @@ def respostas_editadas(base: dict, formulario) -> dict:
                 respostas.pop(campo, None)
     if respostas.get('nome') != base.get('nome'):
         respostas.pop('pessoas', None)   # grupo com os nomes editados à mão: vale o "nome" (a IA trata o plural)
-    respostas = regras.respostas_atuais(respostas)
+    respostas = regras.respostas_atuais(respostas, quiz)
     if not respostas.get('nome') or not respostas.get('lembrancas') or not respostas.get('de'):
         raise Recusa('Preencha o nome, as lembranças e a dedicatória ("de").')
     # Confere só o grupo que o admin mexeu, com as regras do quiz: relação/ocasião/tom entre si e estilo/voz entre si.
@@ -790,8 +827,8 @@ def respostas_editadas(base: dict, formulario) -> dict:
     # algo que já era assim.
     def mexeu(*campos):
         return any(respostas.get(c) != base.get(c) for c in campos)
-    erro = ((mexeu('para_quem', 'ocasiao', 'clima') and relacao_invalida(respostas))
-            or (mexeu('estilo', 'voz') and estilo_voz_invalido(respostas)))
+    erro = ((mexeu('para_quem', 'ocasiao', 'clima') and quiz.relacao_invalida(respostas))
+            or (mexeu('estilo', 'voz') and quiz.estilo_voz_invalido(respostas)))
     if erro:
         raise Recusa(f"Essa escolha de {_NOMES_CAMPOS.get(erro, erro)} não combina com as outras (o quiz não deixaria).")
     return respostas
@@ -803,8 +840,9 @@ def criar_rascunho(s, musica_id, formulario, letra_nova=False):
     original = _original_paga(s, musica_id)
     if s.repositorio.rascunho_ativo(original['id']):
         raise Recusa('Já existe um rascunho para esta música: use ou descarte antes de começar outro.')
-    respostas = respostas_editadas(original['respostas'], formulario)
-    rascunho = s.repositorio.criar(original['produto_id'], respostas, None, None, None, None, original['dominio'])
+    respostas = respostas_editadas(original['respostas'], formulario, _idioma(original))
+    rascunho = s.repositorio.criar(original['produto_id'], respostas, None, None, None, None, original['dominio'],
+                                   _idioma(original))
     campos = {'rascunho_de': original['id']}
     if not letra_nova:
         campos.update(status=m_.LETRA_PRONTA, titulo=original['titulo'], letra_exibicao=original['letra_exibicao'],
@@ -821,7 +859,7 @@ def criar_rascunho(s, musica_id, formulario, letra_nova=False):
 
 def editar_escolhas_rascunho(s, rascunho_id, formulario, letra_nova=False):
     rascunho = _rascunho(s, rascunho_id)
-    respostas = respostas_editadas(rascunho['respostas'], formulario)
+    respostas = respostas_editadas(rascunho['respostas'], formulario, _idioma(rascunho))
     campos = {'respostas': respostas}
     if respostas != rascunho['respostas'] and rascunho['status'] == m_.PREVIA_PRONTA:
         campos['status'] = rascunho['status'] = m_.LETRA_PRONTA   # a música gerada era das escolhas antigas

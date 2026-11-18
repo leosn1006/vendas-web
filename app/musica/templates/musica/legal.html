@@ -5,7 +5,7 @@
 {% set empresa = dominio_cfg.razao_social or "[RAZÃO SOCIAL]" %}
 {% set cnpj = dominio_cfg.cnpj or "[CNPJ]" %}
 {% set email = dominio_cfg.email_suporte or "[E-MAIL DE SUPORTE]" %}
-{% block titulo %}{{ {"termos": "Termos de uso", "privacidade": "Política de privacidade", "liberando": "Liberando a sua música"}.get(pagina, "Página não encontrada") }} · {{ marca }}{% endblock %}
+{% block titulo %}{{ {"termos": t('legal.titulo_termos'), "privacidade": t('legal.titulo_privacidade'), "liberando": t('legal.titulo_liberando')}.get(pagina, t('legal.titulo_nao_encontrada')) }} · {{ marca }}{% endblock %}
 {% block estilo %}
 <style>
 .legal{max-width:760px;margin:0 auto;padding:0 20px 72px}
@@ -20,92 +20,27 @@
 {% block pagina %}
 <div class="legal">
   <header class="legal-topo">
-    <a class="marca" href="{{ url_for('musica.inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a>
-    <a href="{{ url_for('musica.privacidade' if pagina == 'termos' else 'musica.termos') }}">{{ "Política de privacidade" if pagina == "termos" else "Termos de uso" }}</a>
+    <a class="marca" href="{{ rota('inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a>
+    <a href="{{ rota('privacidade' if pagina == 'termos' else 'termos') }}">{{ t('legal.titulo_privacidade') if pagina == "termos" else t('legal.titulo_termos') }}</a>
   </header>
 
 {% if pagina == "nao_encontrada" %}
-  <h1>Não encontramos esta página</h1>
-  <p>O link pode ter sido digitado errado ou já não estar mais no ar. Se você comprou uma música, use o link do e-mail da compra.</p>
-  <p><a class="botao" href="{{ url_for('musica.inicio') }}">Criar uma música</a></p>
+  <h1>{{ t('legal.nao_encontrada') }}</h1>
+  <p>{{ t('legal.nao_encontrada_sub') }}</p>
+  <p><a class="botao" href="{{ rota('inicio') }}">{{ t('legal.criar_uma') }}</a></p>
 {% elif pagina == "sem_lembretes" %}
-  <h1>Parar os lembretes?</h1>
-  <p>Você não vai mais receber e-mails lembrando desta música. A música continua guardada e você pode voltar quando quiser.</p>
-  <form method="post"><button class="botao" type="submit">Não quero mais receber</button></form>
-  <p><a href="{{ url_for('musica.pagina_previa', token=token) }}">Voltar para a minha música</a></p>
+  <h1>{{ t('legal.sem_lembretes') }}</h1>
+  <p>{{ t('legal.sem_lembretes_sub') }}</p>
+  <form method="post"><button class="botao" type="submit">{{ t('legal.sem_lembretes_botao') }}</button></form>
+  <p><a href="{{ rota('pagina_previa', token=token) }}">{{ t('legal.voltar_musica') }}</a></p>
 {% elif pagina == "sem_lembretes_ok" %}
-  <h1>Pronto 💛</h1>
-  <p>Não vamos mais te lembrar desta música por e-mail. Se mudar de ideia, o link da música continua funcionando.</p>
+  <h1>{{ t('legal.sem_lembretes_ok') }}</h1>
+  <p>{{ t('legal.sem_lembretes_ok_sub') }}</p>
 {% elif pagina == "liberando" %}
-  <h1>Sua música está sendo liberada 🎵</h1>
-  <p>O pagamento foi confirmado e estamos preparando tudo. Atualize esta página em alguns minutos.</p>
-{% elif pagina == "termos" %}
-  <h1>Termos de uso</h1>
-  <p class="atualizado">Última atualização: {{ atualizado }}</p>
-  <p>Estes termos valem para o uso do site {{ marca }}, oferecido por {{ empresa }}, CNPJ {{ cnpj }}. Ao criar uma música, você concorda com eles.</p>
-
-  <h2>1. O que oferecemos</h2>
-  <p>Você responde algumas perguntas sobre uma pessoa especial e nós criamos uma música personalizada. A letra e a música são criadas com ajuda de inteligência artificial, a partir das informações que você nos dá.</p>
-
-  <h2>2. Prévia e pagamento</h2>
-  <ul>
-    <li>Antes de pagar, você lê a letra, pode pedir ajustes e ouve um trecho da música.</li>
-    <li>O pagamento é único, sem assinatura. O valor aparece antes da compra, junto com os extras que você escolher.</li>
-    <li>Depois da confirmação do pagamento, a música completa é liberada no site e o link chega no seu e-mail e, se você informar, no seu WhatsApp.</li>
-  </ul>
-
-  <h2>3. Uso da música</h2>
-  <p>A música é para uso pessoal: você pode ouvir, guardar, compartilhar com amigos e família e usar em festas, vídeos pessoais e redes sociais. O uso comercial (anúncios, venda, distribuição em plataformas de streaming) não está incluído.</p>
-
-  <h2>4. O que você não pode pedir</h2>
-  <p>Não criamos músicas com ofensas, discriminação, conteúdo sexual explícito, ameaças ou qualquer coisa que exponha ou humilhe alguém. Também não copiamos letras de músicas existentes. Quando um pedido tiver algo assim, a letra é escrita sem esse conteúdo.</p>
-
-  <h2>5. Sobre a inteligência artificial</h2>
-  <p>Como a música é criada por inteligência artificial, cada resultado é único e pode ter pequenas variações de pronúncia ou interpretação. Por isso você ouve a prévia antes de pagar e pode criar outra versão.</p>
-
-  <h2>6. Arrependimento e reembolso</h2>
-  <p>Você pode pedir o cancelamento e o reembolso em até 7 dias depois da compra, como prevê o Código de Defesa do Consumidor. Se houver qualquer problema na entrega ou no arquivo, fale com a gente que resolvemos.</p>
-
-  <h2>7. Atendimento</h2>
-  <p>Fale com a gente pelo e-mail <a href="mailto:{{ email }}">{{ email }}</a>.</p>
+  <h1>{{ t('legal.liberando') }}</h1>
+  <p>{{ t('legal.liberando_sub') }}</p>
 {% else %}
-  <h1>Política de privacidade</h1>
-  <p class="atualizado">Última atualização: {{ atualizado }}</p>
-  <p>Esta política explica como {{ empresa }}, CNPJ {{ cnpj }}, trata os seus dados no site {{ marca }}, de acordo com a Lei Geral de Proteção de Dados (Lei 13.709/2018).</p>
-
-  <h2>1. Quais dados coletamos</h2>
-  <ul>
-    <li>As respostas do quiz: nomes, apelidos, ocasião, lembranças e preferências musicais.</li>
-    <li>Seus dados de contato: e-mail e, se você informar no quiz ou no pagamento, WhatsApp.</li>
-    <li>Dados técnicos: endereço IP e informações de navegação, usados para segurança e para medir nossos anúncios.</li>
-    <li>Se você comprar a entrega para quem vai receber: o nome e o e-mail e/ou o WhatsApp dessa pessoa, usados só para entregar a música. Você confirma que o número é dela e que ela vai gostar da surpresa.</li>
-    <li>Se você comprar o videoclipe: as fotos que você enviar, usadas só para montar o vídeo.</li>
-  </ul>
-  <p>Os dados de pagamento (cartão, PIX) são tratados diretamente pela empresa de pagamento. Nós não os guardamos.</p>
-
-  <h2>2. Para que usamos</h2>
-  <ul>
-    <li>Criar a letra e a música que você pediu.</li>
-    <li>Entregar a música e avisar quando ela fica pronta e quando o presente chega, por e-mail e WhatsApp. O nosso número de WhatsApp só envia esses avisos e não recebe respostas.</li>
-    <li>Lembrar você, por e-mail, de uma música que ficou pronta e não foi liberada.</li>
-    <li>Evitar abusos e fraudes.</li>
-    <li>Medir o resultado dos nossos anúncios.</li>
-  </ul>
-
-  <h2>3. Com quem compartilhamos</h2>
-  <ul>
-    <li>Empresas de inteligência artificial que escrevem a letra (OpenAI) e criam a música (Apiframe e Suno). Elas recebem as respostas do quiz e a letra, não seu WhatsApp nem seu e-mail. No videoclipe com legenda, a OpenAI também recebe a música para encaixar a letra.</li>
-    <li>A empresa de pagamento, para processar a compra.</li>
-    <li>O serviço de e-mail (Google) e o WhatsApp (Meta), para as mensagens de entrega e aviso.</li>
-    <li>O Google, por meio de cookies de medição de anúncios.</li>
-  </ul>
-  <p>Algumas dessas empresas ficam fora do Brasil. A transferência acontece para executar o serviço que você contratou.</p>
-
-  <h2>4. Por quanto tempo guardamos</h2>
-  <p>Guardamos a música e os dados do pedido para que você possa acessar o link sempre que quiser. Pedidos sem compra são apagados depois de 90 dias. Você pode pedir a exclusão a qualquer momento.</p>
-
-  <h2>5. Seus direitos</h2>
-  <p>Você pode pedir acesso, correção ou exclusão dos seus dados, e também deixar de receber mensagens. Basta escrever para <a href="mailto:{{ email }}">{{ email }}</a>.</p>
+  {% include "musica/legal/" ~ idioma ~ ".html" %}
 {% endif %}
 </div>
 {% endblock %}

@@ -31,8 +31,9 @@ class EscritorLetra(Protocol):
     modelo: str   # gravado em musicas.modelo_letra
 
     def escrever(self, instrucoes: str, respostas: dict, letra_anterior: str | None = None,
-                 ajuste: str | None = None) -> Letra:
-        """Letra a partir do quiz (ou o ajuste pedido sobre a letra anterior). ErroLetra se falhar."""
+                 ajuste: str | None = None, idioma: str | None = None) -> Letra:
+        """Letra a partir do quiz (ou o ajuste pedido sobre a letra anterior), no idioma da música (as `instrucoes`
+        já são as dele). ErroLetra se falhar."""
 
 
 class Transcritor(Protocol):
@@ -102,7 +103,7 @@ class Repositorio(Protocol):
     def nao_pagas_antigas(self, dias: int) -> list[dict]: ...
     def apagar(self, musica_id: int) -> None: ...
     def remetente_do_produto(self, produto_id: int) -> dict: ...
-    def produto_musica(self) -> dict | None: ...
+    def produto_musica(self, idioma: str = 'pt-BR') -> dict | None: ...
     def empresa_do_produto(self, produto: dict) -> dict: ...
 
 

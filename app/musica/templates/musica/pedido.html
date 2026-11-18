@@ -1,5 +1,5 @@
 {% extends "musica/musica_base.html" %}
-{% block titulo %}Sua música · {{ marca }}{% endblock %}
+{% block titulo %}{{ t('previa.titulo_pagina') }} · {{ marca }}{% endblock %}
 {% block estilo %}
 <style>
 .funil{max-width:680px;margin:0 auto;padding:0 20px 72px}
@@ -65,7 +65,7 @@ details.letra-dobra summary{cursor:pointer;font-weight:700}
 {% block pagina %}
 <div class="funil">
   <header class="funil-topo">
-    <a class="marca" href="{{ url_for('musica.inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a>
+    <a class="marca" href="{{ rota('inicio') }}"><i class="ti ti-music" aria-hidden="true"></i>{{ marca }}</a>
     <span class="etapa-nome" id="etapaNome"></span>
   </header>
   <div class="trilha" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
@@ -75,8 +75,11 @@ details.letra-dobra summary{cursor:pointer;font-weight:700}
 {% endblock %}
 {% block script %}
 <script>
-const BASE = "{{ url_for('musica.api_ver', token=token) }}";
-const URL_CRIAR = "{{ url_for('musica.criar') }}";
+const BASE = "{{ rota('api_ver', token=token) }}";
+const URL_CRIAR = "{{ rota('criar') }}";
+const T = {{ textos.previa.js|tojson }};   // as frases do idioma (conteudo/<idioma>/textos.json, previa.js)
+// Troca as {marcas} de uma frase de T (por função: um "$" no nome ou no título não vira padrão do replace)
+const f = (texto, valores) => texto.replace(/\{(\w+)\}/g, (m, k) => k in valores ? String(valores[k]) : m);
 const el = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 let ultimo = "", timer = null, inicioGeracao = 0;
@@ -86,11 +89,11 @@ function etapa(n, nome){
   document.querySelectorAll(".trilha span").forEach((s, i) => s.classList.toggle("feita", i < n));
   el("etapaNome").textContent = nome;
 }
-// Mostra a letra com o refrão em destaque (o servidor marca o refrão com a linha "(Refrão)").
+// Mostra a letra com o refrão em destaque (o servidor marca o refrão com a linha "(Refrão)" — T.refrao no idioma).
 function versos(texto){
   let refrao = false;
   return String(texto || "").split("\n").map(l => {
-    if (l.trim() === "(Refrão)") { refrao = true; return ""; }
+    if (l.trim() === T.refrao) { refrao = true; return ""; }
     if (!l.trim()) { refrao = false; return ""; }
     return refrao ? `<span class="refrao">${esc(l)}</span>` : esc(l);
   }).join("\n").replace(/^\n+/, "");
@@ -100,19 +103,19 @@ async function acao(caminho, corpo){
   mostrarErro("");
   const r = await fetch(BASE + caminho, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(corpo || {})});
   const dados = await r.json().catch(() => ({}));
-  if (!r.ok) { mostrarErro(dados.erro || "Algo deu errado. Tente de novo."); return false; }
+  if (!r.ok) { mostrarErro(dados.erro || T.erro_generico); return false; }
   ultimo = ""; atualizar(); return true;
 }
 
-const ETAPAS = [["ti-file-text", "Lendo a sua história"], ["ti-music", "Compondo a melodia"], ["ti-microphone-2", "Gravando a voz"], ["ti-adjustments-horizontal", "Mixando os instrumentos"], ["ti-sparkles", "Dando os últimos retoques"]];
+const ETAPAS = ["ti-file-text", "ti-music", "ti-microphone-2", "ti-adjustments-horizontal", "ti-sparkles"].map((icone, i) => [icone, T.etapas[i]]);
 
 function telaEspera(p){
   if (!inicioGeracao) inicioGeracao = Date.now();
   const agora = Math.min(ETAPAS.length - 1, Math.floor((Date.now() - inicioGeracao) / 12000));
   return `<div class="espera">
     <div class="disco" aria-hidden="true"></div>
-    <h1>Criando a música de ${esc(p.para)}</h1>
-    <p class="suave">Leva cerca de um minuto. Pode deixar esta página aberta.</p>
+    <h1>${f(T.criando, {para: esc(p.para)})}</h1>
+    <p class="suave">${T.criando_sub}</p>
     <ul class="etapas">${ETAPAS.map(([icone, nome], i) => `<li class="${i < agora ? "feita" : i === agora ? "agora" : ""}"><i class="ti ${i < agora ? "ti-circle-check" : icone}" aria-hidden="true"></i>${nome}</li>`).join("")}</ul>
   </div>`;
 }
@@ -123,62 +126,62 @@ function desenhar(p){
   tela.classList.remove("entrar"); void tela.offsetWidth; tela.classList.add("entrar");
 
   if (p.status === "escrevendo") {
-    etapa(1, "Letra");
+    etapa(1, T.etapa_letra);
     tela.innerHTML = `<div class="espera"><div class="disco" aria-hidden="true"></div>
-      <h1>Escrevendo a letra de ${esc(p.para)}</h1>
-      <p class="suave">Estamos transformando a sua história em versos. Leva menos de um minuto.</p></div>`;
+      <h1>${f(T.escrevendo, {para: esc(p.para)})}</h1>
+      <p class="suave">${T.escrevendo_sub}</p></div>`;
 
   } else if (p.status === "letra_pronta") {
-    etapa(1, "Letra"); etapaFunil(20, "letra");
-    tela.innerHTML = `<h1>A letra ficou pronta</h1>
-      <p class="suave">Leia com calma. Se estiver do seu jeito, a gente cria a música.</p>
+    etapa(1, T.etapa_letra); etapaFunil(20, "letra");
+    tela.innerHTML = `<h1>${T.letra_pronta}</h1>
+      <p class="suave">${T.letra_pronta_sub}</p>
       <article class="folha">
         <p class="titulo-musica">${esc(p.titulo)}</p>
-        <p class="para">Para ${esc(p.para)}</p>
+        <p class="para">${f(T.para, {para: esc(p.para)})}</p>
         <div class="versos">${versos(p.letra)}</div>
       </article>
       <div class="botoes">
-        <button class="botao" id="gerar">Criar a música <i class="ti ti-arrow-right" aria-hidden="true"></i></button>
-        ${p.ajustes_restantes ? `<button class="botao secundario" id="mudar"><i class="ti ti-pencil" aria-hidden="true"></i> Quero mudar algo</button>` : ""}
+        <button class="botao" id="gerar">${T.criar_musica} <i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+        ${p.ajustes_restantes ? `<button class="botao secundario" id="mudar"><i class="ti ti-pencil" aria-hidden="true"></i> ${T.mudar}</button>` : ""}
       </div>
       <div class="ajuste" id="caixaAjuste">
-        <label for="ajuste" style="font-weight:700;display:block;margin-bottom:8px">O que você quer mudar?</label>
-        <textarea class="campo" id="ajuste" placeholder="O apelido dela é Lena, não Lele. Tire a parte do pai."></textarea>
-        <button class="botao" id="enviarAjuste" style="margin-top:10px">Reescrever a letra</button>
-        <p class="nota">Você pode pedir ${p.ajustes_restantes} ${p.ajustes_restantes === 1 ? "ajuste" : "ajustes"}.</p>
+        <label for="ajuste" style="font-weight:700;display:block;margin-bottom:8px">${T.o_que_mudar}</label>
+        <textarea class="campo" id="ajuste" placeholder="${esc(T.ajuste_exemplo)}"></textarea>
+        <button class="botao" id="enviarAjuste" style="margin-top:10px">${T.reescrever}</button>
+        <p class="nota">${f(T.ajustes_restantes, {n: p.ajustes_restantes, ajustes: p.ajustes_restantes === 1 ? T.ajuste_singular : T.ajuste_plural})}</p>
       </div>`;
     el("gerar").onclick = e => { e.currentTarget.disabled = true; inicioGeracao = Date.now(); acao("/gerar").then(ok => { if (!ok) e.target.disabled = false; }); };
     if (el("mudar")) el("mudar").onclick = () => { el("caixaAjuste").style.display = "block"; el("ajuste").focus(); };
     if (el("enviarAjuste")) el("enviarAjuste").onclick = () => {
-      const t = el("ajuste").value.trim(); if (!t) return mostrarErro("Escreva o que você quer mudar.");
+      const t = el("ajuste").value.trim(); if (!t) return mostrarErro(T.erro_ajuste);
       acao("/ajustar", {ajuste: t});
     };
 
   } else if (p.status === "gerando" || p.status === "processando") {
-    etapa(2, "Música");
+    etapa(2, T.etapa_musica);
     tela.innerHTML = telaEspera(p);
 
   } else if (p.status === "previa_pronta") {
-    etapa(3, "Prévia"); inicioGeracao = 0; etapaFunil(30, "previa");
-    tela.innerHTML = `<h1>A música de ${esc(p.para)} ficou pronta</h1>
-      <p class="suave">Ouça um trecho das duas versões de "${esc(p.titulo)}". Na compra, você leva as duas completas.</p>
-      <div class="previa-lista">${p.previas.map((u, i) => `<div class="player" data-src="${u}" data-titulo="Versão ${i + 1}"></div>`).join("")}</div>
+    etapa(3, T.etapa_previa); inicioGeracao = 0; etapaFunil(30, "previa");
+    tela.innerHTML = `<h1>${f(T.previa_pronta, {para: esc(p.para)})}</h1>
+      <p class="suave">${f(T.previa_sub, {titulo: esc(p.titulo)})}</p>
+      <div class="previa-lista">${p.previas.map((u, i) => `<div class="player" data-src="${u}" data-titulo="${esc(T.versao)} ${i + 1}"></div>`).join("")}</div>
       ${(p.planos || []).map(pl => `<div class="oferta" style="margin-bottom:14px">
         <p class="suave" style="margin:0">${esc(pl.nome)}</p>
         <p class="preco">${esc(pl.preco)}</p>
-        <p class="suave" style="margin:0">Pagamento único, no PIX ou no cartão</p>
+        <p class="suave" style="margin:0">${T.pagamento}</p>
         <ul class="inclui">
-          <li><i class="ti ti-check" aria-hidden="true"></i>As duas versões completas, em MP3</li>
-          <li><i class="ti ti-check" aria-hidden="true"></i>A letra de "${esc(p.titulo)}"</li>
-          ${pl.videoclipe ? `<li><i class="ti ti-check" aria-hidden="true"></i>Videoclipe com as suas fotos, para o Status e o Instagram</li>` : ""}
-          <li><i class="ti ti-check" aria-hidden="true"></i>${!p.whatsapp_ativo ? "Chega na hora, no seu e-mail" : p.tem_whatsapp ? "Chega na hora, no seu e-mail e no seu WhatsApp" : "Chega na hora, no seu e-mail (e no WhatsApp, se você informar no pagamento)"}</li>
+          <li><i class="ti ti-check" aria-hidden="true"></i>${T.inclui_versoes}</li>
+          <li><i class="ti ti-check" aria-hidden="true"></i>${f(T.inclui_letra, {titulo: esc(p.titulo)})}</li>
+          ${pl.videoclipe ? `<li><i class="ti ti-check" aria-hidden="true"></i>${T.inclui_video}</li>` : ""}
+          <li><i class="ti ti-check" aria-hidden="true"></i>${!p.whatsapp_ativo ? T.chega_email : p.tem_whatsapp ? T.chega_email_whatsapp : T.chega_email_whatsapp_se}</li>
         </ul>
         ${pl.descricao ? `<p class="suave" style="margin:0 0 14px">${esc(pl.descricao)}</p>` : ""}
-        <a class="botao ${pl.videoclipe || p.planos.length === 1 ? "" : "secundario"}" href="${pl.link}"${pl.padrao ? " data-padrao" : ""}>${pl.videoclipe ? "Quero com o videoclipe" : "Quero a música completa"}</a>
-        <div class="selos"><span><i class="ti ti-shield-check" aria-hidden="true"></i>Pagamento seguro</span><span><i class="ti ti-bolt" aria-hidden="true"></i>Liberação imediata</span></div>
-      </div>`).join("") || `<p class="suave">A venda está fechada agora. Volte mais tarde 💛</p>`}
-      <details class="letra-dobra"><summary>Ver a letra</summary><div class="versos" style="margin-top:14px">${versos(p.letra)}</div></details>
-      ${p.outras_versoes_restantes ? `<button class="link-simples" id="outra">Não gostei. Criar outra versão</button>` : ""}`;
+        <a class="botao ${pl.videoclipe || p.planos.length === 1 ? "" : "secundario"}" href="${pl.link}"${pl.padrao ? " data-padrao" : ""}>${pl.videoclipe ? T.quero_video : T.quero_musica}</a>
+        <div class="selos"><span><i class="ti ti-shield-check" aria-hidden="true"></i>${T.pagamento_seguro}</span><span><i class="ti ti-bolt" aria-hidden="true"></i>${T.liberacao}</span></div>
+      </div>`).join("") || `<p class="suave">${T.venda_fechada}</p>`}
+      <details class="letra-dobra"><summary>${T.ver_letra}</summary><div class="versos" style="margin-top:14px">${versos(p.letra)}</div></details>
+      ${p.outras_versoes_restantes ? `<button class="link-simples" id="outra">${T.outra_versao}</button>` : ""}`;
     window.Player && Player.montar(tela);
     tela.querySelectorAll(".oferta a.botao").forEach(a => a.addEventListener("click", ev => {
       // Só a música + oferta ainda não vista e com o link valendo (pelo menos 1 h antes de vencer): abre o popup
@@ -190,20 +193,20 @@ function desenhar(p){
       if (ultimaChanceVista()) etapaFunil(44, "depois_popup");   // fechou o popup e voltou para comprar
       else etapaFunil(40, "comprar");
     }));
-    if (el("outra")) el("outra").onclick = e => { if (!confirm("Criar outra versão da música? As duas atuais serão substituídas.")) return; e.target.disabled = true; inicioGeracao = Date.now(); acao("/outra-versao"); };
+    if (el("outra")) el("outra").onclick = e => { if (!confirm(T.confirmar_outra)) return; e.target.disabled = true; inicioGeracao = Date.now(); acao("/outra-versao"); };
 
   } else if (p.status === "erro_letra") {
-    etapa(1, "Letra");
+    etapa(1, T.etapa_letra);
     tela.innerHTML = `<div class="aviso"><i class="ti ti-mood-sad" aria-hidden="true"></i>
-      <h1>Não conseguimos escrever agora</h1>
-      <p class="suave">Tente de novo em alguns minutos. As suas respostas não foram cobradas.</p>
-      <a class="botao" href="${URL_CRIAR}">Tentar de novo</a></div>`;
+      <h1>${T.erro_letra}</h1>
+      <p class="suave">${T.erro_letra_sub}</p>
+      <a class="botao" href="${URL_CRIAR}">${T.tentar_de_novo}</a></div>`;
 
   } else if (p.status === "erro") {
-    etapa(2, "Música");
+    etapa(2, T.etapa_musica);
     tela.innerHTML = `<div class="aviso"><i class="ti ti-music" aria-hidden="true"></i>
-      <h1>Estamos finalizando a sua música</h1>
-      <p class="suave">Ela está demorando mais que o normal. Nossa equipe já foi avisada e vai te escrever por e-mail.</p></div>`;
+      <h1>${T.erro_musica}</h1>
+      <p class="suave">${T.erro_musica_sub}</p></div>`;
   }
 }
 
@@ -215,22 +218,22 @@ function ultimaChanceVista(){ try { return sessionStorage.getItem(CHAVE_ULTIMA) 
 function ultimaChance(o, linkSoMusica, origem){
   try { sessionStorage.setItem(CHAVE_ULTIMA, "1"); } catch (e) {}
   etapaFunil(41, "ultima_chance");
-  const titulo = o.videoclipe ? "Leve também o videoclipe" : `Leve o plano ${esc(o.nome)}`;
-  const botao = o.videoclipe ? "Quero com o videoclipe" : `Quero o plano ${esc(o.nome)}`;
+  const titulo = o.videoclipe ? T.ultima_titulo_video : f(T.ultima_titulo_plano, {nome: esc(o.nome)});
+  const botao = o.videoclipe ? T.quero_video : f(T.ultima_botao_plano, {nome: esc(o.nome)});
   const caixa = document.createElement("div");
   caixa.className = "ultima"; caixa.setAttribute("role", "dialog"); caixa.setAttribute("aria-modal", "true");
-  caixa.setAttribute("aria-label", "Oferta especial");
+  caixa.setAttribute("aria-label", T.oferta_especial);
   caixa.innerHTML = `<div class="oferta">
-    <button class="fechar" type="button" aria-label="Fechar"><i class="ti ti-x" aria-hidden="true"></i></button>
-    <span class="selo">Só agora</span>
+    <button class="fechar" type="button" aria-label="${esc(T.fechar)}"><i class="ti ti-x" aria-hidden="true"></i></button>
+    <span class="selo">${T.so_agora}</span>
     <h2 style="margin:0 0 8px">${titulo}</h2>
-    <p class="suave" style="margin:0">${esc(o.nome)} de <s>${esc(o.preco_cheio)}</s> por</p>
+    <p class="suave" style="margin:0">${f(T.de_por, {nome: esc(o.nome), cheio: esc(o.preco_cheio)})}</p>
     <p class="preco">${esc(o.preco)}</p>
-    <p class="suave" style="margin:0 0 18px">Você economiza ${esc(o.economia)}</p>
-    ${o.videoclipe ? `<ul class="inclui"><li><i class="ti ti-check" aria-hidden="true"></i>A música completa, nas duas versões</li>
-      <li><i class="ti ti-check" aria-hidden="true"></i>Videoclipe com as suas fotos, para o Status e o Instagram</li></ul>` : ""}
+    <p class="suave" style="margin:0 0 18px">${f(T.economiza, {economia: esc(o.economia)})}</p>
+    ${o.videoclipe ? `<ul class="inclui"><li><i class="ti ti-check" aria-hidden="true"></i>${T.ultima_inclui_musica}</li>
+      <li><i class="ti ti-check" aria-hidden="true"></i>${T.inclui_video}</li></ul>` : ""}
     <a class="botao" id="ultimaSim" href="${o.link}">${botao}</a>
-    <a class="botao secundario" id="ultimaNao" style="margin-top:12px" href="${linkSoMusica}">Não, quero só a música</a>
+    <a class="botao secundario" id="ultimaNao" style="margin-top:12px" href="${linkSoMusica}">${T.so_a_musica}</a>
   </div>`;
   const fechar = () => { caixa.remove(); document.body.style.overflow = ""; window.removeEventListener("keydown", aoTeclar);
                          origem && origem.focus(); };

@@ -28,6 +28,7 @@ Conversões voltam pro Google Ads via Google Sheets (GCLID) — venda do site co
 **Meta (Instagram)** segue o mesmo caminho (`docs/META_CONVERSOES.md`): o clique fica no pedido (`fbc`), `campanhas.plataforma = 'meta'` diz o canal, a venda vai pela API de Conversões para o dataset da campanha, descoberto pelo token `META_TOKEN_<BM>` nos conjuntos dela, e o investimento entra em `orcamento_campanha`.
 
 **Música de Presente** (`app/musica/`, `/musica/...`; `docs/MUSICA.md`): produto sem e-book — quiz → letra (OpenAI) → música (gerador na borda: Apiframe no MVP, `MUSICA_GERADOR`) → prévia grátis → checkout (`?musica=<token>`) → área da compra. Entregável `tipo='musica'` com `recurso` (música, videoclipe, QR, entrega por e-mail); fica fora da NF-e automática (`produtos.nfe_automatica = 0`).
+Idiomas (`musica/idiomas.py`, seção "Idiomas" do doc): `/musica` = Brasil, `/mx/cancion` = México (produto próprio, `produtos.idioma`); a música grava o idioma e o conteúdo de cada um fica em `app/musica/conteudo/<idioma>/` — texto novo nunca direto no template.
 
 **Contribuição no site** (`web/contribuicao.py`, `docs/CONTRIBUICAO_WEB.md`): A/B na landing do WhatsApp (começa no Tempero) — parte dos cliques recebe o livro na Estante 2 antes de pagar (estados 1008/1009, áudio da persona; e-mail opcional, na Estante, desde 14/11/2026) e paga a "contribuição" pelo checkout v2 (`?ref=`), um pedido web normal. Configuração em `contribuicao_config` (`percentual_estante = 0` desliga); resultado na Analytics Web do produto (o ROI só mostra o status).
 
