@@ -114,7 +114,8 @@ def pedir_ajuste(s, token, ajuste):
 
 def _mandar_gerar(s, musica):
     _, estilos = _instrucoes_e_estilos(s, musica)
-    pedido = regras.montar_geracao(musica['respostas'], musica['titulo'], musica['letra_suno'], estilos,
+    titulo = musica['titulo'] or idiomas.textos(_idioma(musica))['video']['titulo_padrao']   # Brasil: "Música de presente"
+    pedido = regras.montar_geracao(musica['respostas'], titulo, musica['letra_suno'], estilos,
                                    _quiz.do_idioma(_idioma(musica)))
     job_id = s.gerador.criar(pedido, links.webhook(s.gerador.nome))
     s.repositorio.atualizar(musica['id'], status=m_.GERANDO, job_id=job_id, provedor=s.gerador.nome,

@@ -65,6 +65,10 @@
     "Escolha um horário a partir de agora, em até 90 dias.": "Elige una hora a partir de ahora, dentro de los próximos 90 días."
   },
 
+  "recusas_padroes": [
+    ["Escolha até (\\d+) fotos\\.", "Elige hasta {0} fotos."]
+  ],
+
   "lembretes": {
     "_como_usar": "Os e-mails de lembrete (mensagens.lembrete): etapa → 3 e-mails (15 min, 3 h, 24 h) como [assunto, [parágrafos], botão]. {oi} = '¡Hola, Lupita!' ou '¡Hola!'; {de_} = 'Lupita, ' ou nada; {para} = quem recebe. A etapa checkout fica de fora no México (o pagamento é na Hotmart).",
     "oi": "¡Hola!",

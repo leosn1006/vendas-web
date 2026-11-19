@@ -56,7 +56,8 @@ def _sem_musica_volta_para_previa(produto_id, plano):
     try:
         conferir_para_checkout(token, produto_id)
     except Recusa:
-        return redirect(f'/musica/p/{token}' if re.fullmatch(r'[0-9a-f]{32}', token) else '/musica/')
+        from musica.integracao import caminho_da_previa
+        return redirect(caminho_da_previa(token) if re.fullmatch(r'[0-9a-f]{32}', token) else '/musica/')
     return None
 
 

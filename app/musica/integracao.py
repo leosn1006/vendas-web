@@ -22,6 +22,16 @@ def conferir_para_checkout(token: str, produto_id: int) -> None:
         raise Recusa('Esta música não é vendida neste checkout. Volte para a página da prévia.')
 
 
+def caminho_da_previa(token: str) -> str:
+    """/<prefixo do idioma da música>/p/<token> (Brasil: /musica/p/...; México: /mx/cancion/p/...)."""
+    from musica import idiomas
+    try:
+        musica = servicos().repositorio.por_token(token)
+    except Exception:   # é o caminho de erro do checkout: nunca vira 500 (cai no do Brasil, como antes)
+        musica = None
+    return f"{idiomas.cfg((musica or {}).get('idioma'))['prefixo']}/p/{token}"
+
+
 def vincular_ao_pedido(token: str, pedido_id: int, produto_id: int, whatsapp: str | None = None, ddi: str = '55') -> None:
     casos_de_uso.vincular_ao_pedido(servicos(), token, pedido_id, produto_id, whatsapp, ddi)
 

@@ -264,3 +264,48 @@ def test_email_de_entrega_e_avisos_declaram_o_idioma(s, monkeypatch):
     dados = integracao.musica_do_pedido_pago({'id': 700, 'guid': 'g-mx'})
     _, html = integracao.email_de_entrega({}, dados, 'https://x', '#1', 'Marca', '#E11D48', '#BE123C')
     assert '<html lang="es-MX">' in html and '¡Hola!' in html
+
+
+def test_erro_com_numero_traduzido_por_padrao(cliente, s, monkeypatch):
+    _paga(s, recursos=('musica', 'videoclipe'))
+    monkeypatch.setattr(s.video, 'max_fotos', 2)
+    import io as _io
+    for i, primeira in enumerate(('1', '0', '0')):
+        r = cliente.post('/mx/cancion/api/compra/g-mx/fotos', data={'foto': (_io.BytesIO(b'f'), f'{i}.jpg'), 'primeira': primeira})
+    assert r.get_json()['erro'] == 'Elige hasta 2 fotos.'
+
+
+def test_titulo_padrao_no_gerador(s):
+    from tests.musica.test_idiomas import GeradorEspiao
+    s.gerador = GeradorEspiao()
+    musica = uc.criar_musica(s, PRODUTO, dict(RESPOSTAS_MX), 'a@b.com', '', '1.2.3.4', idioma='es-MX')
+    uc.escrever_letra(s, musica['id'])
+    s.repositorio.atualizar(musica['id'], titulo=None)
+    uc.gerar(s, musica['token'], '1.2.3.4')
+    assert s.gerador.pedidos[0].titulo == 'Una canción de regalo'
+
+
+def test_checkout_recusado_volta_para_a_previa_no_idioma_da_musica(s, monkeypatch):
+    from tests.musica.conftest import RESPOSTAS as RESPOSTAS_BR
+    monkeypatch.setattr(integracao, 'servicos', lambda: s)
+    mx = uc.criar_musica(s, PRODUTO, dict(RESPOSTAS_MX), 'a@b.com', '', '1.2.3.4', idioma='es-MX')
+    br = uc.criar_musica(s, 17, dict(RESPOSTAS_BR), 'a@b.com', '', '1.2.3.4')
+    assert integracao.caminho_da_previa(mx['token']) == f"/mx/cancion/p/{mx['token']}"
+    assert integracao.caminho_da_previa(br['token']) == f"/musica/p/{br['token']}"
+    assert integracao.caminho_da_previa('f' * 32) == f"/musica/p/{'f' * 32}"   # não achou: o do Brasil, como antes
+
+    def quebra():
+        raise RuntimeError('banco fora')
+    monkeypatch.setattr(integracao, 'servicos', quebra)
+    assert integracao.caminho_da_previa(br['token']) == f"/musica/p/{br['token']}"   # erro nunca vira 500
+
+
+def test_padrao_de_traducao_mal_escrito_nao_derruba_o_erro(cliente, s, monkeypatch):
+    _paga(s, recursos=('musica', 'videoclipe'))
+    textos = dict(idiomas.textos('es-MX'), recusas_padroes=[['Escolha até ((\\d+) fotos', 'x'], ['Escolha até (\\d+) fotos\\.', '{3}']])
+    monkeypatch.setattr(idiomas, 'textos', lambda idioma: textos)
+    monkeypatch.setattr(s.video, 'max_fotos', 1)
+    import io as _io
+    for i, primeira in enumerate(('1', '0')):
+        r = cliente.post('/mx/cancion/api/compra/g-mx/fotos', data={'foto': (_io.BytesIO(b'f'), f'{i}.jpg'), 'primeira': primeira})
+    assert r.status_code == 400 and r.get_json()['erro'] == 'Escolha até 1 fotos.'   # a original, sem 500

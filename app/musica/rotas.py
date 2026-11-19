@@ -96,7 +96,18 @@ def _quiz_atual():
 def _recusa(r: Recusa):
     """A mensagem dos casos de uso (em português) no idioma da tela: textos.json → "recusas" (texto pt → texto do
     idioma); sem tradução, vai a original."""
-    return jsonify(erro=idiomas.textos(_idioma()).get('recusas', {}).get(r.mensagem, r.mensagem)), r.status
+    textos = idiomas.textos(_idioma())
+    traduzida = textos.get('recusas', {}).get(r.mensagem)
+    if traduzida is None:   # mensagem com número (f-string): "recusas_padroes" = [[regex, texto com {0}...], ...]
+        for padrao, modelo in textos.get('recusas_padroes', []):
+            try:   # um padrão mal escrito no textos.json nunca derruba a mensagem de erro (vai a original)
+                achou = re.fullmatch(padrao, r.mensagem)
+                if achou:
+                    traduzida = modelo.format(*achou.groups())
+                    break
+            except (re.error, IndexError, KeyError):
+                logger.error(f'[MUSICA] Padrão de tradução inválido em recusas_padroes ({_idioma()}): {padrao!r}')
+    return jsonify(erro=traduzida or r.mensagem), r.status
 
 
 def _nao_encontrada():
