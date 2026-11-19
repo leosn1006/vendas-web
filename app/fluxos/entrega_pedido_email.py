@@ -95,8 +95,15 @@ def executar(pedido_id: int, reenvio: bool = False) -> None:
         link_estante = f"{base_url}{musica['caminho']}"
         subject = f"Pedido {pedido_num} ✅ A música de {musica['para']} está pronta 🎵"
 
-    html_entrega = _corpo_html(nome_cliente, nome_produto, itens, link_estante,
-                               nome_remetente_email, cor_primaria, cor_secundaria, apps=apps, musica=musica)
+    if musica and musica.get('idioma', 'pt-BR') != 'pt-BR':
+        # Música de fora do Brasil (ex.: México): o e-mail no idioma dela, montado pelo módulo da Música. O Brasil
+        # (e-books e Música) segue o e-mail de sempre (o else).
+        from musica.integracao import email_de_entrega
+        subject, html_entrega = email_de_entrega(pedido, musica, link_estante, pedido_num, nome_remetente_email,
+                                                 cor_primaria, cor_secundaria)
+    else:
+        html_entrega = _corpo_html(nome_cliente, nome_produto, itens, link_estante,
+                                   nome_remetente_email, cor_primaria, cor_secundaria, apps=apps, musica=musica)
 
     resultado = _enviar_gmail(
         destinatario=destinatario,

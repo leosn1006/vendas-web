@@ -13,9 +13,31 @@ def _botao(rotulo, url):
             f'font-weight:bold; padding:16px 28px; border-radius:16px;">{html.escape(rotulo)}</a></p>')
 
 
-def presente(nome_quem_recebe, de, titulo, mensagem, link):
+def _brasil(idioma):
+    """Os e-mails do Brasil são os textos deste arquivo (iguais aos de antes dos idiomas); os de outro idioma vêm do
+    textos.json dele ("emails", "lembretes")."""
+    from musica import idiomas
+    return idiomas.valido(idioma) == idiomas.IDIOMA_PADRAO
+
+
+def _txt(idioma, chave, escapar=True, **valores):
+    """Frase de textos.json → emails.<chave>, com os valores escapados (corpo HTML) ou não (assunto, rótulo do botão,
+    que _botao já escapa)."""
+    from musica.idiomas import texto
+    return texto(idioma, f'emails.{chave}',
+                 **{k: (html.escape(str(v)) if escapar else v) for k, v in valores.items()})
+
+
+def presente(nome_quem_recebe, de, titulo, mensagem, link, idioma=None):
     """E-mail para quem ganha a música (com cópia para quem comprou). Só o link: nada anexado."""
     e = html.escape
+    if not _brasil(idioma):
+        corpo = _p(_txt(idioma, 'presente_oi', nome=nome_quem_recebe)) + _p(_txt(idioma, 'presente_texto', de=de))
+        if mensagem:
+            corpo += _p(f'<i>“{e(mensagem)}”</i>')
+        corpo += _botao(_txt(idioma, 'presente_botao', escapar=False, titulo=titulo), link)
+        corpo += _p(_txt(idioma, 'presente_pagina'))
+        return _txt(idioma, 'presente_assunto', escapar=False, de=de), corpo
     corpo = _p(f'Oi, {e(nome_quem_recebe)}!')
     corpo += _p(f'<b>{e(de)}</b> preparou uma surpresa para você: uma música feita só para você 🎁🎵')
     if mensagem:
@@ -25,9 +47,15 @@ def presente(nome_quem_recebe, de, titulo, mensagem, link):
     return f'{de} fez uma música para você 🎵', corpo
 
 
-def presente_nao_entregue(nome_quem_recebe, email, link, tentativas):
+def presente_nao_entregue(nome_quem_recebe, email, link, tentativas, idioma=None):
     """Para quem comprou: o e-mail do presente não chegou em nenhuma tentativa (quase sempre caixa lotada)."""
     e = html.escape
+    if not _brasil(idioma):
+        corpo = _p(_txt(idioma, 'nao_entregue_texto', n=tentativas, nome=nome_quem_recebe, email=email))
+        corpo += _p(_txt(idioma, 'nao_entregue_copia', nome=nome_quem_recebe))
+        corpo += _botao(_txt(idioma, 'nao_entregue_botao'), link)
+        corpo += _p(f'<span style="font-size:15px; color:#555;">{e(link)}</span>')
+        return _txt(idioma, 'nao_entregue_assunto', escapar=False, nome=nome_quem_recebe), corpo
     corpo = _p(f'Tentamos {tentativas} vezes, mas o e-mail com a música não chegou para <b>{e(nome_quem_recebe)}</b> '
                f'({e(email)}). Quase sempre é a caixa de e-mail cheia.')
     corpo += _p('Você recebeu uma cópia de cada envio. Para entregar o presente, mande este link para '
@@ -166,9 +194,13 @@ def lembrete_sms(de, respostas, link, marca=None, numero=1):
     return texto
 
 
-def presente_whatsapp_nao_chegou(nome_quem_recebe, link):
+def presente_whatsapp_nao_chegou(nome_quem_recebe, link, idioma=None):
     """Para quem comprou: o WhatsApp do presente não chegou (número errado, sem WhatsApp, bloqueio da Meta)."""
     e = html.escape
+    if not _brasil(idioma):
+        corpo = _p(_txt(idioma, 'wa_nao_chegou_texto', nome=nome_quem_recebe)) + _p(_txt(idioma, 'wa_nao_chegou_texto2'))
+        corpo += _botao(_txt(idioma, 'wa_nao_chegou_botao', escapar=False, nome=nome_quem_recebe), link)
+        return _txt(idioma, 'wa_nao_chegou_assunto', escapar=False, nome=nome_quem_recebe), corpo
     corpo = _p(f'Não conseguimos entregar a música no WhatsApp de <b>{e(nome_quem_recebe)}</b>. Pode ser o número '
                'ou alguma configuração do WhatsApp da pessoa.')
     corpo += _p('Para a surpresa não se perder, toque no botão e mande pelo seu WhatsApp — a mensagem e o link já vão '
@@ -177,16 +209,24 @@ def presente_whatsapp_nao_chegou(nome_quem_recebe, link):
     return f'Envie a música para {nome_quem_recebe} pelo seu WhatsApp 🎁', corpo
 
 
-def presente_chegou(nome_quem_comprou, nome_quem_recebe):
+def presente_chegou(nome_quem_comprou, nome_quem_recebe, idioma=None):
     """Para quem comprou e não deu WhatsApp: a música chegou no WhatsApp de quem ganhou."""
     e = html.escape
+    if not _brasil(idioma):
+        corpo = _p(_txt(idioma, 'chegou_texto', nome=nome_quem_comprou)) + _p(_txt(idioma, 'chegou_texto2', para=nome_quem_recebe))
+        return _txt(idioma, 'chegou_assunto', escapar=False, para=nome_quem_recebe), corpo
     corpo = _p(f'Pronto, {e(nome_quem_comprou)}! 🎁') + _p(f'A música chegou no WhatsApp de <b>{e(nome_quem_recebe)}</b> '
                                                              'agora há pouco. Agora é só esperar a reação ❤️')
     return f'A música chegou para {nome_quem_recebe} 🎁', corpo
 
 
-def link_do_presente(nome_quem_recebe, de, link):
+def link_do_presente(nome_quem_recebe, de, link, idioma=None):
     """Texto livre (WhatsApp) quando quem ganhou toca em "Ouvir minha música"."""
+    if not _brasil(idioma):
+        linhas = [_txt(idioma, 'link_presente_play', escapar=False, nome=nome_quem_recebe), link]
+        if de:
+            linhas += ['', _txt(idioma, 'link_presente_de', escapar=False, de=de)]
+        return '\n'.join(linhas)
     linhas = [f'Aperte o play, {nome_quem_recebe} 🎵', link]
     if de:
         linhas += ['', f'Com carinho, {de}.']
@@ -195,9 +235,17 @@ def link_do_presente(nome_quem_recebe, de, link):
 
 
 
-def musica_atualizada(de, para, link, video_refeito):
+def musica_atualizada(de, para, link, video_refeito, idioma=None):
     """Para quem comprou: o admin refez a música (a pedido dela). O link da área da compra é o mesmo de sempre."""
     e = html.escape
+    if not _brasil(idioma):
+        corpo = _p(_txt(idioma, 'atualizada_oi', de=de) if de else _txt(idioma, 'atualizada_oi_sem_nome'))
+        corpo += _p(_txt(idioma, 'atualizada_texto', para=para))
+        if video_refeito:
+            corpo += _p(_txt(idioma, 'atualizada_video'))
+        corpo += _p(_txt(idioma, 'atualizada_links'))
+        corpo += _botao(_txt(idioma, 'atualizada_botao'), link)
+        return _txt(idioma, 'atualizada_assunto', escapar=False, para=para), corpo
     corpo = _p(f'Oi, {e(de)}!' if de else 'Oi!')
     corpo += _p(f'A música de <b>{e(para)}</b> foi atualizada com o que você pediu. Ela já está no mesmo lugar de '
                 'sempre, pronta para ouvir e baixar 🎶')
@@ -206,3 +254,13 @@ def musica_atualizada(de, para, link, video_refeito):
     corpo += _p('O link da página do presente e o QR code continuam os mesmos.')
     corpo += _botao('Ouvir a música atualizada', link)
     return f'A música de {para} foi atualizada 🎶', corpo
+
+
+def entrega(nome_cliente, titulo, para, link, pedido_num, idioma):
+    """O e-mail de entrega da compra fora do Brasil (o do Brasil é o do sistema, fluxos/entrega_pedido_email.py, igual
+    ao dos e-books): o link da área da compra. Devolve (assunto, corpo); a moldura é a do produto."""
+    corpo = _p(_txt(idioma, 'entrega_oi', nome=nome_cliente) if nome_cliente else _txt(idioma, 'entrega_oi_sem_nome'))
+    corpo += _p(_txt(idioma, 'entrega_texto', titulo=titulo, para=para))
+    corpo += _botao(_txt(idioma, 'entrega_botao'), link)
+    corpo += _p(f'<span style="font-size:15px; color:#555;">{_txt(idioma, "entrega_link")}</span>')
+    return _txt(idioma, 'entrega_assunto', escapar=False, pedido=pedido_num, para=para), corpo

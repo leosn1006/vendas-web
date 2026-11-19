@@ -78,8 +78,9 @@ details.letra-dobra summary{cursor:pointer;font-weight:700}
 const BASE = "{{ rota('api_ver', token=token) }}";
 const URL_CRIAR = "{{ rota('criar') }}";
 const T = {{ textos.previa.js|tojson }};   // as frases do idioma (conteudo/<idioma>/textos.json, previa.js)
-// Troca as {marcas} de uma frase de T (por função: um "$" no nome ou no título não vira padrão do replace)
-const f = (texto, valores) => texto.replace(/\{(\w+)\}/g, (m, k) => k in valores ? String(valores[k]) : m);
+// Troca as {marcas} de uma frase de T (por função: um "$" no nome ou no título não vira padrão do replace).
+// "fmt", não "f": um loop com uma variável f tapava a função (bug pego no code review de 18/11/2026).
+const fmt = (texto, valores) => texto.replace(/\{(\w+)\}/g, (m, k) => k in valores ? String(valores[k]) : m);
 const el = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 let ultimo = "", timer = null, inicioGeracao = 0;
@@ -114,7 +115,7 @@ function telaEspera(p){
   const agora = Math.min(ETAPAS.length - 1, Math.floor((Date.now() - inicioGeracao) / 12000));
   return `<div class="espera">
     <div class="disco" aria-hidden="true"></div>
-    <h1>${f(T.criando, {para: esc(p.para)})}</h1>
+    <h1>${fmt(T.criando, {para: esc(p.para)})}</h1>
     <p class="suave">${T.criando_sub}</p>
     <ul class="etapas">${ETAPAS.map(([icone, nome], i) => `<li class="${i < agora ? "feita" : i === agora ? "agora" : ""}"><i class="ti ${i < agora ? "ti-circle-check" : icone}" aria-hidden="true"></i>${nome}</li>`).join("")}</ul>
   </div>`;
@@ -128,7 +129,7 @@ function desenhar(p){
   if (p.status === "escrevendo") {
     etapa(1, T.etapa_letra);
     tela.innerHTML = `<div class="espera"><div class="disco" aria-hidden="true"></div>
-      <h1>${f(T.escrevendo, {para: esc(p.para)})}</h1>
+      <h1>${fmt(T.escrevendo, {para: esc(p.para)})}</h1>
       <p class="suave">${T.escrevendo_sub}</p></div>`;
 
   } else if (p.status === "letra_pronta") {
@@ -137,7 +138,7 @@ function desenhar(p){
       <p class="suave">${T.letra_pronta_sub}</p>
       <article class="folha">
         <p class="titulo-musica">${esc(p.titulo)}</p>
-        <p class="para">${f(T.para, {para: esc(p.para)})}</p>
+        <p class="para">${fmt(T.para, {para: esc(p.para)})}</p>
         <div class="versos">${versos(p.letra)}</div>
       </article>
       <div class="botoes">
@@ -148,7 +149,7 @@ function desenhar(p){
         <label for="ajuste" style="font-weight:700;display:block;margin-bottom:8px">${T.o_que_mudar}</label>
         <textarea class="campo" id="ajuste" placeholder="${esc(T.ajuste_exemplo)}"></textarea>
         <button class="botao" id="enviarAjuste" style="margin-top:10px">${T.reescrever}</button>
-        <p class="nota">${f(T.ajustes_restantes, {n: p.ajustes_restantes, ajustes: p.ajustes_restantes === 1 ? T.ajuste_singular : T.ajuste_plural})}</p>
+        <p class="nota">${fmt(T.ajustes_restantes, {n: p.ajustes_restantes, ajustes: p.ajustes_restantes === 1 ? T.ajuste_singular : T.ajuste_plural})}</p>
       </div>`;
     el("gerar").onclick = e => { e.currentTarget.disabled = true; inicioGeracao = Date.now(); acao("/gerar").then(ok => { if (!ok) e.target.disabled = false; }); };
     if (el("mudar")) el("mudar").onclick = () => { el("caixaAjuste").style.display = "block"; el("ajuste").focus(); };
@@ -163,8 +164,8 @@ function desenhar(p){
 
   } else if (p.status === "previa_pronta") {
     etapa(3, T.etapa_previa); inicioGeracao = 0; etapaFunil(30, "previa");
-    tela.innerHTML = `<h1>${f(T.previa_pronta, {para: esc(p.para)})}</h1>
-      <p class="suave">${f(T.previa_sub, {titulo: esc(p.titulo)})}</p>
+    tela.innerHTML = `<h1>${fmt(T.previa_pronta, {para: esc(p.para)})}</h1>
+      <p class="suave">${fmt(T.previa_sub, {titulo: esc(p.titulo)})}</p>
       <div class="previa-lista">${p.previas.map((u, i) => `<div class="player" data-src="${u}" data-titulo="${esc(T.versao)} ${i + 1}"></div>`).join("")}</div>
       ${(p.planos || []).map(pl => `<div class="oferta" style="margin-bottom:14px">
         <p class="suave" style="margin:0">${esc(pl.nome)}</p>
@@ -172,7 +173,7 @@ function desenhar(p){
         <p class="suave" style="margin:0">${T.pagamento}</p>
         <ul class="inclui">
           <li><i class="ti ti-check" aria-hidden="true"></i>${T.inclui_versoes}</li>
-          <li><i class="ti ti-check" aria-hidden="true"></i>${f(T.inclui_letra, {titulo: esc(p.titulo)})}</li>
+          <li><i class="ti ti-check" aria-hidden="true"></i>${fmt(T.inclui_letra, {titulo: esc(p.titulo)})}</li>
           ${pl.videoclipe ? `<li><i class="ti ti-check" aria-hidden="true"></i>${T.inclui_video}</li>` : ""}
           <li><i class="ti ti-check" aria-hidden="true"></i>${!p.whatsapp_ativo ? T.chega_email : p.tem_whatsapp ? T.chega_email_whatsapp : T.chega_email_whatsapp_se}</li>
         </ul>
@@ -218,8 +219,8 @@ function ultimaChanceVista(){ try { return sessionStorage.getItem(CHAVE_ULTIMA) 
 function ultimaChance(o, linkSoMusica, origem){
   try { sessionStorage.setItem(CHAVE_ULTIMA, "1"); } catch (e) {}
   etapaFunil(41, "ultima_chance");
-  const titulo = o.videoclipe ? T.ultima_titulo_video : f(T.ultima_titulo_plano, {nome: esc(o.nome)});
-  const botao = o.videoclipe ? T.quero_video : f(T.ultima_botao_plano, {nome: esc(o.nome)});
+  const titulo = o.videoclipe ? T.ultima_titulo_video : fmt(T.ultima_titulo_plano, {nome: esc(o.nome)});
+  const botao = o.videoclipe ? T.quero_video : fmt(T.ultima_botao_plano, {nome: esc(o.nome)});
   const caixa = document.createElement("div");
   caixa.className = "ultima"; caixa.setAttribute("role", "dialog"); caixa.setAttribute("aria-modal", "true");
   caixa.setAttribute("aria-label", T.oferta_especial);
@@ -227,9 +228,9 @@ function ultimaChance(o, linkSoMusica, origem){
     <button class="fechar" type="button" aria-label="${esc(T.fechar)}"><i class="ti ti-x" aria-hidden="true"></i></button>
     <span class="selo">${T.so_agora}</span>
     <h2 style="margin:0 0 8px">${titulo}</h2>
-    <p class="suave" style="margin:0">${f(T.de_por, {nome: esc(o.nome), cheio: esc(o.preco_cheio)})}</p>
+    <p class="suave" style="margin:0">${fmt(T.de_por, {nome: esc(o.nome), cheio: esc(o.preco_cheio)})}</p>
     <p class="preco">${esc(o.preco)}</p>
-    <p class="suave" style="margin:0 0 18px">${f(T.economiza, {economia: esc(o.economia)})}</p>
+    <p class="suave" style="margin:0 0 18px">${fmt(T.economiza, {economia: esc(o.economia)})}</p>
     ${o.videoclipe ? `<ul class="inclui"><li><i class="ti ti-check" aria-hidden="true"></i>${T.ultima_inclui_musica}</li>
       <li><i class="ti ti-check" aria-hidden="true"></i>${T.inclui_video}</li></ul>` : ""}
     <a class="botao" id="ultimaSim" href="${o.link}">${botao}</a>

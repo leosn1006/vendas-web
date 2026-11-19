@@ -308,9 +308,11 @@ def whatsapp_comprador(s, musica_id):
     telefone = regras.telefone_whatsapp(musica['whatsapp']) if musica else ''
     if not musica or not musica['liberada_em'] or not telefone or musica['comprador_wa_msg_id']:
         return
+    if not idiomas.whatsapp_ativo(_idioma(musica)):
+        return   # o template é em português: fora do Brasil, só quando houver o do idioma (Fase 2, passo 2)
     pedido = s.repositorio.pedido_pago(musica['pedido_id']) or {}
     nome = regras.primeiro_nome(pedido.get('contact_name'), musica['respostas'].get('de')) or 'tudo bem'
-    link = links.compra(pedido.get('guid'), pedido.get('dns_origem') or musica['dominio'])
+    link = links.compra(pedido.get('guid'), pedido.get('dns_origem') or musica['dominio'], _idioma(musica))
     wamid = s.notificador.whatsapp(telefone, 'musica_pronta',
                                    [nome, regras.para_quem_com_relacao(musica['respostas']), link],
                                    produto_id=musica['produto_id'])
@@ -355,7 +357,7 @@ def agendar_presente(s, guid, nome, email, mensagem, quando, whatsapp=None, conf
     if ja_foi:
         raise Recusa('Esta música já foi enviada.')   # depois de não chegar, ela pode corrigir e tentar de novo
     nome, email = (nome or '').strip()[:120], (email or '').strip()[:200]
-    digitado = (whatsapp or '').strip() if config.WHATSAPP_ATIVO else ''
+    digitado = (whatsapp or '').strip() if idiomas.whatsapp_ativo(_idioma(musica)) else ''
     whatsapp = regras.telefone_whatsapp(digitado)
     if digitado and not whatsapp:
         raise Recusa('Confira o WhatsApp de quem vai receber (com DDD).')
@@ -397,9 +399,11 @@ def enviar_presentes(s) -> int:
         if not musica['presente_email'] or musica['presente_thread_id'] or musica['presente_falhou_em']:
             continue
         tentativa = (musica['presente_tentativas'] or 0) + 1
-        assunto, corpo = mensagens.presente(musica['presente_nome'], musica['respostas'].get('de') or 'Alguém especial',
-                                            musica['titulo'] or 'sua música', musica['presente_mensagem'],
-                                            links.presente(musica))
+        idioma = _idioma(musica)
+        assunto, corpo = mensagens.presente(musica['presente_nome'],
+                                            musica['respostas'].get('de') or idiomas.texto(idioma, 'emails.alguem_especial'),
+                                            musica['titulo'] or idiomas.texto(idioma, 'emails.sua_musica'),
+                                            musica['presente_mensagem'], links.presente(musica), idioma)
         try:
             thread_id = s.notificador.email(musica['produto_id'], musica['presente_email'], assunto, corpo,
                                             cc=_email_de_quem_comprou(s, musica))
@@ -425,10 +429,15 @@ WA_TENTATIVAS = 3   # erro passageiro da Meta no presente_surpresa: tenta de nov
 def _presente_whatsapp(s, musica) -> int:
     """Template `presente_surpresa` para quem ganha: {{1}} quem ganha, {{2}} quem mandou, e no botão "Ouvir minha
     música" a etiqueta (payload) = token da música — é por ela que o toque no botão acha a música certa.
-    Não chegou (erro ou WhatsApp desligado): quem comprou recebe o botão para mandar pelo WhatsApp dela."""
+    Não chegou (erro ou WhatsApp desligado, no geral ou no idioma da música): quem comprou recebe o botão para mandar
+    pelo WhatsApp dela."""
+    if not idiomas.whatsapp_ativo(_idioma(musica)):
+        _presente_whatsapp_falhou(s, musica, 'WhatsApp da Música desligado no idioma da música')
+        return 0
     try:
         wamid = s.notificador.whatsapp(musica['presente_whatsapp'], 'presente_surpresa',
-                                       [musica['presente_nome'], musica['respostas'].get('de') or 'Alguém especial'],
+                                       [musica['presente_nome'], musica['respostas'].get('de')
+                                        or idiomas.texto(_idioma(musica), 'emails.alguem_especial')],
                                        payload_botao=musica['token'], produto_id=musica['produto_id'])
     except ErroPassageiro as erro:
         feitas = int((musica['presente_wa_status'] or 'erro0')[4:] or 0) + 1
@@ -454,9 +463,9 @@ def _presente_whatsapp_falhou(s, musica, motivo):
     if not s.repositorio.marcar_presente_wa(musica['id'], 'falhou'):
         return   # já tratado (o aviso da Meta pode chegar repetido)
     pedido = s.repositorio.pedido_pago(musica['pedido_id']) if musica['pedido_id'] else None
-    link = (links.compra((pedido or {}).get('guid'), (pedido or {}).get('dns_origem') or musica['dominio'])
-            + '/enviar') if pedido else links.presente(musica)
-    assunto, corpo = mensagens.presente_whatsapp_nao_chegou(musica['presente_nome'], link)
+    link = (links.compra((pedido or {}).get('guid'), (pedido or {}).get('dns_origem') or musica['dominio'],
+                         _idioma(musica)) + '/enviar') if pedido else links.presente(musica)
+    assunto, corpo = mensagens.presente_whatsapp_nao_chegou(musica['presente_nome'], link, _idioma(musica))
     try:
         s.notificador.email(musica['produto_id'], _email_de_quem_comprou(s, musica), assunto, corpo)
     except Exception:
@@ -471,14 +480,14 @@ def _presente_whatsapp_chegou(s, musica):
     pedido = s.repositorio.pedido_pago(musica['pedido_id']) if musica['pedido_id'] else None
     nome = regras.primeiro_nome((pedido or {}).get('contact_name'), de) or de
     telefone = regras.telefone_whatsapp(musica['whatsapp'])
-    if telefone:
+    if telefone and idiomas.whatsapp_ativo(_idioma(musica)):
         try:
             if s.notificador.whatsapp(telefone, 'entrega_feita', [nome, para], produto_id=musica['produto_id']):
                 return
         except Exception:
             logger.exception(f"[MUSICA] entrega_feita da música #{musica['id']} não saiu; vai por e-mail")
     try:
-        assunto, corpo = mensagens.presente_chegou(nome, para)
+        assunto, corpo = mensagens.presente_chegou(nome, para, _idioma(musica))
         s.notificador.email(musica['produto_id'], _email_de_quem_comprou(s, musica), assunto, corpo)
     except Exception:
         logger.exception(f"[MUSICA] Falha ao avisar quem comprou que o presente da música #{musica['id']} chegou")
@@ -519,7 +528,7 @@ def webhook_whatsapp(s, valor, ultima_tentativa=False) -> None:
             continue
         try:
             s.notificador.whatsapp_texto(de, mensagens.link_do_presente(
-                musica['presente_nome'], musica['respostas'].get('de') or '', links.presente(musica)),
+                musica['presente_nome'], musica['respostas'].get('de') or '', links.presente(musica), _idioma(musica)),
                 produto_id=musica['produto_id'])
             s.repositorio.atualizar(musica['id'], presente_wa_link_em=_agora())
         except Exception:
@@ -555,7 +564,7 @@ def _nao_chegou(s, musica, motivo):
         return
     s.repositorio.atualizar(musica['id'], presente_falhou_em=_agora())
     assunto, corpo = mensagens.presente_nao_entregue(musica['presente_nome'], musica['presente_email'],
-                                                     links.presente(musica), feitas)
+                                                     links.presente(musica), feitas, _idioma(musica))
     try:
         s.notificador.email(musica['produto_id'], _email_de_quem_comprou(s, musica), assunto, corpo)
     except Exception:
@@ -612,10 +621,12 @@ def fazer_video(s, musica_id):
     fotos = sorted((pasta / 'fotos').glob('*.jpg'))
     mp3 = s.arquivos.completa(token, musica['video_versao'] or 1)
     arquivo_legenda = None
+    idioma = _idioma(musica)
     if musica['video_legenda'] and s.transcritor:
         try:   # se a legenda falhar, o vídeo sai sem ela
             linhas = legenda.linhas_da_letra(musica['letra_suno'])
-            tempos = legenda.alinhar(linhas, s.transcritor.palavras(mp3, ' '.join(linhas)))
+            tempos = legenda.alinhar(linhas, s.transcritor.palavras(mp3, ' '.join(linhas),
+                                                                    idiomas.cfg(idioma)['whisper']))
             if tempos:
                 arquivo_legenda = pasta / 'letra.ass'
                 legenda.gerar_ass(tempos, arquivo_legenda)
@@ -623,8 +634,10 @@ def fazer_video(s, musica_id):
             logger.exception(f'[MUSICA] Legenda do videoclipe #{musica_id} falhou; seguindo sem legenda')
     respostas = musica['respostas']
     try:
-        s.video.montar(fotos, mp3, s.arquivos.videoclipe(token), musica['titulo'] or 'Música de presente',
-                       regras.para_quem(respostas), respostas.get('de') or '', legenda_ass=arquivo_legenda)
+        s.video.montar(fotos, mp3, s.arquivos.videoclipe(token),
+                       musica['titulo'] or idiomas.textos(idioma)['video']['titulo_padrao'],
+                       regras.para_quem(respostas, idiomas.texto(idioma, 'geral.sem_nome')), respostas.get('de') or '',
+                       legenda_ass=arquivo_legenda, textos=idiomas.textos(idioma)['video'])
     except Exception as erro:
         logger.exception(f'[MUSICA] Videoclipe #{musica_id} falhou')
         s.repositorio.atualizar(musica_id, video_status='erro', video_erro=str(erro)[:500])
@@ -953,9 +966,11 @@ def usar_rascunho(s, rascunho_id, avisar=True) -> dict:
         logger.warning(f"[MUSICA] Música #{original['id']} refeita sem aviso: o pedido não está como pago")
     if pedido:
         respostas = rascunho['respostas']
+        idioma = _idioma(original)
         assunto, corpo = mensagens.musica_atualizada(
-            regras.primeiro_nome(pedido.get('contact_name'), respostas.get('de')), regras.para_quem(respostas),
-            links.compra(pedido.get('guid'), pedido.get('dns_origem') or original['dominio']), video)
+            regras.primeiro_nome(pedido.get('contact_name'), respostas.get('de')),
+            regras.para_quem(respostas, idiomas.texto(idioma, 'geral.sem_nome')),
+            links.compra(pedido.get('guid'), pedido.get('dns_origem') or original['dominio'], idioma), video, idioma)
         try:
             s.notificador.email(original['produto_id'], pedido.get('email') or original['email'], assunto, corpo)
             avisada = True

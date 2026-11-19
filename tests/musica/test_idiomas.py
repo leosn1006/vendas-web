@@ -284,9 +284,10 @@ def test_erros_traduzidos_existem_no_codigo(idioma):
     """A tradução dos erros é pelo texto em português (textos.json → recusas): se a frase mudar em casos_de_uso.py,
     a tradução para de valer em silêncio. Este teste acusa."""
     codigo = (RAIZ / 'casos_de_uso.py').read_text(encoding='utf-8')
+    validacoes = (RAIZ / 'dominio' / 'regras.py').read_text(encoding='utf-8')   # validar_presente devolve o texto
     for original in idiomas.textos(idioma)['recusas']:
         if not original.startswith('_'):
-            assert f"Recusa('{original}'" in codigo, original
+            assert f"Recusa('{original}'" in codigo or f"return '{original}'" in validacoes, original
 
 
 def test_idioma_que_ainda_nao_vende_nao_recebe_lembrete(s, monkeypatch):

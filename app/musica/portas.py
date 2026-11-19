@@ -37,8 +37,8 @@ class EscritorLetra(Protocol):
 
 
 class Transcritor(Protocol):
-    def palavras(self, arquivo_mp3: Path, dica: str) -> list[dict]:
-        """Tempos de cada palavra cantada: [{'palavra', 'inicio', 'fim'}]."""
+    def palavras(self, arquivo_mp3: Path, dica: str, idioma: str = 'pt') -> list[dict]:
+        """Tempos de cada palavra cantada: [{'palavra', 'inicio', 'fim'}]. `idioma`: o código do Whisper ('pt', 'es')."""
 
 
 class Audio(Protocol):
@@ -53,7 +53,7 @@ class Video(Protocol):
     def preparar_foto(self, origem, destino: Path) -> None: ...
 
     def montar(self, fotos: list[Path], musica: Path, saida: Path, titulo: str, para: str, de: str,
-               legenda_ass: Path | None = None) -> None: ...
+               legenda_ass: Path | None = None, textos: dict | None = None) -> None: ...
 
 
 class Repositorio(Protocol):

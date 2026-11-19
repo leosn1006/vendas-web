@@ -14,6 +14,7 @@ def base(dominio: str | None) -> str:
 
 
 def _prefixo(musica: dict) -> str:
+    """O prefixo do idioma da música (/musica, /mx/cancion)."""
     return idiomas.cfg(musica.get('idioma'))['prefixo']
 
 
@@ -41,9 +42,10 @@ def presente(musica: dict) -> str:
     return f"{base(musica.get('dominio'))}{_prefixo(musica)}/m/{musica['token']}"
 
 
-def compra(guid: str, dominio: str | None) -> str:
-    """Área de quem comprou (pelo guid do pedido pago): fotos do videoclipe, QR, entrega por e-mail."""
-    return f'{base(dominio)}/musica/compra/{guid}'
+def compra(guid: str, dominio: str | None, idioma: str | None = None) -> str:
+    """Área de quem comprou (pelo guid do pedido pago): fotos do videoclipe, QR, entrega por e-mail. O prefixo é o do
+    idioma da música (a página responde por qualquer prefixo, mas o link sai no idioma dela)."""
+    return f"{base(dominio)}{_prefixo({'idioma': idioma})}/compra/{guid}"
 
 
 def webhook(nome_gerador: str) -> str | None:

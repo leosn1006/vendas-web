@@ -88,7 +88,7 @@ def enviar(destinatario: str, remetente: str, nome_remetente: str,
 
 
 def wrapper_html(titulo_header: str, corpo_interno_html: str, nome_remetente: str,
-                  cor_primaria: str, cor_secundaria: str, rodape: str) -> str:
+                  cor_primaria: str, cor_secundaria: str, rodape: str, lang: str = 'pt-BR') -> str:
     """
     Moldura HTML compartilhada por todos os e-mails transacionais (entrega, resposta, followup):
     cabeçalho com gradiente na cor do produto, corpo livre (`corpo_interno_html`), rodapé fixo.
@@ -97,7 +97,7 @@ def wrapper_html(titulo_header: str, corpo_interno_html: str, nome_remetente: st
     cor_primaria_clara = lighten_hex(cor_primaria, 0.3)
 
     return f"""<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="{lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">

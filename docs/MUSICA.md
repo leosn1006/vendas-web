@@ -233,6 +233,8 @@ Cada idioma = idioma + país (`pt-BR`, `es-MX`; depois `es-US`, `en-US`), regist
 | Lembretes | 8h–22h de Brasília, com SMS | nenhum até ter checkout (`'vende': False` em `idiomas.py`); depois, 8h–22h da Cidade do México, só e-mail, sem a etapa checkout |
 | Analytics Web | `musica-v2` | `musica-mx` (mesmas etapas) |
 | Checkout | o nosso (`/pay`, PIX/cartão) | Hotmart (em outra frente). Até lá a prévia mostra "venda fechada" |
+| WhatsApp (avisos, presente) | `MUSICA_WHATSAPP_ATIVO` | desligado (`'whatsapp': False`) até os templates em es_MX |
+| Presente agendado | horário de Brasília | o do navegador (vai com o fuso; o banco guarda em Brasília e a tela converte) |
 
 - **A música grava o idioma** (`musicas.idioma`, migration 107) e tudo depois sai dele, não da URL: letra (instruções
   e o texto em volta do JSON), som (`estilos.json` e vozes), prévia, links dos e-mails (`links.py`), lembretes e erros.
@@ -253,7 +255,11 @@ Cada idioma = idioma + país (`pt-BR`, `es-MX`; depois `es-US`, `en-US`), regist
   verdade e grava em `storage/musica/exemplos/<idioma>/` (trecho de 40 s, `exemplos.json` com as letras). O México
   tem 8 (18/11/2026, 2ª versão de cada, conferidos por transcrição: espanhol, volume e letra), em
   `static/exemplos/es-MX/` e `textos.json` → `landing.exemplos`. Lista vazia = o carrossel some.
-- **Pendente da Fase 2:** o transcritor da legenda do videoclipe está fixo em português (`language='pt'`).
+- **Pós-compra (Fase 2, passo 1, 18/11/2026):** área da compra, página do presente, cartão QR, videoclipe (cartões
+  e legenda: `textos.json` → `video` e o Whisper no idioma, `'whisper'` em `idiomas.py`) e os e-mails (presente,
+  avisos, música refeita) no idioma da música. O e-mail de entrega de fora do Brasil é o `integracao.email_de_entrega`
+  (o `fluxos/entrega_pedido_email.py` só desvia para ele; o do Brasil não muda). Links da compra com o prefixo do
+  idioma (`links.compra`).
 
 **Para pôr o México no ar:** migration 107 → produto novo da Música com `UPDATE produtos SET idioma = 'es-MX'`
 (o admin ainda não tem o campo), planos e entregáveis como no Brasil, `nfe_automatica = 0`, marca em espanhol
@@ -261,8 +267,8 @@ Cada idioma = idioma + país (`pt-BR`, `es-MX`; depois `es-US`, `en-US`), regist
 amostras por um mexicano → termos e aviso de privacidade revisados por advogado → checkout da Hotmart → só então
 `disponivel_web = 1`.
 
-**Fase 2 (depois):** área da compra, página do presente, QR, videoclipe, e-mails de entrega e WhatsApp em espanhol
-(hoje essas telas saem com o corpo em português).
+**Fase 2, passo 2 (depois):** templates de WhatsApp em es_MX (aprovação na Meta) e ligar `'whatsapp'` no México.
+`regras.para_quem_com_relacao` ({{2}} do `musica_pronta`) ainda monta "sua mãe Helena" em português.
 
 ## Rodar no dev
 

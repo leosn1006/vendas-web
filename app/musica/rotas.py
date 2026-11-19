@@ -216,7 +216,8 @@ def _variaveis_das_paginas():
     marca = ((produto or {}).get('email_nome_remetente') or (produto or {}).get('nome')
              or idiomas.texto(_idioma(), 'geral.marca_padrao'))
     return {'marca': marca, 'turnstile_site_key': config.TURNSTILE_SITE_KEY, 'dominio_cfg': _empresa(),
-            'produto_id': _pid(), 'whatsapp_ativo': config.WHATSAPP_ATIVO,   # só promete WhatsApp com o envio ligado
+            # só promete WhatsApp com o envio ligado (geral e do idioma: no México, desligado até os templates em es)
+            'produto_id': _pid(), 'whatsapp_ativo': idiomas.whatsapp_ativo(_idioma()),
             'idioma': _idioma(), 'idioma_cfg': idiomas.cfg(_idioma()), 'textos': idiomas.textos(_idioma()),
             't': _t, 'rota': _rota, 'outros_idiomas': _outros_idiomas}
 
@@ -394,7 +395,22 @@ def pagina_compra(guid):
                            link_presente=_rota('pagina_presente', token=musica['token'], _external=True),
                            tem_qrcode=QRCODE in recursos, tem_presente=ENTREGA_EMAIL in recursos,
                            tem_video=VIDEOCLIPE in recursos, legenda_video=config.LEGENDA_VIDEO,
-                           max_fotos=servicos().video.max_fotos, whatsapp_ativo=config.WHATSAPP_ATIVO)
+                           max_fotos=servicos().video.max_fotos, whatsapp_ativo=idiomas.whatsapp_ativo(_idioma()),
+                           # o agendado é gravado no horário de Brasília; a tela mostra no fuso do idioma e, onde a
+                           # pessoa agenda no horário dela (hora_com_fuso), o JS troca para o fuso do navegador
+                           presente_em_local=regras.para_fuso(musica['presente_em'],
+                                                              idiomas.cfg(idiomas.IDIOMA_PADRAO)['fuso'],
+                                                              idiomas.cfg(_idioma())['fuso']),
+                           presente_em_iso=_com_fuso_de_brasilia(musica['presente_em'])
+                           if idiomas.textos(_idioma())['compra']['js'].get('hora_com_fuso') else None)
+
+
+def _com_fuso_de_brasilia(quando):
+    """O horário do banco (Brasília, sem fuso) em ISO com o fuso, para o navegador converter para o dele."""
+    if not quando:
+        return None
+    from zoneinfo import ZoneInfo
+    return quando.replace(tzinfo=ZoneInfo(idiomas.cfg(idiomas.IDIOMA_PADRAO)['fuso'])).isoformat()
 
 
 @bp.get('/compra/<guid>/enviar')
@@ -407,9 +423,9 @@ def enviar_pelo_whatsapp(guid):
         return _nao_encontrada()
     _usar_idioma_da_musica(musica)
     from urllib.parse import quote
-    nome = musica['presente_nome'] or regras.para_quem(musica['respostas'])
+    nome = musica['presente_nome'] or regras.para_quem(musica['respostas'], _texto('geral.sem_nome'))
     link = _rota('pagina_presente', token=musica['token'], _external=True)
-    texto = f'Oi, {nome}! Fiz uma música só pra você 🎵 {link}'
+    texto = _texto('compra.enviar_pelo_whatsapp', nome=nome, link=link)
     return redirect(f"https://wa.me/{musica['presente_whatsapp'] or ''}?text={quote(texto)}")
 
 
@@ -494,9 +510,10 @@ def api_ver(token):
         'letra': regras.para_leitura(musica['letra_exibicao'], _texto('geral.refrao')),
         'ajustes_restantes': max(0, config.LIMITE_AJUSTES_LETRA - musica['ajustes_letra']),
         'outras_versoes_restantes': max(0, config.LIMITE_OUTRA_VERSAO - musica['outras_versoes']),
-        # "chega no e-mail e no WhatsApp": só com o envio do WhatsApp da Música ligado (MUSICA_WHATSAPP_ATIVO)
-        'whatsapp_ativo': config.WHATSAPP_ATIVO,
-        'tem_whatsapp': config.WHATSAPP_ATIVO and bool(regras.telefone_whatsapp(musica.get('whatsapp'))),
+        # "chega no e-mail e no WhatsApp": só com o envio do WhatsApp da Música ligado (MUSICA_WHATSAPP_ATIVO e o
+        # do idioma da música)
+        'whatsapp_ativo': idiomas.whatsapp_ativo(_idioma()),
+        'tem_whatsapp': idiomas.whatsapp_ativo(_idioma()) and bool(regras.telefone_whatsapp(musica.get('whatsapp'))),
     }
     if musica['liberada_em']:
         resposta['link_musica'] = _rota('pagina_presente', token=token)
@@ -564,7 +581,7 @@ def api_outra_versao(token):
 def api_presente(guid):
     """Entrega para quem recebe (e-mail e/ou WhatsApp): agora ou na data/hora escolhida (horário de Brasília)."""
     if not _origem_confiavel():
-        return jsonify(erro='Recarregue a página e tente de novo.'), 403
+        return jsonify(erro=_texto('erros.recarregue')), 403
     from datetime import datetime
     from zoneinfo import ZoneInfo
     dados = request.get_json(silent=True) or {}
@@ -573,9 +590,9 @@ def api_presente(guid):
         try:
             quando = datetime.fromisoformat(dados.get('quando') or '')
         except ValueError:
-            return jsonify(erro='Escolha a data e o horário (ou "enviar agora").'), 400
+            return jsonify(erro=_texto('erros.data_hora')), 400
         if quando.tzinfo:   # com fuso: converte para o horário de Brasília, como o resto do sistema (sem fuso)
-            quando = quando.astimezone(ZoneInfo('America/Sao_Paulo')).replace(tzinfo=None)
+            quando = quando.astimezone(ZoneInfo(idiomas.cfg(idiomas.IDIOMA_PADRAO)['fuso'])).replace(tzinfo=None)
     try:
         uc.agendar_presente(servicos(), guid, dados.get('nome'), dados.get('email'), dados.get('mensagem'), quando,
                             whatsapp=dados.get('whatsapp'), confirmo=bool(dados.get('confirmo')))
@@ -588,12 +605,12 @@ def api_presente(guid):
 def api_foto(guid):
     """Uma foto do videoclipe por requisição (campo "foto"; primeira=1 recomeça a seleção)."""
     if not _origem_confiavel():
-        return jsonify(erro='Recarregue a página e tente de novo.'), 403
+        return jsonify(erro=_texto('erros.recarregue')), 403
     if (request.content_length or 0) > 2 * 1024 * 1024:
-        return jsonify(erro='Uma das fotos ficou grande demais. Tente outra.'), 413
+        return jsonify(erro=_texto('erros.foto_grande')), 413
     foto = request.files.get('foto')
     if not foto or not foto.filename:
-        return jsonify(erro='Escolha uma foto.'), 400
+        return jsonify(erro=_texto('erros.escolha_foto')), 400
     try:
         guardadas = uc.receber_foto(servicos(), guid, foto.stream, request.form.get('primeira') == '1')
     except Recusa as r:
@@ -605,7 +622,7 @@ def api_foto(guid):
 def api_video(guid):
     """Depois das fotos: começa a montar o vídeo."""
     if not _origem_confiavel():
-        return jsonify(erro='Recarregue a página e tente de novo.'), 403
+        return jsonify(erro=_texto('erros.recarregue')), 403
     dados = request.get_json(silent=True) or {}
     try:
         uc.iniciar_video(servicos(), guid, 2 if str(dados.get('versao')) == '2' else 1, dados.get('legenda') is not False)

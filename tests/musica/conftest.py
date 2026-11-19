@@ -290,8 +290,9 @@ class VideoFalso:
     def preparar_foto(self, origem, destino):
         destino.write_bytes(origem.read())
 
-    def montar(self, fotos, musica, saida, titulo, para, de, legenda_ass=None):
+    def montar(self, fotos, musica, saida, titulo, para, de, legenda_ass=None, textos=None):
         self.montados.append((len(fotos), titulo, para, de))
+        self.textos = textos
         saida.parent.mkdir(parents=True, exist_ok=True)
         saida.write_bytes(b'mp4')
 

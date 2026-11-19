@@ -53,76 +53,76 @@ video{width:100%;max-height:70vh;border-radius:16px;background:#000}
   <section class="capa">
     <div class="icone"><i class="ti ti-gift" aria-hidden="true"></i></div>
     <h1>{{ musica.titulo }}</h1>
-    <p>Uma música para {{ para }}, com carinho de {{ musica.respostas.de }}</p>
+    <p>{{ t('compra.capa', para=para, de=musica.respostas.de) }}</p>
   </section>
 
   <div class="lista">
     {% for faixa in musica.faixas %}
-    <div class="player" data-src="{{ rota('musica_completa', token=musica.token, numero=faixa.numero) }}" data-titulo="Versão {{ faixa.numero }}"></div>
+    <div class="player" data-src="{{ rota('musica_completa', token=musica.token, numero=faixa.numero) }}" data-titulo="{{ t('compra.versao') }} {{ faixa.numero }}"></div>
     {% endfor %}
   </div>
   <div class="baixar">
     {% for faixa in musica.faixas %}
-    <a class="botao secundario" href="{{ rota('musica_completa', token=musica.token, numero=faixa.numero, baixar=1) }}"><i class="ti ti-download" aria-hidden="true"></i> Baixar versão {{ faixa.numero }}</a>
+    <a class="botao secundario" href="{{ rota('musica_completa', token=musica.token, numero=faixa.numero, baixar=1) }}"><i class="ti ti-download" aria-hidden="true"></i> {{ t('compra.baixar_versao') }} {{ faixa.numero }}</a>
     {% endfor %}
   </div>
 
   <section class="extra-bloco">
-    <h2>Enviar para {{ para }}</h2>
-    <p>Este é o link do presente: abre só a música, para ouvir e baixar.</p>
-    <div class="copiar"><input class="campo" id="link-presente" value="{{ link_presente }}" readonly><button class="botao secundario" id="copiar" type="button"><i class="ti ti-copy" aria-hidden="true"></i> Copiar</button></div>
+    <h2>{{ t('compra.enviar_para', para=para) }}</h2>
+    <p>{{ t('compra.link_presente') }}</p>
+    <div class="copiar"><input class="campo" id="link-presente" value="{{ link_presente }}" readonly><button class="botao secundario" id="copiar" type="button"><i class="ti ti-copy" aria-hidden="true"></i> {{ t('compra.copiar') }}</button></div>
     <div class="botoes">
-      <a class="botao whats" href="https://wa.me/?text={{ ('Fiz uma música só pra você: ' ~ link_presente)|urlencode }}"><i class="ti ti-brand-whatsapp" aria-hidden="true"></i> Enviar no WhatsApp</a>
+      <a class="botao whats" href="https://wa.me/?text={{ (t('compra.whats_texto')|string ~ link_presente)|urlencode }}"><i class="ti ti-brand-whatsapp" aria-hidden="true"></i> {{ t('compra.enviar_no_whatsapp') }}</a>
     </div>
   </section>
 
   {% if tem_presente %}
   <section class="extra-bloco" id="presente">
-    <h2>Entrega para {{ musica.presente_nome or para }}</h2>
+    <h2>{{ t('compra.entrega_para', nome=musica.presente_nome or para) }}</h2>
     <div class="agendado" id="pr-ok" role="status" style="display:none;margin-bottom:16px;padding:14px;border:2px solid var(--ok);border-radius:var(--raio);font-weight:600"><i class="ti ti-circle-check" aria-hidden="true"></i><span id="pr-ok-texto"></span></div>
     {% set wa_falhou = musica.presente_wa_status == 'falhou' %}
     {% set email_falhou = musica.presente_falhou_em %}
     {% if musica.presente_enviado_em and not wa_falhou and not email_falhou %}
       {% if musica.presente_email %}
-      <div class="agendado"><i class="ti ti-mail" aria-hidden="true"></i><span>E-mail enviado para <b>{{ musica.presente_nome }}</b> ({{ musica.presente_email }}), com cópia para você.</span></div>
+      <div class="agendado"><i class="ti ti-mail" aria-hidden="true"></i><span>{{ t('compra.email_enviado', nome=musica.presente_nome, email=musica.presente_email) }}</span></div>
       {% endif %}
       {% if musica.presente_whatsapp %}
       <div class="agendado" style="margin-top:10px"><i class="ti ti-brand-whatsapp" aria-hidden="true"></i><span>
-        {% if musica.presente_wa_status == 'entregue' %}A música <b>chegou no WhatsApp</b> de {{ musica.presente_nome }}. Agora é só esperar a reação ❤️
-        {% else %}Enviamos no WhatsApp de {{ musica.presente_nome }}. Assim que chegar, você recebe um aviso.{% endif %}</span></div>
+        {% if musica.presente_wa_status == 'entregue' %}{{ t('compra.wa_chegou', nome=musica.presente_nome) }}
+        {% else %}{{ t('compra.wa_enviado', nome=musica.presente_nome) }}{% endif %}</span></div>
       {% endif %}
     {% else %}
       {% if email_falhou %}
-      <div class="agendado" style="margin-bottom:16px"><i class="ti ti-alert-circle" aria-hidden="true" style="color:var(--cor)"></i><span>O e-mail para <b>{{ musica.presente_nome }}</b> ({{ musica.presente_email }}) não chegou. Confira o endereço abaixo e tente de novo.</span></div>
+      <div class="agendado" style="margin-bottom:16px"><i class="ti ti-alert-circle" aria-hidden="true" style="color:var(--cor)"></i><span>{{ t('compra.email_falhou', nome=musica.presente_nome, email=musica.presente_email) }}</span></div>
       {% endif %}
       {% if wa_falhou %}
-      <div class="agendado" style="margin-bottom:16px"><i class="ti ti-alert-circle" aria-hidden="true" style="color:var(--cor)"></i><span>Não conseguimos entregar no WhatsApp de <b>{{ musica.presente_nome }}</b>. Pode ser o número ou alguma configuração do WhatsApp da pessoa. Mande pelo seu WhatsApp, a mensagem e o link já vão prontos — ou corrija o número abaixo.</span></div>
-      <a class="botao whats" href="{{ rota('enviar_pelo_whatsapp', guid=guid) }}"><i class="ti ti-brand-whatsapp" aria-hidden="true"></i> Enviar para {{ musica.presente_nome }} pelo meu WhatsApp</a>
+      <div class="agendado" style="margin-bottom:16px"><i class="ti ti-alert-circle" aria-hidden="true" style="color:var(--cor)"></i><span>{{ t('compra.wa_falhou', nome=musica.presente_nome) }}</span></div>
+      <a class="botao whats" href="{{ rota('enviar_pelo_whatsapp', guid=guid) }}"><i class="ti ti-brand-whatsapp" aria-hidden="true"></i> {{ t('compra.enviar_pelo_meu', nome=musica.presente_nome) }}</a>
       {% else %}
-      <p>A gente manda a música para quem vai receber{% if whatsapp_ativo %} por e-mail e/ou WhatsApp{% else %} por e-mail{% endif %}, agora ou no dia e horário que você escolher (horário de Brasília). Você recebe um aviso.</p>
+      <p>{{ t('compra.entrega_explica', canais=t('compra.canais_wa' if whatsapp_ativo else 'compra.canais_email')) }}</p>
       {% if musica.presente_email or musica.presente_whatsapp %}
-      <div class="agendado" style="margin-bottom:16px"><i class="ti ti-calendar-check" aria-hidden="true"></i><span>Agendado para <b>{{ musica.presente_nome }}</b> em <b>{{ musica.presente_em.strftime('%d/%m às %H:%M') if musica.presente_em else 'agora' }}</b>. Você pode mudar abaixo.</span></div>
+      <div class="agendado" style="margin-bottom:16px"><i class="ti ti-calendar-check" aria-hidden="true"></i><span{% if presente_em_iso %} id="pr-agendado"{% endif %}>{{ t('compra.agendado', nome=musica.presente_nome, quando=presente_em_local.strftime(t('compra.formato_data')|string) if presente_em_local else t('compra.agora')) }}</span></div>
       {% endif %}
       {% endif %}
       <div class="grade-agenda" style="margin-top:14px">
-        <div><label for="pr-nome">Nome de quem vai receber</label><input class="campo" id="pr-nome" maxlength="120" value="{{ musica.presente_nome or para }}"></div>
+        <div><label for="pr-nome">{{ t('compra.label_nome') }}</label><input class="campo" id="pr-nome" maxlength="120" value="{{ musica.presente_nome or para }}"></div>
         {% if whatsapp_ativo %}
-        <div><label for="pr-whats">WhatsApp de quem vai receber</label><input class="campo" id="pr-whats" type="tel" inputmode="tel" placeholder="(11) 91234-5678" value="{{ '+' ~ musica.presente_whatsapp if musica.presente_whatsapp else '' }}"></div>
+        <div><label for="pr-whats">{{ t('compra.label_whats') }}</label><input class="campo" id="pr-whats" type="tel" inputmode="tel" placeholder="{{ t('compra.whats_exemplo') }}" value="{{ '+' ~ musica.presente_whatsapp if musica.presente_whatsapp else '' }}"></div>
         {% endif %}
-        <div><label for="pr-email">E-mail de quem vai receber{% if whatsapp_ativo %} (opcional){% endif %}</label><input class="campo" id="pr-email" type="email" inputmode="email" placeholder="email@exemplo.com" value="{{ musica.presente_email or '' }}"></div>
-        <div><label for="pr-dia">Dia</label><input class="campo" id="pr-dia" type="date" value="{{ musica.presente_em.strftime('%Y-%m-%d') if musica.presente_em else '' }}"></div>
-        <div><label for="pr-hora">Horário</label><input class="campo" id="pr-hora" type="time" value="{{ musica.presente_em.strftime('%H:%M') if musica.presente_em else '09:00' }}"></div>
+        <div><label for="pr-email">{{ t('compra.label_email') }}{% if whatsapp_ativo %}{{ t('compra.opcional') }}{% endif %}</label><input class="campo" id="pr-email" type="email" inputmode="email" placeholder="{{ t('compra.email_exemplo') }}" value="{{ musica.presente_email or '' }}"></div>
+        <div><label for="pr-dia">{{ t('compra.label_dia') }}</label><input class="campo" id="pr-dia" type="date" value="{{ presente_em_local.strftime('%Y-%m-%d') if presente_em_local else '' }}"></div>
+        <div><label for="pr-hora">{{ t('compra.label_hora') }}</label><input class="campo" id="pr-hora" type="time" value="{{ presente_em_local.strftime('%H:%M') if presente_em_local else '09:00' }}"></div>
       </div>
       {% if whatsapp_ativo %}
-      <label class="confirmo" style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-weight:500;color:var(--suave)"><input type="checkbox" id="pr-confirmo" style="width:20px;height:20px;margin-top:3px;accent-color:var(--cor)"> <span>Confirmo que este WhatsApp é de quem vai receber. A pessoa recebe uma mensagem dizendo que você preparou uma surpresa, com um botão para ouvir.</span></label>
+      <label class="confirmo" style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-weight:500;color:var(--suave)"><input type="checkbox" id="pr-confirmo" style="width:20px;height:20px;margin-top:3px;accent-color:var(--cor)"> <span>{{ t('compra.confirmo') }}</span></label>
       {% endif %}
-      <label for="pr-mensagem" style="font-weight:700;display:block;margin:12px 0 6px">Um recado no e-mail (opcional)</label>
-      <textarea class="campo" id="pr-mensagem" maxlength="500" placeholder="Feliz aniversário, mãe! Te amo.">{{ musica.presente_mensagem or '' }}</textarea>
-      <p class="suave" style="font-size:.95rem;margin-top:10px"><i class="ti ti-info-circle" aria-hidden="true"></i> Se for por e-mail, peça para a pessoa olhar também a caixa de spam ou "Promoções".</p>
+      <label for="pr-mensagem" style="font-weight:700;display:block;margin:12px 0 6px">{{ t('compra.recado') }}</label>
+      <textarea class="campo" id="pr-mensagem" maxlength="500" placeholder="{{ t('compra.recado_exemplo') }}">{{ musica.presente_mensagem or '' }}</textarea>
+      <p class="suave" style="font-size:.95rem;margin-top:10px"><i class="ti ti-info-circle" aria-hidden="true"></i> {{ t('compra.spam') }}</p>
       <div class="erro" id="pr-erro" role="alert"></div>
       <div class="botoes" style="margin-top:14px">
-        <button class="botao" id="pr-agendar" type="button"><i class="ti ti-calendar" aria-hidden="true"></i> Agendar o envio</button>
-        <button class="botao secundario" id="pr-agora" type="button"><i class="ti ti-send" aria-hidden="true"></i> Enviar agora</button>
+        <button class="botao" id="pr-agendar" type="button"><i class="ti ti-calendar" aria-hidden="true"></i> {{ t('compra.agendar') }}</button>
+        <button class="botao secundario" id="pr-agora" type="button"><i class="ti ti-send" aria-hidden="true"></i> {{ t('compra.enviar_agora') }}</button>
       </div>
     {% endif %}
   </section>
@@ -130,56 +130,58 @@ video{width:100%;max-height:70vh;border-radius:16px;background:#000}
 
   {% if tem_qrcode %}
   <section class="extra-bloco">
-    <h2>Cartão com QR code</h2>
-    <p>Imprima e entregue junto com o presente. A pessoa aponta a câmera do celular e a música toca.</p>
-    <a class="botao secundario" href="{{ rota('cartao_qrcode', guid=guid) }}" target="_blank" rel="noopener"><i class="ti ti-printer" aria-hidden="true"></i> Abrir o cartão para imprimir</a>
+    <h2>{{ t('compra.qr_titulo') }}</h2>
+    <p>{{ t('compra.qr_texto') }}</p>
+    <a class="botao secundario" href="{{ rota('cartao_qrcode', guid=guid) }}" target="_blank" rel="noopener"><i class="ti ti-printer" aria-hidden="true"></i> {{ t('compra.qr_botao') }}</a>
   </section>
   {% endif %}
 
   {% if tem_video %}
   <section class="extra-bloco" id="video">
-    <h2>Videoclipe com as suas fotos</h2>
+    <h2>{{ t('compra.video_titulo') }}</h2>
     {% if musica.video_status == "pronto" %}
       <video controls playsinline preload="metadata" poster="{{ rota('capa_video', token=musica.token) }}" src="{{ rota('videoclipe', token=musica.token) }}"></video>
-      <a class="botao secundario" style="margin-top:12px" href="{{ rota('videoclipe', token=musica.token, baixar=1) }}"><i class="ti ti-download" aria-hidden="true"></i> Baixar o vídeo</a>
-      <p style="margin-top:12px">Quer trocar as fotos? <a href="#" id="refazer">Fazer de novo</a>.</p>
+      <a class="botao secundario" style="margin-top:12px" href="{{ rota('videoclipe', token=musica.token, baixar=1) }}"><i class="ti ti-download" aria-hidden="true"></i> {{ t('compra.baixar_video') }}</a>
+      <p style="margin-top:12px">{{ t('compra.trocar_fotos') }}</p>
     {% endif %}
     <div id="video-fazendo" style="display:{{ 'block' if musica.video_status == 'fazendo' else 'none' }}">
       <div class="carregando"><i></i><i></i><i></i></div>
-      <p style="text-align:center">Montando o seu vídeo. Leva de 2 a 4 minutos, pode deixar a página aberta.</p>
+      <p style="text-align:center">{{ t('compra.video_fazendo') }}</p>
     </div>
     <div id="video-form" style="display:{{ 'none' if musica.video_status in ('pronto', 'fazendo') else 'block' }}">
-      <p>Escolha até {{ max_fotos }} fotos. A gente monta um vídeo vertical com a música, pronto para o Status e o Instagram.</p>
-      {% if musica.video_status == "erro" %}<p style="color:var(--cor-forte)">Não conseguimos montar o vídeo da última vez. Tente de novo com outras fotos.</p>{% endif %}
-      <label class="fotos-escolha" for="fotos"><i class="ti ti-photo-plus" aria-hidden="true"></i><br><b>Escolher fotos</b><br><small class="suave">JPG ou PNG, até {{ max_fotos }}</small></label>
+      <p>{{ t('compra.video_escolha', max=max_fotos) }}</p>
+      {% if musica.video_status == "erro" %}<p style="color:var(--cor-forte)">{{ t('compra.video_erro') }}</p>{% endif %}
+      <label class="fotos-escolha" for="fotos"><i class="ti ti-photo-plus" aria-hidden="true"></i><br><b>{{ t('compra.escolher_fotos') }}</b><br><small class="suave">{{ t('compra.fotos_formato', max=max_fotos) }}</small></label>
       <input id="fotos" type="file" accept="image/*" multiple hidden>
       <div class="miniaturas" id="miniaturas"></div>
       {% if musica.faixas|length > 1 %}
       <div class="versao-escolha">
-        <label><input type="radio" name="versao" value="1" checked>Versão 1</label>
-        <label><input type="radio" name="versao" value="2">Versão 2</label>
+        <label><input type="radio" name="versao" value="1" checked>{{ t('compra.versao') }} 1</label>
+        <label><input type="radio" name="versao" value="2">{{ t('compra.versao') }} 2</label>
       </div>
       {% endif %}
-      {% if legenda_video %}<label class="extra-check" style="display:flex;gap:10px;align-items:center;margin:6px 0 14px;font-weight:600;cursor:pointer"><input type="checkbox" id="video-legenda" checked style="width:20px;height:20px;accent-color:var(--cor)">Mostrar a letra no vídeo, como legenda</label>{% endif %}
+      {% if legenda_video %}<label class="extra-check" style="display:flex;gap:10px;align-items:center;margin:6px 0 14px;font-weight:600;cursor:pointer"><input type="checkbox" id="video-legenda" checked style="width:20px;height:20px;accent-color:var(--cor)">{{ t('compra.legenda') }}</label>{% endif %}
       <div class="erro" id="video-erro" role="alert"></div>
-      <button class="botao" id="video-criar" type="button" disabled>Criar o vídeo</button>
+      <button class="botao" id="video-criar" type="button" disabled>{{ t('compra.criar_video') }}</button>
     </div>
   </section>
   {% endif %}
 
-  <details class="letra-dobra"><summary>Ver a letra</summary>
+  <details class="letra-dobra"><summary>{{ t('compra.ver_letra') }}</summary>
     <div class="versos">{{ letra_texto }}</div>
   </details>
-  <div class="guardar"><i class="ti ti-bookmark" aria-hidden="true"></i><span>Guarde o e-mail da compra: o botão dele sempre traz você de volta para esta página.</span></div>
+  <div class="guardar"><i class="ti ti-bookmark" aria-hidden="true"></i><span>{{ t('compra.guardar') }}</span></div>
 </div>
 {% endblock %}
 {% block script %}
 <script>
+const T = {{ textos.compra.js|tojson }};   // as frases do idioma (conteudo/<idioma>/textos.json, compra.js)
+const fmt = (texto, valores) => texto.replace(/\{(\w+)\}/g, (m, k) => k in valores ? String(valores[k]) : m);
 const copiar = document.getElementById("copiar");
 if (copiar) copiar.addEventListener("click", async () => {
   const campo = document.getElementById("link-presente");
   try { await navigator.clipboard.writeText(campo.value); } catch (_) { campo.select(); document.execCommand("copy"); }
-  copiar.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Copiado';
+  copiar.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> ' + T.copiado;
 });
 
 // Videoclipe: reduz as fotos no celular antes de enviar (fica leve para o 4G).
@@ -200,12 +202,12 @@ if (campoFotos) {
       const blob = await new Promise(r => c.toBlob(r, "image/jpeg", qualidade));
       if (blob && blob.size < 900 * 1024) return blob;
     }
-    throw new Error("Uma das fotos é grande demais. Tente outra.");
+    throw new Error(T.foto_grande);
   }
   async function postar(url, corpo){
     const r = await fetch(url, {method: "POST", body: corpo, headers: corpo instanceof FormData ? {} : {"Content-Type": "application/json"}});
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.erro || "Não deu certo. Tente de novo.");
+    if (!r.ok) throw new Error(d.erro || T.nao_deu);
     return d;
   }
   campoFotos.addEventListener("change", () => {
@@ -213,14 +215,14 @@ if (campoFotos) {
     const m = document.getElementById("miniaturas"); m.innerHTML = "";
     escolhidas.forEach(f => { const i = document.createElement("img"); i.src = URL.createObjectURL(f); i.alt = ""; m.appendChild(i); });
     document.getElementById("video-criar").disabled = !escolhidas.length;
-    document.getElementById("video-criar").textContent = escolhidas.length ? `Criar o vídeo com ${escolhidas.length} ${escolhidas.length === 1 ? "foto" : "fotos"}` : "Criar o vídeo";
+    document.getElementById("video-criar").textContent = escolhidas.length ? fmt(T.criar_com, {n: escolhidas.length, fotos: escolhidas.length === 1 ? T.foto : T.fotos}) : T.criar_video;
   });
   document.getElementById("video-criar").addEventListener("click", async e => {
     const b = e.currentTarget, erro = document.getElementById("video-erro"); erro.style.display = "none";
     b.disabled = true;
     try {
       for (const [i, f] of escolhidas.entries()) {
-        b.textContent = `Enviando a foto ${i + 1} de ${escolhidas.length}...`;
+        b.textContent = fmt(T.enviando_foto, {i: i + 1, n: escolhidas.length});
         const dados = new FormData();
         dados.append("foto", await reduzir(f), `foto${i}.jpg`);
         dados.append("primeira", i === 0 ? "1" : "0");
@@ -230,7 +232,7 @@ if (campoFotos) {
       await postar(URL_VIDEO, JSON.stringify({versao: v ? v.value : "1", legenda: !!(leg && leg.checked)}));
       document.getElementById("video-form").style.display = "none"; document.getElementById("video-fazendo").style.display = "block";
       esperarVideo();
-    } catch (x) { erro.textContent = x.message; erro.style.display = "block"; b.disabled = false; b.textContent = "Criar o vídeo"; }
+    } catch (x) { erro.textContent = x.message; erro.style.display = "block"; b.disabled = false; b.textContent = T.criar_video; }
   });
   const refazer = document.getElementById("refazer");
   if (refazer) refazer.addEventListener("click", e => { e.preventDefault(); document.getElementById("video-form").style.display = "block"; });
@@ -242,29 +244,33 @@ async function esperarVideo(){
 }
 {% if musica.video_status == "fazendo" %}esperarVideo();{% endif %}
 
-// Presente por e-mail: agendar (dia/hora de Brasília) ou enviar agora.
+// Presente por e-mail: agendar ou enviar agora. Brasil: dia/hora de Brasília (sem fuso). Outro idioma
+// (T.hora_com_fuso): vai com o fuso do navegador e o servidor converte (a pessoa agenda no horário dela).
+function quandoComFuso(dia, hora){
+  if (!T.hora_com_fuso) return `${dia}T${hora}:00`;
+  const minutos = -new Date(`${dia}T${hora}:00`).getTimezoneOffset(), sinal = minutos < 0 ? "-" : "+", a = Math.abs(minutos);
+  return `${dia}T${hora}:00${sinal}${String(Math.floor(a / 60)).padStart(2, "0")}:${String(a % 60).padStart(2, "0")}`;
+}
 async function enviarPresente(agora){
   const erro = document.getElementById("pr-erro"); erro.style.display = "none";
   const dia = document.getElementById("pr-dia").value, hora = document.getElementById("pr-hora").value;
-  if (!agora && !(dia && hora)) { erro.textContent = "Escolha o dia e o horário, ou toque em Enviar agora."; erro.style.display = "block"; return; }
+  if (!agora && !(dia && hora)) { erro.textContent = T.escolha_dia; erro.style.display = "block"; return; }
   const botao = document.getElementById(agora ? "pr-agora" : "pr-agendar"), rotulo = botao.innerHTML;
   const botoes = [document.getElementById("pr-agendar"), document.getElementById("pr-agora")];
   botoes.forEach(b => b.disabled = true);
-  botao.textContent = agora ? "Enviando..." : "Agendando...";
+  botao.textContent = agora ? T.enviando : T.agendando;
   const voltar = () => { botoes.forEach(b => b.disabled = false); botao.innerHTML = rotulo; };
   const r = await fetch("{{ rota('api_presente', guid=guid) }}", {method: "POST", headers: {"Content-Type": "application/json"},
     body: JSON.stringify({nome: document.getElementById("pr-nome").value, email: document.getElementById("pr-email").value,
                           whatsapp: (document.getElementById("pr-whats") || {}).value || "",
                           confirmo: !!(document.getElementById("pr-confirmo") || {}).checked,
-                          mensagem: document.getElementById("pr-mensagem").value, agora, quando: agora ? "" : `${dia}T${hora}:00`})})
+                          mensagem: document.getElementById("pr-mensagem").value, agora, quando: agora ? "" : quandoComFuso(dia, hora)})})
     .catch(() => null);
   const d = r ? await r.json().catch(() => ({})) : {};
-  if (!r || !r.ok) { voltar(); erro.textContent = d.erro || "Não deu certo. Tente de novo."; erro.style.display = "block"; return; }
-  const nome = document.getElementById("pr-nome").value.trim() || "quem vai receber";
-  const quando = agora ? "" : `${dia.split("-").reverse().slice(0, 2).join("/")} às ${hora}`;
-  try { sessionStorage.setItem("presente_ok", agora
-    ? `Pronto! A música está saindo agora para ${nome}. Você recebe um aviso quando chegar.`
-    : `Pronto! Agendado para ${nome} em ${quando} (horário de Brasília). Você recebe um aviso quando chegar.`); } catch (e) {}
+  if (!r || !r.ok) { voltar(); erro.textContent = d.erro || T.nao_deu; erro.style.display = "block"; return; }
+  const nome = document.getElementById("pr-nome").value.trim() || T.quem_vai_receber;
+  const quando = agora ? "" : fmt(T.quando, {data: dia.split("-").reverse().slice(0, 2).join("/"), hora});
+  try { sessionStorage.setItem("presente_ok", agora ? fmt(T.ok_agora, {nome}) : fmt(T.ok_agendado, {nome, quando})); } catch (e) {}
   location.hash = "presente"; location.reload();
 }
 (() => {
@@ -276,12 +282,22 @@ async function enviarPresente(agora){
   caixa.style.display = "flex";
   caixa.scrollIntoView({behavior: "smooth", block: "center"});
 })();
+// Onde a pessoa agenda no horário dela (T.hora_com_fuso): o agendado aparece e vem preenchido no fuso do navegador
+// (o servidor mostra o do país; quem está em outro fuso do mesmo país veria a hora deslocada).
+const AGENDADO = {{ presente_em_iso|tojson }};
+if (T.hora_com_fuso && AGENDADO && document.getElementById("pr-dia")) {
+  const d = new Date(AGENDADO), dois = n => String(n).padStart(2, "0");
+  const dia = `${d.getFullYear()}-${dois(d.getMonth() + 1)}-${dois(d.getDate())}`, hora = `${dois(d.getHours())}:${dois(d.getMinutes())}`;
+  document.getElementById("pr-dia").value = dia; document.getElementById("pr-hora").value = hora;
+  const texto = document.getElementById("pr-agendado");
+  if (texto) texto.querySelectorAll("b")[1].textContent = fmt(T.quando, {data: `${dois(d.getDate())}/${dois(d.getMonth() + 1)}`, hora});
+}
 const agendar = document.getElementById("pr-agendar");
 if (agendar) {
   document.getElementById("pr-dia").min = new Date().toLocaleDateString("sv-SE");
   agendar.addEventListener("click", () => enviarPresente(false));
   document.getElementById("pr-agora").addEventListener("click", () => {
-    if (confirm("Enviar a música agora?")) enviarPresente(true);
+    if (confirm(T.confirmar_agora)) enviarPresente(true);
   });
 }
 </script>

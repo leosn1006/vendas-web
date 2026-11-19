@@ -17,6 +17,12 @@
     "rodape": "Dúvidas? É só responder este e-mail. {marca}"
   },
 
+  "emails": {
+    "_como_usar": "No Brasil, os e-mails da Música são os textos do mensagens.py; aqui só o que os casos de uso usam.",
+    "alguem_especial": "Alguém especial",
+    "sua_musica": "sua música"
+  },
+
   "letra": {
     "respostas": "Respostas do quiz:",
     "anterior": "Esta é a letra que você escreveu antes:",
@@ -29,7 +35,10 @@
     "robo": "Não conseguimos confirmar que você não é um robô. Recarregue a página.",
     "resposta_faltando": "Alguma resposta ficou faltando. Volte e confira as escolhas.",
     "celular": "Confira o celular com DDD (ex.: 11 91234-5678) ou deixe em branco.",
-    "musica_nao_encontrada": "Não encontramos esta música."
+    "musica_nao_encontrada": "Não encontramos esta música.",
+    "data_hora": "Escolha a data e o horário (ou \"enviar agora\").",
+    "foto_grande": "Uma das fotos ficou grande demais. Tente outra.",
+    "escolha_foto": "Escolha uma foto."
   },
 
   "recusas": {},
@@ -233,6 +242,95 @@
       "ultima_inclui_musica": "A música completa, nas duas versões",
       "so_a_musica": "Não, quero só a música"
     }
+  },
+
+  "compra": {
+    "_como_usar": "Área de quem comprou (compra.html), página do presente (musica.html) e cartão QR (cartao.html). {para}/{de}/{nome}/{email} = valores (escapados).",
+    "capa": "Uma música para {para}, com carinho de {de}",
+    "versao": "Versão",
+    "baixar_versao": "Baixar versão",
+    "enviar_para": "Enviar para {para}",
+    "link_presente": "Este é o link do presente: abre só a música, para ouvir e baixar.",
+    "copiar": "Copiar",
+    "whats_texto": "Fiz uma música só pra você: ",
+    "enviar_no_whatsapp": "Enviar no WhatsApp",
+    "entrega_para": "Entrega para {nome}",
+    "email_enviado": "E-mail enviado para <b>{nome}</b> ({email}), com cópia para você.",
+    "wa_chegou": "A música <b>chegou no WhatsApp</b> de {nome}. Agora é só esperar a reação ❤️",
+    "wa_enviado": "Enviamos no WhatsApp de {nome}. Assim que chegar, você recebe um aviso.",
+    "email_falhou": "O e-mail para <b>{nome}</b> ({email}) não chegou. Confira o endereço abaixo e tente de novo.",
+    "wa_falhou": "Não conseguimos entregar no WhatsApp de <b>{nome}</b>. Pode ser o número ou alguma configuração do WhatsApp da pessoa. Mande pelo seu WhatsApp, a mensagem e o link já vão prontos — ou corrija o número abaixo.",
+    "enviar_pelo_meu": "Enviar para {nome} pelo meu WhatsApp",
+    "entrega_explica": "A gente manda a música para quem vai receber{canais}, agora ou no dia e horário que você escolher (horário de Brasília). Você recebe um aviso.",
+    "canais_wa": " por e-mail e/ou WhatsApp",
+    "canais_email": " por e-mail",
+    "agendado": "Agendado para <b>{nome}</b> em <b>{quando}</b>. Você pode mudar abaixo.",
+    "agora": "agora",
+    "formato_data": "%d/%m às %H:%M",
+    "label_nome": "Nome de quem vai receber",
+    "label_whats": "WhatsApp de quem vai receber",
+    "whats_exemplo": "(11) 91234-5678",
+    "label_email": "E-mail de quem vai receber",
+    "opcional": " (opcional)",
+    "email_exemplo": "email@exemplo.com",
+    "label_dia": "Dia",
+    "label_hora": "Horário",
+    "confirmo": "Confirmo que este WhatsApp é de quem vai receber. A pessoa recebe uma mensagem dizendo que você preparou uma surpresa, com um botão para ouvir.",
+    "recado": "Um recado no e-mail (opcional)",
+    "recado_exemplo": "Feliz aniversário, mãe! Te amo.",
+    "spam": "Se for por e-mail, peça para a pessoa olhar também a caixa de spam ou \"Promoções\".",
+    "agendar": "Agendar o envio",
+    "enviar_agora": "Enviar agora",
+    "qr_titulo": "Cartão com QR code",
+    "qr_texto": "Imprima e entregue junto com o presente. A pessoa aponta a câmera do celular e a música toca.",
+    "qr_botao": "Abrir o cartão para imprimir",
+    "video_titulo": "Videoclipe com as suas fotos",
+    "baixar_video": "Baixar o vídeo",
+    "trocar_fotos": "Quer trocar as fotos? <a href=\"#\" id=\"refazer\">Fazer de novo</a>.",
+    "video_fazendo": "Montando o seu vídeo. Leva de 2 a 4 minutos, pode deixar a página aberta.",
+    "video_escolha": "Escolha até {max} fotos. A gente monta um vídeo vertical com a música, pronto para o Status e o Instagram.",
+    "video_erro": "Não conseguimos montar o vídeo da última vez. Tente de novo com outras fotos.",
+    "escolher_fotos": "Escolher fotos",
+    "fotos_formato": "JPG ou PNG, até {max}",
+    "legenda": "Mostrar a letra no vídeo, como legenda",
+    "criar_video": "Criar o vídeo",
+    "ver_letra": "Ver a letra",
+    "guardar": "Guarde o e-mail da compra: o botão dele sempre traz você de volta para esta página.",
+    "presente_og": "Uma música feita só para {para}, com carinho de {de}. Aperte o play.",
+    "criar_a_minha": "Quer fazer uma música para alguém especial também? <a href=\"{link}\">Criar a minha</a>.",
+    "cartao_titulo": "Cartão",
+    "cartao_imprimir": "Imprimir ou salvar em PDF",
+    "cartao_para": "Uma música feita só para {para}",
+    "cartao_de": "Com carinho, {de}",
+    "cartao_aponte": "Aponte a câmera do celular para ouvir",
+    "enviar_pelo_whatsapp": "Oi, {nome}! Fiz uma música só pra você 🎵 {link}",
+    "js": {
+      "hora_com_fuso": false,
+      "copiado": "Copiado",
+      "foto_grande": "Uma das fotos é grande demais. Tente outra.",
+      "nao_deu": "Não deu certo. Tente de novo.",
+      "criar_com": "Criar o vídeo com {n} {fotos}",
+      "foto": "foto",
+      "fotos": "fotos",
+      "criar_video": "Criar o vídeo",
+      "enviando_foto": "Enviando a foto {i} de {n}...",
+      "escolha_dia": "Escolha o dia e o horário, ou toque em Enviar agora.",
+      "enviando": "Enviando...",
+      "agendando": "Agendando...",
+      "quem_vai_receber": "quem vai receber",
+      "quando": "{data} às {hora}",
+      "ok_agora": "Pronto! A música está saindo agora para {nome}. Você recebe um aviso quando chegar.",
+      "ok_agendado": "Pronto! Agendado para {nome} em {quando} (horário de Brasília). Você recebe um aviso quando chegar.",
+      "confirmar_agora": "Enviar a música agora?"
+    }
+  },
+
+  "video": {
+    "_como_usar": "Os cartões de abertura e de fechamento do videoclipe (adaptadores/video_ffmpeg.py).",
+    "abertura_para": "Para {para}",
+    "abertura_sub": "Uma música feita só para você",
+    "fechamento": "Com carinho,",
+    "titulo_padrao": "Música de presente"
   },
 
   "legal": {

@@ -56,7 +56,7 @@ def musica_detalhe(musica_id):
         nomes_itens=[RECURSOS.get(r, {}).get('nome', r) for r in sorted(recursos)],
         rascunho=s.repositorio.rascunho_ativo(musica_id),
         para=regras.para_quem(musica['respostas']),
-        link_compra=links.compra(venda['guid'], venda['dns_origem'] or musica['dominio']),
+        link_compra=links.compra(venda['guid'], venda['dns_origem'] or musica['dominio'], musica.get('idioma')),
         link_presente=links.presente(musica), tem_fotos=s.arquivos.tem_fotos(musica['token']),
         relacoes=[[r['valor']] * 2 for r in quiz.RELACOES], ocasioes=[[o['valor']] * 2 for o in quiz.OCASIOES],
         tons=[[t['valor'], t['texto']] for t in quiz.TONS], estilos=quiz.ESTILOS, vozes=list(quiz.VOZES.items()),

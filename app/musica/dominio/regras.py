@@ -79,6 +79,15 @@ def respostas_atuais(respostas: dict, quiz=None) -> dict:
     return respostas
 
 
+def para_fuso(quando: datetime | None, de: str, para: str) -> datetime | None:
+    """Um horário sem fuso (como o banco guarda) do fuso `de` para o fuso `para` (nomes do zoneinfo), sem fuso de
+    volta. Ex.: o presente agendado, gravado no horário de Brasília, mostrado no horário da Cidade do México."""
+    if not quando or de == para:
+        return quando
+    from zoneinfo import ZoneInfo
+    return quando.replace(tzinfo=ZoneInfo(de)).astimezone(ZoneInfo(para)).replace(tzinfo=None)
+
+
 def para_quem(respostas: dict, sem_nome: str = 'quem você ama') -> str:
     """Como chamar quem recebe: o apelido, se tiver; senão o nome (em grupo, os nomes juntos: "Ana, Bia e Carla").
     `sem_nome`: o texto do idioma para quando não há nome."""

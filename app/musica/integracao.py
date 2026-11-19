@@ -8,7 +8,8 @@ from musica.dominio.recursos import plano_vende_musica
 from musica.fabrica import servicos
 
 __all__ = ['Recusa', 'plano_vende_musica', 'conferir_para_checkout', 'vincular_ao_pedido', 'liberar_do_pedido',
-           'musica_do_pedido_pago', 'presente_devolvido', 'token_do_pedido', 'dados_para_checkout', 'webhook_whatsapp']
+           'musica_do_pedido_pago', 'email_de_entrega', 'presente_devolvido', 'token_do_pedido', 'dados_para_checkout',
+           'webhook_whatsapp']
 
 
 def conferir_para_checkout(token: str, produto_id: int) -> None:
@@ -38,9 +39,33 @@ def musica_do_pedido_pago(pedido: dict, exigir_liberada: bool = True) -> dict | 
     musica = s.repositorio.do_pedido(pedido['id'])
     if not musica or (exigir_liberada and not musica['liberada_em']):
         return None
+    from musica import idiomas
     from musica.dominio.regras import para_quem
-    return {'titulo': musica['titulo'] or 'Sua música', 'para': para_quem(musica['respostas']),
-            'caminho': f"/musica/compra/{pedido['guid']}"}
+    idioma = idiomas.valido(musica.get('idioma'))
+    if idioma == idiomas.IDIOMA_PADRAO:
+        return {'titulo': musica['titulo'] or 'Sua música', 'para': para_quem(musica['respostas']),
+                'caminho': f"/musica/compra/{pedido['guid']}", 'idioma': idioma}
+    # Fora do Brasil: o caminho no prefixo do idioma e os textos dele (o e-mail de entrega é o de email_de_entrega)
+    return {'titulo': musica['titulo'] or idiomas.texto(idioma, 'emails.sua_musica'),
+            'para': para_quem(musica['respostas'], idiomas.texto(idioma, 'geral.sem_nome')),
+            'caminho': f"{idiomas.cfg(idioma)['prefixo']}/compra/{pedido['guid']}", 'idioma': idioma}
+
+
+def email_de_entrega(pedido: dict, musica: dict, link: str, pedido_num: str, nome_remetente: str, cor_primaria: str,
+                     cor_secundaria: str) -> tuple[str, str]:
+    """O e-mail de entrega de uma música de FORA do Brasil (assunto, HTML completo), no idioma dela, com a moldura
+    do produto. `musica` = o de musica_do_pedido_pago. O do Brasil continua o do sistema (entrega_pedido_email)."""
+    import html
+    from fluxos._email_gmail import wrapper_html
+    from musica import idiomas, mensagens
+    idioma = musica['idioma']
+    nome = (pedido.get('contact_name') or '').split()[0] if (pedido.get('contact_name') or '').strip() else ''
+    assunto, corpo = mensagens.entrega(nome, musica['titulo'], musica['para'], link, pedido_num, idioma)
+    pagina = wrapper_html(titulo_header=html.escape(nome_remetente), corpo_interno_html=corpo,
+                          nome_remetente=nome_remetente, cor_primaria=cor_primaria, cor_secundaria=cor_secundaria,
+                          rodape=idiomas.texto(idioma, 'email.rodape', marca=html.escape(nome_remetente)),
+                          lang=idiomas.cfg(idioma)['html_lang'])
+    return assunto, pagina
 
 
 def presente_devolvido(thread_id: str, recusados: list[str]) -> bool:

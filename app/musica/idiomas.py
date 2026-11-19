@@ -24,6 +24,7 @@ IDIOMAS = {
         'prefixo': '/musica', 'blueprint': 'musica', 'html_lang': 'pt-BR', 'fuso': 'America/Sao_Paulo',
         'pagina_analytics': 'musica-v2', 'telefone': 'br', 'moeda': 'BRL', 'bandeira': '🇧🇷', 'pais': 'Brasil',
         'pasta_amostras': '',            # static/estilos/<estilo>.mp3 (o Brasil veio primeiro)
+        'whisper': 'pt',                 # idioma da transcrição (legenda do videoclipe)
     },
     'es-MX': {
         'prefixo': '/mx/cancion', 'blueprint': 'musica_mx', 'html_lang': 'es-MX', 'fuso': 'America/Mexico_City',
@@ -37,6 +38,10 @@ IDIOMAS = {
         # Ainda sem checkout (a Hotmart vem em outra frente): sem lembretes por e-mail, que convidariam a comprar
         # algo que a prévia diz que não está à venda. Ligar junto com o checkout.
         'vende': False,
+        'whisper': 'es',
+        # WhatsApp da Música (avisos e presente): os templates aprovados são em pt_BR. Desligado no México até os
+        # templates em es_MX serem aprovados na Meta (Fase 2, passo 2): sem campo de WhatsApp e sem envio.
+        'whatsapp': False,
     },
 }
 
@@ -54,6 +59,12 @@ def do_blueprint(nome_blueprint) -> str:
 
 def cfg(idioma) -> dict:
     return IDIOMAS[valido(idioma)]
+
+
+def whatsapp_ativo(idioma) -> bool:
+    """O WhatsApp da Música vale para este idioma? Liga/desliga geral (MUSICA_WHATSAPP_ATIVO) e o do idioma."""
+    from musica import config
+    return bool(config.WHATSAPP_ATIVO) and cfg(idioma).get('whatsapp', True)
 
 
 def pasta(idioma) -> Path:

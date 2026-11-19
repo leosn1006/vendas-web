@@ -93,8 +93,15 @@ def duracao_audio(arquivo):
     raise ErroVideo("não deu para ler a duração da música")
 
 
-def montar(fotos, musica, saida, titulo, para, de, legenda_ass=None):
-    """Gera o videoclipe. `fotos` já preparadas com preparar_foto(). `legenda_ass`: arquivo .ass da letra (opcional)."""
+# Os textos dos cartões no Brasil (o padrão); outro idioma manda os dele (textos.json → "video").
+TEXTOS_PADRAO = {'abertura_para': 'Para {para}', 'abertura_sub': 'Uma música feita só para você',
+                 'fechamento': 'Com carinho,'}
+
+
+def montar(fotos, musica, saida, titulo, para, de, legenda_ass=None, textos=None):
+    """Gera o videoclipe. `fotos` já preparadas com preparar_foto(). `legenda_ass`: arquivo .ass da letra (opcional).
+    `textos`: as frases dos cartões de abertura e fechamento no idioma da música (padrão: as do Brasil)."""
+    textos = {**TEXTOS_PADRAO, **(textos or {})}
     if not fotos:
         raise ErroVideo("nenhuma foto")
     total = duracao_audio(musica)
@@ -107,11 +114,11 @@ def montar(fotos, musica, saida, titulo, para, de, legenda_ass=None):
 
     pasta = Path(tempfile.mkdtemp(prefix="videoclipe-"))
     try:
-        cartao(pasta / "abertura.jpg", titulo, f"Para {para}", "Uma música feita só para você")
+        cartao(pasta / "abertura.jpg", titulo, textos['abertura_para'].replace('{para}', para), textos['abertura_sub'])
         Path(saida).parent.mkdir(parents=True, exist_ok=True)
         with Image.open(pasta / "abertura.jpg") as capa:   # imagem que aparece antes do play
             capa.resize((LARGURA, ALTURA), Image.LANCZOS).save(Path(saida).with_name("capa.jpg"), "JPEG", quality=85)
-        cartao(pasta / "fechamento.jpg", titulo, "Com carinho,", de)
+        cartao(pasta / "fechamento.jpg", titulo, textos['fechamento'], de)
         trechos = [pasta / "t000.mp4"]
         _trecho(pasta / "abertura.jpg", trechos[0], abertura, zoom=False)
         for i in range(quantidade):
@@ -148,5 +155,5 @@ class VideoFfmpeg:
     def preparar_foto(self, origem, destino):
         preparar_foto(origem, destino)
 
-    def montar(self, fotos, musica, saida, titulo, para, de, legenda_ass=None):
-        montar(fotos, musica, saida, titulo, para, de, legenda_ass=legenda_ass)
+    def montar(self, fotos, musica, saida, titulo, para, de, legenda_ass=None, textos=None):
+        montar(fotos, musica, saida, titulo, para, de, legenda_ass=legenda_ass, textos=textos)

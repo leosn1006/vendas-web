@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="{{ idioma_cfg.html_lang }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Cartão · {{ musica.titulo }}</title>
+<title>{{ t('compra.cartao_titulo') }} · {{ musica.titulo }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;600&display=swap" rel="stylesheet">
@@ -27,16 +27,16 @@ button{font:600 16px Figtree,sans-serif;border:0;border-radius:999px;padding:14p
 </style>
 </head>
 <body>
-<div class="acoes"><button onclick="print()">Imprimir ou salvar em PDF</button></div>
+<div class="acoes"><button onclick="print()">{{ t('compra.cartao_imprimir') }}</button></div>
 <div class="cartao">
   <div class="texto">
     <div>
-      <p class="para">Uma música feita só para {{ para }}</p>
+      <p class="para">{{ t('compra.cartao_para', para=para) }}</p>
       <h1>{{ musica.titulo }}</h1>
     </div>
-    <p class="de">Com carinho, {{ musica.respostas.de }}</p>
+    <p class="de">{{ t('compra.cartao_de', de=musica.respostas.de) }}</p>
   </div>
-  <div class="qr">{{ qr|safe }}<span>Aponte a câmera do celular para ouvir</span></div>
+  <div class="qr">{{ qr|safe }}<span>{{ t('compra.cartao_aponte') }}</span></div>
 </div>
 </body>
 </html>
