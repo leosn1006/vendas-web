@@ -654,8 +654,9 @@ def gerar_access_token_sop(produto_id: int, ip: str) -> dict:
         return {'erro': 'instabilidade', 'mensagem': _MSG_INSTABILIDADE_CARTAO, '_status': 503}
 
 
-def _excedeu_limite_ip(acao: str, ip: str, maximo: int, janela_segundos: int) -> bool:
-    """Contador por IP no Redis (INCR + EXPIRE). Redis fora do ar = sem limite (não bloqueia venda)."""
+def _excedeu_limite_ip(acao: str, ip: str, maximo: int, janela_segundos: int, sem_redis_bloqueia: bool = False) -> bool:
+    """Contador por IP (ou outra chave) no Redis (INCR + EXPIRE). Redis fora do ar = sem limite (não bloqueia venda);
+    `sem_redis_bloqueia` para limites de custo (ex.: microfone da Música), que preferem recusar."""
     if not ip:
         return False
     try:
@@ -668,7 +669,7 @@ def _excedeu_limite_ip(acao: str, ip: str, maximo: int, janela_segundos: int) ->
         return r.incr(chave) > maximo
     except Exception as e:
         logger.warning(f'[WEB-CHECKOUT] Redis indisponível no limite por IP ({acao}): {e}')
-        return False
+        return sem_redis_bloqueia
 
 
 def gerar_cartao(body: dict, url_base: str = '', dns_origem: str = '') -> dict:

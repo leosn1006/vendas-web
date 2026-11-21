@@ -147,3 +147,24 @@ def test_limite_do_microfone_por_ip_e_recusa_sem_redis(monkeypatch):
 def test_quiz_traz_a_tela_nova(cliente):
     html = cliente.get('/musica/criar').get_data(as_text=True)
     assert 'Conte a história de vocês' in html and '"exemplos_lembrancas"' in html and '/musica/api/ditado' in html
+
+
+def test_toque_sem_querer_e_formato_errado_nao_gastam_a_cota(cliente, monkeypatch):
+    contou = []
+    monkeypatch.setattr(rotas, '_ditado_excedido', lambda: contou.append(1) or False)
+    curto = cliente.post('/musica/api/ditado', data={'audio': (io.BytesIO(b'x' * 50), 'fala', 'audio/webm')},
+                         content_type='multipart/form-data')
+    errado = cliente.post('/musica/api/ditado', data={'audio': (io.BytesIO(AUDIO), 'fala', 'video/quicktime')},
+                          content_type='multipart/form-data')
+    assert curto.status_code == 400 and errado.status_code == 400 and not contou
+    assert _enviar(cliente).status_code == 200 and contou == [1]
+
+
+def test_limitador_do_checkout_continua_sem_bloquear_venda_sem_redis(monkeypatch):
+    import web.cielo
+    from web.checkout import _excedeu_limite_ip
+    def sem_redis():
+        raise ConnectionError('redis fora')
+    monkeypatch.setattr(web.cielo, '_redis', sem_redis)
+    assert _excedeu_limite_ip('sop_token', '1.2.3.4', 30, 600) is False
+    assert _excedeu_limite_ip('musica_ditado', '1.2.3.4', 15, 3600, sem_redis_bloqueia=True) is True

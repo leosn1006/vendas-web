@@ -414,6 +414,11 @@ def agendar_presente(s, guid, nome, email, mensagem, quando, whatsapp=None, conf
         raise Recusa('Confira o seu nome.')
     if de and de != musica['respostas'].get('de') and pode_mudar_de(musica):
         s.repositorio.mudar_de(musica['id'], de)   # só o campo (JSON_SET): não desfaz uma troca do admin ao mesmo tempo
+        # A mensagem da entrega sai certa; a letra foi escrita com o nome antigo e pode citá-lo ("Com amor, Rose"):
+        # a equipe confere e, se for o caso, refaz pelo admin (Músicas vendidas).
+        s.notificador.equipe(f"Música #{musica['id']}: quem comprou corrigiu o \"Seu nome\" de "
+                             f"\"{musica['respostas'].get('de') or '—'}\" para \"{de}\" ao agendar a entrega. "
+                             "Conferir se a letra cita o nome antigo.")
     # Depois de um canal não chegar, ela corrige e tenta de novo: o canal que já saiu não sai outra vez
     # (_nao_chegou limpa o thread do e-mail devolvido; o WhatsApp só fica 'enviado'/'entregue' depois de sair)
     if not (musica['presente_thread_id'] and not musica['presente_falhou_em']):

@@ -515,18 +515,10 @@ def _ditado_excedido() -> bool:
     """15 por IP por hora e o teto do dia (config). É limite de CUSTO: com o Redis fora do ar, recusa (o contrário do
     limite do checkout, que nunca bloqueia venda) — ela ainda pode escrever na caixa."""
     from datetime import date
-    try:
-        from web.cielo import _redis
-        r = _redis()
-        for chave, maximo, janela in ((f'limite:musica_ditado:{_ip()}', config.DITADO_POR_HORA, 3600),
-                                      (f'limite:musica_ditado_dia:{date.today().isoformat()}', config.DITADO_POR_DIA, 86400)):
-            r.set(chave, 0, ex=janela, nx=True)   # nasce com prazo; o INCR só soma (como web.checkout)
-            if r.incr(chave) > maximo:
-                return True
-        return False
-    except Exception as e:
-        logger.warning(f'[MUSICA] Redis indisponível no limite do microfone: {e}')
-        return True
+    from web.checkout import _excedeu_limite_ip
+    return (_excedeu_limite_ip('musica_ditado', _ip(), config.DITADO_POR_HORA, 3600, sem_redis_bloqueia=True)
+            or _excedeu_limite_ip('musica_ditado_dia', date.today().isoformat(), config.DITADO_POR_DIA, 86400,
+                                  sem_redis_bloqueia=True))
 
 
 @bp.post('/api/ditado')
@@ -541,6 +533,8 @@ def api_ditado():
     audio = request.files.get('audio')
     if not audio:
         return jsonify(erro=_texto('erros.audio_vazio')), 400
+    if (request.content_length or 0) < 1000 or audio.mimetype.split(';')[0] not in uc.FORMATOS_DITADO:
+        return _recusa(Recusa('Não deu para entender o áudio. Tente de novo, falando perto do celular.'))
     if _ditado_excedido():
         logger.warning(f'[MUSICA] Limite do microfone atingido (IP {_ip()})')
         return jsonify(erro=_texto('erros.ditado_limite')), 429

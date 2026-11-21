@@ -534,6 +534,7 @@ def test_presente_corrige_o_de_ao_agendar(s):
     _pagar(s, musica, recursos=('musica', 'entrega_email'))
     uc.agendar_presente(s, 'g-500', 'Helena', 'lena@exemplo.com', '', None, de='  Euripedes ')
     assert s.repositorio.por_id(musica['id'])['respostas']['de'] == 'Euripedes'
+    assert any('Seu nome' in m and 'Euripedes' in m for m in s.notificador.alertas)   # a equipe confere a letra
     uc.enviar_presentes(s)
     assert s.notificador.emails[0]['assunto'].startswith('Euripedes fez uma música')
     s.repositorio.atualizar(musica['id'], presente_enviado_em=None, presente_thread_id=None)   # campo vazio não apaga o "de"

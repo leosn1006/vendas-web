@@ -22,8 +22,10 @@ class DitadoOpenAI:
 
     def texto(self, arquivo, idioma: str = 'pt', dica: str = '') -> str:
         with open(arquivo, 'rb') as audio:
-            r = OpenAI(timeout=25).audio.transcriptions.create(model=self.modelo, file=audio, language=idioma,
-                                                               prompt=dica[:200] or None)
+            # Roda dentro da requisição (worker do gunicorn, 30 s): sem novas tentativas e com prazo curto — se a
+            # OpenAI demorar, ela recebe "não deu para entender" e escreve na caixa, sem segurar o site.
+            r = OpenAI(timeout=20, max_retries=0).audio.transcriptions.create(model=self.modelo, file=audio,
+                                                                             language=idioma, prompt=dica[:200] or None)
         return (r.text or '').strip()
 
 

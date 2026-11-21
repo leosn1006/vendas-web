@@ -42,6 +42,7 @@
   "recusas": {
     "_como_usar": "Mensagem dos casos de uso (em português, casos_de_uso.py) → a mesma no espanhol. Sem tradução aqui, a cliente vê o português.",
     "Não encontramos esta música.": "No encontramos esta canción.",
+    "Confira o seu nome.": "Revisa tu nombre.",
     "Formato de áudio não aceito. Escreva na caixa.": "Formato de audio no aceptado. Escribe en el cuadro.",
     "Não deu para entender o áudio. Tente de novo, falando perto do celular.": "No se entendió el audio. Intenta de nuevo, hablando cerca del celular.",
     "Esta música já foi comprada.": "Esta canción ya fue comprada.",

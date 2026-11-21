@@ -276,12 +276,15 @@ function atualizarMedidor(){
   document.querySelectorAll("[data-inicio]").forEach(b =>
     b.classList.toggle("usado", lembrancas.includes(personalizar(guiaLembrancas().inicios[+b.dataset.inicio]).trim())));
 }
-// Junta um pedaço ao fim do texto (frase para começar ou o que ela falou), com espaço ou ponto antes.
-function juntarAoTexto(pedaco){
+// Junta um pedaço ao fim do texto, com espaço ou ponto antes. `continua` (o que ela falou): se o texto termina numa
+// frase para começar ("A gente se conheceu "), a fala completa a frase — sem ponto no meio e com letra minúscula.
+function juntarAoTexto(pedaco, continua){
   const caixa = el("lembrancaTexto");
   if (!caixa) return;   // saiu da tela de lembranças antes de o texto chegar: não entra escondido
   const antes = lembrancas.trimEnd();
-  lembrancas = (antes ? antes + (/[.!?…]$/.test(antes) ? " " : ". ") + pedaco : pedaco).slice(0, REGRAS.max_letras_lembrancas);
+  const completaFrase = continua && antes && /\s$/.test(lembrancas) && !/[.!?…]$/.test(antes);
+  lembrancas = (completaFrase ? antes + " " + pedaco.charAt(0).toLowerCase() + pedaco.slice(1)
+    : antes ? antes + (/[.!?…]$/.test(antes) ? " " : ". ") + pedaco : pedaco).slice(0, REGRAS.max_letras_lembrancas);
   caixa.value = lembrancas; caixa.focus(); caixa.setSelectionRange(lembrancas.length, lembrancas.length);
   mostrarErro(""); atualizarMedidor(); guardar();
 }
@@ -320,14 +323,21 @@ async function gravar(){
   try { gravador = new MediaRecorder(fluxo, tipo ? {mimeType: tipo, audioBitsPerSecond: MIC_BITS} : {audioBitsPerSecond: MIC_BITS}); }
   catch (e) { fluxo.getTracks().forEach(t => t.stop()); micAviso(T.mic_sem_acesso); return; }
   const este = gravador, inicio = Date.now();
-  este.ondataavailable = e => { if (e.data && e.data.size) pedacos.push(e.data); };
+  let bytes = 0;
+  // Pedaços de 1 s: se o celular gravar com mais qualidade que a pedida (iPhone), para pelo tamanho antes de passar
+  // do limite — o que ela já falou vai para o texto, nada se perde.
+  este.ondataavailable = e => {
+    if (!e.data || !e.data.size) return;
+    pedacos.push(e.data); bytes += e.data.size;
+    if (bytes > MIC_MAX_BYTES * 0.9 && gravador === este) pararGravacao(false);
+  };
   este.onstop = () => {
     fluxo.getTracks().forEach(t => t.stop());
     gravador = null;
     if (este.descartar) return;
     enviarAudio(new Blob(pedacos, {type: este.mimeType || tipo || "audio/webm"}));
   };
-  este.start();
+  este.start(1000);
   micAviso("");
   const marcar = () => {
     const s = Math.floor((Date.now() - inicio) / 1000);
@@ -349,7 +359,7 @@ async function enviarAudio(blob){
     const d = await r.json().catch(() => ({}));
     if (r.status === 413) throw new Error(T.mic_grande);   // o nginx responde sem JSON
     if (!r.ok || !d.texto) throw new Error(d.erro || T.mic_nao_entendi);
-    juntarAoTexto(d.texto);
+    juntarAoTexto(d.texto, true);
     micAviso(T.mic_pronto);
     etapaFunil(4, "lembrancas_falou");
   } catch (e) {
