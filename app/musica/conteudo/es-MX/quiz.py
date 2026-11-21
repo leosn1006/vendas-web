@@ -170,7 +170,7 @@ EXEMPLOS_LEMBRANCAS = {
         'celebrar la mujer que soy hoy.',
     ],
     '_padrao': [
-        'Mi madrina me crió cuando mi mamá se fue a trabajar fuera. Hace el mejor café del mundo y para todo dice '
+        'Mi madrina me crió cuando mi mamá se fue a trabajar a Estados Unidos. Hace el mejor café del mundo y para todo dice '
         '"todo va a salir bien". Le quiero agradecer por nunca dejarme sola.',
     ],
 }
@@ -197,7 +197,7 @@ PERGUNTAS = [
     },
     {
         'chave': 'lembrancas', 'tipo': 'lembrancas',
-        'titulo': 'Cuéntanos su historia 💛',
+        'titulo': 'Cuéntanos la historia de ustedes 💛',
         'titulo_eu': 'Cuéntanos tu historia 💛',
         'ajuda': 'A tu manera, como si se lo contaras a una amiga. No tiene que quedar bonito.',
     },
