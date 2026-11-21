@@ -109,3 +109,10 @@ def test_apiframe_confere_a_assinatura_do_webhook():
     assert g.webhook_valido(corpo, {'X-Webhook-Signature': 'sha256=' + assinatura}) == 'job-1'
     assert g.webhook_valido(corpo, {'X-Webhook-Signature': 'errada'}) is None
     assert g.webhook_valido(corpo, {}) is None
+
+
+
+def test_nomes_quem_recebe_de_uma_pessoa_e_do_grupo():
+    assert regras.nomes_quem_recebe({'nome': 'Helena', 'apelido': 'Lena'}) == ['Helena', 'Lena']
+    grupo = {'nome': 'Ana e Bia', 'pessoas': [{'nome': 'Ana'}, {'nome': 'Bia', 'apelido': 'Bibi'}]}
+    assert regras.nomes_quem_recebe(grupo) == ['Ana', 'Bia', 'Bibi']

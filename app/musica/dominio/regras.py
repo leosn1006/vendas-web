@@ -151,6 +151,12 @@ def telefone_whatsapp(texto, ddi: str = '55') -> str:
     return '55' + digitos if len(digitos) == 11 and digitos[2] == '9' else ''
 
 
+def nomes_quem_recebe(respostas: dict) -> list[str]:
+    """Nomes e apelidos de quem recebe (uma pessoa ou o grupo), para o aviso de "Seu nome" igual (static/nomes.js)."""
+    pessoas = respostas.get('pessoas') or [respostas]
+    return [n for p in pessoas for n in (p.get('nome'), p.get('apelido')) if n]
+
+
 def primeiro_nome(*nomes: str) -> str:
     """O primeiro nome que pareça nome (sem @ nem dígitos), com inicial maiúscula; '' se nenhum servir."""
     for nome in nomes:

@@ -405,6 +405,8 @@ def pagina_compra(guid):
                            letra_texto=regras.para_leitura(musica['letra_exibicao'], _texto('geral.refrao')),
                            link_presente=_rota('pagina_presente', token=musica['token'], _external=True),
                            tem_qrcode=QRCODE in recursos, tem_presente=ENTREGA_EMAIL in recursos,
+                           de_editavel=uc.pode_mudar_de(musica),
+                           nomes_quem_recebe=regras.nomes_quem_recebe(musica['respostas']),
                            tem_video=VIDEOCLIPE in recursos, legenda_video=config.LEGENDA_VIDEO,
                            max_fotos=servicos().video.max_fotos, whatsapp_ativo=idiomas.whatsapp_ativo(_idioma()),
                            # o agendado é gravado no horário de Brasília; a tela mostra no fuso do idioma e, onde a
@@ -606,7 +608,7 @@ def api_presente(guid):
             quando = quando.astimezone(ZoneInfo(idiomas.cfg(idiomas.IDIOMA_PADRAO)['fuso'])).replace(tzinfo=None)
     try:
         uc.agendar_presente(servicos(), guid, dados.get('nome'), dados.get('email'), dados.get('mensagem'), quando,
-                            whatsapp=dados.get('whatsapp'), confirmo=bool(dados.get('confirmo')))
+                            whatsapp=dados.get('whatsapp'), confirmo=bool(dados.get('confirmo')), de=dados.get('de'))
     except Recusa as r:
         return _recusa(r)
     return jsonify(ok=True, agora=quando is None)

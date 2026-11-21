@@ -66,6 +66,9 @@ class RepositorioMemoria:
     def atualizar(self, musica_id, **campos):
         self.musicas[musica_id].update(campos)
 
+    def mudar_de(self, musica_id, de):
+        self.musicas[musica_id]['respostas'] = {**self.musicas[musica_id]['respostas'], 'de': de}
+
     def trocar_status(self, musica_id, de, para):
         if self.musicas[musica_id]['status'] != de:
             return False

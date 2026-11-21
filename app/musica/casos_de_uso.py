@@ -345,12 +345,20 @@ def musica_liberada(s, token):
     return musica, s.repositorio.recursos_do_pedido(musica['pedido_id'])
 
 
+def pode_mudar_de(musica) -> bool:
+    """Quem comprou pode corrigir o "Seu nome" ao agendar a entrega: fora do "Para mim" (lá é a própria pessoa) e só
+    antes de algum canal sair — senão o e-mail e o WhatsApp do mesmo presente diriam remetentes diferentes."""
+    algum_saiu = musica['presente_thread_id'] or musica['presente_wa_status'] in ('enviado', 'entregue')
+    return not algum_saiu and musica['respostas'].get('para_quem') != _quiz.do_idioma(_idioma(musica)).PARA_MIM
+
+
 def pode_qrcode(recursos):
     return QRCODE in recursos
 
 
-def agendar_presente(s, guid, nome, email, mensagem, quando, whatsapp=None, confirmo=False):
-    """Entrega para quem recebe (order bump), por e-mail e/ou WhatsApp. `quando` None = enviar agora."""
+def agendar_presente(s, guid, nome, email, mensagem, quando, whatsapp=None, confirmo=False, de=None):
+    """Entrega para quem recebe (order bump), por e-mail e/ou WhatsApp. `quando` None = enviar agora. `de`: o nome de
+    quem dá o presente, corrigível aqui (vai na mensagem: "<de> fez uma música para você"); vazio mantém o do quiz."""
     _, musica, recursos = compra(s, guid)
     if ENTREGA_EMAIL not in recursos:
         raise Recusa('A entrega para quem vai receber não faz parte desta compra.', 403)
@@ -369,6 +377,11 @@ def agendar_presente(s, guid, nome, email, mensagem, quando, whatsapp=None, conf
         raise Recusa('Confirme que o WhatsApp é de quem vai receber.')
     campos = dict(presente_nome=nome, presente_mensagem=(mensagem or '').strip()[:500] or None, presente_em=quando,
                   presente_enviado_em=None)
+    de = ' '.join((de or '').split())[:80]
+    if de and ('@' in de or any(c.isdigit() for c in de)):
+        raise Recusa('Confira o seu nome.')
+    if de and de != musica['respostas'].get('de') and pode_mudar_de(musica):
+        s.repositorio.mudar_de(musica['id'], de)   # só o campo (JSON_SET): não desfaz uma troca do admin ao mesmo tempo
     # Depois de um canal não chegar, ela corrige e tenta de novo: o canal que já saiu não sai outra vez
     # (_nao_chegou limpa o thread do e-mail devolvido; o WhatsApp só fica 'enviado'/'entregue' depois de sair)
     if not (musica['presente_thread_id'] and not musica['presente_falhou_em']):

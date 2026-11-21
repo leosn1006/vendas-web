@@ -155,6 +155,13 @@ Quando a cliente pede mudança depois de pagar (letra, nome, pronúncia, voz…)
 pronúncia (até 4 pessoas) · 3. Ocasião · 4. Lembranças (3 perguntas guiadas + medidor) · 5. Frase que não pode faltar
 (opcional) · 6. Tom · 7. Estilo (com amostra) · 8. Voz · 9. Seu nome, e-mail e WhatsApp (opcional).
 
+- **"Seu nome" é de quem dá o presente** (`respostas.de`: entra na letra, "Com amor, Patrícia", e na mensagem do
+  presente). Até 20/11/2026 vários compradores puseram ali o nome de quem recebe ("de Rose para Rose", 9 casos
+  corrigidos à mão). Desde então: o rótulo diz "(quem dá o presente)"; se o nome for igual ao de quem recebe
+  (`static/nomes.js`: nome inteiro sem acento, ou "Rose" × "Rose Maria"), o quiz avisa uma vez e segue no segundo toque (pode ser igual mesmo);
+  e na área da compra, ao agendar a entrega, o "Seu nome" aparece para corrigir (fora do "Para mim" e só antes de algum canal sair) — corrige a
+  mensagem, não a letra (essa, só refazendo pelo admin).
+
 - **As opções dependem das anteriores**, tudo em dados no `conteudo/<idioma>/quiz.py`: cada relação tem marcadores (`RELACOES`); cada
   ocasião e tom diz para quem aparece (`para`/`exceto`, tons também `exceto_ocasioes`); as vozes dependem do estilo
   (`VOZES_POR_ESTILO`: dupla só no sertanejo, "com coral" no gospel). Voltar e trocar uma resposta apaga as

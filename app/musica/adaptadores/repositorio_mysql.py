@@ -59,6 +59,10 @@ class RepositorioMysql:
         colunas = ', '.join(f'{nome} = %s' for nome in campos)   # nomes vêm do código, nunca do usuário
         db.execute_query(f"UPDATE musicas SET {colunas} WHERE id = %s", (*campos.values(), musica_id))
 
+    def mudar_de(self, musica_id, de):
+        """Só o "Seu nome" (respostas.de), sem regravar as outras respostas."""
+        db.execute_query("UPDATE musicas SET respostas = JSON_SET(respostas, '$.de', %s) WHERE id = %s", (de, musica_id))
+
     def trocar_status(self, musica_id, de, para):
         """Troca só se ainda estiver no status esperado (evita processar ou gastar crédito em dobro)."""
         return db.execute_query("UPDATE musicas SET status = %s WHERE id = %s AND status = %s",

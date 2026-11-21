@@ -140,7 +140,7 @@
       "pessoa": "Pessoa",
       "tirar": "Tirar",
       "nome": "Nome",
-      "seu_nome": "Seu nome",
+      "seu_nome": "Seu nome (quem dá o presente)",
       "exemplos_nomes": ["Ex.: Helena", "Ex.: Beatriz", "Ex.: Carla", "Ex.: Luiza"],
       "apelido_eu": "Como gosta de ser chamada (opcional)",
       "apelido": "Apelido carinhoso (opcional)",
@@ -158,7 +158,9 @@
       "dica_mic": "Prefere falar? Toque no microfone do teclado do celular e conte do seu jeito.",
       "medidor": ["Comece contando uma lembrança", "Boa! Mais um detalhe deixa a música mais sua", "Ótima! 👏", "Perfeita 💛"],
       "de_exemplo": "Ex.: Patrícia",
-      "dedicatoria": "Vai na dedicatória da música 💛",
+      "dedicatoria_sem_nome": "Vai na dedicatória da música 💛",
+      "dedicatoria": "É o seu nome, não o de {nome}. Vai na dedicatória da música 💛",
+      "aviso_mesmo_nome": "Você colocou o mesmo nome de quem vai receber. Aqui vai o SEU nome, de quem dá o presente. Se for isso mesmo, toque de novo para continuar.",
       "email": "Seu e-mail (é por ele que a música chega)",
       "email_exemplo": "seuemail@exemplo.com",
       "whatsapp": "Seu WhatsApp",
@@ -268,6 +270,7 @@
     "agora": "agora",
     "formato_data": "%d/%m às %H:%M",
     "label_nome": "Nome de quem vai receber",
+    "label_de": "Seu nome (de quem é o presente)",
     "label_whats": "WhatsApp de quem vai receber",
     "whats_exemplo": "(11) 91234-5678",
     "label_email": "E-mail de quem vai receber",
@@ -321,7 +324,8 @@
       "quando": "{data} às {hora}",
       "ok_agora": "Pronto! A música está saindo agora para {nome}. Você recebe um aviso quando chegar.",
       "ok_agendado": "Pronto! Agendado para {nome} em {quando} (horário de Brasília). Você recebe um aviso quando chegar.",
-      "confirmar_agora": "Enviar a música agora?"
+      "confirmar_agora": "Enviar a música agora?",
+      "aviso_mesmo_nome": "Você colocou o mesmo nome de quem vai receber. Em \"Seu nome\" vai o nome de quem dá o presente. Se estiver certo, toque de novo."
     }
   },
 

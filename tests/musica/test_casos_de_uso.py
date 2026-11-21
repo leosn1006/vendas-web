@@ -525,3 +525,37 @@ def test_limite_de_letras_por_dia(s):
 
 def test_webhook_de_outro_provedor_e_ignorado(s):
     assert uc.aviso_do_gerador(s, 'apiframe', b'{}', {}) is False
+
+
+def test_presente_corrige_o_de_ao_agendar(s):
+    """"de Rose para Rose": o comprador pôs o nome de quem recebe no "Seu nome" do quiz e corrige ao agendar."""
+    musica = _com_previa(s)
+    s.repositorio.atualizar(musica['id'], respostas={**musica['respostas'], 'de': 'Helena'})
+    _pagar(s, musica, recursos=('musica', 'entrega_email'))
+    uc.agendar_presente(s, 'g-500', 'Helena', 'lena@exemplo.com', '', None, de='  Euripedes ')
+    assert s.repositorio.por_id(musica['id'])['respostas']['de'] == 'Euripedes'
+    uc.enviar_presentes(s)
+    assert s.notificador.emails[0]['assunto'].startswith('Euripedes fez uma música')
+    s.repositorio.atualizar(musica['id'], presente_enviado_em=None, presente_thread_id=None)   # campo vazio não apaga o "de"
+    uc.agendar_presente(s, 'g-500', 'Helena', 'lena@exemplo.com', '', None, de='')
+    assert s.repositorio.por_id(musica['id'])['respostas']['de'] == 'Euripedes'
+
+
+def test_presente_para_mim_nao_muda_o_de(s):
+    musica = _com_previa(s)
+    s.repositorio.atualizar(musica['id'], respostas={**musica['respostas'], 'para_quem': 'Para mim', 'de': 'Helena'})
+    _pagar(s, musica, recursos=('musica', 'entrega_email'))
+    assert uc.pode_mudar_de(s.repositorio.por_id(musica['id'])) is False
+    uc.agendar_presente(s, 'g-500', 'Helena', 'lena@exemplo.com', '', None, de='Outra')
+    assert s.repositorio.por_id(musica['id'])['respostas']['de'] == 'Helena'
+
+
+def test_presente_nao_muda_o_de_depois_que_um_canal_saiu_e_recusa_nome_estranho(s):
+    musica = _com_previa(s)
+    _pagar(s, musica, recursos=('musica', 'entrega_email'))
+    with pytest.raises(Recusa, match='seu nome'):
+        uc.agendar_presente(s, 'g-500', 'Helena', 'lena@exemplo.com', '', None, de='11 99999-9999')
+    s.repositorio.atualizar(musica['id'], presente_wa_status='falhou', presente_thread_id='t-1')   # o e-mail já saiu
+    assert uc.pode_mudar_de(s.repositorio.por_id(musica['id'])) is False
+    uc.agendar_presente(s, 'g-500', 'Helena', 'lena@exemplo.com', '', None, de='Outro')
+    assert s.repositorio.por_id(musica['id'])['respostas']['de'] == 'Patrícia'

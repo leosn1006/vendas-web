@@ -219,7 +219,7 @@
       "pessoa": "Persona",
       "tirar": "Quitar",
       "nome": "Nombre",
-      "seu_nome": "Tu nombre",
+      "seu_nome": "Tu nombre (quien da el regalo)",
       "exemplos_nomes": ["Ej.: Guadalupe", "Ej.: Fernanda", "Ej.: Carmen", "Ej.: Sofía"],
       "apelido_eu": "Cómo te gusta que te digan (opcional)",
       "apelido": "Apodo de cariño (opcional)",
@@ -237,7 +237,9 @@
       "dica_mic": "¿Prefieres hablar? Toca el micrófono del teclado de tu celular y cuéntalo a tu manera.",
       "medidor": ["Empieza contando un recuerdo", "¡Muy bien! Un detalle más la hace más tuya", "¡Excelente! 👏", "¡Perfecta! 💛"],
       "de_exemplo": "Ej.: Patricia",
-      "dedicatoria": "Va en la dedicatoria de la canción 💛",
+      "dedicatoria_sem_nome": "Va en la dedicatoria de la canción 💛",
+      "dedicatoria": "Es tu nombre, no el de {nome}. Va en la dedicatoria de la canción 💛",
+      "aviso_mesmo_nome": "Pusiste el mismo nombre de quien la va a recibir. Aquí va TU nombre, de quien da el regalo. Si es correcto, toca de nuevo para continuar.",
       "email": "Tu correo (ahí te llega la canción)",
       "email_exemplo": "tucorreo@ejemplo.com",
       "whatsapp": "Tu WhatsApp",
@@ -347,6 +349,7 @@
     "agora": "ahorita",
     "formato_data": "%d/%m a las %H:%M",
     "label_nome": "Nombre de quien la va a recibir",
+    "label_de": "Tu nombre (de quién es el regalo)",
     "label_whats": "WhatsApp de quien la va a recibir",
     "whats_exemplo": "55 1234 5678",
     "label_email": "Correo de quien la va a recibir",
@@ -400,7 +403,8 @@
       "quando": "{data} a las {hora}",
       "ok_agora": "¡Listo! La canción ya va en camino para {nome}. Te avisamos cuando llegue.",
       "ok_agendado": "¡Listo! Programado para {nome} el {quando} (en tu horario). Te avisamos cuando llegue.",
-      "confirmar_agora": "¿Mandar la canción ahorita?"
+      "confirmar_agora": "¿Mandar la canción ahorita?",
+      "aviso_mesmo_nome": "Pusiste el mismo nombre de quien la va a recibir. En \"Tu nombre\" va el nombre de quien da el regalo. Si es correcto, toca de nuevo."
     }
   },
 

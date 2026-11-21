@@ -80,6 +80,7 @@ label + .campo{margin-top:8px}
 </div>
 {% endblock %}
 {% block script %}
+<script src="{{ url_for('musica.static', filename='nomes.js') }}"></script>
 <script>
 const PERGUNTAS = {{ perguntas|tojson }};
 const AMOSTRAS = {{ amostras|tojson }};
@@ -103,6 +104,7 @@ const ehGrupo = () => respostas.para_quem === REGRAS.mais_de_uma;
 const ehEu = () => respostas.para_quem === REGRAS.para_mim;
 function juntar(nomes){ nomes = nomes.filter(Boolean); return nomes.length < 2 ? (nomes[0] || "") : nomes.slice(0, -1).join(", ") + T.e + nomes.at(-1); }
 const nomeQuemRecebe = () => juntar(pessoas.map(p => (p.apelido || p.nome || "").trim()));
+let avisadoDe = null;   // nomes iguais: avisa uma vez (static/nomes.js)
 
 // Troca {nome}, {da_sua_pessoa}, {ela}... pelas respostas já dadas (ver quiz.py). A gramática é a do idioma
 // (textos.json, quiz.js.gramatica): f/m pelo gênero da relação, g = grupo, x = indefinido.
@@ -233,7 +235,7 @@ function atualizarMedidor(){
 function htmlContato(){
   return (ehEu() ? "" : `<label for="de">${T.seu_nome}</label>
       <input class="campo" id="de" maxlength="80" autocomplete="given-name" placeholder="${esc(T.de_exemplo)}" value="${esc(contato.de)}">
-      <p class="ajuda" style="font-size:.95rem;margin-top:6px">${T.dedicatoria}</p>`)
+      <p class="ajuda" style="font-size:.95rem;margin-top:6px">${esc(nomeQuemRecebe() ? personalizar(T.dedicatoria) : T.dedicatoria_sem_nome)}</p>`)
     + `<label for="email">${T.email}</label>
       <input class="campo" id="email" type="email" inputmode="email" autocomplete="email" enterkeyhint="next" placeholder="${esc(T.email_exemplo)}" value="${esc(contato.email)}">
       <label for="whatsapp">${T.whatsapp} <span class="suave" style="font-weight:500">${T.se_quiser}</span></label>
@@ -366,6 +368,11 @@ function celularOk(texto){
 async function enviar(){
   contato = {de: ehEu() ? "" : (el("de").value || "").trim(), email: el("email").value.trim(), whatsapp: el("whatsapp").value.trim()};
   if (!ehEu() && !contato.de) return mostrarErro(T.erro_de);
+  // "de Rose para Rose": pôs o nome de quem recebe no "Seu nome". Avisa uma vez; tocando de novo, segue
+  // (às vezes os nomes são iguais mesmo). O "de" entra na letra, então tem de estar certo antes de escrever.
+  if (!ehEu() && avisadoDe !== contato.de && MesmoNome(contato.de, ...pessoas.flatMap(p => [p.nome, p.apelido]))) {
+    avisadoDe = contato.de; el("de").focus(); return mostrarErro(T.aviso_mesmo_nome);
+  }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contato.email)) return mostrarErro(T.erro_email);
   if (contato.whatsapp && !celularOk(contato.whatsapp)) return mostrarErro(T.erro_celular);
   guardar();

@@ -106,6 +106,9 @@ video{width:100%;max-height:70vh;border-radius:16px;background:#000}
       {% endif %}
       <div class="grade-agenda" style="margin-top:14px">
         <div><label for="pr-nome">{{ t('compra.label_nome') }}</label><input class="campo" id="pr-nome" maxlength="120" value="{{ musica.presente_nome or para }}"></div>
+        {% if de_editavel %}
+        <div><label for="pr-de">{{ t('compra.label_de') }}</label><input class="campo" id="pr-de" maxlength="80" autocomplete="given-name" value="{{ musica.respostas.de or '' }}"></div>
+        {% endif %}
         {% if whatsapp_ativo %}
         <div><label for="pr-whats">{{ t('compra.label_whats') }}</label><input class="campo" id="pr-whats" type="tel" inputmode="tel" placeholder="{{ t('compra.whats_exemplo') }}" value="{{ '+' ~ musica.presente_whatsapp if musica.presente_whatsapp else '' }}"></div>
         {% endif %}
@@ -174,6 +177,7 @@ video{width:100%;max-height:70vh;border-radius:16px;background:#000}
 </div>
 {% endblock %}
 {% block script %}
+<script src="{{ url_for('musica.static', filename='nomes.js') }}"></script>
 <script>
 const T = {{ textos.compra.js|tojson }};   // as frases do idioma (conteudo/<idioma>/textos.json, compra.js)
 const fmt = (texto, valores) => texto.replace(/\{(\w+)\}/g, (m, k) => k in valores ? String(valores[k]) : m);
@@ -251,10 +255,19 @@ function quandoComFuso(dia, hora){
   const minutos = -new Date(`${dia}T${hora}:00`).getTimezoneOffset(), sinal = minutos < 0 ? "-" : "+", a = Math.abs(minutos);
   return `${dia}T${hora}:00${sinal}${String(Math.floor(a / 60)).padStart(2, "0")}:${String(a % 60).padStart(2, "0")}`;
 }
+// Nomes de quem recebe (quiz) para o aviso de "Seu nome" igual (static/nomes.js); avisa uma vez.
+const NOMES_QUEM_RECEBE = {{ nomes_quem_recebe|tojson }};
+let avisadoDe = null;
 async function enviarPresente(agora){
   const erro = document.getElementById("pr-erro"); erro.style.display = "none";
   const dia = document.getElementById("pr-dia").value, hora = document.getElementById("pr-hora").value;
   if (!agora && !(dia && hora)) { erro.textContent = T.escolha_dia; erro.style.display = "block"; return; }
+  // "de Rose para Rose": o comprador pôs o nome de quem recebe no "Seu nome". Avisa uma vez; tocando de novo, segue.
+  const de = ((document.getElementById("pr-de") || {}).value || "").trim();
+  if (de && avisadoDe !== de && MesmoNome(de, document.getElementById("pr-nome").value, ...NOMES_QUEM_RECEBE)) {
+    avisadoDe = de; erro.textContent = T.aviso_mesmo_nome; erro.style.display = "block";
+    document.getElementById("pr-de").focus(); return;
+  }
   const botao = document.getElementById(agora ? "pr-agora" : "pr-agendar"), rotulo = botao.innerHTML;
   const botoes = [document.getElementById("pr-agendar"), document.getElementById("pr-agora")];
   botoes.forEach(b => b.disabled = true);
@@ -262,7 +275,7 @@ async function enviarPresente(agora){
   const voltar = () => { botoes.forEach(b => b.disabled = false); botao.innerHTML = rotulo; };
   const r = await fetch("{{ rota('api_presente', guid=guid) }}", {method: "POST", headers: {"Content-Type": "application/json"},
     body: JSON.stringify({nome: document.getElementById("pr-nome").value, email: document.getElementById("pr-email").value,
-                          whatsapp: (document.getElementById("pr-whats") || {}).value || "",
+                          whatsapp: (document.getElementById("pr-whats") || {}).value || "", de,
                           confirmo: !!(document.getElementById("pr-confirmo") || {}).checked,
                           mensagem: document.getElementById("pr-mensagem").value, agora, quando: agora ? "" : quandoComFuso(dia, hora)})})
     .catch(() => null);
