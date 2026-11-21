@@ -67,8 +67,14 @@ class _Aba:
     def __init__(self):
         self.linhas = []
 
+    id = 0
+    spreadsheet = None
+
     def row_values(self, _):
         return ['cabeçalho']
+
+    def col_values(self, _):
+        return ['Conversion Time']
 
     def append_rows(self, linhas, value_input_option=None):
         self.linhas.extend(linhas)

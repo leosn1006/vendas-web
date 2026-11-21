@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from collections import defaultdict
 
@@ -118,6 +118,52 @@ def valor_conversao(venda) -> str:
     return VALOR_CONVERSAO_FIXO
 
 
+_DIAS_NA_PLANILHA = 60  # o Google Ads recusa conversão de clique com mais de 90 dias, e linhas assim travam a importação
+
+
+def _data_da_linha(valor: str):
+    """'2026-10-30 12:00:00 America/Sao_Paulo' (o formato que gravamos) ou só a data. None se não der para ler."""
+    texto = (valor or '').strip()
+    for tamanho, formato in ((19, "%Y-%m-%d %H:%M:%S"), (10, "%Y-%m-%d")):
+        try:
+            return datetime.strptime(texto[:tamanho], formato)
+        except ValueError:
+            continue
+    return None
+
+
+def _linhas_antigas(valores: list, limite: datetime) -> list:
+    """Trechos (início, fim) de linhas com Conversion Time anterior ao limite, numerados como na planilha (1 = cabeçalho,
+    que nunca sai) e do fim para o começo, para apagar um a um sem deslocar os seguintes. Linha vazia ou com data
+    ilegível fica: nunca apaga o que não entende. Não supõe ordem cronológica."""
+    trechos = []
+    for numero, valor in enumerate(valores[1:], start=2):
+        data = _data_da_linha(valor)
+        if data is None or data >= limite:
+            continue
+        if trechos and trechos[-1][1] == numero - 1:
+            trechos[-1][1] = numero
+        else:
+            trechos.append([numero, numero])
+    return [tuple(t) for t in reversed(trechos)]
+
+
+def _limpar_linhas_antigas(ws, agora_sp: datetime) -> tuple:
+    """Apaga da aba as conversões com mais de _DIAS_NA_PLANILHA dias, numa única chamada. Devolve quantas saíram e
+    quantas ficaram por ter a data ilegível."""
+    limite = agora_sp.replace(tzinfo=None) - timedelta(days=_DIAS_NA_PLANILHA)
+    valores = ws.col_values(3)
+    ilegiveis = sum(1 for v in valores[1:] if (v or '').strip() and _data_da_linha(v) is None)
+    trechos = _linhas_antigas(valores, limite)
+    if not trechos:
+        return 0, ilegiveis
+    ws.spreadsheet.batch_update({'requests': [
+        {'deleteDimension': {'range': {'sheetId': ws.id, 'dimension': 'ROWS', 'startIndex': inicio - 1, 'endIndex': fim}}}
+        for inicio, fim in trechos
+    ]})
+    return sum(fim - inicio + 1 for inicio, fim in trechos), ilegiveis
+
+
 def exportar_para_google_sheets():
     logger.info("=" * 120)
     logger.info("[FLUXO-GOOGLE-SHEETS] 🎬 Iniciando exportação de GCLIDs para Google Sheets")
@@ -155,6 +201,7 @@ def exportar_para_google_sheets():
             if not ws.row_values(1):
                 ws.insert_row(HEADER, index=1)
 
+
             rows = []
             ids = []
             for venda in grupo_vendas:
@@ -180,6 +227,17 @@ def exportar_para_google_sheets():
                 marcar_venda_como_enviada_ao_google_ads(venda_id)
 
             logger.info(f"[FLUXO-GOOGLE-SHEETS] ✅ {len(rows)} GCLIDs exportados — produto {produto_id} / aba '{sheet_name}'")
+
+            # Depois de acrescentar: com as vendas novas na aba, a limpeza nunca apaga todas as linhas abaixo do
+            # cabeçalho (com o cabeçalho congelado, a planilha recusaria).
+            try:
+                removidas, ilegiveis = _limpar_linhas_antigas(ws, now_sp)
+                if removidas:
+                    logger.info(f"[FLUXO-GOOGLE-SHEETS] 🧹 {removidas} linhas com mais de {_DIAS_NA_PLANILHA} dias removidas — produto {produto_id} / aba '{sheet_name}'")
+                if ilegiveis:
+                    logger.warning(f"[FLUXO-GOOGLE-SHEETS] ⚠️ {ilegiveis} linhas com Conversion Time ilegível mantidas — produto {produto_id} / aba '{sheet_name}'")
+            except Exception as e:  # a limpeza não pode afetar as vendas já enviadas
+                logger.error(f"[FLUXO-GOOGLE-SHEETS] ❌ Erro ao limpar linhas antigas — produto {produto_id} / aba '{sheet_name}': {e}\n{traceback.format_exc()}")
 
         except Exception as e:
             logger.error(f"[FLUXO-GOOGLE-SHEETS] ❌ Erro produto {produto_id} / planilha {spreadsheet_id}: {e}\n{traceback.format_exc()}")

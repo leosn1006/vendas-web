@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """
+DESATUALIZADO (21/11/2026): o fluxo diário apaga da planilha as conversões com mais de 60 dias, porque linhas com mais
+de 3 meses travam a importação do Google Ads, e o valor da conversão hoje sai de valor_conversao(). Este script repõe o
+histórico inteiro com a regra antiga de valor: não use sem revisar.
+
 Reenvia (backfill) para o Google Sheets os pedidos de um produto/DNS que JÁ
 tinham sido enviados anteriormente (data_envio_google_ads IS NOT NULL).
 Útil para repopular uma planilha que foi limpa manualmente.
