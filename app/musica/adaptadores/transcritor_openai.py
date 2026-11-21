@@ -30,5 +30,8 @@ class DitadoOpenAI:
 class DitadoSimulado:
     """Dev e testes: não chama a OpenAI."""
 
+    FRASES = {'pt': 'A gente se conheceu numa festa junina e dançamos a quadrilha juntos.',
+              'es': 'Nos conocimos en una kermés y bailamos toda la noche.'}
+
     def texto(self, arquivo, idioma: str = 'pt', dica: str = '') -> str:
-        return 'A gente se conheceu numa festa junina e dançamos a quadrilha juntos.'
+        return self.FRASES.get(idioma, self.FRASES['pt'])
