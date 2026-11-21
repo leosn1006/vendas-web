@@ -80,16 +80,10 @@ def _log_erro_resposta(resp: requests.Response) -> None:
         logger.error(f'[CIELO] Erro HTTP {resp.status_code} (corpo não é JSON)')
 
 
-_cliente_redis = None
-
-
 def _redis():
-    """Cliente Redis único do processo (o from_url cria um pool de conexões — não recriar a cada chamada)."""
-    global _cliente_redis
-    if _cliente_redis is None:
-        import redis
-        _cliente_redis = redis.from_url(os.getenv('REDIS_URL', 'redis://redis:6379/0'), decode_responses=True)
-    return _cliente_redis
+    """Cliente Redis único do processo (redis_cliente.py)."""
+    from redis_cliente import cliente
+    return cliente()
 
 
 def _oauth_token(renovar: bool = False) -> str:

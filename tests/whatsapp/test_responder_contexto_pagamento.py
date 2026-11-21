@@ -25,7 +25,19 @@ def cenario(monkeypatch):
 
     monkeypatch.setattr(fluxo_responder, 'get_pedido', lambda _id: estado['pedido_banco'])
     monkeypatch.setattr(fluxo_responder, 'tem_notificacao_em_analise', lambda _p: False)
-    monkeypatch.setattr(fluxo_responder, 'tem_notificacao_em_analise_por_motivo', lambda _p, _m: False)
+    cvv_reservados = set()
+
+    def reservar_cvv(pid):
+        if pid in cvv_reservados:
+            return False
+        cvv_reservados.add(pid)
+        return True
+    monkeypatch.setattr(fluxo_responder, '_reservar_cvv', reservar_cvv)
+    monkeypatch.setattr(fluxo_responder, '_liberar_cvv', lambda pid: cvv_reservados.discard(pid))
+    alertas_abertos = set()
+    monkeypatch.setattr(fluxo_responder, 'tem_notificacao_em_analise_por_motivo',
+                        lambda pid, motivo: (pid, motivo) in alertas_abertos)
+    estado['alertas_abertos'], estado['cvv_reservados'] = alertas_abertos, cvv_reservados
     monkeypatch.setattr(fluxo_responder, 'contar_total_mensagens_pedido', lambda _p: 1)
     monkeypatch.setattr(fluxo_responder, 'buscar_ultima_mensagem_recebida_por_pedido', lambda *_a, **_k: None)
     monkeypatch.setattr(fluxo_responder, 'get_produto_by_id', lambda _p: {'prompt_vendas': 'x', 'nome': 'P'})
@@ -106,25 +118,77 @@ def test_pagamento_informado_agenda_o_fluxo_do_comprovante_sem_travar(cenario):
     assert args[1] == 'wamid.C' and args[2] == 20.0
 
 
-def test_risco_vida_com_pedido_em_analise_responde_com_o_cvv(cenario, monkeypatch):
-    """Pedido em análise silencia a IA; risco à vida é exceção e não pode ficar sem resposta."""
-    monkeypatch.setattr(fluxo_responder, 'tem_notificacao_em_analise', lambda _p: True)
-    cenario['pedido_banco'] = {'id': 7, 'estado_id': 0, 'valor_pago': 10}
-    fluxo_responder.executar(PEDIDO_WEBHOOK, _webhook('tentei tirar minha vida'))
+@pytest.mark.parametrize('em_analise', [False, True])
+def test_fala_explicita_de_suicidio_responde_com_carinho_e_cvv_sem_chamar_a_ia(cenario, monkeypatch, em_analise):
+    """Lista estrita do código decide (não a IA), antes de tudo, inclusive com o pedido em análise pelo admin."""
+    monkeypatch.setattr(fluxo_responder, 'tem_notificacao_em_analise', lambda _p: em_analise)
+    cenario['pedido_banco'] = {'id': 7, 'estado_id': 4, 'valor_pago': 0}
+    fluxo_responder.executar(PEDIDO_WEBHOOK, _webhook('perdi a confiança da família porque tentei tira a minha vida'))
     assert cenario['ia_chamada'] == 0
     [(nome, args, _)] = cenario['agendadas']
-    assert nome == 'tasks.enviar_resposta_cliente' and '188' in args[1]
+    assert nome == 'tasks.enviar_resposta_cliente' and args[1] == agente.MENSAGEM_RISCO_VIDA_CVV
+    assert '188' in args[1]
     assert cenario['notificacoes'] == [('risco_vida', True)]  # grava mesmo com outra notificação aberta
 
 
-def test_risco_vida_ja_alertado_nao_repete_cvv_nem_notificacao(cenario, monkeypatch):
-    """Cada CVV é uma mensagem cobrada e cada notificação polui a fila: só na primeira vez."""
+def test_fala_explicita_com_comprovante_em_analise_nao_espera(cenario):
+    cenario['pedido_banco'] = {'id': 7, 'estado_id': 13, 'valor_pago': 0}
+    fluxo_responder.executar(PEDIDO_WEBHOOK, _webhook('quero morrer'))
+    [(nome, _args, _)] = cenario['agendadas']
+    assert nome == 'tasks.enviar_resposta_cliente'
+
+
+def test_cvv_sai_uma_vez_e_alerta_nao_duplica_enquanto_aberto(cenario, monkeypatch):
+    """Cada resposta é uma mensagem cobrada e cada notificação polui a fila."""
     monkeypatch.setattr(fluxo_responder, 'tem_notificacao_em_analise', lambda _p: True)
-    monkeypatch.setattr(fluxo_responder, 'tem_notificacao_em_analise_por_motivo', lambda _p, m: m == 'risco_vida')
     cenario['pedido_banco'] = {'id': 7, 'estado_id': 0, 'valor_pago': 10}
     fluxo_responder.executar(PEDIDO_WEBHOOK, _webhook('quero morrer'))
-    assert cenario['agendadas'] == [] and cenario['notificacoes'] == []
-    assert len(cenario['salvas']) == 1
+    cenario['alertas_abertos'].add((7, 'risco_vida'))   # o alerta criado acima continua aberto
+    fluxo_responder.executar(PEDIDO_WEBHOOK, _webhook('vou me matar'))
+    assert len(cenario['agendadas']) == 1 and len(cenario['notificacoes']) == 1
+    assert len(cenario['salvas']) == 2
+
+
+def test_alerta_resolvido_nova_fala_gera_novo_alerta_sem_repetir_o_cvv(cenario):
+    """O humano resolveu o alerta; uma fala mais grave depois não pode passar despercebida."""
+    cenario['pedido_banco'] = {'id': 7, 'estado_id': 4, 'valor_pago': 0}
+    fluxo_responder.executar(PEDIDO_WEBHOOK, _webhook('quero morrer'))
+    fluxo_responder.executar(PEDIDO_WEBHOOK, _webhook('tentei tirar a minha vida'))  # nenhum alerta aberto
+    assert len(cenario['notificacoes']) == 2
+    assert len(cenario['agendadas']) == 1   # o CVV não repete em 24 h
+
+
+def test_falha_ao_agendar_libera_a_trava_do_cvv(cenario, monkeypatch):
+    cenario['pedido_banco'] = {'id': 7, 'estado_id': 4, 'valor_pago': 0}
+    monkeypatch.setattr(fluxo_responder.celery_app, 'send_task',
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError('broker')))
+    with pytest.raises(RuntimeError):
+        fluxo_responder.executar(PEDIDO_WEBHOOK, _webhook('quero morrer'))
+    assert 7 not in cenario['cvv_reservados']   # a próxima mensagem tenta de novo
+
+
+def test_redis_fora_do_ar_envia_cvv(monkeypatch):
+    """Sem Redis, repetir é melhor que não enviar (o alerta continua deduplicado pelo banco)."""
+    import redis_cliente
+    monkeypatch.setattr(redis_cliente, 'cliente', lambda: (_ for _ in ()).throw(RuntimeError('redis')))
+    assert fluxo_responder._reservar_cvv(7) is True
+
+
+def test_desabafo_escalado_pela_ia_nao_impede_o_cvv_depois(cenario, monkeypatch):
+    """A IA escalou um desabafo (só carinho, notificação aberta); a fala explícita depois ainda recebe o CVV."""
+    monkeypatch.setattr(fluxo_responder, 'tem_notificacao_em_analise', lambda _p: True)
+    cenario['pedido_banco'] = {'id': 7, 'estado_id': 4, 'valor_pago': 0}
+    fluxo_responder.executar(PEDIDO_WEBHOOK, _webhook('penso em me matar'))
+    [(_nome, args, _)] = cenario['agendadas']
+    assert args[1] == agente.MENSAGEM_RISCO_VIDA_CVV
+
+
+def test_desabafo_de_saude_com_pedido_em_analise_continua_silenciado(cenario, monkeypatch):
+    """Sem palavras explícitas e com humano já atendendo: não responde (nem CVV, nem IA)."""
+    monkeypatch.setattr(fluxo_responder, 'tem_notificacao_em_analise', lambda _p: True)
+    cenario['pedido_banco'] = {'id': 7, 'estado_id': 4, 'valor_pago': 0}
+    fluxo_responder.executar(PEDIDO_WEBHOOK, _webhook('Hoje a pressão está alta e a diabetes também'))
+    assert cenario['agendadas'] == [] and cenario['ia_chamada'] == 0
 
 
 def test_pedido_em_analise_sem_risco_continua_silenciado(cenario, monkeypatch):
@@ -134,13 +198,13 @@ def test_pedido_em_analise_sem_risco_continua_silenciado(cenario, monkeypatch):
     assert cenario['agendadas'] == [] and cenario['ia_chamada'] == 0
 
 
-def test_risco_vida_escala_e_responde_com_o_cvv(cenario):
+def test_risco_vida_escala_e_responde_com_carinho(cenario):
     cenario['pedido_banco'] = {'id': 7, 'estado_id': 3, 'valor_pago': 0}
-    cenario['decisao'] = {'acao': 'risco_vida', 'texto': agente.MENSAGEM_RISCO_VIDA, 'valor': None}
+    cenario['decisao'] = {'acao': 'risco_vida', 'texto': 'Querida, estou aqui com você 💛', 'valor': None}
     fluxo_responder.executar(PEDIDO_WEBHOOK, _webhook('não aguento mais, quero sumir'))
     [(nome, args, _)] = cenario['agendadas']
     assert nome == 'tasks.enviar_resposta_cliente'
-    assert '188' in args[1]
+    assert args[1] == 'Querida, estou aqui com você 💛'
 
 
 @pytest.mark.parametrize('acao', ['escalar', 'silenciar'])
@@ -252,11 +316,22 @@ def test_tool_nao_responder_silencia(openai_falso):
     assert d['acao'] == 'silenciar'
 
 
-def test_tool_risco_vida_notifica_e_devolve_mensagem_fixa(openai_falso):
+def test_tool_risco_vida_notifica_e_usa_o_carinho_escrito_pela_ia(openai_falso):
+    """Desde nov/2026: resposta carinhosa no tom da persona e escala; CVV/SAMU é decisão humana."""
+    _, notificacoes, resposta = openai_falso
+    resposta['r'] = _resposta_openai('notificar_admin',
+                                     '{"motivo": "risco_vida", "resumo": "x", "resposta": "Querida, estou aqui 💛"}')
+    d = agente.responder_cliente_com_historico_produto('...', [], {'prompt_vendas': 'x'}, NAO_PAGO)
+    assert d == {'acao': 'risco_vida', 'texto': 'Querida, estou aqui 💛', 'valor': None}
+    assert notificacoes and notificacoes[0][2] == 'risco_vida'
+
+
+def test_tool_risco_vida_sem_texto_da_ia_usa_mensagem_fixa_sem_cvv(openai_falso):
     _, notificacoes, resposta = openai_falso
     resposta['r'] = _resposta_openai('notificar_admin', '{"motivo": "risco_vida", "resumo": "x"}')
     d = agente.responder_cliente_com_historico_produto('...', [], {'prompt_vendas': 'x'}, NAO_PAGO)
-    assert d['acao'] == 'risco_vida' and '188' in d['texto']
+    assert d['acao'] == 'risco_vida' and d['texto'] == agente.MENSAGEM_RISCO_VIDA
+    assert '188' not in d['texto'] and '192' not in d['texto']
     assert notificacoes and notificacoes[0][2] == 'risco_vida'
 
 
@@ -306,3 +381,26 @@ def test_ferramenta_desconhecida_silencia_sem_escalar(openai_falso):
     resposta['r'] = _resposta_openai('ferramenta_inventada', '{}')
     d = agente.responder_cliente_com_historico_produto('oi', [], {'prompt_vendas': 'x'}, NAO_PAGO)
     assert d['acao'] == 'silenciar' and notificacoes == []
+
+
+@pytest.mark.parametrize('texto', [
+    'Querida, que Deus te dê forças 💛 estou aqui torcendo por você.',
+    'Não deixe a esperança se apagar, querida 💛',   # "apagar" não é "pagar"
+])
+def test_carinho_da_ia_valido_passa(texto):
+    assert agente._carinho_valido(texto) == texto
+
+
+@pytest.mark.parametrize('texto', [
+    'Ligue 188 se precisar', 'Nossa equipe vai falar com você', 'Quando puder, faça o Pix', 'x' * 401, '', None,
+    'Fica tranquila, alguém daqui vai conversar com você logo', 'Vamos entrar em contato com você',
+])
+def test_carinho_da_ia_com_o_que_a_ferramenta_proibe_vira_a_mensagem_fixa(texto):
+    assert agente._carinho_valido(texto) is None
+
+
+def test_campo_resposta_so_na_ferramenta_do_whatsapp():
+    """O agente de e-mail usa _TOOL_NOTIFICAR_ADMIN e não envia texto ao escalar."""
+    props_email = agente._TOOL_NOTIFICAR_ADMIN['function']['parameters']['properties']
+    props_wpp = agente._TOOL_NOTIFICAR_ADMIN_WHATSAPP['function']['parameters']['properties']
+    assert 'resposta' not in props_email and 'resposta' in props_wpp

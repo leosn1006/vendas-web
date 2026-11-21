@@ -49,12 +49,24 @@ _EXPRESSOES_PAGAMENTO = [
 _SAUDACOES = [r'bom dia', r'boa tarde', r'boa noite', r'tudo bem', r'tudo bom', r'querida', r'amiga', r'flor',
               r'meu bem', r'minha linda', r'linda']
 
-# Risco à vida: checagem determinística usada quando a IA está silenciada (pedido em análise pelo admin). Fora
-# disso, quem decide é a IA (ferramenta notificar_admin, motivo 'risco_vida').
+# Risco à vida EXPLÍCITO: decide, sem a IA, quando a resposta inclui o CVV (o responder checa antes de tudo, inclusive
+# com o pedido em análise). A IA também escala desabafos (saúde, vida difícil) como 'risco_vida', mas nesses a
+# resposta é só carinho: ela exagera ("pressão alta e diabetes" virou risco). Por isso a lista é estrita, em 1ª
+# pessoa e testada com frases reais, incluindo erros de escrita comuns ("tentei tira a minha vida", pedido 459672).
+# Ficam de fora de propósito: exagero ("esse doce vai me matar", "se comer isso vou morrer", "prefiro morrer do que
+# pagar"), terceiros ("meu marido quer me matar" é violência: a IA escala) e "não aguento mais essa vida".
+_INTENCAO = (r'(quero|queria|quis|vou|tentei|tento|pensei em|penso em|pensando em|vontade de|desejo de)'
+             r'( muito| de novo)?')
 _RE_RISCO_VIDA = re.compile(
-    r'suicid|\bme matar\b|\bvou me matar|tirar (a )?(minha )?propria vida|tirar (a )?minha vida|'
-    r'acabar com (a )?minha vida|\bquero morrer\b(?! de)|vontade de morrer\b(?! de)|nao quero (mais )?viver|'
-    r'me machucar de proposito')
+    r'suicid'
+    rf'|\b{_INTENCAO} me mata(r)?\b(?! de\b)'
+    r'|\btira(r)? (a )?minha (propria )?vida\b'
+    rf'|\b{_INTENCAO} tirar a (minha )?propria vida\b'
+    r'|\bacabar com (a )?minha (propria )?vida\b'
+    r'|\b(quero|queria) morrer\b(?! de\b)|\bvontade de morrer\b(?! de\b)'
+    r'|\bnao (quero|aguento) mais viver\b|\bnao quero viver\b'
+    r'|\bme (machucar|cortar) de proposito\b|\bme enforcar\b'
+)
 
 # Entre duas expressões precisa haver espaço (ou " e "): sem isso "tata" ou "okta" passariam como "ta"+"ta".
 _SEPARADOR = r'(?:\s+(?:e\s+|eu\s+)?)'
@@ -70,10 +82,10 @@ _RE_SEMPRE = _compilar(_EXPRESSOES)
 _RE_PAGO = _compilar(_EXPRESSOES + _EXPRESSOES_PAGAMENTO)
 
 
-def _normalizar(texto: str) -> str:
+def _normalizar(texto: str, separador: str = ' ') -> str:
     sem_acento = ''.join(c for c in unicodedata.normalize('NFKD', texto) if not unicodedata.combining(c))
-    # Tudo que não é letra/número/espaço (emoji, pontuação, símbolos) vira espaço.
-    so_palavras = re.sub(r'[^\w\s]|_', ' ', sem_acento.lower())
+    # Tudo que não é letra/número/espaço (emoji, pontuação, símbolos) vira o separador.
+    so_palavras = re.sub(r'[^\w\s]|_', separador, sem_acento.lower())
     return re.sub(r'\s+', ' ', so_palavras).strip()
 
 
@@ -97,4 +109,7 @@ def mensagem_sem_resposta(texto: str | None, pedido_pago: bool = False) -> bool:
 
 
 def fala_em_risco_a_vida(texto: str | None) -> bool:
-    return bool(texto) and bool(_RE_RISCO_VIDA.search(_normalizar(texto)))
+    if not texto:
+        return False
+    # Pontuação vira " | " (não espaço): "quero morrer, de verdade" não pode cair no "(?! de)" de "morrer de rir".
+    return bool(_RE_RISCO_VIDA.search(_normalizar(texto, separador=' | ')))

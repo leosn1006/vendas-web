@@ -101,8 +101,9 @@ Mensagem chega via Celery
      ▼              ▼              ▼                   ▼                      ▼
   responder    nao_responder   notificar_admin    risco_vida         registrar_pagamento_informado
   agenda envio  só salva       escala, sem        escala E envia     task confirmar_pagamento_informado
-  (5–8 s)                      resposta           mensagem do CVV    em 30 s: relê, trava 3/4 → 13 e roda
-                                                  (188)              o fluxo do comprovante sem arquivo
+  (5–8 s)                      resposta           só carinho (fala   em 30 s: relê, trava 3/4 → 13 e roda
+                                                  explícita: antes,  o fluxo do comprovante sem arquivo
+                                                  com CVV)
 ```
 
 Regras de pagamento (nov/2026): a IA **nunca pede comprovante** nem nome do pagador/valor/horário (o bloco de
@@ -112,8 +113,13 @@ preço do produto), com as mesmas ações do fluxo Comprovante (`confirmar_pagam
 `fluxo_comprovante_dinamico.py`). A trava é feita só na task, depois de 30 s: se a imagem do comprovante chegar
 nesse meio-tempo, ela tem prioridade. Pedidos do site (100x) nunca recebem essa ferramenta.
 
-Risco à vida com pedido já em análise (IA silenciada): a checagem determinística `fala_em_risco_a_vida` envia o
-CVV mesmo assim.
+Risco à vida, em dois níveis (nov/2026):
+- **Fala explícita** (lista estrita `fala_em_risco_a_vida`, checada antes de tudo, inclusive com o pedido em análise
+  ou com comprovante em análise): resposta fixa com carinho + CVV (188). O alerta (`risco_vida`) é criado mesmo
+  havendo outra notificação aberta e não duplica enquanto houver um `risco_vida` aberto; resolvido, uma fala nova
+  gera outro. O texto do CVV sai uma vez por pedido a cada 24 h (trava no Redis).
+- **Só a IA acha que é risco** (desabafo de saúde ou da vida): ela escala e responde só com carinho, sem CVV (texto
+  dela, validado: curto, sem telefone, pagamento ou promessa de contato; senão vai uma mensagem fixa).
 
 ---
 
@@ -139,4 +145,4 @@ CVV mesmo assim.
 | `loop_excesso_msg` | fluxo_responder | pedido atingiu 40 mensagens |
 | `loop_repetidas_msg` | fluxo_responder | texto idêntico repetido em 10 min (> 10 chars) |
 | `estorno` / `insatisfacao` / `ajuda_pagamento` / `pergunta_sem_resposta` | agente OpenAI | escalação; a IA não responde |
-| `risco_vida` | agente OpenAI | fala em suicídio/se machucar/violência; a IA responde com o CVV (188) e escala |
+| `risco_vida` | fluxo_responder / agente OpenAI | fala explícita (lista do código): carinho + CVV; desabafo que a IA julga risco: só carinho. Sempre escala para um humano |

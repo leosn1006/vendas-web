@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import re
@@ -48,6 +49,17 @@ _TOOL_NOTIFICAR_ADMIN = {
     }
 }
 
+# Cópia só do WhatsApp com o campo 'resposta' (o agente de e-mail usa _TOOL_NOTIFICAR_ADMIN e não envia texto ao
+# escalar).
+_TOOL_NOTIFICAR_ADMIN_WHATSAPP = copy.deepcopy(_TOOL_NOTIFICAR_ADMIN)
+_TOOL_NOTIFICAR_ADMIN_WHATSAPP["function"]["parameters"]["properties"]["resposta"] = {
+    "type": "string",
+    "description": (
+        "Só para motivo 'risco_vida': mensagem curta e carinhosa para a cliente, no seu tom de sempre, acolhendo o "
+        "que ela disse. Não cite telefones de ajuda, não fale em pagamento e não prometa contato da equipe."
+    ),
+}
+
 _TOOL_NAO_RESPONDER = {
     "type": "function",
     "function": {
@@ -81,13 +93,21 @@ _TOOL_PAGAMENTO_INFORMADO = {
     }
 }
 
-# Resposta fixa quando a IA identifica risco à vida: escala para um humano E responde (exceção à regra
-# "escalou = silêncio"), porque a cliente não pode ficar sem nenhuma resposta.
+# Risco à vida: escala para um humano E responde (exceção à regra "escalou = silêncio"), porque a cliente não
+# pode ficar sem resposta. Quando só a IA acha que é risco (desabafo), a resposta é só carinho, escrita por ela no
+# tom da persona; o que fazer depois é decisão humana (nov/2026: o público 35+ reclama muito da saúde e da vida, e mandar CVV/SAMU
+# a quem só desabafou soava alarmante). Esta é a mensagem usada quando a IA não escreve nenhuma.
 MENSAGEM_RISCO_VIDA = (
+    "Querida, sinto muito que você esteja passando por isso. 💛\n\n"
+    "Você não está sozinha, estou aqui com você. Se cuida, tá?"
+)
+
+# Fala EXPLÍCITA de suicídio (lista estrita em fluxos/_mensagem_sem_resposta.py): carinho + CVV, num tom que
+# acolhe sem alarmar. Escala sempre para um humano.
+MENSAGEM_RISCO_VIDA_CVV = (
     "Querida, sinto muito que você esteja passando por isso. 💛 Você não está sozinha.\n\n"
-    "Por favor, converse agora com o *CVV*: é só ligar *188* (grátis, 24 horas) ou acessar *cvv.org.br*. "
-    "Se estiver em perigo, ligue *192* (SAMU).\n\n"
-    "Vou pedir para alguém da nossa equipe falar com você aqui também."
+    "Se em algum momento o peso ficar grande demais, o *CVV* conversa com você de graça, a qualquer hora: "
+    "é só ligar *188* ou acessar *cvv.org.br*."
 )
 
 # Instruções do agente de e-mail (agente_resposta_email_produto.py), que só tem a ferramenta notificar_admin.
@@ -104,9 +124,10 @@ _REGRAS_WHATSAPP = (
     "\n\n## REGRAS GERAIS (valem acima do FAQ e do texto acima)\n"
     "- NUNCA peça comprovante, print, nome do pagador, valor ou horário do pagamento. Nunca discuta se o "
     "pagamento foi feito: confiamos na cliente.\n"
-    "- Use notificar_admin só nos casos descritos na ferramenta. Após acionar, NÃO envie mensagem.\n"
+    "- Use notificar_admin só nos casos descritos na ferramenta. Não escreva texto fora da ferramenta: no motivo "
+    "'risco_vida' a mensagem para a cliente vai no campo 'resposta'; nos outros motivos, ela não recebe mensagem.\n"
     "- Se a cliente falar em suicídio, em se machucar ou em violência, use notificar_admin com motivo "
-    "'risco_vida' imediatamente.\n"
+    "'risco_vida' imediatamente e escreva em 'resposta' uma mensagem curta e carinhosa para ela.\n"
     "- Se a mensagem não pede resposta, use nao_responder.\n"
     "- Linhas do histórico que começam com '(Registro:' descrevem o que o sistema enviou; nunca copie esse "
     "formato na resposta.\n"
@@ -233,7 +254,7 @@ def _ler_pdf_fonte(fonte: str) -> str:
 ACAO_RESPONDER = 'responder'                     # texto em 'texto'
 ACAO_SILENCIAR = 'silenciar'                     # a mensagem não pede resposta
 ACAO_ESCALAR = 'escalar'                         # humano notificado; sem resposta (ou falha da OpenAI)
-ACAO_RISCO_VIDA = 'risco_vida'                   # humano notificado E resposta fixa MENSAGEM_RISCO_VIDA
+ACAO_RISCO_VIDA = 'risco_vida'                   # humano notificado E resposta carinhosa (da IA ou fixa)
 ACAO_PAGAMENTO_INFORMADO = 'pagamento_informado'  # cliente disse que pagou; valor citado em 'valor' (ou None)
 
 
@@ -267,7 +288,7 @@ def responder_cliente_com_historico_produto(
     messages.extend(_historico_legivel(historico))
     messages.append({"role": "user", "content": pergunta})
 
-    tools = [_TOOL_NOTIFICAR_ADMIN, _TOOL_NAO_RESPONDER]
+    tools = [_TOOL_NOTIFICAR_ADMIN_WHATSAPP, _TOOL_NAO_RESPONDER]
     if pode_informar_pagamento(pedido):
         tools.append(_TOOL_PAGAMENTO_INFORMADO)
 
@@ -332,6 +353,24 @@ def _ferramenta_prioritaria(tool_calls):
     return min(tool_calls, key=peso)
 
 
+# O texto livre da IA no 'risco_vida' vai direto para a cliente: só passa se for curto e sem o que a ferramenta
+# proíbe (telefones, pagamento, promessa de contato). Senão, vale a mensagem fixa.
+_TAMANHO_MAXIMO_CARINHO = 400
+_RE_CARINHO_PROIBIDO = re.compile(
+    r'\d{3}|\b(pix|pagamento|pagar|pague|contribui\w*|cvv|samu|equipe|ligar|ligue|telefone)\b'
+    r'|\b(vai|vamos|vou|irá|irao|irão) (falar|conversar|entrar em contato|te ligar|ligar)\b'
+    r'|\balgu[eé]m (daqui|da equipe|vai)\b|\bentrar em contato\b|\bretorn', re.I)
+
+
+def _carinho_valido(texto) -> str | None:
+    texto = str(texto or '').strip()
+    if not texto or len(texto) > _TAMANHO_MAXIMO_CARINHO or _RE_CARINHO_PROIBIDO.search(texto):
+        if texto:
+            logger.warning(f"[AGENTE] ⚠️ Resposta de risco_vida da IA descartada (usando a fixa): {texto[:120]!r}")
+        return None
+    return texto
+
+
 def _tratar_ferramenta(tool_call, pedido, produto) -> dict:
     nome = tool_call.function.name
     args = _args_ferramenta(tool_call)
@@ -366,5 +405,5 @@ def _tratar_ferramenta(tool_call, pedido, produto) -> dict:
         f"Agente escalou. Motivo: {motivo}. Cliente: {pedido.get('contact_name')} ({pedido.get('contact_phone')}). Resumo: {resumo}" if pedido else f"Agente escalou. Motivo: {motivo}. Resumo: {resumo}",
     )
     if motivo == 'risco_vida':
-        return _decisao(ACAO_RISCO_VIDA, texto=MENSAGEM_RISCO_VIDA)
+        return _decisao(ACAO_RISCO_VIDA, texto=_carinho_valido(args.get('resposta')) or MENSAGEM_RISCO_VIDA)
     return _decisao(ACAO_ESCALAR)

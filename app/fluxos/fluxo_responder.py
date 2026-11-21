@@ -7,7 +7,7 @@ from database import (salvar_mensagem_pedido, buscar_historico_conversa, get_pro
                       tem_notificacao_em_analise_por_motivo)
 from agente_resposta_produto import (responder_cliente_com_historico_produto,
                                      ACAO_RESPONDER, ACAO_RISCO_VIDA, ACAO_PAGAMENTO_INFORMADO,
-                                     MENSAGEM_RISCO_VIDA)
+                                     MENSAGEM_RISCO_VIDA_CVV)
 from fluxos._mensagem_sem_resposta import mensagem_sem_resposta, fala_em_risco_a_vida
 from estados_pedido import ESTADO_COMPROVANTE_EM_ANALISE, pedido_esta_pago
 from celery_app import celery_app
@@ -60,8 +60,17 @@ def executar(pedido, mensagem_whatsapp, tentativa_espera=0):
         mensagem_cliente = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['text']['body']
         message_id = mensagem_whatsapp['entry'][0]['changes'][0]['value']['messages'][0]['id']
         # ============================================================================================
-        # estado atual do pedido (não a foto do webhook); comprovante em análise → espera ele terminar
+        # estado atual do pedido (não a foto do webhook)
         pedido = _reler_pedido(pedido)
+        # ============================================================================================
+        # fala EXPLÍCITA de suicídio: carinho + CVV e escala, antes de qualquer outra regra (inclusive com o pedido
+        # em análise pelo admin ou com comprovante em análise). Desabafos sem essas palavras seguem para a IA, que
+        # escala com resposta só carinhosa.
+        if fala_em_risco_a_vida(mensagem_cliente):
+            _tratar_risco_vida_explicito(pedido, message_id, mensagem_cliente)
+            return
+        # ============================================================================================
+        # comprovante em análise → espera ele terminar
         if pedido.get('estado_id') == ESTADO_COMPROVANTE_EM_ANALISE and tentativa_espera < _MAX_TENTATIVAS_ESPERA:
             logger.info(f"[FLUXO-RESPONDER-MENSAGEM] ⏳ Pedido #{pedido_id} com comprovante em análise — "
                         f"reagendando em {_ESPERA_COMPROVANTE_S}s (tentativa {tentativa_espera + 1})")
@@ -73,26 +82,9 @@ def executar(pedido, mensagem_whatsapp, tentativa_espera=0):
             )
             return
         # ============================================================================================
-        # risco à vida: responde com o CVV mesmo com o pedido em análise pelo admin (que silencia a IA abaixo) e
-        # grava a notificação mesmo havendo outra aberta (senão ela some atrás de um estorno, por exemplo)
-        em_analise = tem_notificacao_em_analise(pedido_id)
-        if em_analise and fala_em_risco_a_vida(mensagem_cliente):
-            salvar_mensagem_pedido(message_id, pedido_id, mensagem_cliente, tipo_mensagem='recebida')
-            if tem_notificacao_em_analise_por_motivo(pedido_id, 'risco_vida'):
-                # já alertado e CVV já enviado: não repete a cada mensagem (cada envio é cobrado)
-                logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] 🆘 Pedido #{pedido_id}: risco à vida já em análise, "
-                               f"mensagem salva sem repetir o CVV")
-                return
-            criar_notificacao_admin(pedido_id, pedido.get('produto_id'), 'risco_vida',
-                                    f"Risco à vida (pedido já em análise): '{mensagem_cliente[:200]}'",
-                                    mesmo_em_analise=True)
-            logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] 🆘 Pedido #{pedido_id}: risco à vida com pedido em análise — CVV")
-            _agendar_resposta(pedido, MENSAGEM_RISCO_VIDA, pedido_id)
-            return
-        # ============================================================================================
         # se pedido já está em análise pelo admin, salva a mensagem e silencia a IA
         # (não precisa carregar produto nem histórico)
-        if em_analise:
+        if tem_notificacao_em_analise(pedido_id):
             salvar_mensagem_pedido(message_id, pedido_id, mensagem_cliente, tipo_mensagem='recebida')
             logger.info(f"[FLUXO-RESPONDER-MENSAGEM] 🔕 Pedido #{pedido_id} em análise pelo admin. Mensagem salva, IA silenciada.")
             return
@@ -172,6 +164,52 @@ def executar(pedido, mensagem_whatsapp, tentativa_espera=0):
             logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] ⚠️ Falha ao notificar admin: {exc_notif}")
         logger.info("=" * 120)
         raise exc
+
+
+_CHAVE_CVV_ENVIADO = "risco_vida:cvv:{pedido_id}"
+_TTL_CVV_ENVIADO_S = 24 * 3600
+
+
+def _reservar_cvv(pedido_id) -> bool:
+    """Trava atômica (SET NX) para o texto do CVV sair uma vez por pedido em 24 h, mesmo com duas mensagens em
+    paralelo. Redis fora do ar: envia (repetir é melhor que não enviar)."""
+    try:
+        from redis_cliente import cliente
+        return bool(cliente().set(_CHAVE_CVV_ENVIADO.format(pedido_id=pedido_id), 1, nx=True, ex=_TTL_CVV_ENVIADO_S))
+    except Exception as exc:
+        logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] ⚠️ Redis indisponível na trava do CVV (#{pedido_id}): {exc}")
+        return True
+
+
+def _liberar_cvv(pedido_id):
+    try:
+        from redis_cliente import cliente
+        cliente().delete(_CHAVE_CVV_ENVIADO.format(pedido_id=pedido_id))
+    except Exception as exc:
+        logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] ⚠️ Não liberou a trava do CVV (#{pedido_id}): {exc}")
+
+
+def _tratar_risco_vida_explicito(pedido, message_id, mensagem_cliente):
+    """Fala explícita de risco à vida. Duas coisas independentes:
+    - alerta: notificação 'risco_vida' se não houver uma ABERTA com esse motivo (grava mesmo havendo outra aberta,
+      senão some atrás de um estorno; resolvido o alerta, uma fala nova gera outro);
+    - texto com carinho + CVV: uma vez por pedido em 24 h (cada envio é cobrado e repetir soa robótico). Se a IA já
+      tinha escalado um desabafo (só carinho), a fala explícita depois ainda recebe o CVV."""
+    pedido_id = pedido['id']
+    salvar_mensagem_pedido(message_id, pedido_id, mensagem_cliente, tipo_mensagem='recebida')
+    if not tem_notificacao_em_analise_por_motivo(pedido_id, 'risco_vida'):
+        criar_notificacao_admin(pedido_id, pedido.get('produto_id'), 'risco_vida',
+                                f"Risco à vida (fala explícita): '{mensagem_cliente[:200]}'",
+                                mesmo_em_analise=True)
+    if not _reservar_cvv(pedido_id):
+        logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] 🆘 Pedido #{pedido_id}: CVV já enviado nas últimas 24 h, sem repetir")
+        return
+    try:
+        _agendar_resposta(pedido, MENSAGEM_RISCO_VIDA_CVV, pedido_id)
+    except Exception:
+        _liberar_cvv(pedido_id)  # não deixa a trava presa: a próxima mensagem (ou o reprocessamento) tenta de novo
+        raise
+    logger.warning(f"[FLUXO-RESPONDER-MENSAGEM] 🆘 Pedido #{pedido_id}: fala explícita de risco à vida — carinho + CVV")
 
 
 def _agendar_resposta(pedido, resposta_cliente, pedido_id):
