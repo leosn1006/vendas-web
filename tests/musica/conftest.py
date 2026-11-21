@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 from musica.adaptadores.arquivos import Arquivos  # noqa: E402
 from musica.adaptadores.gerador_simulado import GeradorSimulado  # noqa: E402
 from musica.adaptadores.letra_openai import LetraSimulada  # noqa: E402
+from musica.adaptadores.transcritor_openai import DitadoSimulado  # noqa: E402
 from musica.fabrica import Servicos  # noqa: E402
 
 PASTA_CONTEUDO = Path(__file__).resolve().parents[2] / 'app' / 'musica' / 'conteudo'
@@ -306,6 +307,7 @@ def s(tmp_path):
         gerador=GeradorSimulado(segundos_ate_pronta=0),
         escritor=LetraSimulada(),
         transcritor=None,
+        ditado=DitadoSimulado(),
         audio=AudioFalso(),
         video=VideoFalso(),
         repositorio=RepositorioMemoria(),

@@ -7,6 +7,8 @@ Rotinas:         manutencao (destravar, reconciliar), enviar_presentes, enviar_l
 """
 import logging
 import shutil
+import tempfile
+from pathlib import Path
 from datetime import datetime, timedelta
 
 from musica import config, idiomas, links, mensagens
@@ -14,6 +16,7 @@ from musica.portas import ErroPassageiro
 from musica.dominio import legenda, regras
 from musica.dominio import modelos as m_
 from musica.dominio import quiz as _quiz
+from musica.dominio.quiz import MAX_LETRAS_LEMBRANCAS
 from musica.dominio.recursos import ENTREGA_EMAIL, MUSICA, QRCODE, VIDEOCLIPE
 
 logger = logging.getLogger(__name__)
@@ -58,6 +61,35 @@ def _bloquear_se_comprada(musica):
 
 
 # ============================================================== antes de pagar
+
+# Microfone da tela de lembranças: formatos do MediaRecorder (webm/opus no Android, mp4 no iPhone) e os que o Whisper
+# aceita. Tipo → extensão do arquivo (o Whisper reconhece o formato pela extensão).
+FORMATOS_DITADO = {'audio/webm': 'webm', 'audio/mp4': 'mp4', 'audio/x-m4a': 'm4a', 'audio/m4a': 'm4a',
+                   'audio/mpeg': 'mp3', 'audio/ogg': 'ogg', 'audio/wav': 'wav', 'audio/x-wav': 'wav'}
+
+
+def transcrever(s, audio, tipo, idioma=None, dica='') -> str:
+    """O que ela falou no microfone da tela de lembranças, em texto (até MAX_LETRAS_LEMBRANCAS, o limite da caixa).
+    O áudio vai para um arquivo temporário e é apagado na hora: só o texto volta (docs/MUSICA.md, o quiz)."""
+    extensao = FORMATOS_DITADO.get((tipo or '').split(';')[0].strip().lower())
+    if not extensao:
+        raise Recusa('Formato de áudio não aceito. Escreva na caixa.')
+    with tempfile.TemporaryDirectory() as pasta:
+        arquivo = Path(pasta) / f'fala.{extensao}'
+        with open(arquivo, 'wb') as destino:
+            shutil.copyfileobj(audio, destino)
+        if arquivo.stat().st_size < 1000:   # toque sem querer: menos de meio segundo
+            raise Recusa('Não deu para entender o áudio. Tente de novo, falando perto do celular.')
+        try:
+            texto = s.ditado.texto(arquivo, idiomas.cfg(idioma)['whisper'], (dica or '')[:200])
+        except Exception:
+            logger.exception('[MUSICA] O ditado da tela de lembranças falhou')
+            raise Recusa('Não deu para entender o áudio. Tente de novo, falando perto do celular.', 503)
+    texto = ' '.join((texto or '').split())[:MAX_LETRAS_LEMBRANCAS]
+    if not texto:
+        raise Recusa('Não deu para entender o áudio. Tente de novo, falando perto do celular.')
+    return texto
+
 
 def criar_musica(s, produto_id, respostas, email, whatsapp, ip, pedido_origem_id=None, dominio=None,
                  idioma=idiomas.IDIOMA_PADRAO):
@@ -839,7 +871,7 @@ def respostas_editadas(base: dict, formulario, idioma=None) -> dict:
     respostas = dict(base)
     for campo in CAMPOS_EDITAVEIS:
         if campo in formulario:
-            valor = str(formulario.get(campo) or '').strip()[:1500]
+            valor = str(formulario.get(campo) or '').strip()[:MAX_LETRAS_LEMBRANCAS if campo == 'lembrancas' else 1500]
             if valor:
                 respostas[campo] = valor
             else:

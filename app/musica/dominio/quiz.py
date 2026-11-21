@@ -13,6 +13,9 @@ from musica import idiomas
 
 # Chaves aceitas nas respostas (o resto que vier do navegador é ignorado). Iguais em todos os idiomas: são os nomes
 # que a IA da letra recebe.
+# Tamanho máximo da história (a caixa de lembranças; a fala do microfone sai longa). Mesmo valor na tela e no servidor.
+MAX_LETRAS_LEMBRANCAS = 2500
+
 CHAVES_VALIDAS = {'para_quem', 'nome', 'apelido', 'pronuncia', 'ocasiao', 'ocasiao_outra', 'lembrancas',
                   'frase_obrigatoria', 'clima', 'estilo', 'voz', 'de'}
 
@@ -30,6 +33,7 @@ class Quiz:
         self.ESTILOS_ANTIGOS = getattr(d, 'ESTILOS_ANTIGOS', {})
         self.VOZES, self.VOZES_PADRAO, self.VOZES_POR_ESTILO = d.VOZES, d.VOZES_PADRAO, d.VOZES_POR_ESTILO
         self.LEMBRANCAS, self.MIN_LETRAS_LEMBRANCAS, self.PERGUNTAS = d.LEMBRANCAS, d.MIN_LETRAS_LEMBRANCAS, d.PERGUNTAS
+        self.EXEMPLOS_LEMBRANCAS = getattr(d, 'EXEMPLOS_LEMBRANCAS', {})
         self.CHAVES_VALIDAS = CHAVES_VALIDAS
 
     def genero(self, para_quem: str) -> str:
@@ -90,15 +94,21 @@ class Quiz:
             return 'voz'
         return None
 
+    def guia_lembrancas(self, relacao: str) -> str:
+        """A guia da tela de lembranças (frases para começar, medidor, exemplo) pelo marcador da relação."""
+        marcas = self.marcas_da_relacao(relacao)
+        return next((g for g in ('eu', 'grupo', 'casal', 'ex') if g in marcas), 'padrao')
+
+    def exemplos_lembrancas(self, relacao: str) -> list[str]:
+        """Os exemplos de "Ver um exemplo": os da relação; senão os da guia; senão os do padrão ([] = sem botão)."""
+        e = self.EXEMPLOS_LEMBRANCAS
+        return e.get(relacao) or e.get('_' + self.guia_lembrancas(relacao)) or e.get('_padrao') or []
+
     def config_do_navegador(self) -> dict:
         """O que o quiz.html precisa, com os filtros JÁ CALCULADOS aqui (fonte única: as funções acima): ocasiões por
-        relação, tons por relação e ocasião, vozes por estilo, gênero e grupo das perguntas guiadas por relação."""
+        relação, tons por relação e ocasião, vozes por estilo, gênero, a guia e os exemplos das lembranças por relação."""
         relacoes = [r['valor'] for r in self.RELACOES]
         ocasioes = [o['valor'] for o in self.OCASIOES]
-
-        def guia(relacao):
-            marcas = self.marcas_da_relacao(relacao)
-            return next((g for g in ('eu', 'grupo', 'casal', 'ex') if g in marcas), 'padrao')
         return {
             'genero': {r['valor']: r['genero'] for r in self.RELACOES},
             'rotulo': {r: self.rotulo(r) for r in relacoes},
@@ -106,8 +116,10 @@ class Quiz:
             'tons_por_relacao': {r: {o: self.tons_para(r, o) for o in ocasioes} for r in relacoes},
             'vozes_por_estilo': {e: self.vozes_para(e) for e, _ in self.ESTILOS},
             'estilos_antigos': self.ESTILOS_ANTIGOS,
-            'guia_lembrancas': {r: guia(r) for r in relacoes},
+            'guia_lembrancas': {r: self.guia_lembrancas(r) for r in relacoes},
+            'exemplos_lembrancas': {r: self.exemplos_lembrancas(r) for r in relacoes},
             'lembrancas': self.LEMBRANCAS, 'min_letras_lembrancas': self.MIN_LETRAS_LEMBRANCAS,
+            'max_letras_lembrancas': MAX_LETRAS_LEMBRANCAS,
             'max_pessoas': self.MAX_PESSOAS, 'mais_de_uma': self.MAIS_DE_UMA, 'para_mim': self.PARA_MIM,
         }
 

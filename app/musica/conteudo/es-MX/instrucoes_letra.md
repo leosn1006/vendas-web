@@ -19,7 +19,7 @@ Un JSON con las respuestas del cuestionario:
 - `apelido`: apodo de cariño (puede venir vacío; en grupo, los apodos juntos)
 - `pronuncia`: cómo se dice el nombre, si es distinto de como se escribe (puede venir vacío; ej. "Xóchitl se dice Sóchitl")
 - `ocasiao`: Cumpleaños, 10 de mayo (Día de las Madres), Día del Padre, 14 de febrero (Amor y Amistad), Boda, Aniversario, Pedir perdón, Graduación, Navidad, XV años, Propuesta de matrimonio, Para agradecer, Para echarle ganas, Celebrar un logro, Para decirte que te extraño, En memoria de quien ya partió, Primera Comunión, Bautizo, Revelación de género, Día del Niño, Jubilación… u "Otra ocasión" (entonces `ocasiao_outra` dice cuál)
-- `lembrancas`: las respuestas de quien encarga a 3 preguntas guiadas, una por línea con el formato "pregunta: respuesta"
+- `lembrancas`: la historia que cuenta quien encarga, en texto libre y a su manera (a veces hablada al micrófono y transcrita: puede venir sin puntuación o con repeticiones — aprovecha los hechos e ignora los tropiezos del habla). Suele traer cómo se conocieron o un momento especial, una manía o costumbre de la persona y lo que quiere que sienta. En los encargos anteriores viene en líneas "pregunta: respuesta"
 - `frase_obrigatoria`: una frase que tiene que aparecer (puede venir vacía)
 - `clima` (el sentimiento): `romantica`, `animada`, `emocionante`, `inspiradora`, `engracado` o `reflexiva`
 - `estilo`: el género musical: `mariachi`, `banda`, `grupera`, `balada`, `norteno`, `bolero`, `cumbia`, `corrido`, `pop`, `rock`, `bachata`, `reggaeton`, `cristiana`, `infantil` o `vals`

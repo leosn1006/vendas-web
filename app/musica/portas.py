@@ -41,6 +41,12 @@ class Transcritor(Protocol):
         """Tempos de cada palavra cantada: [{'palavra', 'inicio', 'fim'}]. `idioma`: o código do Whisper ('pt', 'es')."""
 
 
+class Ditado(Protocol):
+    def texto(self, arquivo: Path, idioma: str = 'pt', dica: str = '') -> str:
+        """O que a pessoa falou no microfone da tela de lembranças, em texto. `idioma`: código do Whisper ('pt', 'es');
+        `dica`: nomes que aparecem na fala (ajuda a escrever certo). '' se não deu para entender."""
+
+
 class Audio(Protocol):
     def baixar(self, url: str, destino: Path) -> None: ...
 

@@ -152,7 +152,7 @@ Quando a cliente pede mudança depois de pagar (letra, nome, pronúncia, voz…)
 ## O quiz (9 telas, `app/musica/conteudo/<idioma>/quiz.py`; as regras em `dominio/quiz.py`)
 
 1. Para quem é (inclui Neto(a), Sogra/Sogro, **Mais de uma pessoa** e **Para mim**) · 2. Nome(s), apelido e
-pronúncia (até 4 pessoas) · 3. Ocasião · 4. Lembranças (3 perguntas guiadas + medidor) · 5. Frase que não pode faltar
+pronúncia (até 4 pessoas) · 3. Ocasião · 4. Lembranças (uma caixa só + medidor, exemplo e microfone) · 5. Frase que não pode faltar
 (opcional) · 6. Tom · 7. Estilo (com amostra) · 8. Voz · 9. Seu nome, e-mail e WhatsApp (opcional).
 
 - **"Seu nome" é de quem dá o presente** (`respostas.de`: entra na letra, "Com amor, Patrícia", e na mensagem do
@@ -167,8 +167,33 @@ pronúncia (até 4 pessoas) · 3. Ocasião · 4. Lembranças (3 perguntas guiada
   (`VOZES_POR_ESTILO`: dupla só no sertanejo, "com coral" no gospel). Voltar e trocar uma resposta apaga as
   escolhas seguintes que deixaram de combinar. Página de ocasião da landing (`?ocasiao=`) pula a tela 3 só se a
   ocasião combinar com a relação.
-- **O navegador manda** `pessoas` e `lembrancas_partes`; o servidor monta `nome`/`apelido`/`pronuncia`/`lembrancas`
-  como antes (`regras.montar_respostas`) e guarda `pessoas` para a IA tratar o plural. "Para mim": `de` = o nome.
+- **Tela de lembranças (desde 21/11/2026 — use a data e hora do deploy como corte).** Antes eram 3 caixas de uma vez
+  e **31,9% desistiam ali** (14–20/11, a maior perda do quiz). Agora é **uma caixa só** (até 2.500 letras, `quiz.MAX_LETRAS_LEMBRANCAS`), com:
+  - **frases para começar** (pílulas: tocar põe o começo na caixa; a usada ganha ✓) e o **medidor dizendo o que
+    falta contar** (como se conheceram → um jeito dela → o que quer que ela sinta), por guia da relação em
+    `LEMBRANCAS` (`casal`, `ex`, `grupo`, `eu`, `padrao`);
+  - **"Ver um exemplo"**: história de outra pessoa, da relação (`EXEMPLOS_LEMBRANCAS`; sem exemplo próprio, o da
+    guia), sem botão de copiar. No México, só os da guia (falta a revisão mexicana);
+  - **microfone** ("Prefere falar? Toque e conte"): grava até 2 min (`MediaRecorder`), `POST /musica/api/ditado`
+    → Whisper (`MUSICA_MODELO_DITADO`, ~US$ 0,006/min) → o texto é somado à caixa. O áudio vai para um arquivo
+    temporário e é apagado na hora (a política de privacidade diz isso). Grava a 24 kbps (2 min ≈ 360 KB: o nginx
+    aceita 1 MB nas rotas da música). Limites: 15 por IP por hora e 1.500 por dia no total
+    (`MUSICA_DITADO_POR_HORA` / `_POR_DIA`); com o Redis fora do ar, o microfone recusa (limite de custo). Com a letra simulada (`MUSICA_LETRA_SIMULADA=1` ou sem
+    chave), o ditado também é simulado. Celular sem gravação: aparece a dica do microfone do teclado.
+  - **Medição.** O número que importa é a desistência na etapa 4 (Analytics Web, `musica-v2`) contra os 31,9% de
+    14–20/11 (cuidado: dezembro tem o efeito do Natal). Como pista do porquê, quem para nas lembranças fica com
+    `quiz_progresso.etapa = 4` e o `etapa_nome` da **última** coisa que fez ali — `lembrancas` (só viu),
+    `lembrancas_escreveu`, `lembrancas_exemplo`, `lembrancas_falou`, `lembrancas_curta` (tentou seguir com pouco
+    texto). É uma linha por visita (a última ação vale; voltar para a tela marca "só viu" de novo), então serve para
+    a proporção, não para contar cada ação:
+    ```sql
+    SELECT etapa_nome, COUNT(*) FROM quiz_progresso
+    WHERE pagina = 'musica-v2' AND etapa = 4 AND criado_em >= '<deploy>' GROUP BY etapa_nome;
+    ```
+- **O navegador manda** `pessoas` e `lembrancas` (texto); o servidor monta `nome`/`apelido`/`pronuncia`
+  (`regras.montar_respostas`) e guarda `pessoas` para a IA tratar o plural. `lembrancas_partes` (as 3 caixas antigas:
+  abas abertas antes do deploy) continua aceito, e o rascunho antigo no navegador é juntado numa caixa só.
+  "Para mim": `de` = o nome.
 - Progresso guardado no navegador por 24 h (`localStorage`); o checkout da Música abre com o nome e o e-mail do quiz.
 - **Som** (`conteudo/<idioma>/estilos.json`): o gênero vem primeiro; o tom (`clima`) só descreve o sentimento — nunca um gênero
   ("ballad" no tom puxava tudo para balada); `negativo_estilo` (o que o Suno deve evitar em cada estilo) e

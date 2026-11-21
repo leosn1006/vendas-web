@@ -43,8 +43,24 @@ label + .campo{margin-top:8px}
 .link-simples{background:none;border:0;color:var(--cor-forte);font:600 1rem var(--corpo);text-decoration:underline;cursor:pointer;padding:12px 0 0;display:inline-block}
 .adicionar{width:100%;margin-top:14px;border:1.5px dashed var(--linha);background:transparent;color:var(--texto);border-radius:16px;padding:16px;font:600 1.05rem var(--corpo);cursor:pointer}
 .adicionar:hover{border-color:var(--cor)}
-.lembranca label{font-size:1.05rem}
-.lembranca textarea.campo{min-height:110px}
+/* Lembranças: uma caixa, frases para começar, exemplo e microfone (docs/MUSICA.md, o quiz) */
+.comecar{font-weight:700;color:var(--suave);font-size:.98rem;margin:22px 0 0}
+.inicios{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.inicio{min-height:44px;border:1.5px solid var(--linha);background:var(--cartao);color:var(--texto);border-radius:999px;padding:9px 14px;font:600 .98rem var(--corpo);cursor:pointer;text-align:left}
+.inicio:hover{border-color:var(--cor)}
+.inicio.usado{border-color:var(--ok);color:var(--suave)}
+.inicio.usado::before{content:"✓ ";color:var(--ok)}
+#lembrancaTexto{min-height:180px;margin-top:14px}
+.exemplo{background:var(--fundo-2);border-radius:var(--raio);padding:16px 18px;margin-top:10px}
+.exemplo-aviso{font-weight:700;font-size:.92rem;color:var(--cor-forte);margin:0 0 8px}
+.exemplo-texto{margin:0;font-style:italic;line-height:1.6}
+.exemplo-acoes{display:flex;gap:20px;flex-wrap:wrap}
+.mic{width:100%;min-height:58px;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:10px;border:1.5px solid var(--cor);background:var(--cor-clara);color:var(--cor-forte);border-radius:16px;font:700 1.08rem var(--corpo);cursor:pointer;padding:10px 14px}
+.mic i{font-size:1.45rem}
+.mic.gravando{background:#d93025;border-color:#d93025;color:#fff;animation:pulsar 1.3s ease-in-out infinite}
+.mic:disabled{opacity:.75;cursor:wait}
+@keyframes pulsar{0%,100%{box-shadow:0 0 0 0 rgba(217,48,37,.45)}50%{box-shadow:0 0 0 10px rgba(217,48,37,0)}}
+.mic-aviso{margin:8px 0 0;font-weight:600;color:var(--suave);font-size:.98rem;min-height:1.4em}
 .medidor{margin-top:22px}
 .medidor-barra{height:10px;background:var(--fundo-2);border-radius:99px;overflow:hidden}
 .medidor-barra div{height:100%;width:0;background:var(--cor);border-radius:99px;transition:width .3s}
@@ -85,12 +101,12 @@ label + .campo{margin-top:8px}
 const PERGUNTAS = {{ perguntas|tojson }};
 const AMOSTRAS = {{ amostras|tojson }};
 const REGRAS = {{ regras_quiz|tojson }};
-const URL_CRIAR = "{{ rota('api_criar') }}";
+const URL_CRIAR = "{{ rota('api_criar') }}", URL_DITADO = "{{ rota('api_ditado') }}";
 // As frases do idioma (conteudo/<idioma>/textos.json, quiz.js) e o país do celular (idiomas.py)
 const T = {{ textos.quiz.js|tojson }}, TEL = {{ idioma_cfg.telefone|tojson }}, URL_PRIVACIDADE = "{{ rota('privacidade') }}";
 const GUARDAR = T.chave_rascunho, GUARDAR_HORAS = 6;   // pouco tempo: o celular pode ser de outra pessoa da família
 
-let respostas = {}, pessoas = [{nome: "", apelido: "", pronuncia: ""}], lembrancas = ["", "", ""];
+let respostas = {}, pessoas = [{nome: "", apelido: "", pronuncia: ""}], lembrancas = "";
 let contato = {de: "", email: "", whatsapp: ""}, atual = PERGUNTAS[0].chave, tokenRobo = "";
 let comPronuncia = false, comApelido = false, ultimaEtapa = "";
 window.turnstileOk = t => tokenRobo = t;
@@ -120,7 +136,12 @@ function personalizar(texto){
     ela: G.ela[pronome],
     dela: G.dela[pronome],
   };
-  return texto.replace(/\{(\w+)\}/g, (m, k) => k in trocas ? trocas[k] : m);
+  // {Ela} = {ela} com a primeira letra maiúscula (começo de frase)
+  return texto.replace(/\{(\w+)\}/g, (m, k) => {
+    if (k in trocas) return trocas[k];
+    const minuscula = k[0].toLowerCase() + k.slice(1);
+    return minuscula in trocas ? trocas[minuscula].charAt(0).toUpperCase() + trocas[minuscula].slice(1) : m;
+  });
 }
 const textoDe = (p, campo) => personalizar((ehEu() && p[campo + "_eu"]) || (ehGrupo() && p[campo + "_grupo"]) || p[campo]);
 
@@ -161,6 +182,8 @@ function recuperar(){
     const g = JSON.parse(localStorage.getItem(GUARDAR) || "null");
     if (!g || Date.now() - g.t > GUARDAR_HORAS * 3600e3 || !pergunta(g.atual)) return;
     ({atual, respostas, pessoas, lembrancas} = g); contato.de = (g.contato || {}).de || "";
+    if (Array.isArray(lembrancas)) lembrancas = lembrancas.map(x => (x || "").trim()).filter(Boolean).join("\n");   // rascunho das 3 caixas
+    lembrancas = typeof lembrancas === "string" ? lembrancas : "";
     if (REGRAS.estilos_antigos[respostas.estilo]) respostas.estilo = REGRAS.estilos_antigos[respostas.estilo];   // saiu do quiz
   } catch (e) {}
 }
@@ -215,21 +238,126 @@ function htmlPessoas(){
     + `<div class="acoes"><button class="botao" id="avancar" type="button">${T.continuar_falta_pouco}</button></div>`;
 }
 
-const guiasLembrancas = () => REGRAS.lembrancas[REGRAS.guia_lembrancas[respostas.para_quem] || "padrao"];
-function htmlLembrancas(){
-  return guiasLembrancas().map((g, i) => `<div class="lembranca">
-      <label for="lembranca${i}">${esc(personalizar(g.pergunta))}${i ? ` <span class="suave" style="font-weight:500">${T.se_quiser}</span>` : ""}</label>
-      <textarea class="campo" id="lembranca${i}" data-i="${i}" placeholder="${esc(g.exemplo)}">${esc(lembrancas[i])}</textarea></div>`).join("")
-    + `<div class="medidor" aria-live="polite"><div class="medidor-barra"><div id="medidorBarra"></div></div><div class="medidor-texto" id="medidorTexto"></div></div>
-       <p class="dica-mic"><i class="ti ti-microphone" aria-hidden="true"></i><span>${T.dica_mic}</span></p>
-       <div class="acoes"><button class="botao" id="avancar" type="button">${T.continuar}</button></div>`;
+// Uma caixa só (desde 20/11/2026; antes eram 3 perguntas e 31,9% desistiam aqui). A guia da relação (quiz.py,
+// LEMBRANCAS) dá as frases para começar, o medidor e o texto cinza; EXEMPLOS_LEMBRANCAS dá o "Ver um exemplo".
+const guiaLembrancas = () => REGRAS.lembrancas[REGRAS.guia_lembrancas[respostas.para_quem] || "padrao"];
+const exemplosLembrancas = () => REGRAS.exemplos_lembrancas[respostas.para_quem] || [];
+const temMicrofone = () => !!(window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+let exemploAberto = -1;   // qual exemplo está aberto (-1 = fechado)
+function htmlExemplo(){
+  const lista = exemplosLembrancas();
+  if (exemploAberto < 0 || !lista.length) return "";
+  return `<div class="exemplo"><p class="exemplo-aviso">${esc(T.exemplo_aviso)}</p>
+      <p class="exemplo-texto">“${esc(lista[exemploAberto % lista.length])}”</p>
+      <div class="exemplo-acoes">${lista.length > 1 ? `<button type="button" class="link-simples" id="outroExemplo">${esc(T.outro_exemplo)}</button>` : ""}
+      <button type="button" class="link-simples" id="fecharExemplo">${esc(T.fechar_exemplo)}</button></div></div>`;
 }
+function htmlLembrancas(){
+  const g = guiaLembrancas();
+  return `<p class="comecar">${esc(T.comecar)}</p>
+      <div class="inicios">${g.inicios.map((x, i) => `<button type="button" class="inicio" data-inicio="${i}">${esc(personalizar(x).trim())}…</button>`).join("")}</div>
+      ${exemplosLembrancas().length ? `<button type="button" class="link-simples" id="verExemplo"><i class="ti ti-eye" aria-hidden="true"></i> ${esc(T.ver_exemplo)}</button>` : ""}
+      <div id="caixaExemplo">${htmlExemplo()}</div>
+      <textarea class="campo" id="lembrancaTexto" maxlength="${REGRAS.max_letras_lembrancas}" placeholder="${esc(personalizar(g.dica))}">${esc(lembrancas)}</textarea>
+      ${temMicrofone()
+        ? `<button type="button" class="mic" id="mic"><i class="ti ti-microphone" aria-hidden="true"></i><span id="micTexto">${esc(T.mic)}</span></button>
+           <p class="mic-aviso" id="micAviso" role="status"></p>`
+        : `<p class="dica-mic"><i class="ti ti-microphone" aria-hidden="true"></i><span>${T.dica_mic}</span></p>`}
+      <div class="medidor" aria-live="polite"><div class="medidor-barra"><div id="medidorBarra"></div></div><div class="medidor-texto" id="medidorTexto"></div></div>
+      <div class="acoes"><button class="botao" id="avancar" type="button">${T.continuar}</button></div>`;
+}
+// O medidor segue as 3 partes de uma boa história (guia.medidor): diz o que falta contar.
 function atualizarMedidor(){
-  const total = lembrancas.join("").trim().length;
-  const M = T.medidor;
-  const [txt, pct] = total < REGRAS.min_letras_lembrancas ? [M[0], total / REGRAS.min_letras_lembrancas * 25]
-    : total < 150 ? [M[1], 45] : total < 350 ? [M[2], 75] : [M[3], 100];
-  if (el("medidorBarra")) { el("medidorBarra").style.width = pct + "%"; el("medidorTexto").textContent = txt; }
+  const total = lembrancas.trim().length, M = guiaLembrancas().medidor;
+  const [i, pct] = total < REGRAS.min_letras_lembrancas ? [0, total / REGRAS.min_letras_lembrancas * 25]
+    : total < 150 ? [1, 45] : total < 350 ? [2, 75] : [3, 100];
+  if (el("medidorBarra")) { el("medidorBarra").style.width = pct + "%"; el("medidorTexto").textContent = personalizar(M[i]); }
+  // a frase para começar já usada fica com ✓
+  document.querySelectorAll("[data-inicio]").forEach(b =>
+    b.classList.toggle("usado", lembrancas.includes(personalizar(guiaLembrancas().inicios[+b.dataset.inicio]).trim())));
+}
+// Junta um pedaço ao fim do texto (frase para começar ou o que ela falou), com espaço ou ponto antes.
+function juntarAoTexto(pedaco){
+  const caixa = el("lembrancaTexto");
+  if (!caixa) return;   // saiu da tela de lembranças antes de o texto chegar: não entra escondido
+  const antes = lembrancas.trimEnd();
+  lembrancas = (antes ? antes + (/[.!?…]$/.test(antes) ? " " : ". ") + pedaco : pedaco).slice(0, REGRAS.max_letras_lembrancas);
+  caixa.value = lembrancas; caixa.focus(); caixa.setSelectionRange(lembrancas.length, lembrancas.length);
+  mostrarErro(""); atualizarMedidor(); guardar();
+}
+
+// ------------------------------------------------ microfone (lembranças) ---
+// Grava até 2 min (MediaRecorder: webm/opus no Android, mp4 no iPhone), manda para /api/ditado e soma o texto à
+// caixa. O áudio não fica guardado no servidor.
+// 24 kbps basta para voz e deixa 2 min em ~360 KB (o nginx aceita até 1 MB nas rotas da música).
+const MIC_MAX_SEGUNDOS = 120, MIC_BITS = 24000, MIC_MAX_BYTES = 1000 * 1000;
+let gravador = null, micRelogio = null, escreveuNaTela = false;
+let micPedido = 0, pedindoMic = false, transcrevendo = false;   // pedido de permissão em curso / áudio indo para o texto
+function micEstado(texto, gravando){
+  const b = el("mic"); if (!b) return;
+  b.classList.toggle("gravando", !!gravando); el("micTexto").textContent = texto;
+}
+function micAviso(texto){ if (el("micAviso")) el("micAviso").textContent = texto || ""; }
+function pararGravacao(descartar){
+  if (descartar) micPedido++;   // um pedido de permissão ainda aberto não vira gravação depois
+  if (!gravador) return;
+  gravador.descartar = !!descartar;
+  clearInterval(micRelogio);
+  if (gravador.state !== "inactive") gravador.stop();
+}
+async function gravar(){
+  if (gravador) return pararGravacao(false);
+  if (pedindoMic || transcrevendo) return;   // toque duplo enquanto o celular pede permissão ou escreve o texto
+  const pedido = ++micPedido, botao = el("mic");
+  let fluxo;
+  pedindoMic = true;
+  try { fluxo = await navigator.mediaDevices.getUserMedia({audio: true}); }
+  catch (e) { micAviso(T.mic_sem_acesso); return; }
+  finally { pedindoMic = false; }
+  if (pedido !== micPedido || el("mic") !== botao) { fluxo.getTracks().forEach(t => t.stop()); return; }   // saiu da tela
+  const tipo = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"].find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
+  const pedacos = [];
+  try { gravador = new MediaRecorder(fluxo, tipo ? {mimeType: tipo, audioBitsPerSecond: MIC_BITS} : {audioBitsPerSecond: MIC_BITS}); }
+  catch (e) { fluxo.getTracks().forEach(t => t.stop()); micAviso(T.mic_sem_acesso); return; }
+  const este = gravador, inicio = Date.now();
+  este.ondataavailable = e => { if (e.data && e.data.size) pedacos.push(e.data); };
+  este.onstop = () => {
+    fluxo.getTracks().forEach(t => t.stop());
+    gravador = null;
+    if (este.descartar) return;
+    enviarAudio(new Blob(pedacos, {type: este.mimeType || tipo || "audio/webm"}));
+  };
+  este.start();
+  micAviso("");
+  const marcar = () => {
+    const s = Math.floor((Date.now() - inicio) / 1000);
+    micEstado(T.mic_gravando.replace("{tempo}", `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`), true);
+    if (s >= MIC_MAX_SEGUNDOS) pararGravacao(false);
+  };
+  marcar(); micRelogio = setInterval(marcar, 250);
+}
+async function enviarAudio(blob){
+  const b = el("mic"); if (!b) return;
+  if (blob.size > MIC_MAX_BYTES) { micAviso(T.mic_grande); return; }
+  transcrevendo = true;
+  b.disabled = true; micEstado(T.mic_escrevendo, false); micAviso("");
+  const dados = new FormData();
+  dados.append("audio", blob, "fala");
+  dados.append("dica", nomeQuemRecebe());
+  try {
+    const r = await fetch(URL_DITADO, {method: "POST", body: dados});
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 413) throw new Error(T.mic_grande);   // o nginx responde sem JSON
+    if (!r.ok || !d.texto) throw new Error(d.erro || T.mic_nao_entendi);
+    juntarAoTexto(d.texto);
+    micAviso(T.mic_pronto);
+    etapaFunil(4, "lembrancas_falou");
+  } catch (e) {
+    micAviso(e.message || T.mic_nao_entendi);
+  } finally {
+    transcrevendo = false;
+    if (el("mic")) { el("mic").disabled = false; micEstado(T.mic, false); }
+  }
 }
 
 function htmlContato(){
@@ -247,7 +375,7 @@ function htmlContato(){
 }
 
 function desenhar(){
-  pararSom();
+  pararSom(); pararGravacao(true);   // trocou de tela gravando: descarta
   const p = pergunta(atual), lista = visiveis();
   const posicao = lista.indexOf(p) + 1;
   // Funil: a etapa é a posição FIXA da pergunta (pular a ocasião ou "pra quem" não muda o número das outras)
@@ -307,8 +435,26 @@ function ligar(p, passo){
   if (el("adicionar")) el("adicionar").onclick = () => { pessoas.push({nome: "", apelido: "", pronuncia: ""}); desenhar(); el("nome" + (pessoas.length - 1)).focus(); };
   passo.querySelectorAll("[data-remover]").forEach(b => b.onclick = () => { pessoas.splice(+b.dataset.remover, 1); desenhar(); });
   // lembranças
-  passo.querySelectorAll(".lembranca textarea").forEach(t => t.addEventListener("input", () => { lembrancas[+t.dataset.i] = t.value; atualizarMedidor(); guardar(); }));
-  atualizarMedidor();
+  if (el("lembrancaTexto")) {
+    el("lembrancaTexto").addEventListener("input", e => {
+      lembrancas = e.target.value; atualizarMedidor(); guardar();
+      if (lembrancas.trim().length >= REGRAS.min_letras_lembrancas) mostrarErro("");
+      if (!escreveuNaTela) { escreveuNaTela = true; etapaFunil(4, "lembrancas_escreveu"); }   // funil: começou a escrever
+    });
+    passo.querySelectorAll("[data-inicio]").forEach(b => b.onclick = () => juntarAoTexto(personalizar(guiaLembrancas().inicios[+b.dataset.inicio])));
+    const ligarExemplo = () => {
+      el("caixaExemplo").innerHTML = htmlExemplo();
+      if (el("outroExemplo")) el("outroExemplo").onclick = () => { exemploAberto++; ligarExemplo(); };
+      if (el("fecharExemplo")) el("fecharExemplo").onclick = () => { exemploAberto = -1; ligarExemplo(); };
+    };
+    if (el("verExemplo")) el("verExemplo").onclick = () => {
+      if (exemploAberto < 0) { exemploAberto = 0; etapaFunil(4, "lembrancas_exemplo"); }
+      ligarExemplo(); el("caixaExemplo").scrollIntoView({behavior: "smooth", block: "nearest"});
+    };
+    ligarExemplo();
+    if (el("mic")) el("mic").onclick = gravar;
+    atualizarMedidor();
+  }
   // contato
 
   const primeiro = passo.querySelector("input.campo, textarea.campo");
@@ -336,8 +482,13 @@ function avancarDe(p){
     return proximo();
   }
   if (p.tipo === "lembrancas") {
-    if (lembrancas.join("").trim().length < REGRAS.min_letras_lembrancas)
-      return mostrarErro(T.erro_lembrancas);
+    // "Continuar" no meio da gravação: para e escreve o que ela falou; ela confere e toca de novo.
+    if (gravador) { pararGravacao(false); return; }
+    if (transcrevendo || pedindoMic) { micAviso(T.mic_escrevendo); return; }
+    if (lembrancas.trim().length < REGRAS.min_letras_lembrancas) {
+      etapaFunil(4, "lembrancas_curta");   // funil: tentou seguir com pouco texto
+      return mostrarErro(personalizar(T.erro_lembrancas));
+    }
     return proximo();
   }
   if (p.chave === "ocasiao") {
@@ -377,11 +528,7 @@ async function enviar(){
   if (contato.whatsapp && !celularOk(contato.whatsapp)) return mostrarErro(T.erro_celular);
   guardar();
   if (ocasiaoDaUrlVale()) respostas.ocasiao = ocasiaoUrl;
-  const guias = guiasLembrancas();
-  const corpo = {
-    ...respostas, de: contato.de, pessoas,
-    lembrancas_partes: lembrancas.map((r, i) => ({pergunta: personalizar(guias[i].pergunta), resposta: r.trim()})).filter(x => x.resposta),
-  };
+  const corpo = {...respostas, de: contato.de, pessoas, lembrancas: lembrancas.trim()};
   el("tituloEnviando").textContent = ehEu() ? T.escrevendo_eu : personalizar(T.escrevendo_de);
   el("quiz").style.display = "none"; el("enviando").style.display = "block"; window.scrollTo({top: 0});
   try {
@@ -407,7 +554,7 @@ if (quemUrl && pergunta("para_quem").opcoes.includes(quemUrl)) {
   enderecoQuiz.searchParams.delete("para_quem");
   try { history.replaceState(history.state, "", enderecoQuiz.pathname + enderecoQuiz.search + enderecoQuiz.hash); } catch (e) {}
   if (respostas.para_quem !== quemUrl) {
-    respostas = {}; pessoas = [{nome: "", apelido: "", pronuncia: ""}]; lembrancas = ["", "", ""]; atual = "para_quem";
+    respostas = {}; pessoas = [{nome: "", apelido: "", pronuncia: ""}]; lembrancas = ""; atual = "para_quem";
   }
   respostas.para_quem = quemUrl; limparIncoerentes();
   if (atual === "para_quem") { etapaFunil(1, "para_quem"); atual = visiveis()[1].chave; }   // conta a 1ª tela no funil

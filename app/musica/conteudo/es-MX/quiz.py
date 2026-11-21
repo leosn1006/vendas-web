@@ -114,35 +114,66 @@ VOZES_POR_ESTILO = {
     'cristiana': ['femenina', 'masculina', 'coro'],
 }
 
-# Perguntas guiadas das lembranças, pelo marcador da relação (a primeira que bater; senão "padrao").
+# Tela de lembranças (uma caixa só) — mesmo formato do pt-BR (conteudo/pt-BR/quiz.py): `inicios`, `medidor`, `dica`.
 LEMBRANCAS = {
-    'casal': [
-        {'pergunta': 'Cómo se conocieron o un momento que los marcó', 'exemplo': 'Ej.: Nos conocimos en una boda en el 98 y bailamos toda la noche.'},
-        {'pergunta': 'Una manía o costumbre suya que te encanta', 'exemplo': 'Ej.: Canta a todo pulmón en el carro y se equivoca en todas las letras.'},
-        {'pergunta': 'Lo que quieres que {ela} sienta al escuchar la canción', 'exemplo': 'Ej.: Que después de 25 años la volvería a escoger mil veces.'},
+    'casal': {
+        'inicios': ['Nos conocimos ', '{Ela} tiene una forma de ', 'Quiero que {ela} sienta '],
+        'medidor': ['Empieza contando cómo se conocieron', '¡Bien! Ahora cuenta algo {dela} que te encanta',
+                    '¡Muy bien! ¿Y qué quieres que {ela} sienta?', 'Perfecta 💛'],
+        'dica': 'Ej.: Nos conocimos en una boda en el 98…',
+    },
+    'ex': {
+        'inicios': ['Nunca olvidé cuando ', 'Extraño cómo {ela} ', 'Quiero que {ela} sepa que '],
+        'medidor': ['Empieza con un momento de ustedes que nunca olvidaste', '¡Bien! Ahora cuenta algo {dela} que extrañas',
+                    '¡Muy bien! ¿Y qué quieres que {ela} sepa hoy?', 'Perfecta 💛'],
+        'dica': 'Ej.: Nunca olvidé el viaje a la playa en que llovió los tres días…',
+    },
+    'grupo': {
+        'inicios': ['Un recuerdo de nosotros es ', 'Cada quien tiene su forma de ', 'Les quiero decir que '],
+        'medidor': ['Empieza con un recuerdo de ustedes', '¡Bien! Ahora cuenta cómo es cada quien',
+                    '¡Muy bien! ¿Y qué les quieres decir con la canción?', 'Perfecta 💛'],
+        'dica': 'Ej.: Cada Navidad dormimos todos en la sala de la abuelita…',
+    },
+    'eu': {
+        'inicios': ['Un momento que marcó mi vida fue ', 'Estoy orgullosa de ', 'Hoy quiero celebrar '],
+        'medidor': ['Empieza con un momento que marcó tu vida', '¡Bien! Ahora cuenta un logro o algo que superaste',
+                    '¡Muy bien! ¿Y qué quieres celebrar hoy?', 'Perfecta 💛'],
+        'dica': 'Ej.: A los 18 años me fui sola a Monterrey…',
+    },
+    'padrao': {
+        'inicios': ['Un recuerdo que guardo es ', '{Ela} siempre ', 'Le quiero agradecer por '],
+        'medidor': ['Empieza con un recuerdo especial con {ela}', '¡Bien! Ahora cuenta una costumbre o frase muy suya',
+                    '¡Muy bien! ¿Y qué le quieres agradecer o decir?', 'Perfecta 💛'],
+        'dica': 'Ej.: Todos los domingos hacía pozole para toda la familia…',
+    },
+}
+MIN_LETRAS_LEMBRANCAS = 40
+
+# "Ver un ejemplo": historias de OTRAS personas, como las escribe la clienta. Mismo formato del pt-BR; por ahora solo
+# los de cada guía (falta la revisión mexicana).
+EXEMPLOS_LEMBRANCAS = {
+    '_casal': [
+        'Nos conocimos en el camión rumbo al trabajo, en 2004. Ella siempre se sentaba junto a la ventana y yo fui '
+        'agarrando valor. Canta fuerte mientras hace la comida del domingo. Quiero que sienta que, después de 20 años, '
+        'me volvería a casar con ella.',
     ],
-    'ex': [
-        {'pergunta': 'Un momento de ustedes que nunca olvidaste', 'exemplo': 'Ej.: El viaje a la playa en que llovió los tres días y nos reímos de todo.'},
-        {'pergunta': 'Algo {dela} que extrañas', 'exemplo': 'Ej.: Cómo cantaba en el carro, siempre con la letra mal.'},
-        {'pergunta': 'Lo que quieres que {ela} sepa hoy', 'exemplo': 'Ej.: Que me equivoqué, que aprendí y que todavía pienso en ti.'},
+    '_ex': [
+        'Estuvimos juntos 6 años y recorrimos medio país en carro. Extraño cómo se reía de mis manías. Quiero que '
+        'sepa que aprendí de mis errores y que todavía pienso en ella.',
     ],
-    'grupo': [
-        {'pergunta': 'Un recuerdo de ustedes', 'exemplo': 'Ej.: Las vacaciones en casa de la abuelita, todos durmiendo en la sala.'},
-        {'pergunta': 'Cómo es cada quien (puede ser una palabra para cada uno)', 'exemplo': 'Ej.: Ana es la bromista, Bety la que da consejos, Carmen la que cuida a todos.'},
-        {'pergunta': 'Lo que les quieres decir con esta canción', 'exemplo': 'Ej.: Que aunque estemos lejos, siempre vamos a ser familia.'},
+    '_grupo': [
+        'Somos 3 hermanas y cada Navidad dormimos juntas en la sala de la casa de mi mamá. Ana es la bromista y Bety '
+        'la que da consejos. Les quiero decir que, aunque estemos lejos, somos una sola.',
     ],
-    'eu': [
-        {'pergunta': 'Un momento que marcó tu vida', 'exemplo': 'Ej.: Cuando me fui sola a Monterrey a los 18 años.'},
-        {'pergunta': 'Un logro o algo que superaste', 'exemplo': 'Ej.: Terminé la carrera de enfermería después de los 40, trabajando de día y estudiando de noche.'},
-        {'pergunta': 'Lo que quieres celebrar hoy', 'exemplo': 'Ej.: Que hoy estoy orgullosa de la mujer que soy.'},
+    '_eu': [
+        'A los 18 años me fui sola a Monterrey. Terminé enfermería después de los 40, estudiando de noche. Quiero '
+        'celebrar la mujer que soy hoy.',
     ],
-    'padrao': [
-        {'pergunta': 'Un recuerdo especial con {ela}', 'exemplo': 'Ej.: Todos los domingos hacía pozole para toda la familia.'},
-        {'pergunta': 'Una costumbre, manía o frase muy suya', 'exemplo': 'Ej.: Canta mientras lava los trastes y siempre dice "Dios proveerá".'},
-        {'pergunta': 'Lo que le quieres agradecer o decir', 'exemplo': 'Ej.: Gracias por sacarnos adelante tú sola, con tanto amor.'},
+    '_padrao': [
+        'Mi madrina me crió cuando mi mamá se fue a trabajar fuera. Hace el mejor café del mundo y para todo dice '
+        '"todo va a salir bien". Le quiero agradecer por nunca dejarme sola.',
     ],
 }
-MIN_LETRAS_LEMBRANCAS = 40   # somando as 3 respostas
 
 PERGUNTAS = [
     {
@@ -166,9 +197,9 @@ PERGUNTAS = [
     },
     {
         'chave': 'lembrancas', 'tipo': 'lembrancas',
-        'titulo': 'Ahora, lo más importante 💛',
-        'ajuda': 'Cuéntanos la historia de {nome}. Entre más detalles, más se va a parecer a ustedes la canción.',
-        'ajuda_eu': 'Cuéntanos tu historia. Entre más detalles, más se va a parecer a ti la canción.',
+        'titulo': 'Cuéntanos su historia 💛',
+        'titulo_eu': 'Cuéntanos tu historia 💛',
+        'ajuda': 'A tu manera, como si se lo contaras a una amiga. No tiene que quedar bonito.',
     },
     {
         'chave': 'frase_obrigatoria', 'tipo': 'texto',

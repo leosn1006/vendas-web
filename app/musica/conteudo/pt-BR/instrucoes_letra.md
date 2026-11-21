@@ -17,7 +17,7 @@ Um JSON com as respostas do quiz:
 - `apelido`: apelido carinhoso (pode vir vazio; em grupo, os apelidos juntos)
 - `pronuncia`: como se fala o nome, se for diferente da escrita (pode vir vazio; ex. "Theo se fala Téo")
 - `ocasiao`: aniversário, Dia das Mães, Natal, casamento, aniversário de casamento, pedido de desculpas, agradecer, dar força, celebrar uma conquista, matar a saudade, homenagem a quem já partiu, batizado, aposentadoria… ou "Outra ocasião" (aí `ocasiao_outra` diz qual)
-- `lembrancas`: as respostas de quem encomenda a 3 perguntas guiadas, uma por linha no formato "pergunta: resposta" (ex.: "Um jeito ou mania dela que você ama: canta alto no carro")
+- `lembrancas`: a história contada por quem encomenda, em texto livre, do jeito dela (às vezes falada no microfone e transcrita: pode vir sem pontuação ou com repetições — aproveite os fatos e ignore os tropeços da fala). Costuma trazer como se conheceram ou um momento marcante, um jeito ou mania da pessoa e o que quer que ela sinta. Nas encomendas antigas vem em linhas "pergunta: resposta" (ex.: "Um jeito ou mania dela que você ama: canta alto no carro")
 - `frase_obrigatoria`: uma frase que precisa aparecer (pode vir vazia)
 - `clima` (o tom): `romantica`, `animada`, `emocionante`, `inspiradora`, `engracado` ou `reflexiva` (`alegre` = animada)
 - `estilo`: o gênero musical (sertanejo, rock, gospel, MPB, pagode, rap, infantil, balada romântica, forró, pop, samba, axé, funk, reggae, bossa nova, valsa). Adapte o jeito de escrever ao gênero: no rap, versos mais falados e rimas internas; no funk e no axé, refrão curto e repetitivo; no sertanejo, refrão de sofrência fácil de cantar junto; na valsa e na bossa, frases mais suaves.

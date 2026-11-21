@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from musica.dominio.modelos import PedidoGeracao
 from musica.dominio import quiz as _quiz
-from musica.dominio.quiz import MAIS_DE_UMA, PARA_MIM, RELACOES, rotulo
+from musica.dominio.quiz import MAIS_DE_UMA, MAX_LETRAS_LEMBRANCAS, PARA_MIM, RELACOES, rotulo
 
 
 def _q(quiz):
@@ -43,10 +43,12 @@ def montar_respostas(bruto: dict, chaves_validas: set, max_pessoas: int, quiz=No
                      se_fala: str = ' se fala ') -> dict:
     """Respostas do quiz como a IA e o resto do sistema esperam, a partir do que o navegador mandou:
     `pessoas` (1 a max_pessoas, cada uma com nome/apelido/pronuncia) vira nome, apelido e pronuncia juntos
-    ("Ana, Bia e Carla"), e a lista fica para a IA tratar o plural; `lembrancas_partes` (pergunta guiada + resposta)
-    vira o texto de `lembrancas`. "Para mim": quem dá o presente é a própria pessoa. `quiz`, `e` (" e " / " y ") e
+    ("Ana, Bia e Carla"), e a lista fica para a IA tratar o plural. `lembrancas` é o texto livre da caixa única
+    (desde 20/11/2026, até MAX_LETRAS_LEMBRANCAS: a fala do microfone sai longa); `lembrancas_partes` (pergunta guiada +
+    resposta, o quiz de 3 caixas — rascunhos e abas antigas) vira o texto de `lembrancas`. "Para mim": quem dá o presente é a própria pessoa. `quiz`, `e` (" e " / " y ") e
     `se_fala` (" se fala " / " se dice ", a pronúncia que a IA lê): os do idioma."""
-    respostas = {k: str(v).strip()[:1500] for k, v in bruto.items() if k in chaves_validas and isinstance(v, (str, int))}
+    respostas = {k: str(v).strip()[:MAX_LETRAS_LEMBRANCAS if k == 'lembrancas' else 1500]
+                 for k, v in bruto.items() if k in chaves_validas and isinstance(v, (str, int))}
     pessoas = []
     lista_pessoas = bruto.get('pessoas') if isinstance(bruto.get('pessoas'), list) else []
     for p in lista_pessoas[:max_pessoas]:

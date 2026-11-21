@@ -25,6 +25,11 @@ MODELO_LETRA = os.getenv('MUSICA_MODELO_LETRA', 'gpt-6.1-sol')
 ESFORCO_LETRA = os.getenv('MUSICA_ESFORCO_LETRA', 'medium')   # low | medium | high (modelos com raciocínio)
 LETRA_SIMULADA = os.getenv('MUSICA_LETRA_SIMULADA', '0') == '1' or not os.getenv('OPENAI_API_KEY')
 
+# Microfone da tela de lembranças (fala → texto pela OpenAI; simulado quando a letra é simulada).
+MODELO_DITADO = os.getenv('MUSICA_MODELO_DITADO', 'whisper-1')
+DITADO_POR_HORA = _int('MUSICA_DITADO_POR_HORA', 15)     # gravações por IP por hora
+DITADO_POR_DIA = _int('MUSICA_DITADO_POR_DIA', 1500)     # teto de todas as gravações do dia (protege o custo)
+
 # Endereço público (para o webhook do gerador e os links dos e-mails). Vazio: o host da requisição.
 URL_PUBLICA = os.getenv('MUSICA_URL_PUBLICA', '').rstrip('/')
 

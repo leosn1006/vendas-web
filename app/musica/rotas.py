@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('musica', __name__, url_prefix='/musica', template_folder='templates', static_folder='static',
                static_url_path='/static')
 
-ATUALIZADO_LEGAL = '17 de outubro de 2026'
+ATUALIZADO_LEGAL = '21 de novembro de 2026'
 
 
 # ================================================================ utilidades
@@ -509,6 +509,46 @@ def api_criar():
     except Recusa as r:
         return _recusa(r)
     return jsonify(token=musica['token'], link=_rota('pagina_previa', token=musica['token']))
+
+
+def _ditado_excedido() -> bool:
+    """15 por IP por hora e o teto do dia (config). É limite de CUSTO: com o Redis fora do ar, recusa (o contrário do
+    limite do checkout, que nunca bloqueia venda) — ela ainda pode escrever na caixa."""
+    from datetime import date
+    try:
+        from web.cielo import _redis
+        r = _redis()
+        for chave, maximo, janela in ((f'limite:musica_ditado:{_ip()}', config.DITADO_POR_HORA, 3600),
+                                      (f'limite:musica_ditado_dia:{date.today().isoformat()}', config.DITADO_POR_DIA, 86400)):
+            r.set(chave, 0, ex=janela, nx=True)   # nasce com prazo; o INCR só soma (como web.checkout)
+            if r.incr(chave) > maximo:
+                return True
+        return False
+    except Exception as e:
+        logger.warning(f'[MUSICA] Redis indisponível no limite do microfone: {e}')
+        return True
+
+
+@bp.post('/api/ditado')
+def api_ditado():
+    """Microfone da tela de lembranças: o áudio (campo "audio", até 2 min a 24 kbps ≈ 400 KB) vira texto. Sem turnstile
+    (é a cada gravação): origem do site, até 1 MB (o padrão do nginx nas rotas da música), 15 por IP por hora e um
+    teto do dia (custo da OpenAI)."""
+    if not _origem_confiavel():
+        return jsonify(erro=_texto('erros.recarregue')), 403
+    if (request.content_length or 0) > 1024 * 1024:
+        return jsonify(erro=_texto('erros.audio_grande')), 413
+    audio = request.files.get('audio')
+    if not audio:
+        return jsonify(erro=_texto('erros.audio_vazio')), 400
+    if _ditado_excedido():
+        logger.warning(f'[MUSICA] Limite do microfone atingido (IP {_ip()})')
+        return jsonify(erro=_texto('erros.ditado_limite')), 429
+    try:
+        texto = uc.transcrever(servicos(), audio.stream, audio.mimetype, _idioma(), request.form.get('dica'))
+    except Recusa as r:
+        return _recusa(r)
+    return jsonify(texto=texto)
 
 
 @bp.get('/api/musicas/<token>')

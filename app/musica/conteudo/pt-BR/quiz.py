@@ -115,35 +115,106 @@ VOZES_POR_ESTILO = {
     'gospel': ['feminina', 'masculina', 'coral'],
 }
 
-# Perguntas guiadas das lembranças, pelo marcador da relação (a primeira que bater; senão "padrao").
+# Tela de lembranças (uma caixa só, desde 20/11/2026), pelo marcador da relação (a primeira que bater; senão
+# "padrao"): `inicios` = frases para começar (as pílulas: tocar põe o começo na caixa), `medidor` = o que o medidor
+# diz conforme ela escreve (abaixo do mínimo, < 150, < 350 e completo: segue as 3 partes de uma boa história),
+# `dica` = o texto cinza da caixa vazia. {ela}/{dela}/{nome} (e {Ela} com maiúscula) vêm do personalizar do quiz.
 LEMBRANCAS = {
-    'casal': [
-        {'pergunta': 'Como vocês se conheceram ou um momento que marcou vocês', 'exemplo': 'Ex.: A gente se conheceu num baile em 1998 e dançamos a noite toda.'},
-        {'pergunta': 'Um jeito ou mania {dela} que você ama', 'exemplo': 'Ex.: Canta alto no carro e erra todas as letras.'},
-        {'pergunta': 'O que você quer que {ela} sinta ouvindo a música', 'exemplo': 'Ex.: Que depois de 25 anos eu escolheria tudo de novo.'},
+    'casal': {
+        'inicios': ['A gente se conheceu ', '{Ela} tem um jeito ', 'Quero que {ela} sinta '],
+        'medidor': ['Comece contando como vocês se conheceram', 'Boa! Agora conte um jeito {dela} que você ama',
+                    'Ótimo! E o que você quer que {ela} sinta?', 'Perfeita 💛'],
+        'dica': 'Ex.: A gente se conheceu na igreja em 2009…',
+    },
+    'ex': {
+        'inicios': ['Nunca esqueci quando ', 'Sinto falta do jeito que {ela} ', 'Quero que {ela} saiba que '],
+        'medidor': ['Comece com um momento de vocês que você nunca esqueceu',
+                    'Boa! Agora conte um jeito {dela} de que você sente falta',
+                    'Ótimo! E o que você quer que {ela} saiba hoje?', 'Perfeita 💛'],
+        'dica': 'Ex.: Nunca esqueci a viagem pra praia em que choveu os três dias…',
+    },
+    'grupo': {
+        'inicios': ['Uma lembrança nossa é ', 'Cada um tem seu jeito ', 'Quero dizer pra vocês que '],
+        'medidor': ['Comece com uma lembrança de vocês', 'Boa! Agora conte o jeito de cada pessoa',
+                    'Ótimo! E o que você quer dizer com a música?', 'Perfeita 💛'],
+        'dica': 'Ex.: Todo Natal a gente dorme junto na sala da casa da vó…',
+    },
+    'eu': {
+        'inicios': ['Um momento que marcou a minha vida foi ', 'Tenho orgulho de ', 'Hoje eu quero celebrar '],
+        'medidor': ['Comece com um momento que marcou a sua vida', 'Boa! Agora conte uma conquista ou superação sua',
+                    'Ótimo! E o que você quer celebrar agora?', 'Perfeita 💛'],
+        'dica': 'Ex.: Com 18 anos me mudei sozinha pra São Paulo…',
+    },
+    'padrao': {
+        'inicios': ['Uma lembrança que eu guardo é ', '{Ela} sempre ', 'Quero agradecer por '],
+        'medidor': ['Comece com uma lembrança marcante com {ela}', 'Boa! Agora conte um jeito ou mania {dela}',
+                    'Ótimo! E o que você quer agradecer ou dizer?', 'Perfeita 💛'],
+        'dica': 'Ex.: Todo domingo ela fazia bolo de fubá pra família inteira…',
+    },
+}
+MIN_LETRAS_LEMBRANCAS = 40
+
+# "Ver um exemplo" na tela de lembranças: histórias de OUTRAS pessoas (nunca o nome dela), do jeito que a cliente
+# escreve — simples, com um detalhe concreto e as 3 partes. Pela relação; sem exemplo próprio, o da guia ("_casal",
+# "_ex", "_grupo", "_eu", "_padrao"). Sem nenhum, o botão não aparece. Não há botão de copiar (de propósito).
+EXEMPLOS_LEMBRANCAS = {
+    'Esposa': [
+        'A gente se conheceu no ônibus indo pro trabalho, em 2004. Ela sempre sentava na janela e eu fui tomando '
+        'coragem. Ela canta alto fazendo o almoço de domingo e ri das próprias piadas. Quero que ela sinta que, '
+        'depois de 20 anos, eu casaria com ela de novo.',
+        'Casamos novos, sem nada, morando num quartinho. Ela segurou a casa quando fiquei desempregado e nunca '
+        'reclamou. Ela me chama de "meu velho" desde os 25 anos. Quero que ela saiba que tudo que a gente tem é '
+        'graças a ela.',
     ],
-    'ex': [
-        {'pergunta': 'Um momento de vocês que você nunca esqueceu', 'exemplo': 'Ex.: A viagem pra praia em que choveu os três dias e a gente riu de tudo.'},
-        {'pergunta': 'Um jeito {dela} de que você sente falta', 'exemplo': 'Ex.: O jeito que cantava alto no carro, errando a letra.'},
-        {'pergunta': 'O que você quer que {ela} saiba hoje', 'exemplo': 'Ex.: Que eu errei, aprendi, e que ainda penso em você.'},
+    'Namorada': [
+        'A gente se conheceu num aniversário de um amigo e ficamos conversando até o dono da casa mandar todo mundo '
+        'embora. Ela ri com o nariz e fica com vergonha. Quero que ela sinta que eu quero ela pra vida toda.',
+        'Faz 2 anos que a gente namora à distância, ela em Recife e eu em São Paulo. Ela manda bom dia todo dia com '
+        'uma foto do céu. Quero que ela sinta que a saudade vale a pena.',
     ],
-    'grupo': [
-        {'pergunta': 'Uma lembrança de vocês', 'exemplo': 'Ex.: As férias na casa da vó, todo mundo dormindo na sala.'},
-        {'pergunta': 'O jeito de cada pessoa (pode ser uma palavra para cada)', 'exemplo': 'Ex.: Ana é a brincalhona, Bia a conselheira, Carla a que cuida de todo mundo.'},
-        {'pergunta': 'O que você quer dizer com essa música', 'exemplo': 'Ex.: Que mesmo longe a gente é uma só.'},
+    'Marido': [
+        'Conheci o Zé num forró em 1995 e ele pisou no meu pé a noite inteira. Ele acorda cedo e deixa o café '
+        'pronto pra mim todo dia. Quero que ele sinta o quanto eu sou grata por esses 30 anos.',
+        'A gente se casou na igreja da minha cidade, com chuva. Ele é calado, mas resolve tudo e cuida de todo '
+        'mundo. Quero que ele saiba que é o melhor pai e o melhor companheiro.',
     ],
-    'eu': [
-        {'pergunta': 'Um momento que marcou a sua vida', 'exemplo': 'Ex.: Quando me mudei sozinha para São Paulo com 18 anos.'},
-        {'pergunta': 'Uma conquista ou superação sua', 'exemplo': 'Ex.: Me formei em enfermagem depois dos 40, trabalhando de dia e estudando à noite.'},
-        {'pergunta': 'O que você quer celebrar agora', 'exemplo': 'Ex.: Que hoje eu me orgulho de quem eu me tornei.'},
+    'Namorado': [
+        'A gente se conheceu pelo aplicativo e no primeiro encontro ele chegou com uma flor do jardim da mãe dele. '
+        'Ele faz piada até quando está nervoso. Quero que ele sinta que eu escolhi ele.',
     ],
-    'padrao': [
-        {'pergunta': 'Uma lembrança marcante com {ela}', 'exemplo': 'Ex.: Todo domingo fazia bolo de fubá para a família inteira.'},
-        {'pergunta': 'Um jeito, mania ou frase {dela}', 'exemplo': 'Ex.: Canta hinos lavando a louça e sempre diz "Deus proverá".'},
-        {'pergunta': 'O que você quer agradecer ou dizer', 'exemplo': 'Ex.: Obrigada por ter criado a gente sozinha, com tanto amor.'},
+    'Filha': [
+        'Ela nasceu num dia de muita chuva e parou de chorar quando eu cantei pra ela. Ela é teimosa igual a mim e '
+        'dança pela casa toda. Quero que ela saiba que eu tenho muito orgulho da mulher que ela virou.',
+    ],
+    'Filho': [
+        'Ele foi o primeiro neto da família e todo mundo mimava. Ele me abraça forte e diz "calma, mãe". Quero que '
+        'ele saiba que vou estar sempre aqui, mesmo de longe.',
+    ],
+    'Mãe': [
+        'Minha mãe criou cinco filhos sozinha, costurando de madrugada. Ela canta hino lavando a louça e sempre diz '
+        '"Deus proverá". Quero agradecer por tudo que ela abriu mão pela gente.',
+    ],
+    'Minha ex': [
+        'A gente ficou junto 6 anos e viajou o Nordeste inteiro de carro. Sinto falta do jeito que ela ria das '
+        'minhas manias. Quero que ela saiba que eu aprendi com os meus erros e que penso nela.',
+    ],
+    'Meu ex': [
+        'A gente ficou junto 6 anos e viajou o Nordeste inteiro de carro. Sinto falta do jeito que ele ria das '
+        'minhas manias. Quero que ele saiba que eu aprendi com os meus erros e que penso nele.',
+    ],
+    '_padrao': [
+        'Minha madrinha me criou quando minha mãe foi trabalhar fora. Ela faz o melhor café do mundo e fala "vai dar '
+        'certo" pra tudo. Quero agradecer por ela nunca ter me deixado sozinha.',
+    ],
+    '_grupo': [
+        'Somos 3 irmãs e todo Natal a gente dorme junta na sala da casa da mãe. A Ana é a brincalhona, a Bia a '
+        'conselheira. Quero dizer que, mesmo longe, a gente é uma só.',
+    ],
+    '_eu': [
+        'Me mudei sozinha pra São Paulo com 18 anos. Me formei em enfermagem depois dos 40, estudando à noite. '
+        'Quero celebrar quem eu me tornei.',
     ],
 }
-MIN_LETRAS_LEMBRANCAS = 40   # somando as 3 respostas
 
 PERGUNTAS = [
     {
@@ -167,9 +238,9 @@ PERGUNTAS = [
     },
     {
         'chave': 'lembrancas', 'tipo': 'lembrancas',
-        'titulo': 'Agora a parte mais importante 💛',
-        'ajuda': 'Conte a história de {nome}. Quanto mais detalhes, mais a música vai parecer com vocês.',
-        'ajuda_eu': 'Conte a sua história. Quanto mais detalhes, mais a música vai parecer com você.',
+        'titulo': 'Conte a história de vocês 💛',
+        'titulo_eu': 'Conte a sua história 💛',
+        'ajuda': 'Do seu jeito, como se contasse para uma amiga. Não precisa escrever bonito.',
     },
     {
         'chave': 'frase_obrigatoria', 'tipo': 'texto',

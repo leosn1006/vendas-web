@@ -13,6 +13,7 @@ class Servicos:
     gerador: portas.GeradorMusica
     escritor: portas.EscritorLetra
     transcritor: portas.Transcritor | None
+    ditado: portas.Ditado
     audio: portas.Audio
     video: portas.Video
     repositorio: portas.Repositorio
@@ -55,11 +56,18 @@ def servicos() -> Servicos:
     if config.LEGENDA_VIDEO and not config.LETRA_SIMULADA:
         from musica.adaptadores.transcritor_openai import TranscritorOpenAI
         transcritor = TranscritorOpenAI()
+    if config.LETRA_SIMULADA:
+        from musica.adaptadores.transcritor_openai import DitadoSimulado
+        ditado = DitadoSimulado()
+    else:
+        from musica.adaptadores.transcritor_openai import DitadoOpenAI
+        ditado = DitadoOpenAI(config.MODELO_DITADO)
     repositorio = RepositorioMysql()
     return Servicos(
         gerador=criar_gerador(config.GERADOR),
         escritor=criar_escritor(),
         transcritor=transcritor,
+        ditado=ditado,
         audio=AudioFfmpeg(),
         video=VideoFfmpeg(),
         repositorio=repositorio,
