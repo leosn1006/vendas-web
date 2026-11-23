@@ -49,6 +49,10 @@ musica_registrar(app)
 from sms import registrar as sms_registrar
 sms_registrar(app)
 
+# Webhook da Hotmart (checkout de fora do Brasil) — ver docs/HOTMART.md
+from hotmart import registrar as hotmart_registrar
+hotmart_registrar(app)
+
 
 @app.template_filter('brl')
 def formatar_brl(valor):

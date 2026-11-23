@@ -30,6 +30,11 @@ Conversões voltam pro Google Ads via Google Sheets (GCLID) — venda do site co
 **Música de Presente** (`app/musica/`, `/musica/...`; `docs/MUSICA.md`): produto sem e-book — quiz → letra (OpenAI) → música (gerador na borda: Apiframe no MVP, `MUSICA_GERADOR`) → prévia grátis → checkout (`?musica=<token>`) → área da compra. Entregável `tipo='musica'` com `recurso` (música, videoclipe, QR, entrega por e-mail); fica fora da NF-e automática (`produtos.nfe_automatica = 0`).
 Idiomas (`musica/idiomas.py`, seção "Idiomas" do doc): `/musica` = Brasil, `/mx/cancion` = México (produto próprio, `produtos.idioma`); a música grava o idioma e o conteúdo de cada um fica em `app/musica/conteudo/<idioma>/` — texto novo nunca direto no template.
 
+**Hotmart** (`app/hotmart/`, `docs/HOTMART.md`): checkout de fora do Brasil (começa pela Música do México). O
+pedido é o nosso (`xcod` = guid); o webhook `POST /hotmart/webhook` (hottok) confere a oferta em `hotmart_ofertas` e
+paga com o mesmo `confirmar_pagamento_web` + `enviar_email_entrega` do PIX/cartão. `valor_pago` fica sempre em reais;
+moeda original, comissão e previsão de repasse ficam em `pagamento_hotmart`.
+
 **Contribuição no site** (`web/contribuicao.py`, `docs/CONTRIBUICAO_WEB.md`): A/B na landing do WhatsApp (começa no Tempero) — parte dos cliques recebe o livro na Estante 2 antes de pagar (estados 1008/1009, áudio da persona; e-mail opcional, na Estante, desde 14/11/2026) e paga a "contribuição" pelo checkout v2 (`?ref=`), um pedido web normal. Configuração em `contribuicao_config` (`percentual_estante = 0` desliga); resultado na Analytics Web do produto (o ROI só mostra o status).
 
 **SMS** (`app/sms/`, `docs/SMS.md`): genérico, pela Comtele; texto sem acento em 1 parte (≤ 160) com link curto
@@ -65,4 +70,4 @@ Hooks em `.claude/hooks/` automatizam duas dessas regras: no dev, negam por padr
 
 ## Documentação
 
-`docs/` — `CARTAO.md` (cartão, Cielo, Silent Order Post), `CONTRIBUICAO_WEB.md`, `PLANOS.md` (produto → planos → entregáveis), `APPS.md`, `MUSICA.md`, `META_CONVERSOES.md`, `FLUXO_MENSAGENS.md`, `WEBHOOK_WHATSAPP.md`, `PLAYBOOK_SITE_VENDA_WEB.md`, `INTEGRACAO.md` (gateway WhatsApp Web), `ATENDIMENTO_EMAIL.md` (fila de e-mail, Gmail, DKIM/DMARC), `SEGURANCA*.md`. SSL/certbot: `infra/certbot/README.md`.
+`docs/` — `CARTAO.md` (cartão, Cielo, Silent Order Post), `CONTRIBUICAO_WEB.md`, `PLANOS.md` (produto → planos → entregáveis), `APPS.md`, `MUSICA.md`, `META_CONVERSOES.md`, `FLUXO_MENSAGENS.md`, `WEBHOOK_WHATSAPP.md`, `PLAYBOOK_SITE_VENDA_WEB.md`, `INTEGRACAO.md` (gateway WhatsApp Web), `ATENDIMENTO_EMAIL.md` (fila de e-mail, Gmail, DKIM/DMARC), `HOTMART.md` (checkout de fora do Brasil), `SEGURANCA*.md`. SSL/certbot: `infra/certbot/README.md`.

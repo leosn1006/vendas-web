@@ -1,0 +1,84 @@
+{
+  "id": "1234567890123456789",
+  "creation_date": 12345678,
+  "event": "PURCHASE_APPROVED",
+  "version": "2.0.0",
+  "data": {
+    "product": {
+      "id": 213344,
+      "ucode": "2e9c43a9-0aeb-48ed-9464-630f845c23af",
+      "name": "Product Name",
+      "has_co_production": false,
+      "warranty_date": "2017-12-27T00:00:00Z",
+      "support_email": "support@email.com",
+      "is_physical_product": false,
+      "sku": "PROD-SKU-001",
+      "external_id": "EXTERNAL_PROD_001",
+      "content": {
+        "has_physical_products": true,
+        "products": [
+          {"id": 4774438, "ucode": "559fef42-3406-4d82-b775-d09bd33936b1", "name": "Product Name 1", "is_physical_product": false},
+          {"id": 4999597, "ucode": "099e7644-b7d1-43d6-82a9-ec6be0118a4b", "name": "Physical product", "is_physical_product": true}
+        ]
+      }
+    },
+    "affiliates": [{"affiliate_code": "Q58388177J", "name": "Affiliate name"}],
+    "buyer": {
+      "ucode": "f6ebb124-863f-4a94-a843-5c57c0b1b607",
+      "email": "buyer@email.com",
+      "name": "Buyer Name",
+      "first_name": "Buyer",
+      "last_name": "Name",
+      "checkout_phone": "999999999",
+      "checkout_phone_code": "31",
+      "document": "123456789",
+      "document_type": "CPF",
+      "address": {
+        "zipcode": "30150101", "country": "Brasil", "number": "499", "address": "Avenida Assis Chateaubriand",
+        "city": "Belo Horizonte", "state": "MG", "neighborhood": "Floresta", "complement": "a complement",
+        "country_iso": "BR"
+      }
+    },
+    "producer": {"name": "Producer Name", "legal_nature": "Pessoa Física", "document": "12345678965"},
+    "commissions": [
+      {"value": 0.65, "currency_value": "BRL", "source": "MARKETPLACE"},
+      {
+        "value": 3.10, "currency_value": "USD", "source": "PRODUCER",
+        "currency_conversion": {"converted_value": 16.34, "converted_to_currency": "BRL", "conversion_rate": 5.271103}
+      }
+    ],
+    "purchase": {
+      "approved_date": 1231241434453,
+      "full_price": {"value": 134.0, "currency_value": "BRL"},
+      "original_offer_price": {"currency_value": "EUR", "value": 150.6},
+      "price": {"value": 150.6, "currency_value": "BRL"},
+      "offer": {"code": "n82b9jqz", "coupon_code": "ABCDE", "name": "Offer name", "description": "Offer description"},
+      "recurrence_number": 1,
+      "subscription_anticipation_purchase": false,
+      "checkout_country": {"name": "Brasil", "iso": "BR"},
+      "origin": {"xcod": "xcod_example"},
+      "order_bump": {"is_order_bump": true, "parent_purchase_transaction": "HP02316330308193"},
+      "order_date": "123243546",
+      "date_next_charge": 1736337600000,
+      "status": "STARTED",
+      "transaction": "HP02316330308193",
+      "payment": {
+        "billet_barcode": "03399.33335 33823.303087 19802.801027 2 87630000015000",
+        "billet_url": "https://billet-link.com/bHP02316330308193",
+        "installments_number": 2,
+        "refusal_reason": "fail",
+        "type": "PICPAY"
+      },
+      "is_funnel": false,
+      "event_tickets": {"amount": 2},
+      "business_model": "I",
+      "variants": {
+        "sku": "HTM_OTAROM-14",
+        "attributes": [{"name": "Tamanho", "value": "Médio"}, {"name": "Sabor", "value": "Chocolate"}],
+        "price": {"value": 49.90, "currency_value": "BRL"},
+        "external_id": "EXTERNAL_VAR_001"
+      }
+    },
+    "subscription": {"status": "ACTIVE", "plan": {"id": 711459, "name": "plan name"}, "subscriber": {"code": "12133421"}}
+  }
+}

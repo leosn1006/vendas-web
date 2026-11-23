@@ -1960,9 +1960,10 @@ _SQL_CAMPANHAS = """
 
 _SQL_FUNIL_WEB = """
     SELECT
-        COUNT(CASE WHEN estado_id IN (1004,1003,1001,1002,1005,1006,1000) THEN 1 END) AS chegou_landing,
-        COUNT(CASE WHEN estado_id IN (1003,1001,1002,1005,1006,1000) THEN 1 END)      AS chegou_checkout,
-        COUNT(CASE WHEN estado_id IN (1000,1001,1002,1005,1006) THEN 1 END)          AS total_pedidos,
+        -- 1010/1011: pedido da Hotmart aguardando OXXO/SPEI ou cancelado (migration 109) — passou pelo checkout
+        COUNT(CASE WHEN estado_id IN (1004,1003,1001,1002,1005,1006,1010,1011,1000) THEN 1 END) AS chegou_landing,
+        COUNT(CASE WHEN estado_id IN (1003,1001,1002,1005,1006,1010,1011,1000) THEN 1 END)      AS chegou_checkout,
+        COUNT(CASE WHEN estado_id IN (1000,1001,1002,1005,1006,1010,1011) THEN 1 END)          AS total_pedidos,
         COUNT(CASE WHEN estado_id = 1000 THEN 1 END)                        AS pagos
     FROM pedidos
     WHERE produto_id = %s
