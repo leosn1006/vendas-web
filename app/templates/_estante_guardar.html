@@ -54,6 +54,7 @@
         <input class="guardar-input" id="guardarEmail" type="email" inputmode="email" autocomplete="email"
                autocapitalize="off" spellcheck="false" placeholder="seuemail@gmail.com">
         <button type="submit" class="guardar-reenviar" id="guardarEnviarEmail">Receber no meu e-mail</button>
+        <span class="guardar-msg" id="guardarSugestaoEmail" hidden></span>
         <span class="guardar-msg" id="guardarMsgEmail" hidden></span>
     </form>
     {% endif %}
@@ -61,6 +62,7 @@
     <p class="guardar-dica" style="margin-top:14px">⭐ Ou salve esta página nos favoritos do navegador.</p>
 </section>
 
+<script src="{{ url_for('static', filename='js/email-validacao.js') }}"></script>
 <script>
 (function () {
     var iphone = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -76,10 +78,19 @@
         var campo = document.getElementById('guardarEmail'), enviar = document.getElementById('guardarEnviarEmail');
         var aviso = document.getElementById('guardarMsgEmail');
         var avisar = function (texto, erro) { aviso.textContent = texto; aviso.className = 'guardar-msg' + (erro ? ' erro' : ''); aviso.hidden = false; };
+        // "Você quis dizer gmail.com?" ao sair do campo
+        if (window.EmailValidacao) EmailValidacao.ligarSugestao(campo, document.getElementById('guardarSugestaoEmail'));
         formEmail.addEventListener('submit', function (ev) {
             ev.preventDefault();
             var email = campo.value.trim();
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { avisar('Confere o e-mail? Ele precisa ter @ e terminar com .com ou .com.br', true); return; }
+            // A regra do checkout (static/js/email-validacao.js); o servidor repete e confere o domínio.
+            var checagem = window.EmailValidacao ? EmailValidacao.validar(email) : { ok: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) };
+            if (!checagem.ok) {
+                avisar(checagem.motivo === 'sobra_apos_dominio'
+                    ? 'Esse e-mail parece ter algo digitado a mais sem querer — confira antes de continuar.'
+                    : 'Confere o e-mail? Ele precisa ter @ e terminar com .com ou .com.br', true);
+                return;
+            }
             enviar.disabled = true; enviar.textContent = 'Enviando…';
             fetch('/api/v1/estante/{{ guid }}/email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) })
                 .then(function (r) { return r.json().then(function (j) { return { status: r.status, j: j }; }); })

@@ -5,6 +5,11 @@
 {% block estilo %}
 <meta name="robots" content="noindex">
 <style>
+.sugestao-email{margin:8px 0 0;font-weight:600;color:var(--cor-forte);min-height:1.5em}
+/* escondida, a linha continua ocupando o lugar: a sugestão aparece ao sair do campo e não pode empurrar o botão
+   no instante do toque (o toque cairia fora dele) */
+.sugestao-email[hidden]{display:block;visibility:hidden}
+.sugestao-email a{color:inherit;text-decoration:underline}
 .funil{max-width:680px;margin:0 auto;padding:0 20px 72px}
 .funil-topo{display:flex;align-items:center;justify-content:space-between;height:68px}
 .capa{position:relative;border-radius:var(--raio);overflow:hidden;background:#1C1917;color:#fff;padding:44px 28px 34px;margin-top:12px;text-align:center}
@@ -112,7 +117,8 @@ video{width:100%;max-height:70vh;border-radius:16px;background:#000}
         {% if whatsapp_ativo %}
         <div><label for="pr-whats">{{ t('compra.label_whats') }}</label><input class="campo" id="pr-whats" type="tel" inputmode="tel" placeholder="{{ t('compra.whats_exemplo') }}" value="{{ '+' ~ musica.presente_whatsapp if musica.presente_whatsapp else '' }}"></div>
         {% endif %}
-        <div><label for="pr-email">{{ t('compra.label_email') }}{% if whatsapp_ativo %}{{ t('compra.opcional') }}{% endif %}</label><input class="campo" id="pr-email" type="email" inputmode="email" placeholder="{{ t('compra.email_exemplo') }}" value="{{ musica.presente_email or '' }}"></div>
+        <div><label for="pr-email">{{ t('compra.label_email') }}{% if whatsapp_ativo %}{{ t('compra.opcional') }}{% endif %}</label><input class="campo" id="pr-email" type="email" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="{{ t('compra.email_exemplo') }}" value="{{ musica.presente_email or '' }}">
+          <p class="sugestao-email" id="pr-sugestao-email" hidden></p></div>
         <div><label for="pr-dia">{{ t('compra.label_dia') }}</label><input class="campo" id="pr-dia" type="date" value="{{ presente_em_local.strftime('%Y-%m-%d') if presente_em_local else '' }}"></div>
         <div><label for="pr-hora">{{ t('compra.label_hora') }}</label><input class="campo" id="pr-hora" type="time" value="{{ presente_em_local.strftime('%H:%M') if presente_em_local else '09:00' }}"></div>
       </div>
@@ -178,6 +184,7 @@ video{width:100%;max-height:70vh;border-radius:16px;background:#000}
 {% endblock %}
 {% block script %}
 <script src="{{ url_for('musica.static', filename='nomes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/email-validacao.js') }}"></script>
 <script>
 const T = {{ textos.compra.js|tojson }};   // as frases do idioma (conteudo/<idioma>/textos.json, compra.js)
 const fmt = (texto, valores) => texto.replace(/\{(\w+)\}/g, (m, k) => k in valores ? String(valores[k]) : m);
@@ -258,10 +265,18 @@ function quandoComFuso(dia, hora){
 // Nomes de quem recebe (quiz) para o aviso de "Seu nome" igual (static/nomes.js); avisa uma vez.
 const NOMES_QUEM_RECEBE = {{ nomes_quem_recebe|tojson }};
 let avisadoDe = null;
+// "Você quis dizer gmail.com?" no e-mail de quem recebe
+if (document.getElementById("pr-email"))
+  EmailValidacao.ligarSugestao(document.getElementById("pr-email"), document.getElementById("pr-sugestao-email"), {pergunta: T.email_sugestao});
 async function enviarPresente(agora){
   const erro = document.getElementById("pr-erro"); erro.style.display = "none";
   const dia = document.getElementById("pr-dia").value, hora = document.getElementById("pr-hora").value;
   if (!agora && !(dia && hora)) { erro.textContent = T.escolha_dia; erro.style.display = "block"; return; }
+  // E-mail de quem recebe: a regra do checkout (static/js/email-validacao.js); o servidor repete e confere o domínio.
+  const emailPresente = document.getElementById("pr-email").value.trim();
+  if (emailPresente && !EmailValidacao.validar(emailPresente).ok) {
+    erro.textContent = T.erro_email; erro.style.display = "block"; document.getElementById("pr-email").focus(); return;
+  }
   // "de Rose para Rose": o comprador pôs o nome de quem recebe no "Seu nome". Avisa uma vez; tocando de novo, segue.
   const de = ((document.getElementById("pr-de") || {}).value || "").trim();
   if (de && avisadoDe !== de && MesmoNome(de, document.getElementById("pr-nome").value, ...NOMES_QUEM_RECEBE)) {

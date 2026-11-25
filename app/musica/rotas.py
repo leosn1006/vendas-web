@@ -503,12 +503,25 @@ def api_criar():
     if digitado and not whatsapp:
         return jsonify(erro=_texto('erros.celular')), 400
     email = (dados.get('email') or '').strip().lower()[:200]
+    erro_email = _erro_email(email)
+    if erro_email:
+        return jsonify(erro=erro_email), 400
     try:
         musica = uc.criar_musica(servicos(), _pid(), respostas, email, whatsapp, _ip(),
                                  pedido_origem_id=_pedido_origem(), dominio=_host(), idioma=_idioma())
     except Recusa as r:
         return _recusa(r)
     return jsonify(token=musica['token'], link=_rota('pagina_previa', token=musica['token']))
+
+
+def _erro_email(email: str) -> str | None:
+    """A mesma checagem de e-mail do checkout (web/email_validacao.py: formato, "gmail.comm" e domínio que não existe
+    no DNS), com a mensagem no idioma da tela; None se passou."""
+    from web.email_validacao import validar_email
+    checagem = validar_email(email)
+    if checagem['valido']:
+        return None
+    return _texto('erros.email_dominio' if checagem['motivo'] == 'dominio_inexistente' else 'erros.email_invalido')
 
 
 def _ditado_excedido() -> bool:
@@ -640,6 +653,15 @@ def api_presente(guid):
             return jsonify(erro=_texto('erros.data_hora')), 400
         if quando.tzinfo:   # com fuso: converte para o horário de Brasília, como o resto do sistema (sem fuso)
             quando = quando.astimezone(ZoneInfo(idiomas.cfg(idiomas.IDIOMA_PADRAO)['fuso'])).replace(tzinfo=None)
+    email = str(dados.get('email') or '').strip()
+    if email:
+        try:
+            uc.compra(servicos(), guid)   # compra de verdade antes da consulta de DNS (não segura o worker à toa)
+        except Recusa as r:
+            return _recusa(r)
+        erro_email = _erro_email(email)
+        if erro_email:
+            return jsonify(erro=erro_email), 400
     try:
         uc.agendar_presente(servicos(), guid, dados.get('nome'), dados.get('email'), dados.get('mensagem'), quando,
                             whatsapp=dados.get('whatsapp'), confirmo=bool(dados.get('confirmo')), de=dados.get('de'))

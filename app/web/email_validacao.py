@@ -4,8 +4,8 @@ domínios que são claramente uma versão "quebrada" de um domínio comum (ex:
 gmail.comm, hotmail.comn, gmail.compraiagrande — casos reais de bounce por
 digitação identificados na análise dos e-mails de entrega que não chegaram).
 
-MANTER SINCRONIZADO manualmente com DOMINIOS_COMUNS / validarEmailForte() em
-templates/checkout.html — JS e Python não compartilham código aqui.
+O lado do navegador é static/js/email-validacao.js (o mesmo arquivo para todas as telas com e-mail); o teste
+tests/web/test_email_validacao_js.py confere que a lista de domínios é a mesma nos dois.
 
 Usado por web/checkout.py (gerar_pix, gerar_cartao) como segunda barreira,
 independente da validação do JS (defesa contra bypass client-side), e por
@@ -40,7 +40,14 @@ DOMINIOS_COMUNS = [
     'yahoo.com.br', 'yahoo.com', 'icloud.com', 'bol.com.br', 'uol.com.br',
     'terra.com.br', 'ig.com.br', 'live.com', 'msn.com', 'oi.com.br',
     'globo.com', 'globo.com.br',
+    # México: sem eles, "yahoo.com.mx" seria barrado por "começar com" yahoo.com
+    'yahoo.com.mx', 'live.com.mx', 'hotmail.es', 'prodigy.net.mx',
 ]
+
+# Provedores que têm versão por país (hotmail.com.ar, outlook.com.mx, yahoo.com.ar...): "<provedor>.<2 letras>" não é
+# sobra de digitação. O Gmail não tem — "gmail.com.br" continua barrado (voltou 6 vezes em 60 dias).
+PROVEDORES_COM_PAIS = ['hotmail.com', 'outlook.com', 'yahoo.com', 'live.com', 'msn.com']
+_PAIS = re.compile(r'^\.[a-z]{2}$')
 
 _REGEX_ESTRUTURAL = re.compile(
     r'^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9_](?:[a-zA-Z0-9_-]{0,61}[a-zA-Z0-9_])?\.)+[a-zA-Z]{2,24}$'
@@ -122,8 +129,9 @@ def validar_email(email: str) -> dict:
     # seria injustamente bloqueado por "começar com" a entrada "hotmail.com" da lista).
     if dominio in DOMINIOS_COMUNS:
         return {'valido': True, 'motivo': None, 'sugestao': None}
+    versao_do_pais = any(dominio.startswith(d) and _PAIS.match(dominio[len(d):]) for d in PROVEDORES_COM_PAIS)
     for d in DOMINIOS_COMUNS:
-        if dominio.startswith(d):
+        if dominio.startswith(d) and not versao_do_pais:
             return {'valido': False, 'motivo': 'sobra_apos_dominio', 'sugestao': d}
 
     # Domínio fora da lista dos comuns: confirma por DNS que ele existe de verdade
@@ -131,6 +139,8 @@ def validar_email(email: str) -> dict:
     # provedor conhecido, mas também não tem MX nem A — bounce garantido).
     if _dominio_existe(dominio) is False:
         return {'valido': False, 'motivo': 'dominio_inexistente', 'sugestao': None}
+    if versao_do_pais:   # hotmail.com.ar não é "quase" hotmail.com.br: sem dica
+        return {'valido': True, 'motivo': None, 'sugestao': None}
 
     melhor = None
     for d in DOMINIOS_COMUNS:

@@ -309,3 +309,9 @@ def test_padrao_de_traducao_mal_escrito_nao_derruba_o_erro(cliente, s, monkeypat
     for i, primeira in enumerate(('1', '0')):
         r = cliente.post('/mx/cancion/api/compra/g-mx/fotos', data={'foto': (_io.BytesIO(b'f'), f'{i}.jpg'), 'primeira': primeira})
     assert r.status_code == 400 and r.get_json()['erro'] == 'Escolha até 1 fotos.'   # a original, sem 500
+
+
+def test_presente_recusa_email_com_erro_de_digitacao(cliente, s, wa_ligado):
+    _paga(s)
+    r = cliente.post('/mx/cancion/api/compra/g-mx/presente', json={'nome': 'Lupita', 'email': 'l@gmail.coml', 'agora': True})
+    assert r.status_code == 400 and 'Revisa el correo' in r.get_json()['erro']

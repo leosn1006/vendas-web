@@ -697,6 +697,7 @@
 
 </div><!-- /container -->
 
+<script src="{{ url_for('static', filename='js/email-validacao.js') }}"></script>   {# todo checkout: a validação de e-mail #}
 {% if config_cartao %}
 <script src="{{ url_for('static', filename='js/checkout-cartao.js') }}"></script>
 {% endif %}
@@ -990,64 +991,8 @@
         });
     })();
 
-    // ── Validação forte de e-mail — MANTER SINCRONIZADO com app/web/email_validacao.py ──
-    // (JS e Python não compartilham código; a lista de domínios e a regra de "sobra depois
-    // do domínio" precisam ser replicadas manualmente nos dois lados se um dia mudar.)
-    const DOMINIOS_COMUNS = [
-        'gmail.com', 'hotmail.com', 'outlook.com', 'hotmail.com.br', 'outlook.com.br',
-        'yahoo.com.br', 'yahoo.com', 'icloud.com', 'bol.com.br', 'uol.com.br',
-        'terra.com.br', 'ig.com.br', 'live.com', 'msn.com', 'oi.com.br',
-        'globo.com', 'globo.com.br',
-    ];
-    const REGEX_EMAIL_ESTRUTURAL =
-        /^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9_](?:[a-zA-Z0-9_-]{0,61}[a-zA-Z0-9_])?\.)+[a-zA-Z]{2,24}$/;
-
-    function distanciaLevenshtein(a, b) {
-        if (a === b) return 0;
-        if (!a) return b.length;
-        if (!b) return a.length;
-        let anterior = Array.from({ length: b.length + 1 }, (_, j) => j);
-        for (let i = 1; i <= a.length; i++) {
-            const atual = [i];
-            for (let j = 1; j <= b.length; j++) {
-                const custo = a[i - 1] === b[j - 1] ? 0 : 1;
-                atual[j] = Math.min(anterior[j] + 1, atual[j - 1] + 1, anterior[j - 1] + custo);
-            }
-            anterior = atual;
-        }
-        return anterior[b.length];
-    }
-
-    // Retorna { ok: bool, motivo?: 'formato'|'sobra_apos_dominio', sugestao?: string }.
-    // motivo só vem preenchido quando ok=false (bloqueio real). `sugestao` sozinha (com ok=true)
-    // é só uma dica não bloqueante (ex: possível "gmial.com" → "gmail.com").
-    function validarEmailForte(emailBruto) {
-        const email = (emailBruto || '').trim().toLowerCase();
-        if (!REGEX_EMAIL_ESTRUTURAL.test(email)) {
-            return { ok: false, motivo: 'formato' };
-        }
-        const dominio = email.split('@')[1];
-
-        // Primeiro passa por TODOS os domínios procurando igualdade exata — só depois de
-        // descartar essa hipótese é que testa "começa com" (ex: sem isso, "hotmail.com.br"
-        // seria injustamente bloqueado por "começar com" a entrada "hotmail.com" da lista).
-        if (DOMINIOS_COMUNS.includes(dominio)) return { ok: true };
-        for (const d of DOMINIOS_COMUNS) {
-            if (dominio.startsWith(d)) {
-                return { ok: false, motivo: 'sobra_apos_dominio', sugestao: d };
-            }
-        }
-        let melhor = null;
-        for (const d of DOMINIOS_COMUNS) {
-            // Limiar fixo em 2: é só sugestão (não bloqueia), então o custo de um falso positivo
-            // é baixo — e 2 é o necessário pra pegar typos comuns por transposição de letra
-            // adjacente (ex: "gmial.com"), que em Levenshtein "puro" custam 2 edições, não 1.
-            const limiar = 2;
-            const dist = distanciaLevenshtein(dominio, d);
-            if (dist > 0 && dist <= limiar && (!melhor || dist < melhor.dist)) melhor = { dominio: d, dist };
-        }
-        return melhor ? { ok: true, sugestao: melhor.dominio } : { ok: true };
-    }
+    // ── Validação forte de e-mail: static/js/email-validacao.js (a mesma de todas as telas; o servidor repete) ──
+    const validarEmailForte = window.EmailValidacao.validar;
 
     // ── Confirmação de e-mail ──
     (function () {

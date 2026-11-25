@@ -321,3 +321,11 @@ def s(tmp_path):
 
 RESPOSTAS = {'para_quem': 'Mãe', 'nome': 'Helena', 'apelido': 'Dona Lena', 'lembrancas': 'Bolo de fubá aos domingos',
              'de': 'Patrícia', 'estilo': 'sertanejo', 'clima': 'emocionante', 'voz': 'feminina'}
+
+
+@pytest.fixture(autouse=True)
+def _sem_dns(monkeypatch):
+    """A checagem de e-mail (web/email_validacao.py) consulta o DNS de domínios fora da lista: nos testes, nada de
+    rede — domínio desconhecido conta como "não deu para confirmar" (= aceito). Quem quiser testar o DNS troca."""
+    import web.email_validacao
+    monkeypatch.setattr(web.email_validacao, '_dominio_existe', lambda dominio: None)

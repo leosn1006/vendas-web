@@ -119,3 +119,15 @@ def test_erro_dos_casos_de_uso_sai_no_idioma_da_musica(cliente, s):
     token_br = _previa(s, 'pt-BR', RESPOSTAS)
     r = cliente.post(f'/musica/api/musicas/{token_br}/gerar')
     assert r.get_json()['erro'] == 'Esta música já está sendo criada.'
+
+
+def test_quiz_recusa_email_com_erro_de_digitacao_como_o_checkout(cliente, monkeypatch):
+    corpo = {'respostas': {**RESPOSTAS, 'ocasiao': 'Aniversário', 'pessoas': [{'nome': 'Helena'}], 'lembrancas': 'bolo de fubá aos domingos'},
+             'email': 'ana@gmail.comb'}
+    r = cliente.post('/musica/api/musicas', json=corpo)
+    assert r.status_code == 400 and 'digitado a mais' in r.get_json()['erro']
+    import web.email_validacao
+    monkeypatch.setattr(web.email_validacao, '_dominio_existe', lambda dominio: False)   # domínio que não existe
+    r = cliente.post('/mx/cancion/api/musicas', json={**corpo, 'respostas': {**RESPOSTAS_MX, 'pessoas': [{'nome': 'Lupita'}],
+                     'lembrancas': 'el pozole de los domingos'}, 'email': 'lupita@inventado-xyz.mx'})
+    assert r.status_code == 400 and 'No pudimos confirmar ese correo' in r.get_json()['erro']

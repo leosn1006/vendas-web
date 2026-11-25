@@ -60,6 +60,11 @@ label + .campo{margin-top:8px}
 .mic.gravando{background:#d93025;border-color:#d93025;color:#fff;animation:pulsar 1.3s ease-in-out infinite}
 .mic:disabled{opacity:.75;cursor:wait}
 @keyframes pulsar{0%,100%{box-shadow:0 0 0 0 rgba(217,48,37,.45)}50%{box-shadow:0 0 0 10px rgba(217,48,37,0)}}
+.sugestao-email{margin:8px 0 0;font-weight:600;color:var(--cor-forte);min-height:1.5em}
+/* escondida, a linha continua ocupando o lugar: a sugestão aparece ao sair do campo e não pode empurrar o botão
+   no instante do toque (o toque cairia fora dele) */
+.sugestao-email[hidden]{display:block;visibility:hidden}
+.sugestao-email a{color:inherit;text-decoration:underline}
 .mic-aviso{margin:8px 0 0;font-weight:600;color:var(--suave);font-size:.98rem;min-height:1.4em}
 .medidor{margin-top:22px}
 .medidor-barra{height:10px;background:var(--fundo-2);border-radius:99px;overflow:hidden}
@@ -97,6 +102,7 @@ label + .campo{margin-top:8px}
 {% endblock %}
 {% block script %}
 <script src="{{ url_for('musica.static', filename='nomes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/email-validacao.js') }}"></script>
 <script>
 const PERGUNTAS = {{ perguntas|tojson }};
 const AMOSTRAS = {{ amostras|tojson }};
@@ -375,7 +381,8 @@ function htmlContato(){
       <input class="campo" id="de" maxlength="80" autocomplete="given-name" placeholder="${esc(T.de_exemplo)}" value="${esc(contato.de)}">
       <p class="ajuda" style="font-size:.95rem;margin-top:6px">${esc(nomeQuemRecebe() ? personalizar(T.dedicatoria) : T.dedicatoria_sem_nome)}</p>`)
     + `<label for="email">${T.email}</label>
-      <input class="campo" id="email" type="email" inputmode="email" autocomplete="email" enterkeyhint="next" placeholder="${esc(T.email_exemplo)}" value="${esc(contato.email)}">
+      <input class="campo" id="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" enterkeyhint="next" placeholder="${esc(T.email_exemplo)}" value="${esc(contato.email)}">
+      <p class="sugestao-email" id="sugestaoEmail" hidden></p>
       <label for="whatsapp">${T.whatsapp} <span class="suave" style="font-weight:500">${T.se_quiser}</span></label>
       <input class="campo" id="whatsapp" type="tel" inputmode="tel" autocomplete="tel-national" enterkeyhint="go" maxlength="20" placeholder="${esc(T.whatsapp_exemplo)}" value="${esc(contato.whatsapp)}">
       <p class="ajuda" style="font-size:.95rem;margin-top:6px">${T.whatsapp_ajuda}</p>
@@ -465,7 +472,8 @@ function ligar(p, passo){
     if (el("mic")) el("mic").onclick = gravar;
     atualizarMedidor();
   }
-  // contato
+  // contato: "Você quis dizer gmail.com?" ao sair do e-mail (static/js/email-validacao.js, a regra do checkout)
+  if (el("email") && el("sugestaoEmail")) EmailValidacao.ligarSugestao(el("email"), el("sugestaoEmail"), {pergunta: T.email_sugestao});
 
   const primeiro = passo.querySelector("input.campo, textarea.campo");
   if (primeiro && matchMedia("(min-width: 700px)").matches) primeiro.focus();
@@ -534,7 +542,9 @@ async function enviar(){
   if (!ehEu() && avisadoDe !== contato.de && MesmoNome(contato.de, ...pessoas.flatMap(p => [p.nome, p.apelido]))) {
     avisadoDe = contato.de; el("de").focus(); return mostrarErro(T.aviso_mesmo_nome);
   }
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contato.email)) return mostrarErro(T.erro_email);
+  // Mesma regra do checkout (static/js/email-validacao.js); o servidor repete e ainda confere o domínio.
+  const checagem = EmailValidacao.validar(contato.email);
+  if (!checagem.ok) return mostrarErro(checagem.motivo === "sobra_apos_dominio" ? T.erro_email_sobra : T.erro_email);
   if (contato.whatsapp && !celularOk(contato.whatsapp)) return mostrarErro(T.erro_celular);
   guardar();
   if (ocasiaoDaUrlVale()) respostas.ocasiao = ocasiaoUrl;
