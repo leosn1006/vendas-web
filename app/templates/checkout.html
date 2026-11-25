@@ -992,7 +992,10 @@
     })();
 
     // ── Validação forte de e-mail: static/js/email-validacao.js (a mesma de todas as telas; o servidor repete) ──
-    const validarEmailForte = window.EmailValidacao.validar;
+    // Reserva se o arquivo não carregar (rede, cache): só o formato — o servidor ainda confere tudo. Sem isto, o
+    // erro pararia o resto do script e a compra.
+    const validarEmailForte = window.EmailValidacao ? window.EmailValidacao.validar
+        : (e => (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((e || '').trim()) ? { ok: true } : { ok: false, motivo: 'formato' }));
 
     // ── Confirmação de e-mail ──
     (function () {

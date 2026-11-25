@@ -473,7 +473,7 @@ function ligar(p, passo){
     atualizarMedidor();
   }
   // contato: "Você quis dizer gmail.com?" ao sair do e-mail (static/js/email-validacao.js, a regra do checkout)
-  if (el("email") && el("sugestaoEmail")) EmailValidacao.ligarSugestao(el("email"), el("sugestaoEmail"), {pergunta: T.email_sugestao});
+  if (window.EmailValidacao && el("email") && el("sugestaoEmail")) EmailValidacao.ligarSugestao(el("email"), el("sugestaoEmail"), {pergunta: T.email_sugestao});
 
   const primeiro = passo.querySelector("input.campo, textarea.campo");
   if (primeiro && matchMedia("(min-width: 700px)").matches) primeiro.focus();
@@ -543,7 +543,8 @@ async function enviar(){
     avisadoDe = contato.de; el("de").focus(); return mostrarErro(T.aviso_mesmo_nome);
   }
   // Mesma regra do checkout (static/js/email-validacao.js); o servidor repete e ainda confere o domínio.
-  const checagem = EmailValidacao.validar(contato.email);
+  const checagem = window.EmailValidacao ? EmailValidacao.validar(contato.email)   // reserva: o arquivo não carregou
+    : {ok: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contato.email), motivo: "formato"};
   if (!checagem.ok) return mostrarErro(checagem.motivo === "sobra_apos_dominio" ? T.erro_email_sobra : T.erro_email);
   if (contato.whatsapp && !celularOk(contato.whatsapp)) return mostrarErro(T.erro_celular);
   guardar();

@@ -50,7 +50,31 @@ def test_provedor_com_versao_do_pais_passa_e_gmail_com_br_nao(monkeypatch):
         assert not email_validacao.validar_email(errado)['valido'], errado
 
 
-def test_navegador_tem_a_mesma_lista_de_provedores_com_pais():
+def test_navegador_tem_as_mesmas_listas_de_paises_e_sem_dica():
     js = JS.read_text()
-    bloco = re.search(r'const PROVEDORES_COM_PAIS = \[(.*?)\];', js, re.S).group(1)
-    assert re.findall(r"'([^']+)'", bloco) == email_validacao.PROVEDORES_COM_PAIS
+    for nome in ('PROVEDORES_COM_PAIS', 'PAISES', 'SEM_DICA'):
+        bloco = re.search(rf'const {nome} = \[(.*?)\];', js, re.S).group(1)
+        assert re.findall(r"'([^']+)'", bloco) == getattr(email_validacao, nome), nome
+
+
+def test_dica_do_mais_longo_pais_de_verdade_e_hotmail_es_nunca_sugerido(monkeypatch):
+    monkeypatch.setattr(email_validacao, '_dominio_existe', lambda d: None)
+    assert email_validacao.validar_email('ana@hotmail.com.brr')['sugestao'] == 'hotmail.com.br'   # não hotmail.com
+    assert email_validacao.validar_email('ana@yahoo.com.mxx')['sugestao'] == 'yahoo.com.mx'
+    for erro_do_br in ('ana@hotmail.com.bt', 'ana@outlook.com.vr', 'ana@yahoo.com.bf'):
+        r = email_validacao.validar_email(erro_do_br)
+        assert not r['valido'] and r['sugestao'].endswith('.com.br'), erro_do_br   # hotmail.com.bt → hotmail.com.br
+    assert email_validacao.validar_email('ana@hotmail.es')['valido']
+    assert email_validacao.validar_email('ana@hotmail.cs')['sugestao'] != 'hotmail.es'
+
+
+def test_dns_guardado_por_uma_hora(monkeypatch):
+    consultas = []
+    monkeypatch.setattr(email_validacao, '_consultar_dns', lambda d: consultas.append(d) or True)
+    email_validacao._CACHE_DNS.clear()
+    assert email_validacao._dominio_existe('empresa-x.com.br') and email_validacao._dominio_existe('empresa-x.com.br')
+    assert consultas == ['empresa-x.com.br']
+    monkeypatch.setattr(email_validacao, '_consultar_dns', lambda d: consultas.append(d) or None)   # falha de rede
+    email_validacao._dominio_existe('outra.com.br'); email_validacao._dominio_existe('outra.com.br')
+    assert consultas.count('outra.com.br') == 2   # "não deu para confirmar" não fica guardado
+    email_validacao._CACHE_DNS.clear()

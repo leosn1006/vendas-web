@@ -44,10 +44,13 @@ DOMINIOS_COMUNS = [
     'yahoo.com.mx', 'live.com.mx', 'hotmail.es', 'prodigy.net.mx',
 ]
 
-# Provedores que têm versão por país (hotmail.com.ar, outlook.com.mx, yahoo.com.ar...): "<provedor>.<2 letras>" não é
-# sobra de digitação. O Gmail não tem — "gmail.com.br" continua barrado (voltou 6 vezes em 60 dias).
+# Provedores que têm versão por país (hotmail.com.ar, outlook.com.mx, yahoo.com.ar...): "<provedor>.<país>" não é
+# sobra de digitação — só com os PAISES abaixo (um ".bt" ou ".vr" é erro do ".br" e continua barrado). O Gmail não
+# tem — "gmail.com.br" continua barrado (voltou 6 vezes em 60 dias).
 PROVEDORES_COM_PAIS = ['hotmail.com', 'outlook.com', 'yahoo.com', 'live.com', 'msn.com']
-_PAIS = re.compile(r'^\.[a-z]{2}$')
+PAISES = ['ar', 'mx', 'co', 'cl', 'pe', 've', 'uy', 'py', 'ec', 'bo', 'pt', 'es']
+# Aceitos, mas nunca sugeridos ("hotmail.cs" é erro de hotmail.com, não de hotmail.es).
+SEM_DICA = ['hotmail.es']
 
 _REGEX_ESTRUTURAL = re.compile(
     r'^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9_](?:[a-zA-Z0-9_-]{0,61}[a-zA-Z0-9_])?\.)+[a-zA-Z]{2,24}$'
@@ -71,7 +74,25 @@ def _levenshtein(a: str, b: str) -> int:
     return anterior[-1]
 
 
+_CACHE_DNS: dict = {}   # domínio → (resultado, quando): só True/False confirmados, por 1 h (None não guarda)
+
+
 def _dominio_existe(dominio: str):
+    """Com cache de 1 h por processo: o quiz da Música e o checkout consultam o mesmo domínio muitas vezes, e cada
+    consulta segura o worker por até ~3 s."""
+    import time
+    guardado = _CACHE_DNS.get(dominio)
+    if guardado and time.time() - guardado[1] < 3600:
+        return guardado[0]
+    resultado = _consultar_dns(dominio)
+    if resultado is not None:
+        if len(_CACHE_DNS) > 5000:
+            _CACHE_DNS.clear()
+        _CACHE_DNS[dominio] = (resultado, time.time())
+    return resultado
+
+
+def _consultar_dns(dominio: str):
     """
     Confirma via DNS (MX, com fallback pra A) se o domínio tem como receber e-mail.
 
@@ -129,10 +150,13 @@ def validar_email(email: str) -> dict:
     # seria injustamente bloqueado por "começar com" a entrada "hotmail.com" da lista).
     if dominio in DOMINIOS_COMUNS:
         return {'valido': True, 'motivo': None, 'sugestao': None}
-    versao_do_pais = any(dominio.startswith(d) and _PAIS.match(dominio[len(d):]) for d in PROVEDORES_COM_PAIS)
-    for d in DOMINIOS_COMUNS:
-        if dominio.startswith(d) and not versao_do_pais:
-            return {'valido': False, 'motivo': 'sobra_apos_dominio', 'sugestao': d}
+    versao_do_pais = any(dominio in (f'{d}.{p}' for p in PAISES) for d in PROVEDORES_COM_PAIS)
+    # Sugestão: o conhecido a 1 letra de distância ("hotmail.com.bt" → hotmail.com.br); senão o mais longo que bate
+    # ("hotmail.com.brr" → hotmail.com.br, nunca hotmail.com, que é outra caixa).
+    comeca = [d for d in DOMINIOS_COMUNS if dominio.startswith(d)]
+    if comeca and not versao_do_pais:
+        perto = [d for d in DOMINIOS_COMUNS if d not in SEM_DICA and _levenshtein(dominio, d) == 1]
+        return {'valido': False, 'motivo': 'sobra_apos_dominio', 'sugestao': perto[0] if perto else max(comeca, key=len)}
 
     # Domínio fora da lista dos comuns: confirma por DNS que ele existe de verdade
     # antes de aceitar — pega casos tipo "lneditor.com.br.cc" (não parece com nenhum
@@ -143,7 +167,7 @@ def validar_email(email: str) -> dict:
         return {'valido': True, 'motivo': None, 'sugestao': None}
 
     melhor = None
-    for d in DOMINIOS_COMUNS:
+    for d in (d for d in DOMINIOS_COMUNS if d not in SEM_DICA):
         # Limiar fixo em 2: é só sugestão (não bloqueia), então o custo de um falso positivo
         # é baixo — e 2 é o necessário pra pegar typos comuns por transposição de letra
         # adjacente (ex: "gmial.com"), que em Levenshtein "puro" custam 2 edições, não 1.

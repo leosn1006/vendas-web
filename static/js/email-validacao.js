@@ -13,9 +13,12 @@
         // México: sem eles, "yahoo.com.mx" seria barrado por "começar com" yahoo.com
         'yahoo.com.mx', 'live.com.mx', 'hotmail.es', 'prodigy.net.mx',
     ];
-    // Provedores com versão por país (hotmail.com.ar, outlook.com.mx): "<provedor>.<2 letras>" não é sobra.
-    // O Gmail não tem — "gmail.com.br" continua barrado.
+    // Provedores com versão por país (hotmail.com.ar, outlook.com.mx): "<provedor>.<país>" não é sobra — só com os
+    // PAISES (".bt", ".vr" são erro do ".br"). O Gmail não tem — "gmail.com.br" continua barrado.
     const PROVEDORES_COM_PAIS = ['hotmail.com', 'outlook.com', 'yahoo.com', 'live.com', 'msn.com'];
+    const PAISES = ['ar', 'mx', 'co', 'cl', 'pe', 've', 'uy', 'py', 'ec', 'bo', 'pt', 'es'];
+    // Aceitos, mas nunca sugeridos ("hotmail.cs" é erro de hotmail.com, não de hotmail.es).
+    const SEM_DICA = ['hotmail.es'];
     const REGEX_ESTRUTURAL =
         /^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9_](?:[a-zA-Z0-9_-]{0,61}[a-zA-Z0-9_])?\.)+[a-zA-Z]{2,24}$/;
 
@@ -44,12 +47,16 @@
         // Igualdade exata antes do "começa com" (senão "hotmail.com.br" seria barrado por "hotmail.com").
         if (DOMINIOS_COMUNS.includes(dominio)) return { ok: true };
         // hotmail.com.ar, outlook.com.mx: versão do país (não é sobra, e não é "quase" o .com.br: sem dica)
-        if (PROVEDORES_COM_PAIS.some(d => dominio.startsWith(d) && /^\.[a-z]{2}$/.test(dominio.slice(d.length)))) return { ok: true };
-        for (const d of DOMINIOS_COMUNS) {
-            if (dominio.startsWith(d)) return { ok: false, motivo: 'sobra_apos_dominio', sugestao: d };
+        if (PROVEDORES_COM_PAIS.some(d => PAISES.some(p => dominio === d + '.' + p))) return { ok: true };
+        // Sugestão: o conhecido a 1 letra de distância ("hotmail.com.bt" → hotmail.com.br); senão o mais longo que
+        // bate ("hotmail.com.brr" → hotmail.com.br, nunca hotmail.com, que é outra caixa).
+        const comeca = DOMINIOS_COMUNS.filter(d => dominio.startsWith(d));
+        if (comeca.length) {
+            const perto = DOMINIOS_COMUNS.find(d => !SEM_DICA.includes(d) && distancia(dominio, d) === 1);
+            return { ok: false, motivo: 'sobra_apos_dominio', sugestao: perto || comeca.reduce((a, b) => b.length > a.length ? b : a) };
         }
         let melhor = null;
-        for (const d of DOMINIOS_COMUNS) {
+        for (const d of DOMINIOS_COMUNS.filter(d => !SEM_DICA.includes(d))) {
             // Limiar 2: pega a troca de letras vizinhas ("gmial.com"); como é só dica, um falso positivo custa pouco.
             const dist = distancia(dominio, d);
             if (dist > 0 && dist <= 2 && (!melhor || dist < melhor.dist)) melhor = { dominio: d, dist };
@@ -65,6 +72,9 @@
             const r = validar(input.value);
             const dominio = r.sugestao;
             if (!input.value.trim() || !dominio) { aviso.hidden = true; aviso.textContent = ''; return; }
+            // A mesma dica já na tela: não recria o link (o toque nele chegaria num link que acabou de sumir)
+            if (!aviso.hidden && aviso.dataset.dominio === dominio) return;
+            aviso.dataset.dominio = dominio;
             const [antes, depois] = pergunta.split('{dominio}');
             const link = document.createElement('a');
             link.href = '#'; link.textContent = dominio;

@@ -266,7 +266,7 @@ function quandoComFuso(dia, hora){
 const NOMES_QUEM_RECEBE = {{ nomes_quem_recebe|tojson }};
 let avisadoDe = null;
 // "Você quis dizer gmail.com?" no e-mail de quem recebe
-if (document.getElementById("pr-email"))
+if (window.EmailValidacao && document.getElementById("pr-email"))
   EmailValidacao.ligarSugestao(document.getElementById("pr-email"), document.getElementById("pr-sugestao-email"), {pergunta: T.email_sugestao});
 async function enviarPresente(agora){
   const erro = document.getElementById("pr-erro"); erro.style.display = "none";
@@ -274,7 +274,8 @@ async function enviarPresente(agora){
   if (!agora && !(dia && hora)) { erro.textContent = T.escolha_dia; erro.style.display = "block"; return; }
   // E-mail de quem recebe: a regra do checkout (static/js/email-validacao.js); o servidor repete e confere o domínio.
   const emailPresente = document.getElementById("pr-email").value.trim();
-  if (emailPresente && !EmailValidacao.validar(emailPresente).ok) {
+  const emailOk = window.EmailValidacao ? EmailValidacao.validar(emailPresente).ok : /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailPresente);
+  if (emailPresente && !emailOk) {
     erro.textContent = T.erro_email; erro.style.display = "block"; document.getElementById("pr-email").focus(); return;
   }
   // "de Rose para Rose": o comprador pôs o nome de quem recebe no "Seu nome". Avisa uma vez; tocando de novo, segue.
