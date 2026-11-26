@@ -195,7 +195,7 @@
 {% if aba == 'conferir' %}
 <div class="card">
     <h2 style="font-size: 17px; margin: 0 0 6px;">Avisos que não confirmaram o pedido</h2>
-    <p class="miudo" style="font-size:13px; margin:0 0 14px;">"Sem pedido": o aviso não trouxe o <code>xcod</code> ou o pedido não existe. "Oferta divergente": a oferta paga não está cadastrada (aba Ofertas) ou é de outro plano. Depois de corrigir, use <b>Reprocessar</b>. Os avisos do botão de teste da Hotmart também aparecem aqui (dados fictícios).</p>
+    <p class="miudo" style="font-size:13px; margin:0 0 14px;">"Sem pedido": o aviso não trouxe o <code>xcod</code> ou o pedido não existe. "Oferta divergente": a oferta paga não está cadastrada (aba Ofertas) ou é de outro plano. Depois de corrigir, use <b>Reprocessar</b>. "Duplicado": a cliente pagou duas vezes — reembolse a transação indicada na Hotmart e clique em <b>Resolvido</b>. Os avisos do botão de teste da Hotmart também aparecem aqui (dados fictícios).</p>
     {% if eventos %}
     <div class="table-wrap">
         <table>
@@ -208,9 +208,14 @@
                     <td class="mono">{{ e.transacao or '—' }}</td>
                     <td style="font-size:13px;"><span class="badge badge-{{ 'red' if e.resultado == 'erro' else 'yellow' }}">{{ e.resultado|replace('_', ' ') }}</span><br><span class="miudo">{{ e.detalhe or '' }}</span></td>
                     <td style="max-width:380px;"><details><summary class="miudo">ver JSON</summary><pre>{{ e.payload_txt }}</pre></details></td>
-                    <td>
-                        <form method="post" action="{{ url_for('admin.hotmart_reprocessar', evento_db_id=e.id) }}" onsubmit="return confirm('Aplicar este aviso de novo? Se o pedido for confirmado, a cliente recebe a entrega.');">
+                    <td style="white-space:nowrap;">
+                        {% if e.resultado != 'duplicado' %}
+                        <form method="post" action="{{ url_for('admin.hotmart_reprocessar', evento_db_id=e.id) }}" onsubmit="return confirm('Aplicar este aviso de novo? Se o pedido for confirmado, a cliente recebe a entrega.');" style="display:inline;">
                             <button type="submit" class="btn btn-sm">Reprocessar</button>
+                        </form>
+                        {% endif %}
+                        <form method="post" action="{{ url_for('admin.hotmart_resolvido', evento_db_id=e.id) }}" onsubmit="return confirm('{{ 'Já reembolsou o pagamento duplicado na Hotmart?' if e.resultado == 'duplicado' else 'Tirar este aviso da lista sem reaplicar?' }}');" style="display:inline;">
+                            <button type="submit" class="btn btn-sm">Resolvido</button>
                         </form>
                     </td>
                 </tr>
@@ -238,11 +243,11 @@
 {% if aba == 'ofertas' %}
 <div class="card">
     <h2 style="font-size: 17px; margin: 0 0 6px;">Ofertas da Hotmart → nossos planos</h2>
-    <p class="miudo" style="font-size:13px; margin:0 0 14px;">O código é o <code>off=</code> do link da oferta (painel da Hotmart → Precificação e ofertas). Um plano pode ter várias ofertas (ex.: preço cheio e com desconto). Uma venda só confirma o pedido se a oferta paga for do mesmo plano do pedido. Desativar só tira a oferta dos links: quem já pagou continua recebendo.</p>
+    <p class="miudo" style="font-size:13px; margin:0 0 14px;">O código é o <code>off=</code> do link da oferta (painel da Hotmart → Precificação e ofertas). <b>Botão do plano</b> = a oferta para onde vai o botão "comprar" da prévia (uma por plano); <b>popup</b> = a oferta da "última chance" com desconto; o ID do produto Hotmart e o preço montam o link e o que a prévia mostra. Um plano pode ter várias ofertas (ex.: preço cheio e com desconto). Uma venda só confirma o pedido se a oferta paga for do mesmo plano do pedido. Desativar só tira a oferta dos links: quem já pagou continua recebendo.</p>
     {% if ofertas %}
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Código</th><th>Produto</th><th>Plano</th><th>Descrição</th><th>Ativa</th><th></th></tr></thead>
+            <thead><tr><th>Código</th><th>Produto</th><th>Plano</th><th>Uso no site</th><th>Produto Hotmart</th><th>Preço</th><th>Descrição</th><th>Ativa</th><th></th></tr></thead>
             <tbody>
                 {% for o in ofertas %}
                 {% set f = 'oferta-' ~ loop.index %}
@@ -254,6 +259,14 @@
                             {% for pl in planos %}<option value="{{ pl.id }}" {% if pl.id == o.plano_id %}selected{% endif %}>{{ pl.produto }} — {{ pl.nome }}</option>{% endfor %}
                         </select>
                     </td>
+                    <td><select name="uso" form="{{ f }}">
+                        <option value="" {% if not o.uso %}selected{% endif %}>só confirma pagamento</option>
+                        <option value="botao" {% if o.uso == 'botao' %}selected{% endif %}>botão do plano</option>
+                        <option value="popup" {% if o.uso == 'popup' %}selected{% endif %}>popup (desconto)</option>
+                    </select></td>
+                    <td><input type="number" name="produto_hotmart" value="{{ o.produto_hotmart or '' }}" style="width:110px;" form="{{ f }}"></td>
+                    <td style="white-space:nowrap;"><input type="text" name="preco" value="{{ num(o.preco) if o.preco is not none else '' }}" style="width:80px;" form="{{ f }}">
+                        <input type="text" name="moeda" value="{{ o.moeda or '' }}" maxlength="3" style="width:52px;" form="{{ f }}" placeholder="MXN"></td>
                     <td><input type="text" name="descricao" value="{{ o.descricao or '' }}" maxlength="120" style="width:100%;" form="{{ f }}"></td>
                     <td><select name="ativo" form="{{ f }}"><option value="1" {% if o.ativo %}selected{% endif %}>sim</option><option value="0" {% if not o.ativo %}selected{% endif %}>não</option></select></td>
                     <td><form id="{{ f }}" method="post" action="{{ url_for('admin.hotmart_salvar_oferta') }}"><button type="submit" class="btn btn-sm">Salvar</button></form></td>
@@ -273,6 +286,14 @@
             <option value="">Plano…</option>
             {% for pl in planos %}<option value="{{ pl.id }}">{{ pl.produto }} — {{ pl.nome }}</option>{% endfor %}
         </select>
+        <select name="uso">
+            <option value="">só confirma pagamento</option>
+            <option value="botao">botão do plano</option>
+            <option value="popup">popup (desconto)</option>
+        </select>
+        <input type="number" name="produto_hotmart" placeholder="ID do produto Hotmart" style="width:180px;">
+        <input type="text" name="preco" placeholder="preço (ex.: 149)" style="width:120px;">
+        <input type="text" name="moeda" placeholder="MXN" maxlength="3" style="width:70px;">
         <input type="text" name="descricao" placeholder="descrição (ex.: preço com desconto)" maxlength="120" style="min-width:260px;">
         <input type="hidden" name="ativo" value="1">
         <button type="submit" class="btn btn-primary btn-sm">Incluir</button>

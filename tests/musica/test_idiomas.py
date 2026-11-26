@@ -290,9 +290,13 @@ def test_erros_traduzidos_existem_no_codigo(idioma):
             assert f"Recusa('{original}'" in codigo or f"return '{original}'" in validacoes, original
 
 
+def test_mexico_vende_pela_hotmart():
+    assert idiomas.cfg('es-MX')['vende'] is True
+
+
 def test_idioma_que_ainda_nao_vende_nao_recebe_lembrete(s, monkeypatch):
-    """O México sem checkout: lembrete "volte e compre" levaria a "no estamos vendiendo"."""
-    assert idiomas.cfg('es-MX')['vende'] is False
+    """Idioma sem checkout ('vende': False): lembrete "volte e compre" levaria a "venda fechada"."""
+    monkeypatch.setitem(idiomas.IDIOMAS['es-MX'], 'vende', False)
     agora = datetime(2026, 11, 18, 15, 0)
     s.repositorio.agora = agora - timedelta(hours=1)
     musica = uc.criar_musica(s, 30, dict(RESPOSTAS_MX), 'lupita@ejemplo.com', '', '1.2.3.4', idioma='es-MX')

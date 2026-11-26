@@ -35,9 +35,9 @@ IDIOMAS = {
         # Fora do seletor de país do rodapé até o lançamento: o produto do México pode estar ativo para mostrar o
         # site a quem vai dar opinião, sem aparecer um link para o México na landing que vende no Brasil.
         'no_seletor': False,
-        # Ainda sem checkout (a Hotmart vem em outra frente): sem lembretes por e-mail, que convidariam a comprar
-        # algo que a prévia diz que não está à venda. Ligar junto com o checkout.
-        'vende': False,
+        # Vende pelo checkout da Hotmart (docs/HOTMART.md): liga os lembretes por e-mail (sem a etapa checkout, que é
+        # do nosso /pay). A prévia só mostra os planos com oferta 'botao' em hotmart_ofertas.
+        'vende': True,
         'whisper': 'es',
         # WhatsApp da Música (avisos e presente): os templates aprovados são em pt_BR. Desligado no México até os
         # templates em es_MX serem aprovados na Meta (Fase 2, passo 2): sem campo de WhatsApp e sem envio.

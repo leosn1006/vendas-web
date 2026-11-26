@@ -585,20 +585,136 @@ def api_ver(token):
 
 def _planos_e_oferta_da_previa(token):
     """Os botões de compra da prévia e o popup "última chance". Brasil: o nosso checkout (/pay, PIX ou cartão, em
-    reais). Os outros idiomas vão vender pelo checkout da Hotmart (em outra frente): até ele existir, nenhum plano —
-    a prévia mostra "venda fechada", nunca um checkout em reais para quem não está no Brasil.
+    reais) — sem mudança. Nunca um checkout em reais para quem não está no Brasil.
 
-    ENCAIXE DA HOTMART: para o produto de fora, cada plano vira (preço na moeda dele, link da oferta da Hotmart com
-    o xcod) e o popup usa a oferta com desconto. Os 3 links: só a música (padrão), música + videoclipe (cheio) e
-    música + videoclipe com desconto (o popup)."""
+    Fora do Brasil (Hotmart, docs/HOTMART.md): cada plano com oferta 'botao' em hotmart_ofertas vira (preço na moeda
+    da oferta, link /comprar/<token>/<oferta>, que cria o pedido e vai para a Hotmart com o xcod) e o popup usa a
+    oferta 'popup'. Plano sem oferta não aparece; nenhum = "venda fechada"."""
     if _idioma() != idiomas.IDIOMA_PADRAO:
-        return [], None
+        return _planos_e_oferta_hotmart(token)
     from web.links import link_checkout
     planos = _planos_a_venda()
     return ([{'nome': p['nome'], 'descricao': p['descricao'], 'preco': reais(p['preco']),
               'videoclipe': p['videoclipe'], 'padrao': bool(p['plano'].get('padrao')),
               'link': link_checkout(_pid(), p['plano'], musica=token)} for p in planos],
             _oferta_ultima_chance(planos, token))
+
+
+def _planos_e_oferta_hotmart(token):
+    """Os botões da prévia de fora do Brasil, com as ofertas da Hotmart. Um erro aqui nunca derruba a prévia (vira
+    "venda fechada")."""
+    try:
+        from hotmart import checkout as hotmart_checkout
+        ofertas = hotmart_checkout.ofertas_da_previa(_pid())
+        moeda = idiomas.cfg(_idioma())['moeda']      # preços comparados e somados só na moeda do país
+        planos = []
+        for p in _planos_a_venda():
+            o = ofertas['botao'].get(p['plano']['id'])
+            if o and (o['moeda'] or '').upper() == moeda:
+                planos.append({'nome': p['nome'], 'descricao': p['descricao'], 'videoclipe': p['videoclipe'],
+                               'padrao': bool(p['plano'].get('padrao')), 'valor': o['preco'],
+                               'preco': hotmart_checkout.preco_texto(o['preco'], o['moeda']),
+                               'link': _rota('comprar_hotmart', token=token, codigo=o['codigo'])})
+        planos.sort(key=lambda x: x['valor'])
+        oferta = None
+        popup = ofertas['popup'] if ofertas['popup'] and (ofertas['popup']['moeda'] or '').upper() == moeda else None
+        padrao = next((x for x in planos if x['padrao']), None)
+        cheia = next((x for x in planos if popup and not x['padrao']
+                      and x['link'].endswith('/' + ofertas['botao'][popup['plano_id']]['codigo'])), None) \
+            if popup and popup['plano_id'] in ofertas['botao'] else None
+        if popup and padrao and cheia and padrao['valor'] < popup['preco'] < cheia['valor']:
+            # O desconto é a oferta 'popup' da Hotmart; o link leva um token assinado (o mesmo de web/oferta.py, 24 h)
+            # que /comprar confere: sem ele, o código da oferta com desconto sozinho não vende.
+            from web.oferta import gerar_token
+            assinatura = gerar_token(_pid(), popup['plano_id'])
+            oferta = {'nome': cheia['nome'], 'videoclipe': cheia['videoclipe'], 'preco_cheio': cheia['preco'],
+                      'preco': hotmart_checkout.preco_texto(popup['preco'], popup['moeda']),
+                      'economia': hotmart_checkout.preco_texto(cheia['valor'] - popup['preco'], popup['moeda']),
+                      'link': _rota('comprar_hotmart', token=token, codigo=popup['codigo'], oferta=assinatura),
+                      'expira': int(assinatura.split('.', 1)[0])}
+        return [{k: v for k, v in x.items() if k != 'valor'} for x in planos], oferta
+    except Exception:
+        logger.exception('[MUSICA] Falha ao montar as ofertas da Hotmart na prévia')
+        return [], None
+
+
+@bp.get('/comprar/<token>/<codigo>')
+def comprar_hotmart(token, codigo):
+    """Fora do Brasil: o botão de compra da prévia. Cria (ou reaproveita) o nosso pedido do plano da oferta, liga a
+    música a ele e manda para o checkout da Hotmart com o guid no xcod (o webhook confirma). Guarda o guid num cookie
+    para a página de obrigado."""
+    if _idioma() == idiomas.IDIOMA_PADRAO:
+        return _nao_encontrada()
+    from hotmart import checkout as hotmart_checkout
+    from web.checkout import _excedeu_limite_ip
+    produto_id = _pid()
+    musica = _musica_do_token(token)
+    oferta = hotmart_checkout.oferta_para_link(codigo, produto_id, idiomas.cfg(_idioma())['moeda'])
+    if not musica or not oferta:
+        return _nao_encontrada()
+    previa = _rota('pagina_previa', token=token)
+    if oferta['uso'] == 'popup':
+        from web.oferta import validar_token
+        if not validar_token(request.args.get('oferta'), produto_id, oferta['plano_id']):
+            return redirect(previa)      # desconto só pelo popup (link assinado e dentro da validade)
+    # Pré-carregamento do navegador/mensageiro não cria pedido: só o clique de verdade.
+    if 'prefetch' in (request.headers.get('Sec-Purpose', '') + request.headers.get('Purpose', '')).lower():
+        return '', 204
+    try:
+        uc.musica_para_checkout(servicos(), token, produto_id)
+    except Recusa:
+        return redirect(previa)      # já comprada (a prévia leva ao presente) ou ainda não pronta
+    if _excedeu_limite_ip('musica_hotmart', _ip(), 30, 3600):
+        logger.warning(f'[MUSICA] Limite de cliques em comprar (Hotmart) atingido (IP {_ip()})')
+        return redirect(previa)
+    # o plano já vem de get_plano_venda (_planos_a_venda): o mesmo objeto vai para os itens do pedido
+    a_venda = next((p for p in _planos_a_venda() if p['plano']['id'] == oferta['plano_id']), None)
+    if not a_venda:
+        return _nao_encontrada()
+    plano = a_venda['plano']
+    pedido = hotmart_checkout.pedido_aberto(musica['id'], plano['id'])
+    if not pedido:
+        pedido = hotmart_checkout.criar_pedido(produto_id, plano, a_venda['preco'], '', musica.get('email') or '',
+                                               _host())
+    try:
+        from musica.integracao import vincular_ao_pedido
+        vincular_ao_pedido(token, pedido['id'], produto_id)
+    except Recusa:
+        return redirect(previa)
+    logger.info(f"[MUSICA] Música {musica['id']} → Hotmart (pedido #{pedido['id']}, oferta {oferta['codigo']})")
+    # a música só guarda o e-mail (o nome a Hotmart pede no checkout)
+    resposta = redirect(hotmart_checkout.link_pagamento(oferta, pedido['guid'], email=musica.get('email') or ''))
+    resposta.set_cookie(_COOKIE_HOTMART, pedido['guid'], max_age=30 * 86400, httponly=True, samesite='Lax',
+                        secure=request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https')
+    return resposta
+
+
+_COOKIE_HOTMART = 'musica_hotmart'
+
+
+@bp.get('/gracias')
+def obrigado_hotmart():
+    """A página de obrigado cadastrada na Hotmart: espera o webhook confirmar e manda para a área da compra."""
+    if _idioma() == idiomas.IDIOMA_PADRAO:
+        return _nao_encontrada()
+    return render_template('musica/obrigado.html', tem_pedido=bool(request.cookies.get(_COOKIE_HOTMART)))
+
+
+@bp.get('/api/compra-hotmart')
+def api_compra_hotmart():
+    """Estado do pedido DO COOKIE (nunca um guid pela URL): pago → o link da área da compra."""
+    from hotmart import checkout as hotmart_checkout
+    guid = request.cookies.get(_COOKIE_HOTMART) or ''
+    pedido = hotmart_checkout.estado_do_pedido(guid) if re.fullmatch(r'[A-Za-z0-9_-]{4,64}', guid) else None
+    estado = (pedido or {}).get('estado')
+    if estado == 1000:
+        return jsonify(situacao='pago', link=_rota('pagina_compra', guid=guid))
+    if estado == 1010:
+        return jsonify(situacao='aguardando')
+    if estado == 1011:   # cartão recusado / expirou: volta para a prévia para tentar de novo
+        return jsonify(situacao='cancelado',
+                       link=_rota('pagina_previa', token=pedido['token']) if pedido.get('token') else None)
+    return jsonify(situacao='processando' if estado is not None else 'sem_pedido')
 
 
 @bp.post('/api/musicas/<token>/ajustar')

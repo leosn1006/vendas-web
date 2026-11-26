@@ -21,6 +21,7 @@ class RepositorioFalso:
         self.eventos, self.pagamentos, self.ofertas, self.pedidos = {}, {}, {}, {}
         self.taxas = {}
         self.conciliacoes = []
+        self.musica_do_pedido = {}           # pedido_id -> musica_id (musica_pedidos)
 
     # avisos
     def registrar_evento(self, evento_id, transacao, evento, payload):
@@ -50,6 +51,9 @@ class RepositorioFalso:
 
     def marcar_liberado(self, transacao):
         self.pagamentos[transacao].setdefault('liberado_em', 'agora')
+
+    def aprovado_gravado(self, transacao):
+        return self.pagamentos.get(transacao, {}).get('aprovado_em')
 
     def fonte_taxa_gravada(self, transacao):
         return self.pagamentos.get(transacao, {}).get('fonte_taxa')
@@ -106,7 +110,7 @@ class RepositorioFalso:
                                                   reentregas=reentregas, erro=erro)
 
     def tem_aviso_a_conferir(self, transacao):
-        return any(e['transacao'] == transacao and e['resultado'] in ('sem_pedido', 'oferta_divergente', 'erro')
+        return any(e['transacao'] == transacao and e['resultado'] in ('sem_pedido', 'oferta_divergente', 'duplicado', 'erro')
                    for e in self.eventos.values())
 
     def evento_por_id(self, evento_db_id):
@@ -117,6 +121,20 @@ class RepositorioFalso:
             return False
         self.eventos[evento_id]['resultado'] = None
         return True
+
+    def outra_compra_paga(self, pedido_id, transacao, aprovado_em):
+        return next((t for t, pg in self.pagamentos.items() if pg.get('pedido_id') == pedido_id and t != transacao
+                     and pg.get('status') in ('APPROVED', 'COMPLETE') and not pg.get('order_bump')
+                     and (not pg.get('aprovado_em') or not aprovado_em or pg['aprovado_em'] <= aprovado_em)), None)
+
+    def outro_pedido_pago_da_musica(self, pedido_id):
+        musica = self.musica_do_pedido.get(pedido_id)
+        return next((p for p, m in self.musica_do_pedido.items() if m == musica and p != pedido_id
+                     and self.pedidos.get(p, {}).get('estado_id') == 1000), None) if musica else None
+
+    def preencher_email_se_vazio(self, pedido_id, email):
+        if email and not self.pedidos[pedido_id].get('email'):
+            self.pedidos[pedido_id]['email'] = email
 
     def mudar_estado_se_nao_pago(self, pedido_id, estado):
         from hotmart.repositorio import ESTADOS_ANTES_DO_PAGAMENTO
@@ -135,7 +153,8 @@ def repo(monkeypatch):
                  'ultima_taxa', 'oferta', 'pedido_por_guid', 'confirmar_pedido', 'mudar_estado_se_nao_pago',
                  'fonte_taxa_gravada', 'corrigir_valor_pendente', 'pagamento_com_pedido', 'salvar_conciliacao',
                  'iniciar_conciliacao', 'finalizar_conciliacao', 'evento_por_id', 'liberar_para_reprocessar',
-                 'tem_aviso_a_conferir'):
+                 'tem_aviso_a_conferir', 'preencher_email_se_vazio', 'outra_compra_paga',
+                 'outro_pedido_pago_da_musica', 'aprovado_gravado'):
         monkeypatch.setattr(repositorio, nome, getattr(falso, nome))
     falso.pedidos[7] = {'id': 7, 'guid': 'abc123', 'produto_id': 50, 'plano_id': 501, 'estado_id': 1001,
                         'valor_pago': None, 'fluxo_inicial': 'web'}

@@ -103,6 +103,35 @@ def confirmar_pedido(pedido_id: int, valor, nome: str, valor_liquido, data_repas
 ESTADOS_ANTES_DO_PAGAMENTO = (1001, 1003, 1004, ESTADO_AGUARDANDO, ESTADO_CANCELADO)
 
 
+def outra_compra_paga(pedido_id: int, transacao: str, aprovado_em) -> str | None:
+    """Outra transação da Hotmart pagou este pedido ANTES desta? (a mesma cliente pagou duas vezes: reembolsar esta)
+    Só a que veio depois é a duplicada: os avisos seguintes da original (ex.: o COMPLETE) seguem normais."""
+    linha = _db().execute_query(
+        """SELECT transacao FROM pagamento_hotmart WHERE pedido_id = %s AND transacao <> %s
+           AND status IN ('APPROVED', 'COMPLETE') AND order_bump = 0
+           AND (aprovado_em IS NULL OR %s IS NULL OR aprovado_em <= %s)
+           ORDER BY aprovado_em LIMIT 1""", (pedido_id, transacao, aprovado_em, aprovado_em), fetch_one=True)
+    return linha['transacao'] if linha else None
+
+
+def outro_pedido_pago_da_musica(pedido_id: int) -> int | None:
+    """A música deste pedido já foi paga por OUTRO pedido? (ex.: gerou o OXXO, pagou com cartão num pedido novo e
+    depois pagou o OXXO também): reembolsar um."""
+    linha = _db().execute_query(
+        """SELECT p2.id FROM musica_pedidos mp1
+           JOIN musica_pedidos mp2 ON mp2.musica_id = mp1.musica_id AND mp2.pedido_id <> mp1.pedido_id
+           JOIN pedidos p2 ON p2.id = mp2.pedido_id AND p2.estado_id = 1000
+           WHERE mp1.pedido_id = %s ORDER BY p2.data_pagamento LIMIT 1""", (pedido_id,), fetch_one=True)
+    return linha['id'] if linha else None
+
+
+def preencher_email_se_vazio(pedido_id: int, email: str | None) -> None:
+    """O e-mail da compradora na Hotmart vai para o pedido que não tem (sem ele a entrega sai "sem e-mail")."""
+    if email:
+        _db().execute_query("UPDATE pedidos SET email = %s WHERE id = %s AND COALESCE(email, '') = ''",
+                            (email[:200], pedido_id))
+
+
 def mudar_estado_se_nao_pago(pedido_id: int, estado: int) -> bool:
     """Aguardando (1010) ou cancelado (1011), só num pedido web da Hotmart ainda não pago."""
     estados = ', '.join(str(e) for e in ESTADOS_ANTES_DO_PAGAMENTO)
@@ -111,6 +140,12 @@ def mudar_estado_se_nao_pago(pedido_id: int, estado: int) -> bool:
             WHERE id = %s AND fluxo_inicial = 'web' AND estado_id IN ({estados})""",
         (estado, pedido_id), return_rowcount=True)
     return bool(linhas)
+
+
+def aprovado_gravado(transacao: str):
+    linha = _db().execute_query(
+        "SELECT aprovado_em FROM pagamento_hotmart WHERE transacao = %s", (transacao,), fetch_one=True)
+    return linha['aprovado_em'] if linha else None
 
 
 def fonte_taxa_gravada(transacao: str) -> str | None:
@@ -177,7 +212,7 @@ def tem_aviso_a_conferir(transacao: str) -> bool:
     """O webhook desta venda já está em "Para conferir": a conciliação não cria um segundo aviso igual."""
     return bool(_db().execute_query(
         """SELECT 1 FROM pagamento_hotmart_eventos
-           WHERE transacao = %s AND resultado IN ('sem_pedido', 'oferta_divergente', 'erro') LIMIT 1""",
+           WHERE transacao = %s AND resultado IN ('sem_pedido', 'oferta_divergente', 'duplicado', 'erro') LIMIT 1""",
         (transacao,), fetch_one=True))
 
 
@@ -189,8 +224,17 @@ def evento_por_id(evento_db_id: int) -> dict | None:
 
 def liberar_para_reprocessar(evento_id: str) -> bool:
     """O aviso volta a "sem resultado" para o processar() aplicar de novo — só um aviso que está para conferir (nunca
-    um 'processando' ou 'ok': dois cliques ou um reenvio da Hotmart não rodam o mesmo aviso em paralelo)."""
+    um 'processando' ou 'ok': dois cliques ou um reenvio da Hotmart não rodam o mesmo aviso em paralelo; nem um
+    'duplicado': reaplicar o APPROVED antigo voltaria a situação de uma venda já reembolsada para paga)."""
     return bool(_db().execute_query(
         """UPDATE pagamento_hotmart_eventos SET resultado = NULL
            WHERE evento_id = %s AND resultado IN ('sem_pedido', 'oferta_divergente', 'erro')""",
         (evento_id,), return_rowcount=True))
+
+
+def marcar_resolvido(evento_db_id: int) -> bool:
+    """O admin já tratou (ex.: reembolsou o pagamento duplicado na Hotmart): o aviso sai de "Para conferir"."""
+    return bool(_db().execute_query(
+        """UPDATE pagamento_hotmart_eventos SET resultado = 'resolvido'
+           WHERE id = %s AND resultado IN ('sem_pedido', 'oferta_divergente', 'duplicado', 'erro')""",
+        (evento_db_id,), return_rowcount=True))

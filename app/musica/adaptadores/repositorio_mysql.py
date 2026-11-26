@@ -243,6 +243,9 @@ class RepositorioMysql:
                  AND m.criado_em >= NOW() - INTERVAL 5 DAY
                  AND m.status IN ('letra_pronta', 'previa_pronta') AND m.rascunho_de IS NULL
                  AND saida.email_chave IS NULL
+                 -- OXXO/SPEI da Hotmart gerado e ainda não pago (1010): ela já está pagando, nada de "volte e compre"
+                 AND NOT EXISTS (SELECT 1 FROM musica_pedidos mp JOIN pedidos p ON p.id = mp.pedido_id
+                                 WHERE mp.musica_id = m.id AND p.estado_id = 1010)
                  AND NOT EXISTS (SELECT 1 FROM musicas outra WHERE outra.email = m.email
                                  AND outra.liberada_em >= LEAST(m.criado_em, NOW() - INTERVAL 1 DAY))
                ORDER BY m.id DESC

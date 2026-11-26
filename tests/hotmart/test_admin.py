@@ -26,9 +26,17 @@ VENDA = {
 class BancoFalso:
     def __init__(self):
         self.ofertas_gravadas = []
+        self.botao_limpo = []
+        self.resolvidos = []
 
     def execute_query(self, sql, params=(), fetch_one=False, fetch_all=False, return_rowcount=False):
         sql = ' '.join(sql.split())
+        if sql.startswith("UPDATE pagamento_hotmart_eventos SET resultado = 'resolvido'"):
+            self.resolvidos.append(params[0])
+            return 1
+        if sql.startswith("UPDATE hotmart_ofertas SET uso = NULL"):
+            self.botao_limpo.append(params)
+            return 0
         if sql.startswith('INSERT INTO hotmart_ofertas'):
             self.ofertas_gravadas.append(params)
             return 1
@@ -54,7 +62,8 @@ class BancoFalso:
             return []
         if 'FROM hotmart_ofertas o' in sql:
             return [{'codigo': 'sph9o75s', 'produto_id': 50, 'plano_id': 501, 'descricao': 'Teste', 'ativo': 1,
-                     'produto': 'Canción', 'plano': 'Música', 'slug': 'musica'}]
+                     'produto': 'Canción', 'plano': 'Música', 'slug': 'musica', 'produto_hotmart': 9006872,
+                     'preco': Decimal('50'), 'moeda': 'MXN', 'uso': 'botao'}]
         if 'FROM produto_planos pl JOIN produtos' in sql:
             return [{'id': 501, 'nome': 'Música', 'slug': 'musica', 'produto_id': 50, 'produto': 'Canción'}]
         return [] if fetch_all else None
@@ -101,9 +110,18 @@ def test_abas_renderizam(tela, aba, espera):
 
 def test_salvar_oferta_grava_com_o_produto_do_plano(tela):
     resp = tela.cliente.post('/admin/hotmart/ofertas', headers={'Origin': 'http://localhost'},
-                             data={'codigo': ' tlaz6ojn ', 'plano_id': '501', 'descricao': 'Preço base', 'ativo': '1'})
+                             data={'codigo': ' tlaz6ojn ', 'plano_id': '501', 'descricao': 'Preço base', 'ativo': '1',
+                                   'uso': 'botao', 'produto_hotmart': '9006872', 'preco': '149,00', 'moeda': 'mxn'})
     assert resp.status_code == 302
-    assert tela.banco.ofertas_gravadas == [('tlaz6ojn', 50, 501, 'Preço base', 1)]
+    assert tela.banco.ofertas_gravadas == [('tlaz6ojn', 50, 501, 'Preço base', 1, 9006872, Decimal('149.00'), 'MXN',
+                                            'botao')]
+    assert tela.banco.botao_limpo == [(501, 'tlaz6ojn')]          # a oferta anterior do botão do plano sai
+
+
+def test_oferta_de_botao_sem_preco_nao_grava(tela):
+    tela.cliente.post('/admin/hotmart/ofertas', headers={'Origin': 'http://localhost'},
+                      data={'codigo': 'x', 'plano_id': '501', 'uso': 'botao', 'produto_hotmart': '9006872'})
+    assert tela.banco.ofertas_gravadas == []
 
 
 def test_post_de_outro_site_e_recusado(tela):
@@ -134,3 +152,33 @@ def test_conciliar_agora_sem_credencial_avisa_e_nao_agenda(tela, monkeypatch):
     monkeypatch.setattr(tarefas.conciliar, 'delay', lambda origem: agendadas.append(origem))
     resp = tela.cliente.post('/admin/hotmart/conciliar', headers={'Origin': 'http://localhost'}, follow_redirects=True)
     assert agendadas == [] and 'não está configurada' in resp.get_data(as_text=True)
+
+
+def test_oferta_desativada_nao_tira_o_botao_da_atual(tela):
+    tela.cliente.post('/admin/hotmart/ofertas', headers={'Origin': 'http://localhost'},
+                      data={'codigo': 'nova', 'plano_id': '501', 'uso': 'botao', 'produto_hotmart': '9006872',
+                            'preco': '149', 'moeda': 'MXN', 'ativo': '0'})
+    assert len(tela.banco.ofertas_gravadas) == 1 and tela.banco.botao_limpo == []
+
+
+def test_moeda_desconhecida_nao_grava(tela):
+    tela.cliente.post('/admin/hotmart/ofertas', headers={'Origin': 'http://localhost'},
+                      data={'codigo': 'x', 'plano_id': '501', 'uso': 'botao', 'produto_hotmart': '9006872',
+                            'preco': '149', 'moeda': 'MX'})
+    assert tela.banco.ofertas_gravadas == []
+
+
+def test_duplicado_tem_o_botao_resolvido_e_nao_o_reprocessar(tela, monkeypatch):
+    original = tela.banco.execute_query
+
+    def com_duplicado(sql, params=(), **kw):
+        if ' '.join(sql.split()).startswith('SELECT id, evento_id'):
+            return [{'id': 5, 'evento_id': 'e5', 'transacao': 'HPB', 'evento': 'PURCHASE_APPROVED',
+                     'resultado': 'duplicado', 'detalhe': 'reembolsar a HPB', 'recebido_em': AGORA, 'payload': '{}'}]
+        return original(sql, params, **kw)
+
+    monkeypatch.setattr(tela.banco, 'execute_query', com_duplicado)
+    html = tela.cliente.get('/admin/hotmart?aba=conferir').get_data(as_text=True)
+    assert 'Resolvido' in html and 'eventos/5/reprocessar' not in html
+    tela.cliente.post('/admin/hotmart/eventos/5/resolvido', headers={'Origin': 'http://localhost'})
+    assert tela.banco.resolvidos == [5]

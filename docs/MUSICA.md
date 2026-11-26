@@ -262,9 +262,9 @@ Cada idioma = idioma + país (`pt-BR`, `es-MX`; depois `es-US`, `en-US`), regist
 | Conteúdo | `conteudo/pt-BR/` | `conteudo/es-MX/` |
 | Produto | `produtos.idioma = 'pt-BR'` (padrão) | um produto próprio com `idioma = 'es-MX'` |
 | Celular do quiz | `55` + DDD + 9 + 8 | `52` + 10 (aceita `+52` e `52 1`) |
-| Lembretes | 8h–22h de Brasília, com SMS | nenhum até ter checkout (`'vende': False` em `idiomas.py`); depois, 8h–22h da Cidade do México, só e-mail, sem a etapa checkout |
+| Lembretes | 8h–22h de Brasília, com SMS | 8h–22h da Cidade do México, só e-mail, sem a etapa checkout (`'vende': True` desde a Hotmart, 26/11/2026) |
 | Analytics Web | `musica-v2` | `musica-mx` (mesmas etapas) |
-| Checkout | o nosso (`/pay`, PIX/cartão) | Hotmart (em outra frente). Até lá a prévia mostra "venda fechada" |
+| Checkout | o nosso (`/pay`, PIX/cartão) | Hotmart: `/mx/cancion/comprar/<token>/<oferta>` → pay.hotmart.com com o `xcod`; obrigado em `/mx/cancion/gracias` (docs/HOTMART.md) |
 | WhatsApp (avisos, presente) | `MUSICA_WHATSAPP_ATIVO` | desligado (`'whatsapp': False`) até os templates em es_MX |
 | Presente agendado | horário de Brasília | o do navegador (vai com o fuso; o banco guarda em Brasília e a tela converte) |
 

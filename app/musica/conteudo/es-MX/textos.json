@@ -494,5 +494,20 @@
     "sem_lembretes_ok_sub": "Ya no te vamos a escribir sobre esta canción. Si cambias de opinión, el enlace de tu canción sigue funcionando.",
     "liberando": "Estamos liberando tu canción 🎵",
     "liberando_sub": "Tu pago se confirmó y estamos preparando todo. Actualiza esta página en unos minutos."
+  },
+  "obrigado": {
+    "titulo": "Gracias por tu compra",
+    "confirmando": "Estamos confirmando tu pago…",
+    "confirmando_sub": "Solo toma unos segundos. No cierres esta página.",
+    "aguardando": "Solo falta pagar 💛",
+    "aguardando_sub": "Cuando pagues en OXXO o por SPEI, te enviaremos tu canción por correo.",
+    "email": "Tu canción llega por correo 💛",
+    "email_sub": "En cuanto se confirme el pago, te enviamos el enlace. Si no aparece, revisa la carpeta de spam o promociones.",
+    "cancelado": "El pago no se completó",
+    "cancelado_sub": "No se cobró nada. Regresa a tu canción e inténtalo de nuevo, con otra tarjeta u otra forma de pago.",
+    "demorando": "La confirmación está tardando un poco",
+    "demorando_sub": "En cuanto se confirme el pago, te enviaremos tu canción por correo.",
+    "voltar_musica": "Volver a mi canción",
+    "criar_outra": "Crear otra canción"
   }
 }

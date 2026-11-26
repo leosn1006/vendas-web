@@ -23,3 +23,6 @@ try:
     DIAS_CONCILIACAO = int(os.getenv('HOTMART_DIAS_CONCILIACAO', '45') or 45)
 except ValueError:
     DIAS_CONCILIACAO = 45
+
+# Checkout da Hotmart (o link do botão da prévia): https://pay.hotmart.com/<produto_hotmart>?off=<oferta>&xcod=<guid>
+URL_PAGAMENTO = (os.getenv('HOTMART_URL_PAGAMENTO', '') or 'https://pay.hotmart.com').rstrip('/')

@@ -6,9 +6,10 @@ primeiro produto é a Música do México (`/mx/cancion`, produto `es-MX`, migrat
 
 ## Fluxo
 
-1. A cliente clica em comprar no nosso site e **nós criamos o pedido** (estado 1001, com `plano_id`).
-2. Redirecionamos para o **link fixo da oferta** na Hotmart com `xcod=<guid do pedido>` (+ `name`/`email`).
-   *(Próxima etapa: criação do pedido, redirecionamento e página de obrigado ainda não existem.)*
+1. A cliente clica em comprar na prévia (`/mx/cancion/comprar/<token>/<oferta>`) e **nós criamos o pedido** (1001,
+   `metodo_pagamento = 'hotmart'`, plano da oferta, a música vinculada, o e-mail da música).
+2. Redirecionamos para o **link da oferta** na Hotmart com `xcod=<guid do pedido>` (+ `email`) e guardamos o guid
+   no cookie `musica_hotmart`.
 3. A cliente paga na Hotmart e a Hotmart chama **`POST /hotmart/webhook`** (`app/hotmart/`).
 4. O webhook acha o pedido pelo `xcod`, confere a oferta e, se pagou, faz o mesmo que o PIX e o cartão:
    `confirmar_pagamento_web` (estado 1000) + `tasks.enviar_email_entrega` (libera a Música/apps e manda o e-mail).
@@ -83,9 +84,42 @@ pela entidade da Hotmart no exterior). Ainda falta ver um OXXO/SPEI real (`payme
 
 ## Próximas etapas
 
-- Criar o pedido e redirecionar com `xcod`; página de obrigado (cookie com o guid, espera o webhook).
 - Order bumps; devolução no Financeiro. **Hoje um reembolso/chargeback não muda o pedido**: ele continua pago e
   somando no ROI (a `pagamento_hotmart.status` mostra REFUNDED/CHARGEBACK e a tela conta os reembolsos).
+
+## Botão e página de obrigado (`hotmart/checkout.py` + `musica/rotas.py`, 26/11/2026)
+
+- **Prévia**: fora do Brasil, `_planos_e_oferta_hotmart` mostra cada plano que tem oferta **`uso = 'botao'`** em
+  `hotmart_ofertas` (com `produto_hotmart`, `preco` e `moeda`, que montam o link e o preço "MX$ 149"); o popup
+  "última chance" usa a oferta **`popup`** (do plano com videoclipe, mais cara que o botão da música e mais barata
+  que o botão dela). Sem oferta de botão = "venda fechada". Cadastro em Admin → Hotmart → Ofertas (uma oferta de
+  botão por plano: salvar outra tira a anterior).
+- **`GET /<prefixo>/comprar/<token>/<oferta>`**: confere a música (prévia pronta, não comprada) e a oferta
+  (ativa, botão/popup, do produto); reaproveita o pedido Hotmart aberto da mesma música e plano (1001/1010/1011) ou
+  cria um; liga a música (`vincular_ao_pedido`, que herda GCLID/fbc do rascunho da landing); cookie e 302 para
+  `https://pay.hotmart.com/<produto_hotmart>?off=<oferta>&xcod=<guid>&email=...`. Limite de 30 cliques por IP/hora.
+- **Página de obrigado** (cadastrar no painel da Hotmart, no produto): `https://<domínio>/mx/cancion/gracias`. Lê o
+  cookie e consulta `GET /<prefixo>/api/compra-hotmart` (só o pedido do cookie, nunca guid pela URL) a cada 3 s:
+  pago → área da compra (`/compra/<guid>`); OXXO/SPEI gerado → "te enviaremos por correo"; sem cookie ou depois de
+  2 min → "te enviamos el enlace por correo".
+- O webhook grava o `buyer.email` da Hotmart no pedido sem e-mail antes da entrega.
+- **Popup**: o link leva `?oferta=<token assinado>` (o mesmo `web/oferta.py`, 24 h); sem ele, o código da oferta com
+  desconto sozinho não vende (volta para a prévia).
+- Pré-carregamento (`Sec-Purpose`/`Purpose: prefetch`) não cria pedido. Pedido aguardando OXXO/SPEI (1010) **não** é
+  reaproveitado num novo clique (o mesmo xcod em dois pagamentos cobraria duas vezes); o cancelado (1011)
+  reaproveitado volta a 1001 (senão a página de obrigado diria "cancelado" durante o pagamento novo).
+- **Pagamento duplicado** → resultado `duplicado` em "Para conferir", para reembolsar na Hotmart: (a) outra
+  transação pagou o mesmo pedido ANTES desta (só a que veio depois é marcada; os avisos seguintes da original, como o
+  COMPLETE, seguem normais); (b) a música do pedido já foi paga por OUTRO pedido (ex.: OXXO num pedido e cartão em
+  outro). A entrega não duplica (é idempotente).
+- A prévia só mostra ofertas na moeda do país (`idiomas.py` → `moeda`): preço, ordem e economia nunca misturam
+  moedas.
+- Página de obrigado: cancelado/recusado (1011) → "o pagamento não foi concluído" + volta para a música; depois de
+  2 min sem confirmação → "assim que confirmar, enviamos por e-mail" (nunca diz que já enviou).
+- Lembretes da Música não vão para quem tem pedido Hotmart 1010 (já está pagando o OXXO).
+- Na Hotmart: Produtos → o produto → Ferramentas → Configurações de pagamento → aba **Pós-venda** → "Onde será?" =
+  **Externa**, com a URL de obrigado acima (para compra aprovada e para boleto/OXXO gerado).
+- `idiomas.py`: es-MX `'vende': True` (lembretes por e-mail ligados).
 
 ## Conciliação (`hotmart/conciliacao.py`, fase 2b, 26/11/2026)
 

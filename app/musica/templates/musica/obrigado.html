@@ -1,0 +1,68 @@
+{% extends "musica/musica_base.html" %}
+{# Página de obrigado da Hotmart (fora do Brasil; URL cadastrada no painel da Hotmart): espera o webhook confirmar o
+   pedido do cookie e leva para a área da compra. OXXO/SPEI ainda sem pagar: avisa que chega por e-mail. #}
+{% block titulo %}{{ t('obrigado.titulo') }} · {{ marca }}{% endblock %}
+{% block estilo %}
+<style>
+.obrigado{text-align:center;padding:40px 0}
+.obrigado .ti{font-size:3rem;color:var(--cor)}
+.girando{animation:gira 1.2s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+.obrigado [hidden]{display:none}
+</style>
+{% endblock %}
+{% block conteudo %}
+<section class="obrigado" aria-live="polite">
+  <div id="confirmando" {% if not tem_pedido %}hidden{% endif %}>
+    <i class="ti ti-loader-2 girando" aria-hidden="true"></i>
+    <h1>{{ t('obrigado.confirmando') }}</h1>
+    <p class="suave">{{ t('obrigado.confirmando_sub') }}</p>
+  </div>
+  <div id="aguardando" hidden>
+    <i class="ti ti-clock" aria-hidden="true"></i>
+    <h1>{{ t('obrigado.aguardando') }}</h1>
+    <p class="suave">{{ t('obrigado.aguardando_sub') }}</p>
+  </div>
+  <div id="cancelado" hidden>
+    <i class="ti ti-alert-circle" aria-hidden="true"></i>
+    <h1>{{ t('obrigado.cancelado') }}</h1>
+    <p class="suave">{{ t('obrigado.cancelado_sub') }}</p>
+    <p><a class="botao" id="voltar" href="{{ rota('inicio') }}">{{ t('obrigado.voltar_musica') }}</a></p>
+  </div>
+  <div id="demorando" hidden>
+    <i class="ti ti-mail" aria-hidden="true"></i>
+    <h1>{{ t('obrigado.demorando') }}</h1>
+    <p class="suave">{{ t('obrigado.demorando_sub') }}</p>
+  </div>
+  <div id="email" {% if tem_pedido %}hidden{% endif %}>
+    <i class="ti ti-mail-heart" aria-hidden="true"></i>
+    <h1>{{ t('obrigado.email') }}</h1>
+    <p class="suave">{{ t('obrigado.email_sub') }}</p>
+    <p><a class="botao" href="{{ rota('inicio') }}">{{ t('obrigado.criar_outra') }}</a></p>
+  </div>
+</section>
+{% endblock %}
+{% block script %}
+{% if tem_pedido %}
+<script>
+(function () {
+  const inicio = Date.now();
+  const mostra = id => ["confirmando", "aguardando", "cancelado", "demorando", "email"]
+    .forEach(x => { document.getElementById(x).hidden = x !== id; });
+  async function confere() {
+    try {
+      const r = await fetch({{ rota('api_compra_hotmart')|tojson }}, {credentials: "same-origin"});
+      const d = await r.json();
+      if (d.situacao === "pago" && d.link) { location.href = d.link; return; }
+      if (d.situacao === "aguardando") { mostra("aguardando"); return; }
+      if (d.situacao === "cancelado") { if (d.link) document.getElementById("voltar").href = d.link; mostra("cancelado"); return; }
+      if (d.situacao === "sem_pedido") { mostra("demorando"); return; }
+    } catch (e) { /* rede instável: tenta de novo */ }
+    if (Date.now() - inicio > 120000) { mostra("demorando"); return; }   // 2 min: avisa que o e-mail sai ao confirmar
+    setTimeout(confere, 3000);
+  }
+  confere();
+})();
+</script>
+{% endif %}
+{% endblock %}

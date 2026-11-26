@@ -16,7 +16,7 @@ STATUS_PAGO = ('APPROVED', 'COMPLETE')
 STATUS_AGUARDANDO = ('PRINTED_BILLET', 'WAITING_PAYMENT')
 STATUS_CANCELADO = ('CANCELLED', 'EXPIRED')
 STATUS_DEVOLVIDO = ('REFUNDED', 'PARTIALLY_REFUNDED', 'CHARGEBACK', 'PROTESTED')
-RESULTADOS_A_CONFERIR = ('sem_pedido', 'oferta_divergente', 'erro')
+RESULTADOS_A_CONFERIR = ('sem_pedido', 'oferta_divergente', 'duplicado', 'erro')
 
 
 def _lista_sql(valores):
@@ -117,6 +117,31 @@ def _contar_a_conferir() -> int:
     return int((linha or {}).get('n') or 0)
 
 
+MOEDAS = ('MXN', 'USD', 'EUR', 'BRL', 'COP', 'CLP', 'ARS', 'PEN', 'GBP', 'INR', 'NGN')
+_PRECO_MAXIMO = 1_000_000
+
+
+def _preco(texto):
+    """'149', '149,00', '1.149' ou '1.149,90' (milhar com ponto) → Decimal; vazio, inválido, NaN/infinito, ≤ 0 ou
+    acima do teto → None."""
+    import re
+    from decimal import Decimal, InvalidOperation
+    texto = (texto or '').strip().replace(' ', '')
+    if not texto or not re.fullmatch(r'[0-9.,]+', texto):
+        return None
+    if ',' in texto:
+        texto = texto.replace('.', '').replace(',', '.')
+    elif re.fullmatch(r'\d{1,3}(\.\d{3})+', texto):     # 1.149 = mil cento e quarenta e nove
+        texto = texto.replace('.', '')
+    try:
+        valor = Decimal(texto)
+    except InvalidOperation:
+        return None
+    if not valor.is_finite() or valor <= 0 or valor > _PRECO_MAXIMO:
+        return None
+    return valor.quantize(Decimal('0.01'))
+
+
 def _post_confiavel() -> bool:
     """O projeto não tem token CSRF: o POST tem de vir do próprio site (mesmo padrão dos apps das clientes)."""
     from apps._nucleo.auth import origem_confiavel
@@ -190,6 +215,20 @@ def hotmart_reprocessar(evento_db_id):
     return redirect(url_for('admin.hotmart', aba='conferir'))
 
 
+@admin_bp.post('/hotmart/eventos/<int:evento_db_id>/resolvido')
+@requer_admin
+def hotmart_resolvido(evento_db_id):
+    """Tira o aviso de "Para conferir" sem reaplicar (ex.: pagamento duplicado já reembolsado na Hotmart)."""
+    if _post_confiavel():
+        from hotmart import repositorio
+        if repositorio.marcar_resolvido(evento_db_id):
+            flash('Aviso marcado como resolvido.', 'success')
+            logger.info(f'[HOTMART] Aviso {evento_db_id} marcado como resolvido pelo admin')
+        else:
+            flash('Este aviso não está mais para conferir.', 'warning')
+    return redirect(url_for('admin.hotmart', aba='conferir'))
+
+
 @admin_bp.post('/hotmart/ofertas')
 @requer_admin
 def hotmart_salvar_oferta():
@@ -199,15 +238,39 @@ def hotmart_salvar_oferta():
         plano_id = request.form.get('plano_id', type=int)
         plano = db.execute_query("SELECT id, produto_id FROM produto_planos WHERE id = %s", (plano_id,),
                                  fetch_one=True) if plano_id else None
+        uso = request.form.get('uso') or None
+        uso = uso if uso in ('botao', 'popup') else None
+        produto_hotmart = request.form.get('produto_hotmart', type=int)
+        preco = _preco(request.form.get('preco'))
+        moeda = (request.form.get('moeda') or '').strip().upper() or None
+        ativo = 1 if request.form.get('ativo', '1') == '1' else 0
         if not codigo or len(codigo) > 40 or not plano:
             flash('Informe o código da oferta (o "off=" do link da Hotmart) e o plano.', 'danger')
+        elif (request.form.get('preco') or '').strip() and not preco:
+            flash('Preço inválido: use, por exemplo, 149 ou 149,90.', 'danger')
+        elif moeda and moeda not in MOEDAS:
+            flash(f'Moeda desconhecida: use uma de {", ".join(MOEDAS)}.', 'danger')
+        elif uso and not (produto_hotmart and preco and moeda):
+            flash('Oferta usada no botão ou no popup precisa do ID do produto na Hotmart, do preço e da moeda.',
+                  'danger')
         else:
+            # Um botão por plano e um popup por produto: a oferta ATIVA que entra no lugar tira a anterior (uma
+            # desativada não, senão o plano sumiria da prévia).
+            if uso == 'botao' and ativo:
+                db.execute_query("UPDATE hotmart_ofertas SET uso = NULL WHERE plano_id = %s AND uso = 'botao' "
+                                 "AND codigo <> %s", (plano['id'], codigo))
+            elif uso == 'popup' and ativo:
+                db.execute_query("UPDATE hotmart_ofertas SET uso = NULL WHERE produto_id = %s AND uso = 'popup' "
+                                 "AND codigo <> %s", (plano['produto_id'], codigo))
             db.execute_query("""
-                INSERT INTO hotmart_ofertas (codigo, produto_id, plano_id, descricao, ativo)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO hotmart_ofertas (codigo, produto_id, plano_id, descricao, ativo, produto_hotmart, preco,
+                                             moeda, uso)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE produto_id = VALUES(produto_id), plano_id = VALUES(plano_id),
-                                        descricao = VALUES(descricao), ativo = VALUES(ativo)""",
+                                        descricao = VALUES(descricao), ativo = VALUES(ativo),
+                                        produto_hotmart = VALUES(produto_hotmart), preco = VALUES(preco),
+                                        moeda = VALUES(moeda), uso = VALUES(uso)""",
                              (codigo, plano['produto_id'], plano['id'], (request.form.get('descricao') or '')[:120],
-                              1 if request.form.get('ativo', '1') == '1' else 0))
+                              ativo, produto_hotmart, preco, moeda, uso))
             flash(f'Oferta {codigo} salva.', 'success')
     return redirect(url_for('admin.hotmart', aba='ofertas'))

@@ -103,7 +103,10 @@ def _aplicar(dados: dict) -> tuple[str, str]:
 
     pedido = repositorio.pedido_por_guid(dados['xcod']) if dados['xcod'] else None
     pago = evento in EVENTOS_PAGO
-    aprovado_em = dados['aprovado_em'] or (datetime.datetime.now() if pago else None)
+    # Aviso sem approved_date (ex.: alguns COMPLETE): vale a data já gravada da transação; "agora" só na 1ª vez. Trocar
+    # a data gravada pelo agora faria a compra original parecer mais nova que uma duplicada (outra_compra_paga).
+    aprovado_em = dados['aprovado_em'] or repositorio.aprovado_gravado(transacao) or (
+        datetime.datetime.now() if pago else None)
 
     taxa, fonte = cambio.taxa_para_brl(dados['moeda'], dados['liquido'], dados['moeda_liquido'], dados['conversao'],
                                        _ptax, repositorio.ultima_taxa)
@@ -143,13 +146,24 @@ def _aplicar(dados: dict) -> tuple[str, str]:
             # zerar; o próximo aviso com cotação (ex.: o PURCHASE_COMPLETE) corrige.
             logger.error(f'[HOTMART] ❌ Pedido #{pedido_id} confirmado com valor em reais pendente (sem cotação)')
             valor_brl = valor_brl if valor_brl is not None else pedido.get('valor_pago')
+        repositorio.preencher_email_se_vazio(pedido_id, dados['email'])
         if repositorio.confirmar_pedido(pedido_id, valor_brl, dados['nome'], liquido_brl, previsao):
             logger.info(f'[HOTMART] ✅ Pedido #{pedido_id} pago ({dados["valor"]} {dados["moeda"]} = '
                         f'R$ {valor_brl}, {fonte}) — entrega enfileirada')
             enfileirar_entrega(pedido_id)
-        elif fonte_anterior == 'pendente' and fonte != 'pendente':
+            outro = repositorio.outro_pedido_pago_da_musica(pedido_id)
+            if outro:
+                logger.error(f'[HOTMART] ❌ A música do pedido #{pedido_id} já foi paga no pedido #{outro}: '
+                             f'reembolsar um ({transacao})')
+                return 'duplicado', f'a música já foi paga no pedido #{outro} — reembolsar um'
+            return 'ok', ''
+        if fonte_anterior == 'pendente' and fonte != 'pendente':
             if repositorio.corrigir_valor_pendente(pedido_id, valor_brl, liquido_brl):
                 logger.info(f'[HOTMART] ✅ Pedido #{pedido_id}: valor em reais corrigido para R$ {valor_brl} ({fonte})')
+        if outra := repositorio.outra_compra_paga(pedido_id, transacao, aprovado_em):
+            logger.error(f'[HOTMART] ❌ Pedido #{pedido_id} pago DUAS vezes ({outra} e {transacao}): reembolsar a '
+                         f'{transacao} na Hotmart')
+            return 'duplicado', f'pagamento duplicado: o pedido já foi pago pela {outra} — reembolsar a {transacao}'
         return 'ok', ''
 
     # Aguardando/cancelado só mexem no pedido se a oferta for do mesmo produto (o xcod de um pedido de outro fluxo

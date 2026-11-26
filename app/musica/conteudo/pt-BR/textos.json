@@ -375,5 +375,20 @@
     "sem_lembretes_ok_sub": "Não vamos mais te lembrar desta música por e-mail. Se mudar de ideia, o link da música continua funcionando.",
     "liberando": "Sua música está sendo liberada 🎵",
     "liberando_sub": "O pagamento foi confirmado e estamos preparando tudo. Atualize esta página em alguns minutos."
+  },
+  "obrigado": {
+    "titulo": "Obrigado pela compra",
+    "confirmando": "Estamos confirmando o seu pagamento…",
+    "confirmando_sub": "Leva só alguns segundos. Não feche esta página.",
+    "aguardando": "Falta só pagar 💛",
+    "aguardando_sub": "Assim que o pagamento cair, enviamos a sua música por e-mail.",
+    "email": "A sua música chega por e-mail 💛",
+    "email_sub": "Assim que o pagamento for confirmado, enviamos o link. Se não aparecer, olhe a caixa de spam ou promoções.",
+    "cancelado": "O pagamento não foi concluído",
+    "cancelado_sub": "Nada foi cobrado. Volte para a sua música e tente de novo, com outro cartão ou outra forma de pagamento.",
+    "demorando": "A confirmação está demorando um pouco",
+    "demorando_sub": "Assim que o pagamento for confirmado, enviamos a sua música por e-mail.",
+    "voltar_musica": "Voltar para a minha música",
+    "criar_outra": "Criar outra música"
   }
 }
