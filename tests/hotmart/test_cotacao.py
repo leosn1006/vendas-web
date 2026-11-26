@@ -69,3 +69,53 @@ def test_tela_do_roi_cai_no_fallback_fixo_sem_o_bcb(monkeypatch):
     monkeypatch.setattr(cotacao, '_cache_usd_tela', {})
     monkeypatch.setenv('COTACAO_USD_FALLBACK', '5.40')
     assert cotacao.obter_ptax_usd() == {'valor': 5.40, 'data': None, 'fallback': True}
+
+
+def test_tela_com_o_bcb_fora_do_ar_nao_chama_de_novo_por_10_minutos(monkeypatch):
+    """Regressão (revisão de 26/11): com o BCB fora, a tela de ROI chamava o BCB (timeout de 10 s) a cada produto mesmo
+    com o valor reserva guardado; a página passava do limite do Gunicorn (502). Como antes: reserva por 10 min, e depois
+    disso tenta o BCB de novo."""
+    relogio = [1000.0]
+    feitas = []
+    bcb_no_ar = [False]
+
+    def get(url, params=None, timeout=None):
+        feitas.append(url)
+        if not bcb_no_ar[0]:
+            raise TimeoutError('BCB fora')
+        return _Resposta({'value': [{'cotacaoVenda': 5.8889, 'dataHoraCotacao': '2026-11-19 13:04:18'}]})
+    monkeypatch.setattr(cotacao.requests, 'get', get)
+    monkeypatch.setattr(cotacao.time, 'time', lambda: relogio[0])
+    monkeypatch.setenv('COTACAO_USD_FALLBACK', '5.50')
+    monkeypatch.setattr(cotacao, '_cache_moedas', {})
+    monkeypatch.setattr(cotacao, '_cache_usd_tela', {})
+    for _ in range(5):
+        r = cotacao.obter_ptax_usd()
+        assert r['fallback'] is True and r['valor'] == 5.50
+    assert len(feitas) == 1                                    # uma tentativa só nos 10 min
+    bcb_no_ar[0] = True
+    relogio[0] += 9 * 60
+    assert cotacao.obter_ptax_usd()['fallback'] is True and len(feitas) == 1
+    relogio[0] += 2 * 60                                        # passou dos 10 min: tenta o BCB de novo
+    r = cotacao.obter_ptax_usd()
+    assert r['fallback'] is False and r['valor'] == 5.8889 and len(feitas) == 2
+
+
+def test_tela_usa_a_ptax_de_verdade_que_chegou_depois_da_falha(monkeypatch):
+    """Depois de uma falha, se a PTAX de verdade entrar no cache do processo (outro pedido de cotação em dólar),
+    a tela usa ela no lugar da reserva."""
+    bcb_no_ar = [False]
+
+    def get(url, params=None, timeout=None):
+        if not bcb_no_ar[0]:
+            raise TimeoutError('BCB fora')
+        return _Resposta({'value': [{'cotacaoVenda': 5.8889, 'dataHoraCotacao': '2026-11-19 13:04:18'}]})
+    monkeypatch.setattr(cotacao.requests, 'get', get)
+    monkeypatch.setenv('COTACAO_USD_FALLBACK', '5.50')
+    monkeypatch.setattr(cotacao, '_cache_moedas', {})
+    monkeypatch.setattr(cotacao, '_cache_usd_tela', {})
+    assert cotacao.obter_ptax_usd()['fallback'] is True
+    bcb_no_ar[0] = True
+    assert cotacao.ptax_venda('USD')['valor'] == 5.8889       # outro caminho trouxe a PTAX
+    r = cotacao.obter_ptax_usd()
+    assert r['fallback'] is False and r['valor'] == 5.8889

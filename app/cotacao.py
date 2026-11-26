@@ -96,18 +96,26 @@ def cotacao_em_reais(moeda: str, timeout: float = 5) -> dict | None:
 
 def obter_ptax_usd() -> dict:
     """PTAX de venda do dólar para as telas do admin. {'valor': float, 'data': date|None, 'fallback': bool}. Se o BCB
-    falhar, usa COTACAO_USD_FALLBACK (padrão 5.50) com fallback=True — e tenta de novo em 10 min."""
+    falhar, usa COTACAO_USD_FALLBACK (padrão 5.50) com fallback=True — e só tenta o BCB de novo em 10 min (sem isso, com
+    o BCB fora do ar, cada produto da tela de ROI esperaria o timeout de 10 s e a página passaria do limite do Gunicorn)."""
+    agora = time.time()
+    # a PTAX de verdade, se já está no cache DESTE processo (ex.: outro pedido de cotação em dólar a trouxe depois da
+    # falha): vale mais que a reserva
+    guardada = _cache_moedas.get('ptax:USD')
+    if guardada and guardada['expira'] > agora:
+        return {'valor': guardada['valor'], 'data': guardada['data'], 'fallback': False}
+    if _cache_usd_tela and _cache_usd_tela['expira'] > agora:
+        return {'valor': _cache_usd_tela['valor'], 'data': None, 'fallback': True}
     cot = ptax_venda('USD', timeout=10)
     if cot:
         return {**cot, 'fallback': False}
-    agora = time.time()
-    if not (_cache_usd_tela and _cache_usd_tela['expira'] > agora):
-        logger.warning('[COTACAO] ⚠️ Usando COTACAO_USD_FALLBACK na tela')
-        try:
-            valor = float(os.getenv('COTACAO_USD_FALLBACK', '5.50'))
-        except ValueError:
-            valor = 5.50
-        _cache_usd_tela.update(valor=valor, expira=agora + 600)
+    # o BCB falhou: guarda a reserva por 10 min
+    logger.warning('[COTACAO] ⚠️ Usando COTACAO_USD_FALLBACK na tela')
+    try:
+        valor = float(os.getenv('COTACAO_USD_FALLBACK', '5.50'))
+    except ValueError:
+        valor = 5.50
+    _cache_usd_tela.update(valor=valor, expira=agora + 600)
     return {'valor': _cache_usd_tela['valor'], 'data': None, 'fallback': True}
 
 
