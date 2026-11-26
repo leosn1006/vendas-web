@@ -310,7 +310,12 @@ docker compose exec -T db sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYS
 docker compose up -d --build app worker-urgente worker-normal worker-baixa beat && make reload-nginx
 ```
 
-Abra `http://localhost/musica/`. No dev, os e-mails da Música só vão para o log. **Atenção:** o e-mail de
+Abra `http://localhost/musica/`. No dev, os e-mails da Música (presente, avisos, lembretes) só vão para o log —
+menos para os endereços de `MUSICA_EMAIL_DEV_PERMITIDOS` (vírgula; `leo@gmail.com` libera também `leo+x@gmail.com`),
+que recebem de verdade; a cópia para endereço fora da lista é retirada. O link do presente sai com o domínio onde a
+música foi criada (`http://localhost` no dev). Para pagar um pedido de teste no dev (o cartão não roda sem o SOP de
+sandbox): gere o PIX pelo checkout e confirme no container com `database.confirmar_pagamento_web` + `import
+celery_app` e `tasks.enviar_email_entrega.delay(pedido_id)`. **Atenção:** o e-mail de
 entrega do sistema (`entrega_pedido_email.py`) envia de verdade no dev — teste a confirmação de pagamento com um
 e-mail seu. Testes: `pytest tests/musica`.
 

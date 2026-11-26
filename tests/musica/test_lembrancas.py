@@ -168,3 +168,29 @@ def test_limitador_do_checkout_continua_sem_bloquear_venda_sem_redis(monkeypatch
     monkeypatch.setattr(web.cielo, '_redis', sem_redis)
     assert _excedeu_limite_ip('sop_token', '1.2.3.4', 30, 600) is False
     assert _excedeu_limite_ip('musica_ditado', '1.2.3.4', 15, 3600, sem_redis_bloqueia=True) is True
+
+
+def test_email_no_dev_so_para_os_liberados(monkeypatch):
+    from musica import config
+    from musica.adaptadores import notificador
+    monkeypatch.setattr(config, 'EMAIL_DEV_PERMITIDOS', {'leo@gmail.com'})
+    assert notificador._liberado_no_dev('leo@gmail.com') and notificador._liberado_no_dev('Leo+presente@Gmail.com')
+    assert not notificador._liberado_no_dev('cliente@gmail.com') and not notificador._liberado_no_dev('leo@gmail.com.br')
+    assert not notificador._liberado_no_dev(None)
+
+
+def test_notificador_no_dev_so_envia_para_a_lista_e_tira_a_copia_de_fora(monkeypatch):
+    import config as config_geral
+    from fluxos import _email_gmail
+    from musica import config
+    from musica.adaptadores.notificador import Notificador
+    from tests.musica.conftest import RepositorioMemoria
+    enviados = []
+    monkeypatch.setattr(config_geral, 'EH_PRODUCAO', False)
+    monkeypatch.setattr(config, 'EMAIL_DEV_PERMITIDOS', {'leo@gmail.com'})
+    monkeypatch.setattr(_email_gmail, 'enviar', lambda **k: enviados.append(k) or {'threadId': 't-1'})
+    monkeypatch.setattr(_email_gmail, 'wrapper_html', lambda **k: '<html>')
+    n = Notificador(RepositorioMemoria())
+    assert n.email(17, 'cliente@gmail.com', 'Presente', '<p>', cc='leo@gmail.com') == 'dev-sem-envio' and not enviados
+    assert n.email(17, 'leo+presente@gmail.com', 'Presente', '<p>', cc='cliente@gmail.com') == 't-1'
+    assert enviados[0]['destinatario'] == 'leo+presente@gmail.com' and enviados[0]['cc'] is None   # cópia retirada

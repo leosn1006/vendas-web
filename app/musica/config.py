@@ -65,6 +65,10 @@ TURNSTILE_SECRET = os.getenv('TURNSTILE_SECRET', '')
 # WhatsApp: preparado, desligado até haver número para o produto.
 WHATSAPP_ATIVO = os.getenv('MUSICA_WHATSAPP_ATIVO', '0') == '1'
 
+# Dev: os e-mails da Música (presente, avisos, lembretes) só saem para estes endereços (vírgula; "leo@gmail.com" libera
+# também "leo+teste@gmail.com"). Vazio = nenhum sai, só vai para o log. Produção ignora.
+EMAIL_DEV_PERMITIDOS = {e.strip().lower() for e in os.getenv('MUSICA_EMAIL_DEV_PERMITIDOS', '').split(',') if e.strip()}
+
 # Custo estimado por geração/letra (centavos), para o ROI do produto.
 CUSTO_GERACAO_CENTAVOS = _int('MUSICA_CUSTO_GERACAO_CENTAVOS', 60)
 CUSTO_LETRA_CENTAVOS = _int('MUSICA_CUSTO_LETRA_CENTAVOS', 25)

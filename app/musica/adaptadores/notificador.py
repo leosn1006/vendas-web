@@ -1,8 +1,9 @@
 """Notificador: e-mail pelo Gmail do sistema (fluxos/_email_gmail), WhatsApp pelo número só de avisos da Música
 (API oficial da Meta, templates aprovados) e alerta para a equipe.
 
-Fora de produção NADA é enviado por e-mail (vai só para o log), como nos apps: o dev tem banco isolado, mas o envio
-pelo Gmail é real. O WhatsApp só envia com MUSICA_WHATSAPP_ATIVO=1; no dev, mesmo ligado, o endereço da Meta é o
+Fora de produção o e-mail vai só para o log, como nos apps (o dev tem banco isolado, mas o envio pelo Gmail é real) —
+menos para os endereços de MUSICA_EMAIL_DEV_PERMITIDOS, que recebem de verdade (a cópia para endereço fora da lista é
+retirada). O WhatsApp só envia com MUSICA_WHATSAPP_ATIVO=1; no dev, mesmo ligado, o endereço da Meta é o
 endereço morto do config.py (regra do projeto) e o envio falha.
 """
 import html
@@ -24,14 +25,29 @@ MODELOS_WHATSAPP = {
 }
 
 
+
+def _liberado_no_dev(endereco) -> bool:
+    """No dev, só os endereços de MUSICA_EMAIL_DEV_PERMITIDOS recebem ("leo@gmail.com" libera "leo+x@gmail.com")."""
+    from musica import config as cfg
+    e = (endereco or '').strip().lower()
+    if '@' not in e:
+        return False
+    usuario, dominio = e.split('@', 1)
+    return e in cfg.EMAIL_DEV_PERMITIDOS or f"{usuario.split('+', 1)[0]}@{dominio}" in cfg.EMAIL_DEV_PERMITIDOS
+
 class Notificador:
     def __init__(self, repositorio, whatsapp_ativo: bool = False):
         self.repositorio, self.whatsapp_ativo = repositorio, whatsapp_ativo
 
     def email(self, produto_id, destino, assunto, html_corpo, cc=None):
         if not config.EH_PRODUCAO:
-            logger.info(f'[MUSICA][DEV] E-mail NÃO enviado para {destino} (cc {cc}): {assunto}')
-            return 'dev-sem-envio'   # "enviado" no dev: a manutenção não o reenvia como envio interrompido
+            if not _liberado_no_dev(destino):
+                logger.info(f'[MUSICA][DEV] E-mail NÃO enviado para {destino} (cc {cc}): {assunto}')
+                return 'dev-sem-envio'   # "enviado" no dev: a manutenção não o reenvia como envio interrompido
+            if cc and not _liberado_no_dev(cc):
+                logger.info(f'[MUSICA][DEV] Cópia para {cc} retirada (fora de MUSICA_EMAIL_DEV_PERMITIDOS)')
+                cc = None
+            logger.info(f'[MUSICA][DEV] E-mail liberado (MUSICA_EMAIL_DEV_PERMITIDOS) para {destino}: {assunto}')
         from fluxos._email_gmail import enviar, wrapper_html
         produto = self.repositorio.remetente_do_produto(produto_id)
         from musica.idiomas import cfg, texto
