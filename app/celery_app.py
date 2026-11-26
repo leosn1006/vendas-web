@@ -13,7 +13,7 @@ celery_app = Celery(
     "vendas",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=["tasks", "musica.tarefas", "sms.tarefas"]  # era "app.tasks", agora só "tasks"; musica.tarefas = produto Música; sms.tarefas = SMS (docs/SMS.md)
+    include=["tasks", "musica.tarefas", "sms.tarefas", "hotmart.tarefas"]  # era "app.tasks", agora só "tasks"; musica.tarefas = produto Música; sms.tarefas = SMS (docs/SMS.md); hotmart.tarefas = conciliação (docs/HOTMART.md)
 )
 
 celery_app.conf.beat_schedule = {
@@ -175,6 +175,12 @@ celery_app.conf.beat_schedule = {
         'schedule': crontab(minute='7,37'),
         'options': {'queue': 'baixa'},
     },
+    # Hotmart: conciliação com a API de vendas (docs/HOTMART.md); confirma pedido pago cujo webhook se perdeu.
+    'hotmart-conciliar': {
+        'task': 'hotmart.conciliar',
+        'schedule': crontab(minute=17),
+        'options': {'queue': 'baixa'},
+    },
     'sms-limpeza': {
         'task': 'sms.limpeza',
         'schedule': crontab(hour=4, minute=23),
@@ -278,5 +284,6 @@ celery_app.conf.update(
         "sms.enviar":                                    {"queue": "normal"},
         "sms.limpeza":                                   {"queue": "baixa"},
         "sms.manutencao":                                {"queue": "baixa"},
+        "hotmart.conciliar":                             {"queue": "baixa"},
     },
 )

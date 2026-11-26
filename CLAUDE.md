@@ -33,7 +33,8 @@ Idiomas (`musica/idiomas.py`, seção "Idiomas" do doc): `/musica` = Brasil, `/m
 **Hotmart** (`app/hotmart/`, `docs/HOTMART.md`): checkout de fora do Brasil (começa pela Música do México). O
 pedido é o nosso (`xcod` = guid); o webhook `POST /hotmart/webhook` (hottok) confere a oferta em `hotmart_ofertas` e
 paga com o mesmo `confirmar_pagamento_web` + `enviar_email_entrega` do PIX/cartão. `valor_pago` fica sempre em reais;
-moeda original, comissão e previsão de repasse ficam em `pagamento_hotmart`.
+moeda original, comissão e previsão de repasse ficam em `pagamento_hotmart`. Conciliação de hora em hora pela API de
+vendas (só leitura; confirma o pedido cujo webhook se perdeu) e tela Admin → Hotmart; no ROI, coluna própria.
 
 **Contribuição no site** (`web/contribuicao.py`, `docs/CONTRIBUICAO_WEB.md`): A/B na landing do WhatsApp (começa no Tempero) — parte dos cliques recebe o livro na Estante 2 antes de pagar (estados 1008/1009, áudio da persona; e-mail opcional, na Estante, desde 14/11/2026) e paga a "contribuição" pelo checkout v2 (`?ref=`), um pedido web normal. Configuração em `contribuicao_config` (`percentual_estante = 0` desliga); resultado na Analytics Web do produto (o ROI só mostra o status).
 

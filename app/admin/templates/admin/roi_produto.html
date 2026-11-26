@@ -86,7 +86,7 @@
 </style>
 {% endblock %}
 
-{% macro roi_summary_card(titulo, subtitulo, recebido_label, recebido, investido, taxa, erro=false, extra_label=none, extra_value=none, recebido_display=none, custo_wpp=none) %}
+{% macro roi_summary_card(titulo, subtitulo, recebido_label, recebido, investido, taxa, erro=false, extra_label=none, extra_value=none, recebido_display=none, custo_wpp=none, extra2_label=none, extra2_value=none) %}
 <div class="card roi-summary-card">
     {% if erro %}
         <div class="roi-summary-head">
@@ -99,7 +99,7 @@
         {# Custo das mensagens da Meta: mostrado em US$ e R$ como cobrado; o total em Real (PTAX + IOF) sai do resultado #}
         {% set wpp_reais = custo_wpp.convertido if custo_wpp else 0 %}
         {% set resultado = recebido - imposto - investido - wpp_reais %}
-        {% set n_colunas = 5 + (1 if extra_label else 0) + (2 if custo_wpp else 0) %}
+        {% set n_colunas = 5 + (1 if extra_label else 0) + (1 if extra2_label else 0) + (2 if custo_wpp else 0) %}
         {% set exibido = recebido_display if recebido_display is not none else recebido %}
         <div class="roi-summary-head">
             <div class="roi-summary-title">{{ titulo }}</div>
@@ -118,6 +118,12 @@
             <div class="roi-summary-item">
                 <div class="roi-summary-label">{{ extra_label }}</div>
                 <div class="roi-summary-value">R$ {{ '%.2f'|format(extra_value) }}</div>
+            </div>
+            {% endif %}
+            {% if extra2_label %}
+            <div class="roi-summary-item">
+                <div class="roi-summary-label">{{ extra2_label }}</div>
+                <div class="roi-summary-value">R$ {{ '%.2f'|format(extra2_value) }}</div>
             </div>
             {% endif %}
             {% if custo_wpp %}
@@ -211,7 +217,8 @@
 {% set web_recebido = (roi_real_web.total_web | float) if not roi_real_web_erro else 0 %}
 {% set web_investido = (roi_real_web.total_investido | float) if not roi_real_web_erro else 0 %}
 {% set cartao_recebido = (roi_real_web.total_cartao | float) if not roi_real_web_erro else 0 %}
-{% set web_total_recebido = web_recebido + cartao_recebido %}
+{% set hotmart_recebido = (roi_real_web.total_hotmart | float) if not roi_real_web_erro else 0 %}
+{% set web_total_recebido = web_recebido + cartao_recebido + hotmart_recebido %}
 {% set total_erro = roi_real_erro or roi_real_web_erro %}
 {% set wpp = custo_wpp or {'usd': 0, 'brl': 0, 'convertido': 0} %}
 
@@ -219,9 +226,10 @@
     'Recebido via PIX', pix_recebido_sem_duplicidade, pix_investido, taxa_imposto, roi_real_erro,
     custo_wpp=wpp) }}
 
-{{ roi_summary_card('ROI Real Web', 'Pedidos com status pago (estado 1000) no período — PIX (BB Pay) + Cartão (Cielo) somados — contra campanhas marcadas como Venda Web (Imposto, ROI Real e Resultado Real usam a soma dos dois)',
+{{ roi_summary_card('ROI Real Web', 'Pedidos com status pago (estado 1000) no período — PIX (BB Pay) + Cartão (Cielo) + Hotmart (em reais, sem o IVA da cliente) somados — contra campanhas marcadas como Venda Web (Imposto, ROI Real e Resultado Real usam a soma dos três)',
     'Recebido via Pix', web_total_recebido, web_investido, taxa_imposto, roi_real_web_erro,
-    extra_label='Recebido via Cartão', extra_value=cartao_recebido, recebido_display=web_recebido) }}
+    extra_label='Recebido via Cartão', extra_value=cartao_recebido, recebido_display=web_recebido,
+    extra2_label='Recebido via Hotmart', extra2_value=hotmart_recebido) }}
 
 {{ roi_summary_card('ROI Real Total', 'Todas as campanhas do produto, contra PIX + Web recebidos no período (sem contar 2x o mesmo PIX; Web já inclui Cartão)',
     'Recebido (PIX + Web)', pix_recebido_sem_duplicidade + web_total_recebido, pix_investido + web_investido, taxa_imposto, total_erro,

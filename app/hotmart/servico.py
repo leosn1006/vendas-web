@@ -19,6 +19,9 @@ EVENTOS_DEVOLUCAO = {'PURCHASE_REFUNDED', 'PURCHASE_CHARGEBACK', 'PURCHASE_PROTE
 # OXXO/SPEI (e boleto) gerado e ainda não pago. Também pelo status, seja qual for o evento que a Hotmart usar.
 EVENTOS_AGUARDANDO = {'PURCHASE_BILLET_PRINTED'}
 STATUS_AGUARDANDO = {'WAITING_PAYMENT', 'PRINTED_BILLET'}
+# Usado só pela conciliação: grava a compra (pagamento_hotmart) sem mudar o estado do pedido — ex.: um cartão recusado
+# antigo que o webhook não trouxe não pode cancelar o pedido que hoje está esperando o OXXO.
+EVENTO_SO_REGISTRO = 'CONCILIACAO_REGISTRO'
 
 
 def _ptax(moeda):
@@ -28,6 +31,7 @@ def _ptax(moeda):
 
 
 def enfileirar_entrega(pedido_id: int) -> None:
+    import celery_app  # noqa: F401 — configura o broker (Redis) também fora do app/worker (ex.: conciliação num script)
     import tasks
     tasks.enviar_email_entrega.delay(pedido_id)
 
@@ -79,6 +83,19 @@ def processar(payload: dict) -> str:
     return resultado
 
 
+def reprocessar(evento_db_id: int) -> str:
+    """Aplica de novo um aviso gravado (ex.: oferta cadastrada depois de um 'oferta_divergente'). Usado pelo botão
+    "Reprocessar" do admin; o resultado novo substitui o antigo."""
+    evento = repositorio.evento_por_id(evento_db_id)
+    if not evento:
+        raise ValueError(f'aviso {evento_db_id} não existe')
+    payload = evento['payload']
+    payload = json.loads(payload) if isinstance(payload, (str, bytes)) else payload
+    if not repositorio.liberar_para_reprocessar(evento['evento_id']):
+        raise ValueError(f"o aviso não está para conferir (resultado: {evento.get('resultado')})")
+    return processar(payload)
+
+
 def _aplicar(dados: dict) -> tuple[str, str]:
     evento, transacao = dados['evento'], dados['transacao']
     if not transacao:
@@ -112,6 +129,8 @@ def _aplicar(dados: dict) -> tuple[str, str]:
         return 'sem_pedido', f'xcod={dados["xcod"]!r}'
 
     pedido_id = pedido['id']
+    if evento == EVENTO_SO_REGISTRO:
+        return 'ok', f"só registro pela conciliação ({dados['status']})"
     if pago:
         confere, motivo = _oferta_confere(dados, pedido)
         if not confere:

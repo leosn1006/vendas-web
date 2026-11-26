@@ -129,3 +129,68 @@ def corrigir_valor_pendente(pedido_id: int, valor_brl, liquido_brl) -> bool:
            WHERE id = %s AND estado_id = 1000 AND metodo_pagamento = 'hotmart'""",
         (float(valor_brl), float(liquido_brl) if liquido_brl is not None else None, pedido_id), return_rowcount=True)
     return bool(linhas)
+
+
+# ── conciliação (API de vendas) ────────────────────────────────────────────────────────────────────────────────────
+
+def pagamento_com_pedido(transacao: str) -> dict | None:
+    """A compra gravada + o guid e o estado do pedido ligado (para a conciliação comparar com a API)."""
+    return _db().execute_query(
+        """SELECT ph.*, p.guid AS pedido_guid, p.estado_id AS pedido_estado, p.data_envio_ebook AS pedido_entregue_em,
+                  p.data_pagamento AS pedido_pago_em, p.metodo_pagamento AS pedido_metodo, p.email AS pedido_email
+           FROM pagamento_hotmart ph LEFT JOIN pedidos p ON p.id = ph.pedido_id
+           WHERE ph.transacao = %s""", (transacao,), fetch_one=True)
+
+
+_CAMPOS_API = ('api_status', 'api_total', 'api_moeda', 'api_iva', 'api_moeda_iva', 'api_taxa', 'api_moeda_taxa',
+               'api_taxa_percentual', 'api_taxa_fixa', 'api_liquido', 'api_moeda_liquido', 'api_garantia_ate',
+               'api_xcod', 'api_oferta')
+
+
+def salvar_conciliacao(transacao: str, campos: dict, divergencia: str | None) -> None:
+    atribuicoes = ', '.join(f'{c} = %s' for c in _CAMPOS_API)
+    _db().execute_query(
+        f"""UPDATE pagamento_hotmart SET {atribuicoes}, divergencia = %s, conciliado_em = NOW()
+            WHERE transacao = %s""",
+        tuple(campos.get(c) for c in _CAMPOS_API) + ((divergencia or None) and divergencia[:500], transacao))
+
+
+def iniciar_conciliacao(origem: str, periodo_de, periodo_ate) -> int:
+    # Execução que nunca terminou (processo morto no meio) não fica "rodando" para sempre na tela.
+    _db().execute_query(
+        """UPDATE hotmart_conciliacoes SET fim = NOW(), erro = 'interrompida (não terminou)'
+           WHERE fim IS NULL AND inicio < NOW() - INTERVAL 30 MINUTE""")
+    return _db().execute_query(
+        "INSERT INTO hotmart_conciliacoes (origem, periodo_de, periodo_ate) VALUES (%s, %s, %s)",
+        (origem, periodo_de, periodo_ate))
+
+
+def finalizar_conciliacao(execucao_id: int, vendas_api: int, novas: int, confirmadas: int, divergentes: int,
+                          reentregas: int, erro: str | None) -> None:
+    _db().execute_query(
+        """UPDATE hotmart_conciliacoes SET fim = NOW(), vendas_api = %s, novas = %s, confirmadas = %s,
+                  divergentes = %s, reentregas = %s, erro = %s WHERE id = %s""",
+        (vendas_api, novas, confirmadas, divergentes, reentregas, (erro or None) and erro[:500], execucao_id))
+
+
+def tem_aviso_a_conferir(transacao: str) -> bool:
+    """O webhook desta venda já está em "Para conferir": a conciliação não cria um segundo aviso igual."""
+    return bool(_db().execute_query(
+        """SELECT 1 FROM pagamento_hotmart_eventos
+           WHERE transacao = %s AND resultado IN ('sem_pedido', 'oferta_divergente', 'erro') LIMIT 1""",
+        (transacao,), fetch_one=True))
+
+
+def evento_por_id(evento_db_id: int) -> dict | None:
+    return _db().execute_query(
+        "SELECT id, evento_id, payload, resultado FROM pagamento_hotmart_eventos WHERE id = %s",
+        (evento_db_id,), fetch_one=True)
+
+
+def liberar_para_reprocessar(evento_id: str) -> bool:
+    """O aviso volta a "sem resultado" para o processar() aplicar de novo — só um aviso que está para conferir (nunca
+    um 'processando' ou 'ok': dois cliques ou um reenvio da Hotmart não rodam o mesmo aviso em paralelo)."""
+    return bool(_db().execute_query(
+        """UPDATE pagamento_hotmart_eventos SET resultado = NULL
+           WHERE evento_id = %s AND resultado IN ('sem_pedido', 'oferta_divergente', 'erro')""",
+        (evento_id,), return_rowcount=True))

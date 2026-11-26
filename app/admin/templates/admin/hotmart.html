@@ -1,0 +1,282 @@
+{% extends "admin/base.html" %}
+{% block title %}Hotmart{% endblock %}
+
+{% set NOMES_STATUS = {
+    'APPROVED': ('aprovada', 'green'), 'COMPLETE': ('garantia encerrada', 'green'),
+    'PRINTED_BILLET': ('aguardando pagamento', 'yellow'), 'WAITING_PAYMENT': ('aguardando pagamento', 'yellow'),
+    'CANCELLED': ('cancelada', 'red'), 'EXPIRED': ('expirada', 'red'), 'REFUNDED': ('reembolsada', 'red'),
+    'PARTIALLY_REFUNDED': ('reembolso parcial', 'red'), 'CHARGEBACK': ('chargeback', 'red'),
+    'PROTESTED': ('pediu reembolso', 'yellow'), 'PROTEST': ('pediu reembolso', 'yellow')} %}
+
+{% macro status_badge(status) -%}
+{%- set s = NOMES_STATUS.get(status, (status or '—', 'blue')) -%}
+<span class="badge badge-{{ s[1] }}">{{ s[0] }}</span>
+{%- endmacro %}
+
+{% macro num(valor, casas=2) -%}
+{%- if valor is none %}—{% else %}{{ ('%.' ~ casas ~ 'f')|format(valor|float) }}{% endif -%}
+{%- endmacro %}
+
+{% block extra_css %}
+<style>
+    .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-link { padding: 10px 20px; font-size: 14px; font-weight: 600; color: var(--muted); text-decoration: none;
+                border-bottom: 2px solid transparent; margin-bottom: -2px; }
+    .tab-link:hover { color: var(--text); }
+    .tab-link.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .mono { font-family: var(--mono); font-size: 13px; }
+    .direita { text-align: right; }
+    .miudo { color: var(--muted); font-size: 12px; }
+    details pre { max-height: 360px; overflow: auto; font-size: 12px; background: var(--bg, #f7f7f7); padding: 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Hotmart</h1>
+        <p class="page-subtitle">Vendas de fora do Brasil pelo checkout da Hotmart: o que chegou pelo webhook, a conferência com a API de vendas e as ofertas ligadas aos nossos planos.</p>
+    </div>
+</div>
+
+{% if not api_configurada %}
+<div class="alert alert-warning">API de vendas não configurada (<code>HOTMART_CLIENT_ID</code>, <code>_SECRET</code>, <code>_TOKEN</code>): a conciliação não roda.</div>
+{% endif %}
+
+<div class="tabs">
+    <a href="{{ url_for('admin.hotmart', aba='vendas', dias=dias, produto_id=produto_id) }}" class="tab-link {% if aba == 'vendas' %}active{% endif %}">💰 Vendas</a>
+    <a href="{{ url_for('admin.hotmart', aba='conciliacao', dias=dias, produto_id=produto_id) }}" class="tab-link {% if aba == 'conciliacao' %}active{% endif %}">🔁 Conciliação</a>
+    <a href="{{ url_for('admin.hotmart', aba='conferir') }}" class="tab-link {% if aba == 'conferir' %}active{% endif %}">⚠️ Para conferir{% if a_conferir %} ({{ a_conferir }}){% endif %}</a>
+    <a href="{{ url_for('admin.hotmart', aba='ofertas') }}" class="tab-link {% if aba == 'ofertas' %}active{% endif %}">🏷️ Ofertas</a>
+</div>
+
+{% if aba in ('vendas', 'conciliacao') %}
+<div class="card">
+    <form method="get" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <input type="hidden" name="aba" value="{{ aba }}">
+        <select name="dias">
+            {% for d in periodos %}<option value="{{ d }}" {% if d == dias %}selected{% endif %}>Últimos {{ d }} dias</option>{% endfor %}
+        </select>
+        <select name="produto_id">
+            <option value="">Todos os produtos</option>
+            {% for p in produtos %}<option value="{{ p.id }}" {% if p.id == produto_id %}selected{% endif %}>{{ p.nome }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+    </form>
+</div>
+{% endif %}
+
+{% macro tabela_vendas(vendas, so_divergencia=false) %}
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th><th>Pedido</th><th>País / pagamento</th>
+                <th class="direita">Cliente pagou</th><th class="direita">Em R$</th><th class="direita">Nosso líquido</th>
+                <th class="direita">Taxa Hotmart</th><th>Situação</th><th>Repasse</th><th>Conciliação</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in vendas %}
+            <tr>
+                <td style="font-size:13px; white-space:nowrap;">{{ (v.aprovado_em or v.criado_em).strftime('%d/%m/%Y %H:%M') }}<br><span class="miudo mono">{{ v.transacao }}</span></td>
+                <td style="font-size:13px;">
+                    {% if v.pedido_id %}
+                        <b>#{{ v.pedido_id }}</b>{% if v.produto %}<br><span class="miudo">{{ v.produto }}</span>{% endif %}<br>
+                        {% if v.guid %}<a href="/pedido2/{{ v.guid }}" target="_blank" class="miudo">Estante ↗</a>{% endif %}
+                        {% if v.produto_id %} · <a href="{{ url_for('admin.conversa_email_pedido', produto_id=v.produto_id, pedido_id=v.pedido_id) }}" class="miudo">e-mails</a>{% endif %}
+                    {% else %}<span class="badge badge-red">sem pedido</span>{% endif %}
+                </td>
+                <td style="font-size:13px;">{{ v.pais or '—' }}<br><span class="miudo">{{ (v.tipo_pagamento or '')|lower|replace('_', ' ') }}</span></td>
+                <td class="direita mono">{{ num(v.api_total if v.api_total is not none else (v.valor_cheio if v.valor_cheio is not none else v.valor)) }} {{ v.moeda or '' }}
+                    {% if v.api_iva is not none %}<br><span class="miudo">IVA {{ num(v.api_iva) }} {{ v.api_moeda_iva or '' }}</span>{% endif %}</td>
+                <td class="direita mono">{% if v.valor_brl is not none %}{{ v.valor_brl|brl }}{% else %}—{% endif %}
+                    {% if v.fonte_taxa == 'pendente' %}<br><span class="badge badge-yellow">sem cotação</span>{% endif %}</td>
+                <td class="direita mono">{% if v.liquido_brl is not none %}{{ v.liquido_brl|brl }}{% else %}—{% endif %}
+                    {% if v.liquido is not none %}<br><span class="miudo">{{ num(v.liquido) }} {{ v.moeda_liquido or '' }}</span>{% endif %}</td>
+                <td class="direita mono">{% if v.api_taxa_percentual is not none %}{{ num(v.api_taxa_percentual, 1) }}%{% endif %}
+                    {% set taxa = v.api_taxa if v.api_taxa is not none else v.taxa_hotmart %}
+                    {% if taxa is not none %}<br><span class="miudo">{{ num(taxa) }} {{ v.api_moeda_taxa or v.moeda_taxa or '' }}</span>{% elif v.api_taxa_percentual is none %}—{% endif %}</td>
+                <td>{{ status_badge(v.api_status or v.status) }}{% if v.modelo_fiscal %}<br><span class="miudo">nota: modelo {{ v.modelo_fiscal }}</span>{% endif %}</td>
+                <td style="font-size:13px; white-space:nowrap;">{% if v.previsao_repasse %}{{ v.previsao_repasse.strftime('%d/%m/%Y') }}{% else %}—{% endif %}
+                    {% if v.liberado_em %}<br><span class="badge badge-green">liberado</span>{% endif %}</td>
+                <td style="font-size:12px; max-width:280px;">
+                    {% if v.divergencia %}<span class="badge badge-red">diverge</span><br>{{ v.divergencia }}
+                    {% elif v.conciliado_em %}✅ <span class="miudo">{{ v.conciliado_em.strftime('%d/%m %H:%M') }}</span>
+                    {% else %}<span class="miudo">ainda não conferida</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endmacro %}
+
+{% if aba == 'vendas' %}
+<div class="stats-grid">
+    <div class="stat-card green">
+        <div class="stat-label">Vendas pagas</div>
+        <div class="stat-value">{{ resumo.vendas or 0 }}</div>
+        <div style="color: var(--muted); font-size: 13px;">
+            {% for m in por_moeda %}{{ num(m.total) }} {{ m.moeda }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}
+            <br>com IVA, na moeda da cliente
+        </div>
+    </div>
+    <div class="stat-card blue">
+        <div class="stat-label">Em reais</div>
+        <div class="stat-value">{{ (resumo.total_brl or 0)|brl }}</div>
+        <div style="color: var(--muted); font-size: 13px;">preço sem IVA (o que entra no ROI)</div>
+    </div>
+    <div class="stat-card green">
+        <div class="stat-label">Nosso líquido</div>
+        <div class="stat-value">{{ (resumo.liquido_brl or 0)|brl }}</div>
+        <div style="color: var(--muted); font-size: 13px;">taxa média da Hotmart: {% if resumo.taxa_media is not none %}{{ num(resumo.taxa_media, 1) }}%{% else %}—{% endif %}</div>
+    </div>
+    <div class="stat-card yellow">
+        <div class="stat-label">Aguardando OXXO/SPEI</div>
+        <div class="stat-value">{{ resumo.aguardando or 0 }}</div>
+        <div style="color: var(--muted); font-size: 13px;">{{ resumo.canceladas or 0 }} cancelada(s)/expirada(s)</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-label">Reembolsos / chargeback</div>
+        <div class="stat-value">{{ resumo.devolvidas or 0 }}</div>
+        <div style="color: var(--muted); font-size: 13px;">{{ resumo.divergentes or 0 }} venda(s) com divergência</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2 style="font-size: 17px; margin: 0 0 14px;">Vendas</h2>
+    {% if vendas %}{{ tabela_vendas(vendas) }}
+    {% else %}<p class="miudo" style="font-size:14px;">Nenhuma venda no período.</p>{% endif %}
+</div>
+{% endif %}
+
+{% if aba == 'conciliacao' %}
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+        <div>
+            <h2 style="font-size: 17px; margin: 0 0 6px;">Conferência com a API da Hotmart</h2>
+            <p class="miudo" style="font-size:13px; max-width:720px; margin:0;">Roda sozinha de hora em hora (últimos 45 dias). Compara cada venda da API com o que chegou pelo webhook. Uma venda paga na Hotmart cujo pedido não está pago é <b>confirmada automaticamente</b> (o webhook se perdeu) — com a mesma conferência de oferta do webhook. As outras diferenças só aparecem aqui.</p>
+        </div>
+        <form method="post" action="{{ url_for('admin.hotmart_conciliar') }}">
+            <button type="submit" class="btn btn-primary" {% if not api_configurada %}disabled{% endif %}>🔁 Conciliar agora</button>
+        </form>
+    </div>
+    {% if execucoes %}
+    <div class="table-wrap" style="margin-top:16px;">
+        <table>
+            <thead><tr><th>Quando</th><th>Origem</th><th class="direita">Vendas na API</th><th class="direita">Novas</th><th class="direita">Confirmadas</th><th class="direita">Divergentes</th><th class="direita">Entrega refeita</th><th>Erro</th></tr></thead>
+            <tbody>
+                {% for x in execucoes %}
+                <tr>
+                    <td style="font-size:13px;">{{ x.inicio.strftime('%d/%m %H:%M') }}{% if not x.fim %} <span class="badge badge-yellow">rodando</span>{% endif %}</td>
+                    <td style="font-size:13px;">{{ 'botão' if x.origem == 'botao' else 'automática' }}</td>
+                    <td class="direita mono">{{ x.vendas_api }}</td>
+                    <td class="direita mono">{{ x.novas }}</td>
+                    <td class="direita mono">{% if x.confirmadas %}<b>{{ x.confirmadas }}</b>{% else %}0{% endif %}</td>
+                    <td class="direita mono">{% if x.divergentes %}<b>{{ x.divergentes }}</b>{% else %}0{% endif %}</td>
+                    <td class="direita mono">{{ x.reentregas or 0 }}</td>
+                    <td style="font-size:12px; color: var(--danger);">{{ x.erro or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<p class="miudo" style="font-size:14px; margin-top:12px;">A conciliação ainda não rodou.</p>{% endif %}
+</div>
+
+<div class="card">
+    <h2 style="font-size: 17px; margin: 0 0 14px;">Vendas com divergência</h2>
+    {% if vendas %}{{ tabela_vendas(vendas) }}
+    {% else %}<p class="miudo" style="font-size:14px;">Nenhuma divergência no período. ✅</p>{% endif %}
+</div>
+{% endif %}
+
+{% if aba == 'conferir' %}
+<div class="card">
+    <h2 style="font-size: 17px; margin: 0 0 6px;">Avisos que não confirmaram o pedido</h2>
+    <p class="miudo" style="font-size:13px; margin:0 0 14px;">"Sem pedido": o aviso não trouxe o <code>xcod</code> ou o pedido não existe. "Oferta divergente": a oferta paga não está cadastrada (aba Ofertas) ou é de outro plano. Depois de corrigir, use <b>Reprocessar</b>. Os avisos do botão de teste da Hotmart também aparecem aqui (dados fictícios).</p>
+    {% if eventos %}
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Recebido</th><th>Evento</th><th>Transação</th><th>Resultado</th><th>Aviso</th><th></th></tr></thead>
+            <tbody>
+                {% for e in eventos %}
+                <tr>
+                    <td style="font-size:13px; white-space:nowrap;">{{ e.recebido_em.strftime('%d/%m %H:%M') }}</td>
+                    <td style="font-size:13px;">{{ e.evento }}{% if e.evento_id.startswith('conciliacao:') %}<br><span class="miudo">pela conciliação</span>{% endif %}</td>
+                    <td class="mono">{{ e.transacao or '—' }}</td>
+                    <td style="font-size:13px;"><span class="badge badge-{{ 'red' if e.resultado == 'erro' else 'yellow' }}">{{ e.resultado|replace('_', ' ') }}</span><br><span class="miudo">{{ e.detalhe or '' }}</span></td>
+                    <td style="max-width:380px;"><details><summary class="miudo">ver JSON</summary><pre>{{ e.payload_txt }}</pre></details></td>
+                    <td>
+                        <form method="post" action="{{ url_for('admin.hotmart_reprocessar', evento_db_id=e.id) }}" onsubmit="return confirm('Aplicar este aviso de novo? Se o pedido for confirmado, a cliente recebe a entrega.');">
+                            <button type="submit" class="btn btn-sm">Reprocessar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<p class="miudo" style="font-size:14px;">Nada para conferir. ✅</p>{% endif %}
+</div>
+
+{% if sem_cotacao %}
+<div class="card">
+    <h2 style="font-size: 17px; margin: 0 0 6px;">Vendas sem cotação em reais</h2>
+    <p class="miudo" style="font-size:13px; margin:0 0 14px;">O pedido foi confirmado com o valor esperado; o próximo aviso ou conciliação com cotação corrige o valor em reais.</p>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Transação</th><th>Pedido</th><th class="direita">Valor</th><th>Quando</th></tr></thead>
+            <tbody>{% for s in sem_cotacao %}<tr><td class="mono">{{ s.transacao }}</td><td>#{{ s.pedido_id or '—' }}</td><td class="direita mono">{{ num(s.valor) }} {{ s.moeda or '' }}</td><td style="font-size:13px;">{{ s.criado_em.strftime('%d/%m %H:%M') }}</td></tr>{% endfor %}</tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% if aba == 'ofertas' %}
+<div class="card">
+    <h2 style="font-size: 17px; margin: 0 0 6px;">Ofertas da Hotmart → nossos planos</h2>
+    <p class="miudo" style="font-size:13px; margin:0 0 14px;">O código é o <code>off=</code> do link da oferta (painel da Hotmart → Precificação e ofertas). Um plano pode ter várias ofertas (ex.: preço cheio e com desconto). Uma venda só confirma o pedido se a oferta paga for do mesmo plano do pedido. Desativar só tira a oferta dos links: quem já pagou continua recebendo.</p>
+    {% if ofertas %}
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Código</th><th>Produto</th><th>Plano</th><th>Descrição</th><th>Ativa</th><th></th></tr></thead>
+            <tbody>
+                {% for o in ofertas %}
+                {% set f = 'oferta-' ~ loop.index %}
+                <tr>
+                    <td class="mono">{{ o.codigo }}<input type="hidden" name="codigo" value="{{ o.codigo }}" form="{{ f }}"></td>
+                    <td style="font-size:13px;">{{ o.produto or ('#' ~ o.produto_id) }}</td>
+                    <td>
+                        <select name="plano_id" form="{{ f }}">
+                            {% for pl in planos %}<option value="{{ pl.id }}" {% if pl.id == o.plano_id %}selected{% endif %}>{{ pl.produto }} — {{ pl.nome }}</option>{% endfor %}
+                        </select>
+                    </td>
+                    <td><input type="text" name="descricao" value="{{ o.descricao or '' }}" maxlength="120" style="width:100%;" form="{{ f }}"></td>
+                    <td><select name="ativo" form="{{ f }}"><option value="1" {% if o.ativo %}selected{% endif %}>sim</option><option value="0" {% if not o.ativo %}selected{% endif %}>não</option></select></td>
+                    <td><form id="{{ f }}" method="post" action="{{ url_for('admin.hotmart_salvar_oferta') }}"><button type="submit" class="btn btn-sm">Salvar</button></form></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<p class="miudo" style="font-size:14px;">Nenhuma oferta cadastrada.</p>{% endif %}
+</div>
+
+<div class="card">
+    <h2 style="font-size: 17px; margin: 0 0 14px;">Nova oferta</h2>
+    <form method="post" action="{{ url_for('admin.hotmart_salvar_oferta') }}" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <input type="text" name="codigo" placeholder="código (off=)" maxlength="40" required>
+        <select name="plano_id" required>
+            <option value="">Plano…</option>
+            {% for pl in planos %}<option value="{{ pl.id }}">{{ pl.produto }} — {{ pl.nome }}</option>{% endfor %}
+        </select>
+        <input type="text" name="descricao" placeholder="descrição (ex.: preço com desconto)" maxlength="120" style="min-width:260px;">
+        <input type="hidden" name="ativo" value="1">
+        <button type="submit" class="btn btn-primary btn-sm">Incluir</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

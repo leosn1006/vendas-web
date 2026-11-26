@@ -2959,7 +2959,7 @@ _SQL_ROI_REAL = """
 """
 
 _SQL_ROI_REAL_WEB = """
-    -- total_web aqui é só PIX-web (BB Pay) — cartão (Cielo) sai à parte em total_cartao,
+    -- total_web aqui é só PIX-web (BB Pay) — cartão (Cielo) sai à parte em total_cartao e Hotmart em total_hotmart,
     -- mesmo estado_id=1000 pros dois, diferenciados só por metodo_pagamento. Uma única
     -- passada por `pedidos` (SUM condicional), não duas subqueries repetidas — a única
     -- coluna nova no filtro (metodo_pagamento) não está no índice de cobertura
@@ -2968,11 +2968,13 @@ _SQL_ROI_REAL_WEB = """
     SELECT
         COALESCE(w.total_web,    0) AS total_web,
         COALESCE(w.total_cartao, 0) AS total_cartao,
+        COALESCE(w.total_hotmart, 0) AS total_hotmart,
         COALESCE(inv.total_investido, 0) AS total_investido
     FROM (
         SELECT
-            SUM(CASE WHEN metodo_pagamento = 'cartao' THEN 0 ELSE valor_pago END) AS total_web,
-            SUM(CASE WHEN metodo_pagamento = 'cartao' THEN valor_pago ELSE 0 END) AS total_cartao
+            SUM(CASE WHEN metodo_pagamento IN ('cartao', 'hotmart') THEN 0 ELSE valor_pago END) AS total_web,
+            SUM(CASE WHEN metodo_pagamento = 'cartao' THEN valor_pago ELSE 0 END) AS total_cartao,
+            SUM(CASE WHEN metodo_pagamento = 'hotmart' THEN valor_pago ELSE 0 END) AS total_hotmart
         FROM pedidos
         WHERE produto_id = %s
           AND estado_id = 1000
@@ -2992,7 +2994,7 @@ _SQL_ROI_REAL_WEB = """
 
 
 _SQL_ROI_TODOS_PRODUTOS = """
-    -- total_web (join pw) é só PIX-web — cartão (Cielo) sai à parte em total_cartao (mesmo
+    -- total_web (join pw) é só PIX-web — cartão (Cielo) e Hotmart saem à parte em total_cartao/total_hotmart (mesmo
     -- join pw, coluna separada), mesmo estado_id=1000 pros dois, diferenciados só por
     -- metodo_pagamento. Uma única passada por `pedidos` (SUM condicional) em vez de dois
     -- LEFT JOINs quase idênticos.
@@ -3002,7 +3004,8 @@ _SQL_ROI_TODOS_PRODUTOS = """
         COALESCE(oc.total_investido,  0) AS total_investido,
         COALESCE(pp.total_pix,        0) AS total_pix,
         COALESCE(pw.total_web,        0) AS total_web,
-        COALESCE(pw.total_cartao,     0) AS total_cartao
+        COALESCE(pw.total_cartao,     0) AS total_cartao,
+        COALESCE(pw.total_hotmart,    0) AS total_hotmart
     FROM produtos p
     LEFT JOIN (
         SELECT produto_id, SUM(valor_investido) AS total_investido
@@ -3019,8 +3022,9 @@ _SQL_ROI_TODOS_PRODUTOS = """
     ) pp ON pp.produto_id = p.id
     LEFT JOIN (
         SELECT produto_id,
-            SUM(CASE WHEN metodo_pagamento = 'cartao' THEN 0 ELSE valor_pago END) AS total_web,
-            SUM(CASE WHEN metodo_pagamento = 'cartao' THEN valor_pago ELSE 0 END) AS total_cartao
+            SUM(CASE WHEN metodo_pagamento IN ('cartao', 'hotmart') THEN 0 ELSE valor_pago END) AS total_web,
+            SUM(CASE WHEN metodo_pagamento = 'cartao' THEN valor_pago ELSE 0 END) AS total_cartao,
+            SUM(CASE WHEN metodo_pagamento = 'hotmart' THEN valor_pago ELSE 0 END) AS total_hotmart
         FROM pedidos
         WHERE estado_id = 1000
           AND fluxo_inicial = 'web'
@@ -3091,7 +3095,8 @@ def roi_todos_produtos():
         pix = float(r['total_pix'])
         web = float(r['total_web'])
         cartao = float(r['total_cartao'])
-        total_recebido = pix + web + cartao
+        hotmart = float(r.get('total_hotmart') or 0)
+        total_recebido = pix + web + cartao + hotmart
         imposto_valor = total_recebido * taxa / 100
         custo_wpp = custos_wpp.get(r['id']) or {'usd': 0.0, 'brl': 0.0, 'convertido': 0.0}
         custo_wpp_reais = custo_wpp['convertido']
@@ -3230,7 +3235,7 @@ def roi_produto(produto_id):
         roi_real = None
         logger.error(f"[ADMIN] ❌ Erro ao calcular ROI real do produto #{produto_id}: {e}")
 
-    roi_real_web = {'total_web': 0, 'total_cartao': 0, 'total_investido': 0}
+    roi_real_web = {'total_web': 0, 'total_cartao': 0, 'total_hotmart': 0, 'total_investido': 0}
     roi_real_web_erro = False
     try:
         roi_real_web_row = db.execute_query(

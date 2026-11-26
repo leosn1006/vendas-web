@@ -550,6 +550,10 @@
            class="nav-link {% if request.endpoint == 'admin.sms_enviados' %}active{% endif %}">
             <span class="icon">💬</span> SMS enviados
         </a>
+        <a href="{{ url_for('admin.hotmart') }}"
+           class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.hotmart') %}active{% endif %}">
+            <span class="icon">🌎</span> Hotmart
+        </a>
         {% endif %}
 
         <!-- Sub-menu do produto ativo -->

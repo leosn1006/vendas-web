@@ -20,12 +20,14 @@ class RepositorioFalso:
     def __init__(self):
         self.eventos, self.pagamentos, self.ofertas, self.pedidos = {}, {}, {}, {}
         self.taxas = {}
+        self.conciliacoes = []
 
     # avisos
     def registrar_evento(self, evento_id, transacao, evento, payload):
         if evento_id not in self.eventos:
-            self.eventos[evento_id] = {'transacao': transacao, 'evento': evento, 'resultado': 'processando',
-                                       'detalhe': None}
+            self.eventos[evento_id] = {'id': len(self.eventos) + 1, 'evento_id': evento_id, 'transacao': transacao,
+                                       'evento': evento, 'resultado': 'processando', 'detalhe': None,
+                                       'payload': copy.deepcopy(payload)}
             return True
         evento_gravado = self.eventos[evento_id]
         if evento_gravado['resultado'] in (None, 'erro'):   # 'processando' antigo: o relógio dos testes não anda
@@ -79,6 +81,43 @@ class RepositorioFalso:
                  data_repasse=data_repasse, metodo_pagamento='hotmart')
         return True
 
+    # conciliação
+    def pagamento_com_pedido(self, transacao):
+        if transacao not in self.pagamentos:
+            return None
+        linha = dict(self.pagamentos[transacao])
+        pedido = self.pedidos.get(linha.get('pedido_id')) or {}
+        return {**linha, 'pedido_guid': pedido.get('guid'), 'pedido_estado': pedido.get('estado_id'),
+                'pedido_metodo': pedido.get('metodo_pagamento'), 'pedido_email': pedido.get('email'),
+                'pedido_entregue_em': pedido.get('data_envio_ebook'), 'pedido_pago_em': pedido.get('data_pagamento')}
+
+    def salvar_conciliacao(self, transacao, campos, divergencia):
+        from hotmart.repositorio import _CAMPOS_API
+        self.pagamentos[transacao].update({c: campos.get(c) for c in _CAMPOS_API}, divergencia=divergencia,
+                                          conciliado_em='agora')
+
+    def iniciar_conciliacao(self, origem, de, ate):
+        self.conciliacoes.append({'origem': origem, 'fim': None})
+        return len(self.conciliacoes)
+
+    def finalizar_conciliacao(self, execucao_id, vendas_api, novas, confirmadas, divergentes, reentregas, erro):
+        self.conciliacoes[execucao_id - 1].update(fim='agora', vendas_api=vendas_api, novas=novas,
+                                                  confirmadas=confirmadas, divergentes=divergentes,
+                                                  reentregas=reentregas, erro=erro)
+
+    def tem_aviso_a_conferir(self, transacao):
+        return any(e['transacao'] == transacao and e['resultado'] in ('sem_pedido', 'oferta_divergente', 'erro')
+                   for e in self.eventos.values())
+
+    def evento_por_id(self, evento_db_id):
+        return next((dict(e) for e in self.eventos.values() if e['id'] == evento_db_id), None)
+
+    def liberar_para_reprocessar(self, evento_id):
+        if self.eventos[evento_id]['resultado'] not in ('sem_pedido', 'oferta_divergente', 'erro'):
+            return False
+        self.eventos[evento_id]['resultado'] = None
+        return True
+
     def mudar_estado_se_nao_pago(self, pedido_id, estado):
         from hotmart.repositorio import ESTADOS_ANTES_DO_PAGAMENTO
         p = self.pedidos[pedido_id]
@@ -94,7 +133,9 @@ def repo(monkeypatch):
     falso = RepositorioFalso()
     for nome in ('registrar_evento', 'marcar_resultado_evento', 'salvar_pagamento', 'marcar_liberado',
                  'ultima_taxa', 'oferta', 'pedido_por_guid', 'confirmar_pedido', 'mudar_estado_se_nao_pago',
-                 'fonte_taxa_gravada', 'corrigir_valor_pendente'):
+                 'fonte_taxa_gravada', 'corrigir_valor_pendente', 'pagamento_com_pedido', 'salvar_conciliacao',
+                 'iniciar_conciliacao', 'finalizar_conciliacao', 'evento_por_id', 'liberar_para_reprocessar',
+                 'tem_aviso_a_conferir'):
         monkeypatch.setattr(repositorio, nome, getattr(falso, nome))
     falso.pedidos[7] = {'id': 7, 'guid': 'abc123', 'produto_id': 50, 'plano_id': 501, 'estado_id': 1001,
                         'valor_pago': None, 'fluxo_inicial': 'web'}

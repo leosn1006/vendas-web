@@ -1,0 +1,31 @@
+{
+  "_origem": "API de vendas da Hotmart (produção), venda HP0277856500 de 25/11/2026, consultada em 26/11/2026; e-mails e ucodes trocados",
+  "history": {
+    "purchase": {
+      "order_date": 1795660535000, "transaction": "HP0277856500", "is_subscription": false,
+      "price": {"currency_code": "MXN", "value": 58},
+      "payment": {"type": "CREDIT_CARD", "installments_number": 1, "method": "CREDIT_CARD_VISA"},
+      "offer": {"payment_mode": "UNIQUE_PAYMENT", "code": "sph9o75s"},
+      "warranty_expire_date": 1796169600000,
+      "tracking": {"external_code": "hmtteste"},
+      "hotmart_fee": {"base": 50, "fixed": 0, "percentage": 20, "total": 0.5},
+      "approved_date": 1795660538000, "status": "APPROVED", "commission_as": "PRODUCER"
+    },
+    "buyer": {"name": "Compradora Teste", "ucode": "00000000-0000-0000-0000-000000000001", "email": "compradora@exemplo.com"},
+    "product": {"name": "Canción de Regalo", "id": 9006872},
+    "producer": {"name": "LBE LIVROS LTDA", "ucode": "00000000-0000-0000-0000-000000000002"}
+  },
+  "price": {
+    "product": {"name": "Canción de Regalo", "id": 9006872},
+    "real_conversion_rate": 1, "transaction": "HP0277856500",
+    "vat": {"value": 8, "currency_code": "MXN"},
+    "total": {"value": 58, "currency_code": "MXN"},
+    "base": {"value": 50, "currency_code": "MXN"}
+  },
+  "commissions": {
+    "product": {"id": 9006872, "name": "Canción de Regalo"},
+    "transaction": "HP0277856500", "exchange_rate_currency_payout": 0.050108,
+    "commissions": [{"source": "PRODUCER", "commission": {"value": 2.01, "currency_code": "USD"},
+                     "user": {"name": "LBE LIVROS LTDA", "email": "produtor@exemplo.com", "ucode": "00000000-0000-0000-0000-000000000002"}}]
+  }
+}

@@ -39,11 +39,8 @@ primeiro produto é a Música do México (`/mx/cancion`, produto `es-MX`, migrat
 ## Ofertas (`hotmart_ofertas`)
 
 De-para oferta da Hotmart → plano nosso. Um plano pode ter várias (ex.: videoclipe cheio e com desconto do popup).
-Por enquanto o cadastro é à mão:
-
-```sql
-INSERT INTO hotmart_ofertas (codigo, produto_id, plano_id, descricao) VALUES ('<off da Hotmart>', 22, 25, 'Canción');
-```
+Cadastro em **Admin → Hotmart → Ofertas** (o código é o `off=` do link da oferta). Desativar só tira a oferta dos
+links: quem já pagou continua recebendo.
 
 ## Moeda e repasse
 
@@ -79,22 +76,64 @@ Os campos foram conferidos com a página oficial **"Eventos de pedidos" 2.0.0** 
 - A Hotmart guarda o histórico dos avisos por 60 dias e tem botão de teste no painel; a API tem sandbox
   (`sandbox.hotmart.com`).
 
-Não está na documentação, conferir no 1º aviso real (`payload` em `pagamento_hotmart_eventos`): em que moeda vem a
-nossa comissão (BRL? USD?) numa venda em pesos, se vem `currency_conversion`, o `payment.type` do OXXO/SPEI
-(provavelmente `CASH_PAYMENT` / `DIRECT_BANK_TRANSFER`) e qual evento chega quando o OXXO é gerado.
+**Confirmado na 1ª venda real** (HP0277856500, 25/11/2026, MX$ 50 no cartão): `price` 50 MXN (sem IVA), `full_price`
+58 MXN (com o IVA de 16%), taxa da Hotmart **US$ 0,50 = 20%** (`hotmart_fee.percentage` na API), **nosso líquido em
+USD** (2,01) com `currency_conversion` para BRL (11,69 a 5,815299), `business_model` **"A"** (nós emitimos a nota,
+pela entidade da Hotmart no exterior). Ainda falta ver um OXXO/SPEI real (`payment.type` e o evento de "gerado").
 
 ## Próximas etapas
 
 - Criar o pedido e redirecionar com `xcod`; página de obrigado (cookie com o guid, espera o webhook).
-- Fase 2b: tela "Hotmart" no admin (vendas, totais por moeda, aguardando OXXO, "Para conferir") e conciliação pela
-  API de vendas da Hotmart (OAuth client_credentials; não há API de saques).
 - Order bumps; devolução no Financeiro. **Hoje um reembolso/chargeback não muda o pedido**: ele continua pago e
-  somando no ROI até essa etapa (a `pagamento_hotmart.status` mostra REFUNDED/CHARGEBACK).
-- ROI: a venda da Hotmart entra na receita do produto, mas na coluna "web" (as consultas só separam `cartao` do
-  resto, `admin/views.py` `_SQL_ROI_REAL_WEB`). Separar `hotmart` junto com a tela. O Financeiro não é afetado (sai
-  de `pagamento_pix`/`pagamento_cartao`).
+  somando no ROI (a `pagamento_hotmart.status` mostra REFUNDED/CHARGEBACK e a tela conta os reembolsos).
 
-## API de vendas (para a fase 2b)
+## Conciliação (`hotmart/conciliacao.py`, fase 2b, 26/11/2026)
+
+- Roda **de hora em hora** (beat `hotmart-conciliar`, minuto 17, fila `baixa`) e pelo botão **Conciliar agora** em
+  Admin → Hotmart, que só agenda a mesma tarefa no worker (são dezenas de chamadas: na página passaria do tempo do
+  Gunicorn). Execução que não terminou em 30 min é marcada "interrompida" na próxima. Período: últimos `HOTMART_DIAS_CONCILIACAO` dias (45). Credencial em `HOTMART_CLIENT_ID`,
+  `_SECRET`, `_TOKEN` (no `app` e no `worker-baixa`); vazia = não roda. `HOTMART_API_URL` vazio = produção.
+- Busca `history`, `price/details` e `commissions` para cada status (sem `transaction_status` a API só devolve
+  APPROVED/COMPLETE) e junta pela transação. **Só GET** (`hotmart/api.py`).
+- Venda que o webhook não trouxe, ou **paga na Hotmart com o pedido ainda aberto** (webhook perdido): vira um aviso
+  no formato do webhook (`evento_id = conciliacao:<transação>:<status>`) e passa pelo mesmo `servico.processar()` —
+  confere a oferta, converte para reais, **confirma e entrega**. Preço sem IVA = `price/details.base`.
+- Venda que **não paga** e o webhook não trouxe: só muda o pedido se for a transação **mais recente** daquele `xcod`
+  (um cartão recusado antigo não cancela o pedido que espera o OXXO); as outras só são registradas
+  (`EVENTO_SO_REGISTRO`, `evento_id` terminado em `:registro`).
+- **Order bump**: a API não diz o que é bump. Uma venda de oferta não cadastrada cujo pedido (`xcod`) tem outra
+  venda com oferta cadastrada é tratada como bump: só registrada, nunca confirma. As de oferta cadastrada são
+  aplicadas primeiro. Linha já gravada como bump pelo webhook nunca é confirmada pela conciliação.
+- Se o aviso do webhook da venda já está em "Para conferir", a conciliação não cria um segundo aviso igual.
+- Pedido pago pela Hotmart, com e-mail e sem entrega, entre 30 min e 6 h depois do pagamento (o agendamento da
+  entrega falhou): agenda a entrega de novo (idempotente pelo `data_envio_ebook`; contado em
+  `hotmart_conciliacoes.reentregas`).
+- "Reprocessar" só aceita aviso `sem_pedido` / `oferta_divergente` / `erro` (nunca um `processando` ou `ok`).
+- Grava o que a API diz em `pagamento_hotmart.api_*` (total com IVA, IVA, taxa e %, líquido, garantia, xcod, oferta)
+  e a **divergência** que sobrar: status (ex.: REFUNDED na API sem o aviso), valor cheio, líquido, xcod ≠ guid, sem
+  pedido, paga com pedido não pago. Divergência só aparece na tela. Cada execução fica em `hotmart_conciliacoes`.
+- Atenção: o `history.price` é o valor **com IVA** (58), o `price` do webhook é **sem IVA** (50); a comparação usa o
+  `full_price`/`valor_cheio`. O líquido em reais da conciliação usa a PTAX do dólar quando a API não traz a conversão
+  da Hotmart (pode diferir alguns centavos dos 11,69 do webhook).
+
+## Tela Admin → Hotmart (`admin/hotmart_views.py`)
+
+- **Vendas**: resumo (vendas, total por moeda com IVA, em R$, nosso líquido, taxa média, aguardando OXXO/SPEI,
+  canceladas, reembolsos) e a lista com pedido (Estante e e-mails), país, pagamento, valores, taxa %, situação, modelo
+  da nota, previsão de repasse e conciliação.
+- **Conciliação**: botão, últimas execuções e as vendas com divergência.
+- **Para conferir**: avisos `sem_pedido` / `oferta_divergente` / `erro` com o JSON e o botão **Reprocessar**
+  (`servico.reprocessar`), e as vendas sem cotação.
+- **Ofertas**: o de-para oferta → plano.
+- Os POSTs exigem Origin/Referer do próprio site (`apps/_nucleo/auth.origem_confiavel`; o projeto não tem token CSRF).
+
+## ROI
+
+A Hotmart tem coluna própria: **"Recebido (Hotmart)"** no ROI de todos os produtos e **"Recebido via Hotmart"** no
+card "ROI Real Web" do produto (`total_hotmart` em `_SQL_ROI_REAL_WEB`/`_SQL_ROI_TODOS_PRODUTOS`; o `total_web`
+exclui `cartao` e `hotmart`). Valor bruto em reais, sem o IVA da cliente, como PIX e cartão.
+
+## API de vendas
 
 Da documentação oficial ("Vendas", copiada em 21/11/2026). Autenticação OAuth `client_credentials` (Ferramentas →
 Credenciais Developers; credencial própria para o sandbox `https://sandbox.hotmart.com`, com dados fictícios), token
@@ -112,8 +151,18 @@ de ~48 h, limite de 500 chamadas/min, paginação por `page_token`, datas em mil
 - O `price/details` completa o que o webhook pode não trazer: a taxa da Hotmart (`fee`) e o imposto (`vat`).
 - Garantia (prazo de reembolso para a compradora): mínimo 7 dias, até 30 (pode estender a 60), e precisa estar
   informada antes da venda.
-- Faltou copiar (está em "mostrar parâmetros", fechado na página): os campos do retorno do `history` e o endpoint de
-  comissões por venda.
+- Respostas vistas no sandbox (26/11/2026; dados fictícios, só o formato vale):
+  - `history` (item): `product.{id,name}`, `buyer.{name,email,ucode}`, `producer`, `purchase.{transaction, status,
+    approved_date, order_date, warranty_expire_date, price.{value,currency_code}, offer.{code,payment_mode},
+    payment.{type,method,installments_number}, hotmart_fee.{total,fixed,percentage,base,currency_code},
+    tracking.{source,source_sck,external_code}, commission_as, is_subscription}`. A taxa da Hotmart vem aberta
+    (ex.: 9,9% + 1 fixo). Conferir numa venda real se o `tracking.external_code` é o nosso `xcod`.
+  - `commissions` (item): `transaction`, `product`, `exchange_rate_currency_payout`, `commissions[].{source,
+    commission.{value,currency_code}, user.{name,email,ucode}}`.
+  - `price/details` (item): `transaction`, `product`, `base`, `total`, `vat`, `fee` (cada um `{value,
+    currency_code}`), `coupon.{code,value}`, `real_conversion_rate`.
+- A credencial é do sandbox **ou** de produção (o tipo é escolhido na criação e não muda): a de sandbox recebe 403
+  `unauthorized_client` em `developers.hotmart.com`.
 
 ## Robustez
 
